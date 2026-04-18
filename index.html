@@ -146,6 +146,7 @@
         let micStream = null;
 
         const ARENA_RADIUS = 2000;
+        const SOUND_HEAR_RADIUS = 420;
         const BUBBLES = [];
         const NUM_BUBBLES = 18;
 
@@ -207,6 +208,7 @@
             if (isInteractionPaused) return;
             const pos = getMousePos(e);
             mouseWorld = pos;
+            ensureAllAudioRunning();
 
             const fishTapDistance = Math.hypot(pos.x - ship.x, pos.y - ship.y);
             const now = performance.now();
@@ -217,14 +219,6 @@
                     openBubblePanel();
                     return;
                 }
-            } else {
-                BUBBLES.forEach(b => {
-                    const d = Math.hypot(pos.x - b.x, pos.y - b.y);
-                    if (d < b.r && b.audio) {
-                        b.audio.currentTime = 0;
-                        b.audio.play();
-                    }
-                });
             }
 
             isTethered = true;
@@ -349,15 +343,37 @@
 
             const audioUrl = URL.createObjectURL(audioBlob);
             const audio = new Audio(audioUrl);
+            audio.loop = true;
+            audio.volume = 0;
+            audio.preload = 'auto';
 
-            return {
+            const bubble = {
                 x,
                 y,
                 r: 64,
                 hue: hexToHue(colorHex),
                 isActive: false,
-                audio
+                audio,
+                currentVolume: 0
             };
+
+            ensureBubbleAudioRunning(bubble);
+            return bubble;
+        }
+
+        function ensureBubbleAudioRunning(bubble) {
+            if (!bubble.audio) return;
+            if (!bubble.audio.paused) return;
+            const playPromise = bubble.audio.play();
+            if (playPromise?.catch) {
+                playPromise.catch(() => {
+                    // Les navigateurs peuvent bloquer l'autoplay tant qu'il n'y a pas eu d'interaction utilisateur.
+                });
+            }
+        }
+
+        function ensureAllAudioRunning() {
+            BUBBLES.forEach(ensureBubbleAudioRunning);
         }
 
         function hexToHue(hex) {
@@ -391,6 +407,16 @@
                 const dy = ship.y - b.y;
                 const dist = Math.hypot(dx, dy);
                 const minDist = b.r + 25;
+
+                if (b.audio) {
+                    const normalized = Math.max(0, 1 - (dist / SOUND_HEAR_RADIUS));
+                    const targetVolume = Math.pow(normalized, 2);
+                    b.currentVolume += (targetVolume - b.currentVolume) * 0.1;
+                    b.audio.volume = Math.min(1, Math.max(0, b.currentVolume));
+                    b.isActive = b.currentVolume > 0.03;
+                } else {
+                    b.isActive = false;
+                }
 
                 if (dist < minDist + ship.repulsionRadius) {
                     const safeDist = Math.max(0.0001, dist);
