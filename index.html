@@ -678,7 +678,7 @@
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            BUBBLES.forEach(b => {
+            const drawBubble = (b) => {
                 const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
                 const opacityMult = b.isActive ? 2 : 1;
                 const hue = b.isActive ? 0 : b.hue;
@@ -695,6 +695,11 @@
                 ctx.strokeStyle = `hsla(${hue}, 80%, 60%, ${0.1 * opacityMult})`;
                 ctx.lineWidth = b.isActive ? 3 : 1;
                 ctx.stroke();
+            };
+
+            BUBBLES.forEach((b) => {
+                if (b.depthMode === 'above') return;
+                drawBubble(b);
             });
 
             drawWakeParticles();
@@ -781,6 +786,11 @@
             ctx.arc(2.2, -10, 1.35, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
+
+            BUBBLES.forEach((b) => {
+                if (b.depthMode !== 'above') return;
+                drawBubble(b);
+            });
 
             ctx.restore();
         }
