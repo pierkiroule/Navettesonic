@@ -281,19 +281,62 @@
                 ctx.stroke();
             }
 
-            // Navette
+            // Poisson minimaliste unicolore
             ctx.save();
             ctx.translate(ship.x, ship.y);
-            ctx.rotate(ship.angle + Math.PI/2);
+            ctx.rotate(ship.angle + Math.PI / 2);
+            const swimT = performance.now() * 0.006;
+            const wag = Math.sin(swimT * 2.6) * 0.22;
+            const finFlap = Math.sin(swimT * 1.8) * 0.18;
             ctx.shadowBlur = 15;
             ctx.shadowColor = 'white';
             ctx.fillStyle = 'white';
+
+            // Corps
             ctx.beginPath();
-            ctx.moveTo(0, -14);
-            ctx.bezierCurveTo(-5, 0, -8, 10, -10, 14);
-            ctx.lineTo(0, 8);
-            ctx.lineTo(10, 14);
-            ctx.bezierCurveTo(8, 10, 5, 0, 0, -14);
+            ctx.ellipse(0, 0, 8, 14, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Nageoire gauche
+            ctx.save();
+            ctx.translate(-8, 0);
+            ctx.rotate(-0.35 + finFlap);
+            ctx.beginPath();
+            ctx.moveTo(0, -1);
+            ctx.quadraticCurveTo(-7, 4, -3, 11);
+            ctx.quadraticCurveTo(1, 5, 0, -1);
+            ctx.fill();
+            ctx.restore();
+
+            // Nageoire droite
+            ctx.save();
+            ctx.translate(8, 0);
+            ctx.rotate(0.35 - finFlap);
+            ctx.beginPath();
+            ctx.moveTo(0, -1);
+            ctx.quadraticCurveTo(7, 4, 3, 11);
+            ctx.quadraticCurveTo(-1, 5, 0, -1);
+            ctx.fill();
+            ctx.restore();
+
+            // Queue
+            ctx.save();
+            ctx.translate(0, 14);
+            ctx.rotate(wag);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.quadraticCurveTo(-6, 6, -2, 14);
+            ctx.quadraticCurveTo(0, 10, 2, 14);
+            ctx.quadraticCurveTo(6, 6, 0, 0);
+            ctx.fill();
+            ctx.restore();
+
+            // Yeux minimalistes (découpe dans la forme)
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#030308';
+            ctx.beginPath();
+            ctx.arc(-3, -8, 1.4, 0, Math.PI * 2);
+            ctx.arc(3, -8, 1.4, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
 
