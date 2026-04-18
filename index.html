@@ -155,12 +155,13 @@
             vx: 0, vy: 0,
             angle: 0,
             trail: [],
-            maxTrail: 60,
-            stiffness: 0.005,
-            damping: 0.96,
-            turnEase: 0.08,
-            repulsionRadius: 100,
-            repulsionStrength: 0.6
+            maxTrail: 72,
+            stiffness: 0.0026,
+            damping: 0.93,
+            turnEase: 0.06,
+            repulsionRadius: 110,
+            repulsionStrength: 0.38,
+            maxSpeed: 3.1
         };
 
         const camera = {
@@ -442,6 +443,14 @@
 
             ship.vx *= ship.damping;
             ship.vy *= ship.damping;
+
+            const speed = Math.hypot(ship.vx, ship.vy);
+            if (speed > ship.maxSpeed) {
+                const ratio = ship.maxSpeed / speed;
+                ship.vx *= ratio;
+                ship.vy *= ratio;
+            }
+
             ship.x += ship.vx;
             ship.y += ship.vy;
 
@@ -457,8 +466,7 @@
                 ship.vy *= -0.5;
             }
 
-            const speed = Math.hypot(ship.vx, ship.vy);
-            if (speed > 0.2) {
+            if (speed > 0.08) {
                 const angleVitesse = Math.atan2(ship.vy, ship.vx);
                 let diff = angleVitesse - ship.angle;
                 while (diff < -Math.PI) diff += Math.PI * 2;
@@ -466,8 +474,8 @@
                 ship.angle += diff * ship.turnEase;
             }
 
-            camera.targetX = ship.x + ship.vx * 15;
-            camera.targetY = ship.y + ship.vy * 15;
+            camera.targetX = ship.x + ship.vx * 10;
+            camera.targetY = ship.y + ship.vy * 10;
             camera.x += (camera.targetX - camera.x) * camera.ease;
             camera.y += (camera.targetY - camera.y) * camera.ease;
         }
@@ -519,53 +527,71 @@
             ctx.save();
             ctx.translate(ship.x, ship.y);
             ctx.rotate(ship.angle + Math.PI / 2);
-            const swimT = performance.now() * 0.006;
-            const wag = Math.sin(swimT * 2.6) * 0.22;
-            const finFlap = Math.sin(swimT * 1.8) * 0.18;
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = 'white';
-            ctx.fillStyle = 'white';
+            const swimT = performance.now() * 0.001;
+            const glide = Math.hypot(ship.vx, ship.vy) / ship.maxSpeed;
+            const wag = Math.sin(swimT * 9.5) * (0.14 + glide * 0.18);
+            const finFlap = Math.sin(swimT * 7.2 + 0.5) * (0.12 + glide * 0.08);
+            const bodyBreath = Math.sin(swimT * 2.5) * 0.6;
+
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = 'rgba(185, 245, 255, 0.55)';
+
+            const bodyGrad = ctx.createLinearGradient(0, -18, 0, 24);
+            bodyGrad.addColorStop(0, '#f6feff');
+            bodyGrad.addColorStop(0.5, '#cdefff');
+            bodyGrad.addColorStop(1, '#8fd9f6');
+            ctx.fillStyle = bodyGrad;
 
             ctx.beginPath();
-            ctx.ellipse(0, 0, 8, 14, 0, 0, Math.PI * 2);
+            ctx.moveTo(0, -17);
+            ctx.bezierCurveTo(-8.5, -13, -11, -3 + bodyBreath, -9, 8);
+            ctx.bezierCurveTo(-7, 15, -3, 19 + bodyBreath, 0, 21);
+            ctx.bezierCurveTo(3, 19 + bodyBreath, 7, 15, 9, 8);
+            ctx.bezierCurveTo(11, -3 + bodyBreath, 8.5, -13, 0, -17);
+            ctx.closePath();
             ctx.fill();
 
             ctx.save();
-            ctx.translate(-8, 0);
+            ctx.translate(-7, 2);
             ctx.rotate(-0.35 + finFlap);
             ctx.beginPath();
             ctx.moveTo(0, -1);
-            ctx.quadraticCurveTo(-7, 4, -3, 11);
-            ctx.quadraticCurveTo(1, 5, 0, -1);
+            ctx.quadraticCurveTo(-9, 2, -6, 12);
+            ctx.quadraticCurveTo(-1, 7, 0, -1);
             ctx.fill();
             ctx.restore();
 
             ctx.save();
-            ctx.translate(8, 0);
+            ctx.translate(7, 2);
             ctx.rotate(0.35 - finFlap);
             ctx.beginPath();
             ctx.moveTo(0, -1);
-            ctx.quadraticCurveTo(7, 4, 3, 11);
-            ctx.quadraticCurveTo(-1, 5, 0, -1);
+            ctx.quadraticCurveTo(9, 2, 6, 12);
+            ctx.quadraticCurveTo(1, 7, 0, -1);
             ctx.fill();
             ctx.restore();
 
             ctx.save();
-            ctx.translate(0, 14);
+            ctx.translate(0, 18);
             ctx.rotate(wag);
             ctx.beginPath();
             ctx.moveTo(0, 0);
-            ctx.quadraticCurveTo(-6, 6, -2, 14);
-            ctx.quadraticCurveTo(0, 10, 2, 14);
-            ctx.quadraticCurveTo(6, 6, 0, 0);
+            ctx.bezierCurveTo(-7, 6, -8, 16, -2.2, 22);
+            ctx.quadraticCurveTo(0, 18, 2.2, 22);
+            ctx.bezierCurveTo(8, 16, 7, 6, 0, 0);
             ctx.fill();
             ctx.restore();
 
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = '#030308';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.42)';
             ctx.beginPath();
-            ctx.arc(-3, -8, 1.4, 0, Math.PI * 2);
-            ctx.arc(3, -8, 1.4, 0, Math.PI * 2);
+            ctx.ellipse(0, -7, 2.8, 5.4, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#062436';
+            ctx.beginPath();
+            ctx.arc(-2.2, -10, 1.35, 0, Math.PI * 2);
+            ctx.arc(2.2, -10, 1.35, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
 
