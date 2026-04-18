@@ -28,26 +28,127 @@
             font-size: 0.9rem;
             letter-spacing: 0.2em;
         }
+        #bubblePanel {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(3, 3, 8, 0.75);
+            z-index: 200;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        }
+        #bubblePanel.hidden {
+            display: none;
+        }
+        .panel-card {
+            width: min(90vw, 380px);
+            padding: 18px;
+            border-radius: 16px;
+            background: rgba(20, 24, 40, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #f0f6ff;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+        }
+        .panel-card h2 {
+            margin: 0 0 8px;
+            font-size: 1.1rem;
+        }
+        .panel-card p {
+            margin: 0 0 14px;
+            font-size: 0.9rem;
+            color: rgba(240, 246, 255, 0.75);
+        }
+        .panel-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            align-items: center;
+        }
+        .panel-card button {
+            border: 0;
+            padding: 9px 12px;
+            border-radius: 10px;
+            background: rgba(84, 210, 255, 0.2);
+            color: #dff7ff;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .panel-card button:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+        .panel-card input[type="color"] {
+            width: 52px;
+            height: 34px;
+            border: 0;
+            border-radius: 6px;
+            background: transparent;
+        }
+        #audioName {
+            margin-top: 10px;
+            font-size: 0.8rem;
+            color: rgba(240, 246, 255, 0.8);
+            min-height: 1.2em;
+        }
+        .hidden-input {
+            display: none;
+        }
     </style>
 </head>
 <body>
 
-    <div id="ui">Touchez une bulle pour la déplacer</div>
+    <div id="ui">Double tap sur le poisson pour déposer une bulle sonore</div>
+    <div id="bubblePanel" class="hidden">
+        <div class="panel-card">
+            <h2>Bulle sonore</h2>
+            <p>Importez un son ou enregistrez-le, puis choisissez sa couleur.</p>
+            <div class="panel-row">
+                <button id="importBtn" type="button">Importer audio</button>
+                <button id="recordBtn" type="button">Enregistrer</button>
+            </div>
+            <div class="panel-row">
+                <label for="bubbleColor">Couleur</label>
+                <input id="bubbleColor" type="color" value="#54d2ff">
+            </div>
+            <div id="audioName">Aucun son sélectionné</div>
+            <div class="panel-row">
+                <button id="cancelBtn" type="button">Annuler</button>
+                <button id="dropBtn" type="button" disabled>Déposer la bulle</button>
+            </div>
+            <input id="audioInput" type="file" accept="audio/*" class="hidden-input">
+        </div>
+    </div>
     <canvas id="canvas"></canvas>
 
     <script>
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
 
+        const ui = document.getElementById('ui');
+        const bubblePanel = document.getElementById('bubblePanel');
+        const importBtn = document.getElementById('importBtn');
+        const recordBtn = document.getElementById('recordBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const dropBtn = document.getElementById('dropBtn');
+        const audioInput = document.getElementById('audioInput');
+        const bubbleColor = document.getElementById('bubbleColor');
+        const audioName = document.getElementById('audioName');
+
         let w, h;
         let isTethered = false;
-        let draggedBubble = null;
         let mouseWorld = { x: 0, y: 0 };
-        
+        let isInteractionPaused = false;
+        let lastFishTap = { time: 0, x: 0, y: 0 };
+        let activeAudioBlob = null;
+        let recorder = null;
+        let recordingChunks = [];
+        let micStream = null;
+
         const ARENA_RADIUS = 2000;
         const BUBBLES = [];
-        const NUM_BUBBLES = 25;
-        
+        const NUM_BUBBLES = 18;
+
         const ship = {
             x: 0, y: 0,
             vx: 0, vy: 0,
@@ -68,15 +169,16 @@
         };
 
         function initBubbles() {
-            for(let i=0; i<NUM_BUBBLES; i++) {
+            for (let i = 0; i < NUM_BUBBLES; i++) {
                 const angle = Math.random() * Math.PI * 2;
-                const dist = Math.sqrt(Math.random()) * (ARENA_RADIUS - 200);
+                const dist = Math.sqrt(Math.random()) * (ARENA_RADIUS - 220);
                 BUBBLES.push({
                     x: Math.cos(angle) * dist,
                     y: Math.sin(angle) * dist,
                     r: 50 + Math.random() * 60,
                     hue: 180 + Math.random() * 40,
-                    isActive: false
+                    isActive: false,
+                    audio: null
                 });
             }
         }
@@ -93,75 +195,191 @@
         initBubbles();
 
         function getMousePos(e) {
-            const sx = e.clientX || (e.touches && e.touches[0].clientX);
-            const sy = e.clientY || (e.touches && e.touches[0].clientY);
+            const sx = e.clientX ?? (e.touches && e.touches[0]?.clientX);
+            const sy = e.clientY ?? (e.touches && e.touches[0]?.clientY);
             return {
-                x: sx - w/2 + camera.x,
-                y: sy - h/2 + camera.y
+                x: sx - w / 2 + camera.x,
+                y: sy - h / 2 + camera.y
             };
         }
 
-        // --- GESTION DES INPUTS ---
-
         function onStart(e) {
+            if (isInteractionPaused) return;
             const pos = getMousePos(e);
             mouseWorld = pos;
-            
-            // Vérifier si on a cliqué sur une bulle
-            draggedBubble = BUBBLES.find(b => {
-                const d = Math.hypot(pos.x - b.x, pos.y - b.y);
-                return d < b.r;
-            });
 
-            if (draggedBubble) {
-                draggedBubble.isActive = true;
-                isTethered = false; // Désactive le guidage de la flèche
+            const fishTapDistance = Math.hypot(pos.x - ship.x, pos.y - ship.y);
+            const now = performance.now();
+            if (fishTapDistance < 28) {
+                const isDoubleTap = now - lastFishTap.time < 330 && Math.hypot(pos.x - lastFishTap.x, pos.y - lastFishTap.y) < 40;
+                lastFishTap = { time: now, x: pos.x, y: pos.y };
+                if (isDoubleTap) {
+                    openBubblePanel();
+                    return;
+                }
             } else {
-                isTethered = true;
+                BUBBLES.forEach(b => {
+                    const d = Math.hypot(pos.x - b.x, pos.y - b.y);
+                    if (d < b.r && b.audio) {
+                        b.audio.currentTime = 0;
+                        b.audio.play();
+                    }
+                });
             }
+
+            isTethered = true;
         }
 
         function onMove(e) {
-            const pos = getMousePos(e);
-            mouseWorld = pos;
-            if (draggedBubble) {
-                draggedBubble.x = pos.x;
-                draggedBubble.y = pos.y;
-            }
+            if (isInteractionPaused) return;
+            mouseWorld = getMousePos(e);
         }
 
         function onEnd() {
-            if (draggedBubble) draggedBubble.isActive = false;
-            draggedBubble = null;
             isTethered = false;
         }
 
         window.addEventListener('mousedown', onStart);
         window.addEventListener('mousemove', onMove);
         window.addEventListener('mouseup', onEnd);
-        
-        window.addEventListener('touchstart', (e) => { 
-            e.preventDefault(); 
-            onStart(e); 
-        }, {passive:false});
-        window.addEventListener('touchmove', (e) => { 
-            e.preventDefault(); 
-            onMove(e); 
-        }, {passive:false});
+
+        window.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            onStart(e);
+        }, { passive: false });
+        window.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            onMove(e);
+        }, { passive: false });
         window.addEventListener('touchend', onEnd);
 
-        // --- LOGIQUE ---
+        importBtn.addEventListener('click', () => audioInput.click());
+
+        audioInput.addEventListener('change', () => {
+            const file = audioInput.files?.[0];
+            if (!file) return;
+            activeAudioBlob = file;
+            audioName.textContent = `Son sélectionné : ${file.name}`;
+            dropBtn.disabled = false;
+        });
+
+        recordBtn.addEventListener('click', async () => {
+            if (recorder && recorder.state === 'recording') {
+                recorder.stop();
+                return;
+            }
+
+            try {
+                micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                recordingChunks = [];
+                recorder = new MediaRecorder(micStream);
+
+                recorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) recordingChunks.push(event.data);
+                };
+
+                recorder.onstop = () => {
+                    activeAudioBlob = new Blob(recordingChunks, { type: recorder.mimeType || 'audio/webm' });
+                    audioName.textContent = 'Enregistrement prêt';
+                    dropBtn.disabled = false;
+                    recordBtn.textContent = 'Enregistrer';
+                    if (micStream) {
+                        micStream.getTracks().forEach(track => track.stop());
+                        micStream = null;
+                    }
+                };
+
+                recorder.start();
+                recordBtn.textContent = 'Arrêter';
+                audioName.textContent = 'Enregistrement en cours...';
+            } catch (error) {
+                audioName.textContent = 'Micro non disponible';
+            }
+        });
+
+        cancelBtn.addEventListener('click', closeBubblePanel);
+
+        dropBtn.addEventListener('click', () => {
+            if (!activeAudioBlob) return;
+            BUBBLES.push(buildSoundBubble(activeAudioBlob, bubbleColor.value));
+            closeBubblePanel();
+        });
+
+        function openBubblePanel() {
+            isInteractionPaused = true;
+            isTethered = false;
+            ship.vx = 0;
+            ship.vy = 0;
+            bubblePanel.classList.remove('hidden');
+            ui.textContent = 'Poisson stoppé • Choisissez votre bulle sonore';
+        }
+
+        function closeBubblePanel() {
+            isInteractionPaused = false;
+            bubblePanel.classList.add('hidden');
+            activeAudioBlob = null;
+            dropBtn.disabled = true;
+            audioInput.value = '';
+            audioName.textContent = 'Aucun son sélectionné';
+            bubbleColor.value = '#54d2ff';
+
+            if (recorder && recorder.state === 'recording') recorder.stop();
+            recordBtn.textContent = 'Enregistrer';
+            ui.textContent = 'Double tap sur le poisson pour déposer une bulle sonore';
+        }
+
+        function buildSoundBubble(audioBlob, colorHex) {
+            const mouthDistance = 20;
+            const dirX = Math.cos(ship.angle - Math.PI / 2);
+            const dirY = Math.sin(ship.angle - Math.PI / 2);
+            let x = ship.x + dirX * mouthDistance;
+            let y = ship.y + dirY * mouthDistance;
+            const maxRadius = ARENA_RADIUS - 80;
+            const distance = Math.hypot(x, y);
+            if (distance > maxRadius) {
+                x = (x / distance) * maxRadius;
+                y = (y / distance) * maxRadius;
+            }
+
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const audio = new Audio(audioUrl);
+
+            return {
+                x,
+                y,
+                r: 64,
+                hue: hexToHue(colorHex),
+                isActive: false,
+                audio
+            };
+        }
+
+        function hexToHue(hex) {
+            const value = hex.replace('#', '');
+            const r = parseInt(value.slice(0, 2), 16) / 255;
+            const g = parseInt(value.slice(2, 4), 16) / 255;
+            const b = parseInt(value.slice(4, 6), 16) / 255;
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            const delta = max - min;
+
+            if (delta === 0) return 180;
+            let hue;
+            if (max === r) hue = ((g - b) / delta) % 6;
+            else if (max === g) hue = (b - r) / delta + 2;
+            else hue = (r - g) / delta + 4;
+            const normalized = hue * 60;
+            return Math.round(normalized < 0 ? normalized + 360 : normalized);
+        }
 
         function update() {
-            // 1. Traction élastique (seulement si on ne dragge pas de bulle)
-            if (isTethered && !draggedBubble) {
+            if (isTethered && !isInteractionPaused) {
                 const dx = mouseWorld.x - ship.x;
                 const dy = mouseWorld.y - ship.y;
                 ship.vx += dx * ship.stiffness;
                 ship.vy += dy * ship.stiffness;
             }
 
-            // 2. Évitement des bulles
             BUBBLES.forEach(b => {
                 const dx = ship.x - b.x;
                 const dy = ship.y - b.y;
@@ -169,15 +387,16 @@
                 const minDist = b.r + 25;
 
                 if (dist < minDist + ship.repulsionRadius) {
-                    const force = Math.pow(Math.max(0, (minDist + ship.repulsionRadius - dist) / ship.repulsionRadius), 2);
-                    const nx = dx / dist;
-                    const ny = dy / dist;
+                    const safeDist = Math.max(0.0001, dist);
+                    const force = Math.pow(Math.max(0, (minDist + ship.repulsionRadius - safeDist) / ship.repulsionRadius), 2);
+                    const nx = dx / safeDist;
+                    const ny = dy / safeDist;
 
                     ship.vx += nx * force * ship.repulsionStrength;
                     ship.vy += ny * force * ship.repulsionStrength;
 
-                    if (dist < minDist) {
-                        const overlap = minDist - dist;
+                    if (safeDist < minDist) {
+                        const overlap = minDist - safeDist;
                         ship.x += nx * overlap;
                         ship.y += ny * overlap;
                         const dot = ship.vx * nx + ship.vy * ny;
@@ -189,26 +408,23 @@
                 }
             });
 
-            // Physique
             ship.vx *= ship.damping;
             ship.vy *= ship.damping;
             ship.x += ship.vx;
             ship.y += ship.vy;
 
-            // Trail
-            ship.trail.push({x: ship.x, y: ship.y});
-            if(ship.trail.length > ship.maxTrail) ship.trail.shift();
+            ship.trail.push({ x: ship.x, y: ship.y });
+            if (ship.trail.length > ship.maxTrail) ship.trail.shift();
 
-            // Bordures
             const dCenter = Math.hypot(ship.x, ship.y);
             if (dCenter > ARENA_RADIUS) {
                 const angle = Math.atan2(ship.y, ship.x);
                 ship.x = Math.cos(angle) * ARENA_RADIUS;
                 ship.y = Math.sin(angle) * ARENA_RADIUS;
-                ship.vx *= -0.5; ship.vy *= -0.5;
+                ship.vx *= -0.5;
+                ship.vy *= -0.5;
             }
 
-            // Orientation
             const speed = Math.hypot(ship.vx, ship.vy);
             if (speed > 0.2) {
                 const angleVitesse = Math.atan2(ship.vy, ship.vx);
@@ -218,57 +434,44 @@
                 ship.angle += diff * ship.turnEase;
             }
 
-            // Caméra
             camera.targetX = ship.x + ship.vx * 15;
             camera.targetY = ship.y + ship.vy * 15;
             camera.x += (camera.targetX - camera.x) * camera.ease;
             camera.y += (camera.targetY - camera.y) * camera.ease;
         }
 
-        // --- RENDU ---
-
         function draw() {
             ctx.fillStyle = '#030308';
             ctx.fillRect(0, 0, w, h);
 
             ctx.save();
-            ctx.translate(w/2 - camera.x, h/2 - camera.y);
+            ctx.translate(w / 2 - camera.x, h / 2 - camera.y);
 
-            // Arène
             ctx.beginPath();
-            ctx.arc(0, 0, ARENA_RADIUS, 0, Math.PI*2);
+            ctx.arc(0, 0, ARENA_RADIUS, 0, Math.PI * 2);
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            // Bulles
             BUBBLES.forEach(b => {
                 const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
                 const opacityMult = b.isActive ? 2 : 1;
-                const hue = b.isActive ? 0 : b.hue; // Devient rouge si draguée
-                
+                const hue = b.isActive ? 0 : b.hue;
+
                 grad.addColorStop(0, `hsla(${hue}, 80%, 50%, 0)`);
                 grad.addColorStop(0.8, `hsla(${hue}, 80%, 50%, ${0.05 * opacityMult})`);
                 grad.addColorStop(1, `hsla(${hue}, 80%, 50%, ${0.2 * opacityMult})`);
-                
+
                 ctx.fillStyle = grad;
                 ctx.beginPath();
-                ctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
+                ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
                 ctx.fill();
-                
+
                 ctx.strokeStyle = `hsla(${hue}, 80%, 60%, ${0.1 * opacityMult})`;
                 ctx.lineWidth = b.isActive ? 3 : 1;
                 ctx.stroke();
-
-                if (b.isActive) {
-                    ctx.shadowBlur = 20;
-                    ctx.shadowColor = `hsla(${hue}, 80%, 60%, 0.5)`;
-                    ctx.stroke();
-                    ctx.shadowBlur = 0;
-                }
             });
 
-            // Trail
             if (ship.trail.length > 2) {
                 ctx.beginPath();
                 ctx.lineWidth = 2;
@@ -276,12 +479,11 @@
                     const alpha = (i / ship.trail.length) * 0.4;
                     ctx.strokeStyle = `rgba(100, 200, 255, ${alpha})`;
                     ctx.moveTo(ship.trail[i].x, ship.trail[i].y);
-                    ctx.lineTo(ship.trail[i+1].x, ship.trail[i+1].y);
+                    ctx.lineTo(ship.trail[i + 1].x, ship.trail[i + 1].y);
                 }
                 ctx.stroke();
             }
 
-            // Poisson minimaliste unicolore
             ctx.save();
             ctx.translate(ship.x, ship.y);
             ctx.rotate(ship.angle + Math.PI / 2);
@@ -292,12 +494,10 @@
             ctx.shadowColor = 'white';
             ctx.fillStyle = 'white';
 
-            // Corps
             ctx.beginPath();
             ctx.ellipse(0, 0, 8, 14, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Nageoire gauche
             ctx.save();
             ctx.translate(-8, 0);
             ctx.rotate(-0.35 + finFlap);
@@ -308,7 +508,6 @@
             ctx.fill();
             ctx.restore();
 
-            // Nageoire droite
             ctx.save();
             ctx.translate(8, 0);
             ctx.rotate(0.35 - finFlap);
@@ -319,7 +518,6 @@
             ctx.fill();
             ctx.restore();
 
-            // Queue
             ctx.save();
             ctx.translate(0, 14);
             ctx.rotate(wag);
@@ -331,7 +529,6 @@
             ctx.fill();
             ctx.restore();
 
-            // Yeux minimalistes (découpe dans la forme)
             ctx.shadowBlur = 0;
             ctx.fillStyle = '#030308';
             ctx.beginPath();
