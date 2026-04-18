@@ -144,6 +144,8 @@
         let recorder = null;
         let recordingChunks = [];
         let micStream = null;
+        let audioCtx = null;
+        let masterGainNode = null;
 
         const ARENA_RADIUS = 2000;
         const SOUND_HEAR_RADIUS = 420;
@@ -183,7 +185,7 @@
                     r: 50 + Math.random() * 60,
                     hue: 180 + Math.random() * 40,
                     isActive: false,
-                    audio: null
+                    sound: null
                 });
             }
         }
@@ -303,10 +305,15 @@
 
         cancelBtn.addEventListener('click', closeBubblePanel);
 
-        dropBtn.addEventListener('click', () => {
+        dropBtn.addEventListener('click', async () => {
             if (!activeAudioBlob) return;
-            BUBBLES.push(buildSoundBubble(activeAudioBlob, bubbleColor.value));
-            closeBubblePanel();
+            try {
+                const bubble = await buildSoundBubble(activeAudioBlob, bubbleColor.value);
+                BUBBLES.push(bubble);
+                closeBubblePanel();
+            } catch (error) {
+                audioName.textContent = 'Impossible de décoder ce son';
+            }
         });
 
         function openBubblePanel() {
@@ -332,7 +339,18 @@
             ui.textContent = 'Double tap sur le poisson pour déposer une bulle sonore';
         }
 
-        function buildSoundBubble(audioBlob, colorHex) {
+        function ensureAudioContext() {
+            if (audioCtx) return audioCtx;
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) return null;
+            audioCtx = new AudioContextClass();
+            masterGainNode = audioCtx.createGain();
+            masterGainNode.gain.value = 1;
+            masterGainNode.connect(audioCtx.destination);
+            return audioCtx;
+        }
+
+        async function buildSoundBubble(audioBlob, colorHex) {
             const mouthDistance = 20;
             const dirX = Math.cos(ship.angle - Math.PI / 2);
             const dirY = Math.sin(ship.angle - Math.PI / 2);
@@ -345,11 +363,7 @@
                 y = (y / distance) * maxRadius;
             }
 
-            const audioUrl = URL.createObjectURL(audioBlob);
-            const audio = new Audio(audioUrl);
-            audio.loop = true;
-            audio.volume = 0;
-            audio.preload = 'auto';
+            const sound = await createBinauralSound(audioBlob);
 
             const bubble = {
                 x,
@@ -357,7 +371,7 @@
                 r: 64,
                 hue: hexToHue(colorHex),
                 isActive: false,
-                audio,
+                sound,
                 currentVolume: 0
             };
 
@@ -365,19 +379,85 @@
             return bubble;
         }
 
+        async function createBinauralSound(audioBlob) {
+            const ctx = ensureAudioContext();
+            if (!ctx) return null;
+
+            const arrayBuffer = await audioBlob.arrayBuffer();
+            const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
+            const source = ctx.createBufferSource();
+            source.buffer = audioBuffer;
+            source.loop = true;
+
+            const distanceGain = ctx.createGain();
+            distanceGain.gain.value = 0;
+
+            const toneFilter = ctx.createBiquadFilter();
+            toneFilter.type = 'lowpass';
+            toneFilter.frequency.value = 12000;
+            toneFilter.Q.value = 0.6;
+
+            const panner = new PannerNode(ctx, {
+                panningModel: 'HRTF',
+                distanceModel: 'inverse',
+                refDistance: 90,
+                maxDistance: SOUND_HEAR_RADIUS * 2.2,
+                rolloffFactor: 1.4,
+                coneInnerAngle: 360,
+                coneOuterAngle: 0,
+                coneOuterGain: 1
+            });
+
+            source.connect(distanceGain);
+            distanceGain.connect(toneFilter);
+            toneFilter.connect(panner);
+            panner.connect(masterGainNode);
+            source.start();
+
+            return {
+                source,
+                distanceGain,
+                toneFilter,
+                panner,
+                isStarted: true
+            };
+        }
+
         function ensureBubbleAudioRunning(bubble) {
-            if (!bubble.audio) return;
-            if (!bubble.audio.paused) return;
-            const playPromise = bubble.audio.play();
-            if (playPromise?.catch) {
-                playPromise.catch(() => {
-                    // Les navigateurs peuvent bloquer l'autoplay tant qu'il n'y a pas eu d'interaction utilisateur.
-                });
-            }
+            if (!bubble.sound) return;
+            if (!bubble.sound.isStarted) return;
         }
 
         function ensureAllAudioRunning() {
+            const ctx = ensureAudioContext();
+            if (ctx?.state === 'suspended') {
+                ctx.resume().catch(() => {
+                    // Certains navigateurs exigent une interaction explicite.
+                });
+            }
             BUBBLES.forEach(ensureBubbleAudioRunning);
+        }
+
+        function updateAudioListener() {
+            if (!audioCtx) return;
+            const listener = audioCtx.listener;
+            const forwardX = Math.cos(ship.angle - Math.PI / 2);
+            const forwardY = Math.sin(ship.angle - Math.PI / 2);
+
+            if (listener.positionX) {
+                listener.positionX.value = ship.x;
+                listener.positionY.value = ship.y;
+                listener.positionZ.value = 0;
+                listener.forwardX.value = forwardX;
+                listener.forwardY.value = forwardY;
+                listener.forwardZ.value = 0;
+                listener.upX.value = 0;
+                listener.upY.value = 0;
+                listener.upZ.value = 1;
+            } else if (listener.setPosition && listener.setOrientation) {
+                listener.setPosition(ship.x, ship.y, 0);
+                listener.setOrientation(forwardX, forwardY, 0, 0, 0, 1);
+            }
         }
 
         function hexToHue(hex) {
@@ -412,11 +492,28 @@
                 const dist = Math.hypot(dx, dy);
                 const minDist = b.r + 25;
 
-                if (b.audio) {
+                if (b.sound) {
                     const normalized = Math.max(0, 1 - (dist / SOUND_HEAR_RADIUS));
                     const targetVolume = Math.pow(normalized, 2);
                     b.currentVolume += (targetVolume - b.currentVolume) * 0.1;
-                    b.audio.volume = Math.min(1, Math.max(0, b.currentVolume));
+                    const clampedVolume = Math.min(1, Math.max(0, b.currentVolume));
+                    b.sound.distanceGain.gain.value = clampedVolume;
+
+                    const angleToBubble = Math.atan2(b.y - ship.y, b.x - ship.x);
+                    const relativeAngle = angleToBubble - (ship.angle - Math.PI / 2);
+                    const front = Math.cos(relativeAngle);
+                    const rearFactor = Math.min(1, Math.max(0, (1 - front) * 0.5));
+                    const distFactor = Math.min(1, dist / SOUND_HEAR_RADIUS);
+                    const cutoff = 12000 - (rearFactor * 7000) - (distFactor * 2600);
+                    b.sound.toneFilter.frequency.value = Math.max(1800, cutoff);
+
+                    if (b.sound.panner.positionX) {
+                        b.sound.panner.positionX.value = b.x;
+                        b.sound.panner.positionY.value = b.y;
+                        b.sound.panner.positionZ.value = 0;
+                    } else if (b.sound.panner.setPosition) {
+                        b.sound.panner.setPosition(b.x, b.y, 0);
+                    }
                     b.isActive = b.currentVolume > 0.03;
                 } else {
                     b.isActive = false;
@@ -482,6 +579,7 @@
             camera.x += (camera.targetX - camera.x) * camera.ease;
             camera.y += (camera.targetY - camera.y) * camera.ease;
 
+            updateAudioListener();
             updateWakeParticles(speed);
         }
 
