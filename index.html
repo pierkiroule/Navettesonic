@@ -111,6 +111,14 @@
                 <label for="bubbleColor">Couleur</label>
                 <input id="bubbleColor" type="color" value="#54d2ff">
             </div>
+            <div class="panel-row">
+                <label for="bubbleDepth">Profondeur</label>
+                <select id="bubbleDepth">
+                    <option value="same">Même profondeur</option>
+                    <option value="above">Au-dessus</option>
+                    <option value="below">En-dessous</option>
+                </select>
+            </div>
             <div id="audioName">Aucun son sélectionné</div>
             <div class="panel-row">
                 <button id="cancelBtn" type="button">Annuler</button>
@@ -133,6 +141,7 @@
         const dropBtn = document.getElementById('dropBtn');
         const audioInput = document.getElementById('audioInput');
         const bubbleColor = document.getElementById('bubbleColor');
+        const bubbleDepth = document.getElementById('bubbleDepth');
         const audioName = document.getElementById('audioName');
 
         let w, h;
@@ -308,7 +317,7 @@
         dropBtn.addEventListener('click', async () => {
             if (!activeAudioBlob) return;
             try {
-                const bubble = await buildSoundBubble(activeAudioBlob, bubbleColor.value);
+                const bubble = await buildSoundBubble(activeAudioBlob, bubbleColor.value, bubbleDepth.value);
                 BUBBLES.push(bubble);
                 closeBubblePanel();
             } catch (error) {
@@ -333,6 +342,7 @@
             audioInput.value = '';
             audioName.textContent = 'Aucun son sélectionné';
             bubbleColor.value = '#54d2ff';
+            bubbleDepth.value = 'same';
 
             if (recorder && recorder.state === 'recording') recorder.stop();
             recordBtn.textContent = 'Enregistrer';
@@ -350,7 +360,13 @@
             return audioCtx;
         }
 
-        async function buildSoundBubble(audioBlob, colorHex) {
+        function depthModeToOffset(depthMode) {
+            if (depthMode === 'above') return 120;
+            if (depthMode === 'below') return -120;
+            return 0;
+        }
+
+        async function buildSoundBubble(audioBlob, colorHex, depthMode = 'same') {
             const mouthDistance = 20;
             const dirX = Math.cos(ship.angle - Math.PI / 2);
             const dirY = Math.sin(ship.angle - Math.PI / 2);
@@ -370,6 +386,8 @@
                 y,
                 r: 64,
                 hue: hexToHue(colorHex),
+                depthMode,
+                depthOffset: depthModeToOffset(depthMode),
                 isActive: false,
                 sound,
                 currentVolume: 0
@@ -510,9 +528,9 @@
                     if (b.sound.panner.positionX) {
                         b.sound.panner.positionX.value = b.x;
                         b.sound.panner.positionY.value = b.y;
-                        b.sound.panner.positionZ.value = 0;
+                        b.sound.panner.positionZ.value = b.depthOffset ?? 0;
                     } else if (b.sound.panner.setPosition) {
-                        b.sound.panner.setPosition(b.x, b.y, 0);
+                        b.sound.panner.setPosition(b.x, b.y, b.depthOffset ?? 0);
                     }
                     b.isActive = b.currentVolume > 0.03;
                 } else {
