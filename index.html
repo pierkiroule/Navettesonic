@@ -243,11 +243,17 @@
         window.addEventListener('mousemove', onMove);
         window.addEventListener('mouseup', onEnd);
 
+        function isPanelInteractionTarget(target) {
+            return bubblePanel.contains(target);
+        }
+
         window.addEventListener('touchstart', (e) => {
+            if (isPanelInteractionTarget(e.target)) return;
             e.preventDefault();
             onStart(e);
         }, { passive: false });
         window.addEventListener('touchmove', (e) => {
+            if (isPanelInteractionTarget(e.target)) return;
             e.preventDefault();
             onMove(e);
         }, { passive: false });
