@@ -157,7 +157,8 @@
         let masterGainNode = null;
 
         const ARENA_RADIUS = 2000;
-        const SOUND_HEAR_RADIUS = 420;
+        const SOUND_HEAR_RADIUS = 460;
+        const Z_DEPTH = 140;
         const BUBBLES = [];
         const NUM_BUBBLES = 18;
         const WAKE_PARTICLES = [];
@@ -361,8 +362,8 @@
         }
 
         function depthModeToOffset(depthMode) {
-            if (depthMode === 'above') return 120;
-            if (depthMode === 'below') return -120;
+            if (depthMode === 'above') return Z_DEPTH;
+            if (depthMode === 'below') return -Z_DEPTH;
             return 0;
         }
 
@@ -420,7 +421,7 @@
                 distanceModel: 'inverse',
                 refDistance: 90,
                 maxDistance: SOUND_HEAR_RADIUS * 2.2,
-                rolloffFactor: 1.4,
+                rolloffFactor: 1.2,
                 coneInnerAngle: 360,
                 coneOuterAngle: 0,
                 coneOuterGain: 1
@@ -507,11 +508,13 @@
             BUBBLES.forEach(b => {
                 const dx = ship.x - b.x;
                 const dy = ship.y - b.y;
+                const dz = (b.depthOffset ?? 0);
                 const dist = Math.hypot(dx, dy);
+                const dist3d = Math.sqrt(dx * dx + dy * dy + dz * dz);
                 const minDist = b.r + 25;
 
                 if (b.sound) {
-                    const normalized = Math.max(0, 1 - (dist / SOUND_HEAR_RADIUS));
+                    const normalized = Math.max(0, 1 - (dist3d / SOUND_HEAR_RADIUS));
                     const targetVolume = Math.pow(normalized, 2);
                     b.currentVolume += (targetVolume - b.currentVolume) * 0.1;
                     const clampedVolume = Math.min(1, Math.max(0, b.currentVolume));
@@ -521,7 +524,7 @@
                     const relativeAngle = angleToBubble - (ship.angle - Math.PI / 2);
                     const front = Math.cos(relativeAngle);
                     const rearFactor = Math.min(1, Math.max(0, (1 - front) * 0.5));
-                    const distFactor = Math.min(1, dist / SOUND_HEAR_RADIUS);
+                    const distFactor = Math.min(1, dist3d / SOUND_HEAR_RADIUS);
                     const cutoff = 12000 - (rearFactor * 7000) - (distFactor * 2600);
                     b.sound.toneFilter.frequency.value = Math.max(1800, cutoff);
 
@@ -532,7 +535,7 @@
                     } else if (b.sound.panner.setPosition) {
                         b.sound.panner.setPosition(b.x, b.y, b.depthOffset ?? 0);
                     }
-                    b.isActive = b.currentVolume > 0.03;
+                    b.isActive = dist3d < SOUND_HEAR_RADIUS;
                 } else {
                     b.isActive = false;
                 }
