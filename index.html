@@ -540,7 +540,8 @@
                     b.isActive = false;
                 }
 
-                if (dist < minDist + ship.repulsionRadius) {
+                const isDepthTraversable = b.depthMode === 'above' || b.depthMode === 'below';
+                if (!isDepthTraversable && dist < minDist + ship.repulsionRadius) {
                     const safeDist = Math.max(0.0001, dist);
                     const force = Math.pow(Math.max(0, (minDist + ship.repulsionRadius - safeDist) / ship.repulsionRadius), 2);
                     const nx = dx / safeDist;
