@@ -209,6 +209,119 @@
         .card h3 { margin: 0 0 8px; font-size: 1rem; }
         .card p { margin: 0; color: rgba(230,244,255,0.74); font-size: 0.9rem; }
         #canvas { display: block; }
+
+        #bubblePropsPanel {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%) translateY(100%);
+            width: min(92vw, 480px);
+            z-index: 205;
+            transition: transform 0.32s cubic-bezier(0.32, 0, 0.28, 1);
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+            pointer-events: none;
+        }
+        #bubblePropsPanel.visible {
+            transform: translateX(-50%) translateY(0);
+            pointer-events: auto;
+        }
+        .props-card {
+            background: rgba(10, 16, 30, 0.97);
+            border: 1px solid rgba(100, 200, 255, 0.22);
+            border-bottom: none;
+            border-radius: 20px 20px 0 0;
+            padding: 16px 18px 18px;
+            color: #f0f6ff;
+            backdrop-filter: blur(18px);
+            box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.55);
+        }
+        .props-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .props-header h3 { margin: 0; font-size: 1rem; color: rgba(170, 225, 255, 0.95); }
+        .props-close-btn {
+            background: rgba(255,255,255,0.08);
+            border: 0;
+            color: #dff7ff;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .props-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .props-label {
+            width: 70px;
+            font-size: 0.80rem;
+            color: rgba(180, 220, 255, 0.65);
+            flex-shrink: 0;
+        }
+        .props-select {
+            flex: 1;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.18);
+            background: rgba(9,14,25,0.95);
+            color: #eef8ff;
+            padding: 7px 10px;
+            font-size: 0.86rem;
+        }
+        .props-slider {
+            flex: 1;
+            accent-color: rgba(84, 210, 255, 0.9);
+            cursor: pointer;
+        }
+        .props-size-val {
+            font-size: 0.78rem;
+            color: rgba(160, 220, 255, 0.7);
+            width: 34px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+        .color-swatches { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; }
+        .color-swatch {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            border: 2.5px solid transparent;
+            cursor: pointer;
+            transition: transform 0.15s, border-color 0.15s;
+            flex-shrink: 0;
+        }
+        .color-swatch.selected { border-color: #fff; transform: scale(1.22); }
+        .props-drag-hint {
+            text-align: center;
+            font-size: 0.76rem;
+            color: rgba(120, 190, 255, 0.55);
+            margin: 10px 0 10px;
+            border-top: 1px solid rgba(255,255,255,0.07);
+            padding-top: 10px;
+            letter-spacing: 0.01em;
+        }
+        .props-delete-btn {
+            width: 100%;
+            background: rgba(255, 70, 95, 0.14);
+            border: 1px solid rgba(255, 70, 95, 0.28);
+            color: rgba(255, 155, 168, 0.95);
+            padding: 9px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.88rem;
+        }
+        .props-delete-btn:active { background: rgba(255, 70, 95, 0.28); }
+        .bubble-selected-ring { pointer-events: none; }
     </style>
 </head>
 <body>
@@ -257,6 +370,37 @@
             </div>
         </div>
         <canvas id="canvas"></canvas>
+        <div id="bubblePropsPanel">
+            <div class="props-card">
+                <div class="props-header">
+                    <h3 id="propsBubbleName">Bulle sonore</h3>
+                    <button class="props-close-btn" id="propsCloseBtn" type="button">✕</button>
+                </div>
+                <div class="props-section">
+                    <span class="props-label">Sample</span>
+                    <select class="props-select" id="propsSampleSelect"></select>
+                </div>
+                <div class="props-section">
+                    <span class="props-label">Taille</span>
+                    <input type="range" class="props-slider" id="propsSizeRange" min="28" max="140" step="1" value="64">
+                    <span class="props-size-val" id="propsSizeVal">64</span>
+                </div>
+                <div class="props-section">
+                    <span class="props-label">Couleur</span>
+                    <div class="color-swatches" id="colorSwatches"></div>
+                </div>
+                <div class="props-section">
+                    <span class="props-label">Profondeur</span>
+                    <select class="props-select" id="propsLayerSelect">
+                        <option value="above">En hauteur</option>
+                        <option value="front">Niveau courant</option>
+                        <option value="below">En profondeur</option>
+                    </select>
+                </div>
+                <div class="props-drag-hint">⟡ Touche l'océan pour déplacer la bulle</div>
+                <button class="props-delete-btn" id="propsDeleteBtn" type="button">Supprimer cette bulle</button>
+            </div>
+        </div>
     </section>
 
     <section id="profileView" class="view hidden-view">
@@ -337,6 +481,110 @@
         const bubbleLayer = document.getElementById('bubbleLayer');
         const sampleSelect = document.getElementById('sampleSelect');
         const sampleHint = document.getElementById('sampleHint');
+        const bubblePropsPanel = document.getElementById('bubblePropsPanel');
+        const propsBubbleName = document.getElementById('propsBubbleName');
+        const propsSampleSelect = document.getElementById('propsSampleSelect');
+        const propsSizeRange = document.getElementById('propsSizeRange');
+        const propsSizeVal = document.getElementById('propsSizeVal');
+        const colorSwatches = document.getElementById('colorSwatches');
+        const propsLayerSelect = document.getElementById('propsLayerSelect');
+        const propsDeleteBtn = document.getElementById('propsDeleteBtn');
+        const propsCloseBtn = document.getElementById('propsCloseBtn');
+
+        let selectedBubble = null;
+        let isDraggingBubble = false;
+        let lastBubbleTapTime = 0;
+        let lastBubbleTapTarget = null;
+
+        const BUBBLE_COLORS = [
+            { hue: 195 }, { hue: 230 }, { hue: 265 }, { hue: 315 },
+            { hue: 15 },  { hue: 45 },  { hue: 140 }, { hue: 175 },
+        ];
+        BUBBLE_COLORS.forEach((c, idx) => {
+            const sw = document.createElement('button');
+            sw.type = 'button';
+            sw.className = 'color-swatch';
+            sw.style.background = `hsl(${c.hue}, 78%, 60%)`;
+            sw.dataset.idx = idx;
+            sw.addEventListener('click', () => {
+                if (!selectedBubble) return;
+                selectedBubble.hue = c.hue;
+                refreshSwatchSelection();
+            });
+            colorSwatches.appendChild(sw);
+        });
+
+        SAMPLE_LIBRARY.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id; opt.textContent = s.name;
+            propsSampleSelect.appendChild(opt);
+        });
+
+        function refreshSwatchSelection() {
+            colorSwatches.querySelectorAll('.color-swatch').forEach((sw, i) => {
+                sw.classList.toggle('selected', !!selectedBubble && BUBBLE_COLORS[i].hue === selectedBubble.hue);
+            });
+        }
+
+        function openBubblePropsPanel(bubble) {
+            selectedBubble = bubble;
+            isTethered = false;
+            if (bubble.hue === undefined) bubble.hue = 195;
+            propsBubbleName.textContent = bubble.label || 'Bulle sonore';
+            propsSampleSelect.value = bubble._sampleId || SAMPLE_LIBRARY[0].id;
+            propsSizeRange.value = bubble.r;
+            propsSizeVal.textContent = Math.round(bubble.r) + 'px';
+            propsLayerSelect.value = bubble.layer;
+            refreshSwatchSelection();
+            bubblePropsPanel.classList.add('visible');
+            ui.textContent = '⟡ Touche l\'océan pour déplacer · Double tap pour fermer';
+        }
+
+        function closeBubblePropsPanel() {
+            bubblePropsPanel.classList.remove('visible');
+            selectedBubble = null;
+            isDraggingBubble = false;
+            ui.textContent = 'Double tap sur le poisson pour ouvrir la collection sonore';
+            rotateHelperTip();
+        }
+
+        function rebuildBubbleSound(bubble, sample) {
+            if (bubble.sound) {
+                try { bubble.sound.source.stop(); } catch (_) {}
+            }
+            bubble.sound = createBinauralSound(sample);
+            bubble.label = sample.name;
+            bubble._sampleId = sample.id;
+            propsBubbleName.textContent = sample.name;
+            bubble.currentVolume = 0;
+            bubble.zoneMix = 0;
+            bubble.resonance = 0;
+        }
+
+        propsSampleSelect.addEventListener('change', () => {
+            if (!selectedBubble) return;
+            const sample = SAMPLE_LIBRARY.find(s => s.id === propsSampleSelect.value);
+            if (sample) rebuildBubbleSound(selectedBubble, sample);
+        });
+        propsSizeRange.addEventListener('input', () => {
+            if (!selectedBubble) return;
+            selectedBubble.r = parseInt(propsSizeRange.value);
+            propsSizeVal.textContent = propsSizeRange.value + 'px';
+        });
+        propsLayerSelect.addEventListener('change', () => {
+            if (!selectedBubble) return;
+            const spatial = layerToSpatial(propsLayerSelect.value);
+            selectedBubble.layer = propsLayerSelect.value;
+            selectedBubble.depthOffset = spatial.depthOffset;
+        });
+        propsDeleteBtn.addEventListener('click', () => {
+            if (!selectedBubble) return;
+            try { selectedBubble.sound?.source?.stop(); } catch (_) {}
+            const idx = BUBBLES.indexOf(selectedBubble);
+            if (idx !== -1) BUBBLES.splice(idx, 1);
+            closeBubblePropsPanel();
+        });
+        propsCloseBtn.addEventListener('click', closeBubblePropsPanel);
 
         let currentView = 'home';
         let w, h;
@@ -482,32 +730,57 @@
         }
 
         function isInteractiveTarget(target) {
-            return bubblePanel.contains(target) || bottomNav.contains(target) || homeView.contains(target) || profileView.contains(target);
+            return bubblePanel.contains(target) || bubblePropsPanel.contains(target) ||
+                   bottomNav.contains(target) || homeView.contains(target) || profileView.contains(target);
         }
 
         function onStart(e) {
-            if (currentView !== 'experience' || isInteractionPaused) return;
+            if (currentView !== 'experience') return;
             const pos = getMousePos(e);
             mouseWorld = pos;
             ensureAllAudioRunning();
-
-            const fishTapDistance = Math.hypot(pos.x - ship.x, pos.y - ship.y);
             const now = performance.now();
-            if (fishTapDistance < 28) {
-                const isDoubleTap = now - lastFishTap.time < 330 && Math.hypot(pos.x - lastFishTap.x, pos.y - lastFishTap.y) < 40;
-                lastFishTap = { time: now, x: pos.x, y: pos.y };
-                if (isDoubleTap) {
-                    openBubblePanel();
-                    return;
+
+            // Props panel open → canvas touch = drag selected bubble
+            if (selectedBubble) {
+                isDraggingBubble = true;
+                isTethered = false;
+                return;
+            }
+
+            if (isInteractionPaused) return;
+
+            // Detect double tap on a placed bubble
+            for (const b of BUBBLES) {
+                if (Math.hypot(pos.x - b.x, pos.y - b.y) <= b.r + 12) {
+                    const isDoubleTap = now - lastBubbleTapTime < 380 && lastBubbleTapTarget === b;
+                    lastBubbleTapTime = now;
+                    lastBubbleTapTarget = b;
+                    if (isDoubleTap) { openBubblePropsPanel(b); return; }
+                    return; // single tap on bubble: absorb, no tether
                 }
+            }
+
+            // Fish double tap → open creation panel
+            const fishTapDistance = Math.hypot(pos.x - ship.x, pos.y - ship.y);
+            const now2 = now;
+            if (fishTapDistance < 28) {
+                const isDoubleTap = now2 - lastFishTap.time < 330 && Math.hypot(pos.x - lastFishTap.x, pos.y - lastFishTap.y) < 40;
+                lastFishTap = { time: now2, x: pos.x, y: pos.y };
+                if (isDoubleTap) { openBubblePanel(); return; }
             }
             isTethered = true;
         }
         function onMove(e) {
-            if (currentView !== 'experience' || isInteractionPaused) return;
-            mouseWorld = getMousePos(e);
+            if (currentView !== 'experience') return;
+            const pos = getMousePos(e);
+            mouseWorld = pos;
+            if (isDraggingBubble && selectedBubble) {
+                selectedBubble.x = pos.x;
+                selectedBubble.y = pos.y;
+            }
         }
-        function onEnd() { isTethered = false; }
+        function onEnd() { isTethered = false; isDraggingBubble = false; }
 
         window.addEventListener('mousedown', onStart);
         window.addEventListener('mousemove', onMove);
@@ -603,7 +876,8 @@
             const sound = createBinauralSound(sample);
             return {
                 x, y, r: 64, layer, depthOffset: spatial.depthOffset, isActive: false,
-                sound, label: sample.name, currentVolume: 0, zoneMix: 0, resonance: 0, wasInZone: false
+                sound, label: sample.name, _sampleId: sample.id,
+                currentVolume: 0, zoneMix: 0, resonance: 0, wasInZone: false, hue: 195
             };
         }
 
@@ -1123,37 +1397,52 @@
             const drawBubble = (b) => {
                 const isSurface = b.layer !== 'below';
                 const opacityBoost = b.isActive ? 1.2 : 1;
+                const bHue = b.hue ?? 195;
                 ctx.save();
 
                 if (!isSurface) {
                     const grad = ctx.createRadialGradient(b.x, b.y, b.r * 0.05, b.x, b.y, b.r);
-                    grad.addColorStop(0, `rgba(130, 195, 255, ${0.02 * opacityBoost})`);
-                    grad.addColorStop(0.72, `rgba(80, 155, 235, ${0.11 * opacityBoost})`);
-                    grad.addColorStop(1, `rgba(45, 105, 188, ${0.22 * opacityBoost})`);
+                    grad.addColorStop(0, `hsla(${bHue}, 70%, 70%, ${0.02 * opacityBoost})`);
+                    grad.addColorStop(0.72, `hsla(${bHue}, 72%, 58%, ${0.11 * opacityBoost})`);
+                    grad.addColorStop(1, `hsla(${bHue + 15}, 68%, 40%, ${0.22 * opacityBoost})`);
                     ctx.filter = 'blur(7px)';
                     ctx.fillStyle = grad;
                     ctx.beginPath();
                     ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.filter = 'none';
-                    ctx.strokeStyle = `rgba(138, 202, 255, ${0.2 * opacityBoost})`;
+                    ctx.strokeStyle = `hsla(${bHue}, 75%, 72%, ${0.20 * opacityBoost})`;
                     ctx.lineWidth = 1.4;
                 } else {
                     const grad = ctx.createRadialGradient(b.x - b.r * 0.25, b.y - b.r * 0.28, b.r * 0.15, b.x, b.y, b.r);
-                    grad.addColorStop(0, `rgba(222, 245, 255, ${0.52 * opacityBoost})`);
-                    grad.addColorStop(0.65, `rgba(120, 198, 255, ${0.36 * opacityBoost})`);
-                    grad.addColorStop(1, `rgba(42, 126, 220, ${0.6 * opacityBoost})`);
+                    grad.addColorStop(0, `hsla(${bHue}, 80%, 90%, ${0.52 * opacityBoost})`);
+                    grad.addColorStop(0.65, `hsla(${bHue}, 78%, 68%, ${0.36 * opacityBoost})`);
+                    grad.addColorStop(1, `hsla(${bHue + 15}, 72%, 46%, ${0.60 * opacityBoost})`);
                     ctx.fillStyle = grad;
                     ctx.beginPath();
                     ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
                     ctx.fill();
-                    ctx.strokeStyle = `rgba(214, 243, 255, ${0.66 * opacityBoost})`;
+                    ctx.strokeStyle = `hsla(${bHue}, 88%, 84%, ${0.66 * opacityBoost})`;
                     ctx.lineWidth = b.isActive ? 2.8 : 2.1;
                 }
 
                 ctx.beginPath();
                 ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
                 ctx.stroke();
+
+                // Selection ring
+                if (b === selectedBubble) {
+                    const pulse = (Math.sin(performance.now() * 0.004) + 1) * 0.5;
+                    ctx.strokeStyle = `hsla(${bHue}, 90%, 88%, ${0.45 + pulse * 0.35})`;
+                    ctx.lineWidth = 1.8;
+                    ctx.setLineDash([7, 5]);
+                    ctx.lineDashOffset = performance.now() * 0.04;
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, b.r + 10 + pulse * 3, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.lineDashOffset = 0;
+                }
 
                 if (b.label) {
                     const maxWidth = b.r * 1.42;
