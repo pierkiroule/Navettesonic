@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manipulation de Bulles - Navigation Organique</title>
+    <title>Soono•° — Odyssée sonore</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        :root { color-scheme: dark; }
         body {
             margin: 0;
             overflow: hidden;
@@ -14,19 +15,86 @@
             width: 100vw;
             touch-action: none;
             cursor: crosshair;
+            font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
         }
+        .view { position: absolute; inset: 0; }
+        .hidden-view { display: none; }
+
+        #homeView {
+            background: radial-gradient(circle at 25% 20%, rgba(64, 130, 255, 0.22), transparent 45%),
+                        radial-gradient(circle at 80% 85%, rgba(106, 224, 255, 0.2), transparent 48%),
+                        #030308;
+            color: #ebf6ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 28px;
+            overflow: auto;
+        }
+        .home-card {
+            width: min(940px, 100%);
+            border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 28px;
+            background: rgba(7, 13, 24, 0.75);
+            backdrop-filter: blur(14px);
+            padding: clamp(20px, 4vw, 44px);
+            box-shadow: 0 18px 70px rgba(0,0,0,0.45);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            align-items: center;
+        }
+        .home-title {
+            margin: 0;
+            font-size: clamp(1.8rem, 4vw, 3rem);
+            line-height: 1.1;
+            letter-spacing: 0.02em;
+        }
+        .punchlines { margin: 18px 0 24px; padding-left: 18px; color: rgba(235,246,255,0.85); }
+        .punchlines li { margin: 8px 0; }
+        .immersion-btn {
+            border: 0;
+            border-radius: 999px;
+            padding: 14px 26px;
+            background: linear-gradient(135deg, #48d5ff, #587dff);
+            color: #02111d;
+            font-weight: 800;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 12px 40px rgba(72, 213, 255, 0.35);
+        }
+        .video-placeholder {
+            width: min(360px, 80vw);
+            aspect-ratio: 1;
+            border-radius: 999px;
+            border: 1px solid rgba(179, 233, 255, 0.4);
+            background:
+                radial-gradient(circle at 35% 30%, rgba(199, 241, 255, 0.45), transparent 42%),
+                radial-gradient(circle at 60% 70%, rgba(74, 148, 255, 0.45), transparent 55%),
+                rgba(8, 19, 35, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: rgba(240, 248, 255, 0.8);
+            font-size: 0.95rem;
+            padding: 24px;
+        }
+
+        #experienceView, #profileView { background: #030308; }
+
         #ui {
             position: absolute;
-            top: 30px;
+            top: 28px;
             width: 100%;
             text-align: center;
             pointer-events: none;
             z-index: 100;
-            color: rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.28);
             font-family: 'Georgia', serif;
             font-style: italic;
             font-size: 0.9rem;
-            letter-spacing: 0.2em;
+            letter-spacing: 0.14em;
         }
         #bubblePanel {
             position: absolute;
@@ -34,36 +102,30 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(3, 3, 8, 0.75);
+            background: rgba(3, 3, 8, 0.76);
             z-index: 200;
             font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
         }
-        #bubblePanel.hidden {
-            display: none;
-        }
+        #bubblePanel.hidden { display: none; }
         .panel-card {
-            width: min(90vw, 380px);
+            width: min(92vw, 440px);
             padding: 18px;
             border-radius: 16px;
-            background: rgba(20, 24, 40, 0.95);
+            background: rgba(20, 24, 40, 0.96);
             border: 1px solid rgba(255, 255, 255, 0.15);
             color: #f0f6ff;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
         }
-        .panel-card h2 {
-            margin: 0 0 8px;
-            font-size: 1.1rem;
-        }
-        .panel-card p {
-            margin: 0 0 14px;
-            font-size: 0.9rem;
-            color: rgba(240, 246, 255, 0.75);
-        }
-        .panel-row {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-            align-items: center;
+        .panel-card h2 { margin: 0 0 8px; font-size: 1.15rem; }
+        .panel-card p { margin: 0 0 14px; font-size: 0.9rem; color: rgba(240,246,255,0.75); }
+        .panel-row { display: flex; gap: 10px; margin-top: 10px; align-items: center; }
+        .panel-row select {
+            flex: 1;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.22);
+            background: rgba(9,14,25,0.95);
+            color: #eef8ff;
+            padding: 8px 10px;
         }
         .panel-card button {
             border: 0;
@@ -74,81 +136,190 @@
             cursor: pointer;
             font-weight: 600;
         }
-        .panel-card button:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
+        #sampleHint { margin-top: 10px; font-size: 0.82rem; color: rgba(240, 246, 255, 0.84); min-height: 1.2em; }
+
+        .bottom-nav {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 230;
+            display: flex;
+            justify-content: center;
+            padding: 10px 10px calc(12px + env(safe-area-inset-bottom));
+            pointer-events: auto;
         }
-        #audioName {
-            margin-top: 10px;
-            font-size: 0.8rem;
-            color: rgba(240, 246, 255, 0.8);
-            min-height: 1.2em;
+        .nav-shell {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(88px, 1fr));
+            gap: 8px;
+            width: min(480px, 92vw);
+            border-radius: 999px;
+            background: rgba(9, 15, 28, 0.92);
+            border: 1px solid rgba(255,255,255,0.15);
+            padding: 8px;
+            backdrop-filter: blur(10px);
         }
-        .hidden-input {
-            display: none;
+        .nav-btn {
+            border: 0;
+            border-radius: 999px;
+            padding: 10px 12px;
+            background: transparent;
+            color: rgba(235,246,255,0.84);
+            font-weight: 650;
+            cursor: pointer;
         }
+        .nav-btn.active { background: rgba(87, 176, 255, 0.26); color: #fff; }
+
+        #profileView {
+            color: #e6f4ff;
+            padding: 26px 18px 120px;
+            overflow: auto;
+        }
+        .profile-wrap { width: min(980px, 100%); margin: 0 auto; }
+        .profile-wrap h1 { margin-top: 6px; margin-bottom: 8px; font-size: clamp(1.5rem, 3vw, 2.2rem); }
+        .profile-sub { margin-top: 0; color: rgba(230,244,255,0.75); }
+        .profile-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+            margin-top: 18px;
+        }
+        .card {
+            background: rgba(13, 22, 36, 0.9);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 16px;
+            padding: 14px;
+        }
+        .card h3 { margin: 0 0 8px; font-size: 1rem; }
+        .card p { margin: 0; color: rgba(230,244,255,0.74); font-size: 0.9rem; }
+        #canvas { display: block; }
     </style>
 </head>
 <body>
-
-    <div id="ui">Double tap sur le poisson pour déposer une bulle sonore</div>
-    <div id="bubblePanel" class="hidden">
-        <div class="panel-card">
-            <h2>Bulle sonore</h2>
-            <p>Importez un son ou enregistrez-le, puis choisissez son style de bulle.</p>
-            <div class="panel-row">
-                <button id="importBtn" type="button">Importer audio</button>
-                <button id="recordBtn" type="button">Enregistrer</button>
+    <section id="homeView" class="view">
+        <div class="home-card">
+            <div>
+                <h1 class="home-title">Soono•° : odyssée sonore d'un poisson plume</h1>
+                <ul class="punchlines">
+                    <li>Un voyage marin binaural où chaque bulle devient mémoire.</li>
+                    <li>Ton poisson plume compose sa route au fil des textures sonores.</li>
+                    <li>Une collection immersive qui grandit comme un véritable sound-store vivant.</li>
+                </ul>
+                <button id="enterExperienceBtn" class="immersion-btn" type="button">Immersion Soono•°</button>
             </div>
-            <div class="panel-row">
-                <label for="bubbleLayer">Style</label>
-                <select id="bubbleLayer">
-                    <option value="surface">Surface nette</option>
-                    <option value="deep">Profonde floue</option>
-                </select>
-            </div>
-            <div id="audioName">Aucun son sélectionné</div>
-            <div class="panel-row">
-                <button id="cancelBtn" type="button">Annuler</button>
-                <button id="dropBtn" type="button" disabled>Déposer la bulle</button>
-            </div>
-            <input id="audioInput" type="file" accept="audio/*" class="hidden-input">
+            <div class="video-placeholder">Vidéo circulaire<br>placeholder</div>
         </div>
-    </div>
-    <canvas id="canvas"></canvas>
+    </section>
+
+    <section id="experienceView" class="view hidden-view">
+        <div id="ui">Double tap sur le poisson pour ouvrir la collection sonore</div>
+        <div id="bubblePanel" class="hidden">
+            <div class="panel-card">
+                <h2>Collection Soono•° (demo)</h2>
+                <p>Choisissez un sample et son positionnement autour du poisson binaural.</p>
+                <div class="panel-row">
+                    <label for="sampleSelect">Sample</label>
+                    <select id="sampleSelect"></select>
+                </div>
+                <div class="panel-row">
+                    <label for="bubbleLayer">Position</label>
+                    <select id="bubbleLayer">
+                        <option value="front">En face</option>
+                        <option value="above">Au-dessus</option>
+                        <option value="below">En dessous</option>
+                    </select>
+                </div>
+                <div id="sampleHint"></div>
+                <div class="panel-row">
+                    <button id="cancelBtn" type="button">Annuler</button>
+                    <button id="dropBtn" type="button">Ajouter à la collection</button>
+                </div>
+            </div>
+        </div>
+        <canvas id="canvas"></canvas>
+    </section>
+
+    <section id="profileView" class="view hidden-view">
+        <div class="profile-wrap">
+            <h1>Profil Soono•°</h1>
+            <p class="profile-sub">Mode démo : cette page accueillera bientôt les infos user, l'historique de sessions et la collection de bulles sonores achetées.</p>
+            <div class="profile-grid">
+                <article class="card">
+                    <h3>Compte utilisateur</h3>
+                    <p>Authentification et préférences personnelles (prévu via Supabase).</p>
+                </article>
+                <article class="card">
+                    <h3>Historique d'exploration</h3>
+                    <p>Timeline des immersions, lieux audio visités et intensité des sessions.</p>
+                </article>
+                <article class="card">
+                    <h3>Collection de bulles</h3>
+                    <p>Inventaire des samples acquis, niveaux de profondeur et variations favorites.</p>
+                </article>
+                <article class="card">
+                    <h3>Store sonore</h3>
+                    <p>Prochainement : catalogue, achats et récupération d'URL sonores dynamiques.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <nav id="bottomNav" class="bottom-nav hidden-view" aria-label="Navigation principale">
+        <div class="nav-shell">
+            <button id="navHome" class="nav-btn" type="button">Accueil</button>
+            <button id="navSoono" class="nav-btn active" type="button">Soono•°</button>
+            <button id="navProfile" class="nav-btn" type="button">Profil</button>
+        </div>
+    </nav>
 
     <script>
+        const SAMPLE_LIBRARY = [
+            { id: 'aurora-pad', name: 'Aurora Pad', texture: 'Nappe cristalline lente', type: 'sawtooth', freq: 176, lfo: 0.22 },
+            { id: 'deep-sub', name: 'Deep Sub', texture: 'Basse abyssale douce', type: 'sine', freq: 62, lfo: 0.08 },
+            { id: 'glass-bell', name: 'Glass Bell', texture: 'Cloche claire scintillante', type: 'triangle', freq: 700, lfo: 0.3 },
+            { id: 'noisy-foam', name: 'Noisy Foam', texture: 'Écume granuleuse aérée', type: 'noise', freq: 0, lfo: 0.18 },
+            { id: 'metal-drift', name: 'Metal Drift', texture: 'Drone métallique flottant', type: 'square', freq: 212, lfo: 0.11 },
+            { id: 'warm-reed', name: 'Warm Reed', texture: 'Anche chaleureuse médium', type: 'triangle', freq: 294, lfo: 0.16 },
+            { id: 'sonar-ping', name: 'Sonar Ping', texture: 'Ping organique pulsé', type: 'sine', freq: 880, lfo: 0.42 },
+            { id: 'grain-choir', name: 'Grain Choir', texture: 'Chœur granulaire flou', type: 'sawtooth', freq: 246, lfo: 0.27 },
+            { id: 'spark-pluck', name: 'Spark Pluck', texture: 'Texture nerveuse brillante', type: 'square', freq: 520, lfo: 0.5 },
+            { id: 'mist-tone', name: 'Mist Tone', texture: 'Voile harmonique suspendu', type: 'sine', freq: 338, lfo: 0.14 }
+        ];
+
+        const homeView = document.getElementById('homeView');
+        const experienceView = document.getElementById('experienceView');
+        const profileView = document.getElementById('profileView');
+        const bottomNav = document.getElementById('bottomNav');
+        const navHome = document.getElementById('navHome');
+        const navSoono = document.getElementById('navSoono');
+        const navProfile = document.getElementById('navProfile');
+        const enterExperienceBtn = document.getElementById('enterExperienceBtn');
+
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-
         const ui = document.getElementById('ui');
         const bubblePanel = document.getElementById('bubblePanel');
-        const importBtn = document.getElementById('importBtn');
-        const recordBtn = document.getElementById('recordBtn');
         const cancelBtn = document.getElementById('cancelBtn');
         const dropBtn = document.getElementById('dropBtn');
-        const audioInput = document.getElementById('audioInput');
         const bubbleLayer = document.getElementById('bubbleLayer');
-        const audioName = document.getElementById('audioName');
+        const sampleSelect = document.getElementById('sampleSelect');
+        const sampleHint = document.getElementById('sampleHint');
 
+        let currentView = 'home';
         let w, h;
         let isTethered = false;
         let mouseWorld = { x: 0, y: 0 };
         let isInteractionPaused = false;
         let lastFishTap = { time: 0, x: 0, y: 0 };
-        let activeAudioBlob = null;
-        let activeAudioName = '';
-        let recorder = null;
-        let recordingChunks = [];
-        let micStream = null;
+        let selectedSampleId = SAMPLE_LIBRARY[0].id;
         let audioCtx = null;
         let masterGainNode = null;
 
         const ARENA_RADIUS = 2000;
         const SOUND_HEAR_RADIUS = 460;
-        const Z_DEPTH = 140;
+        const DEPTH_Z = 140;
         const BUBBLES = [];
-        const NUM_BUBBLES = 0;
         const WAKE_PARTICLES = [];
         const MAX_WAKE_PARTICLES = 5;
         const RIPPLE_RINGS = [];
@@ -158,46 +329,61 @@
         const RESONANCE_WAVES = [];
         const MAX_RESONANCE_WAVES = 14;
 
-        const arenaResonance = {
-            level: 0,
-            hue: 198
-        };
+        const arenaResonance = { level: 0, hue: 198 };
 
         const ship = {
-            x: 0, y: 0,
-            vx: 0, vy: 0,
-            angle: 0,
-            trail: [],
-            maxTrail: 72,
-            stiffness: 0.0026,
-            damping: 0.93,
-            turnEase: 0.06,
-            maxSpeed: 3.1,
-            wakeEmitter: 0,
-            rippleEmitter: 0
+            x: 0, y: 0, vx: 0, vy: 0, angle: 0, trail: [], maxTrail: 72,
+            stiffness: 0.0026, damping: 0.93, turnEase: 0.06, maxSpeed: 3.1,
+            wakeEmitter: 0, rippleEmitter: 0
         };
+        const camera = { x: 0, y: 0, targetX: 0, targetY: 0, ease: 0.05 };
 
-        const camera = {
-            x: 0, y: 0,
-            targetX: 0, targetY: 0,
-            ease: 0.05
-        };
-
-        function initBubbles() {
-            for (let i = 0; i < NUM_BUBBLES; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const dist = Math.sqrt(Math.random()) * (ARENA_RADIUS - 220);
-                BUBBLES.push({
-                    x: Math.cos(angle) * dist,
-                    y: Math.sin(angle) * dist,
-                    r: 50 + Math.random() * 60,
-                    layer: Math.random() > 0.5 ? 'surface' : 'deep',
-                    isActive: false,
-                    sound: null,
-                    label: ''
-                });
-            }
+        function setActiveNav(target) {
+            [navHome, navSoono, navProfile].forEach(btn => btn.classList.remove('active'));
+            if (target === 'home') navHome.classList.add('active');
+            if (target === 'soono') navSoono.classList.add('active');
+            if (target === 'profile') navProfile.classList.add('active');
         }
+
+        function showView(target) {
+            currentView = target;
+            homeView.classList.toggle('hidden-view', target !== 'home');
+            experienceView.classList.toggle('hidden-view', target !== 'experience');
+            profileView.classList.toggle('hidden-view', target !== 'profile');
+            bottomNav.classList.toggle('hidden-view', target === 'home');
+            setActiveNav(target === 'experience' ? 'soono' : target);
+            if (target !== 'experience') {
+                isTethered = false;
+                closeBubblePanel();
+            }
+            resize();
+        }
+
+        enterExperienceBtn.addEventListener('click', () => {
+            showView('experience');
+            ensureAllAudioRunning();
+        });
+        navHome.addEventListener('click', () => showView('home'));
+        navSoono.addEventListener('click', () => showView('experience'));
+        navProfile.addEventListener('click', () => showView('profile'));
+
+        SAMPLE_LIBRARY.forEach(sample => {
+            const option = document.createElement('option');
+            option.value = sample.id;
+            option.textContent = sample.name;
+            sampleSelect.appendChild(option);
+        });
+
+        function updateSampleHint() {
+            const sample = SAMPLE_LIBRARY.find(s => s.id === selectedSampleId) || SAMPLE_LIBRARY[0];
+            sampleHint.textContent = `${sample.texture} · ${sample.name}`;
+        }
+        updateSampleHint();
+
+        sampleSelect.addEventListener('change', () => {
+            selectedSampleId = sampleSelect.value;
+            updateSampleHint();
+        });
 
         function resize() {
             w = window.innerWidth;
@@ -205,21 +391,21 @@
             canvas.width = w;
             canvas.height = h;
         }
-
         window.addEventListener('resize', resize);
         resize();
 
         function getMousePos(e) {
             const sx = e.clientX ?? (e.touches && e.touches[0]?.clientX);
             const sy = e.clientY ?? (e.touches && e.touches[0]?.clientY);
-            return {
-                x: sx - w / 2 + camera.x,
-                y: sy - h / 2 + camera.y
-            };
+            return { x: sx - w / 2 + camera.x, y: sy - h / 2 + camera.y };
+        }
+
+        function isInteractiveTarget(target) {
+            return bubblePanel.contains(target) || bottomNav.contains(target) || homeView.contains(target) || profileView.contains(target);
         }
 
         function onStart(e) {
-            if (isInteractionPaused) return;
+            if (currentView !== 'experience' || isInteractionPaused) return;
             const pos = getMousePos(e);
             mouseWorld = pos;
             ensureAllAudioRunning();
@@ -234,96 +420,38 @@
                     return;
                 }
             }
-
             isTethered = true;
         }
-
         function onMove(e) {
-            if (isInteractionPaused) return;
+            if (currentView !== 'experience' || isInteractionPaused) return;
             mouseWorld = getMousePos(e);
         }
-
-        function onEnd() {
-            isTethered = false;
-        }
+        function onEnd() { isTethered = false; }
 
         window.addEventListener('mousedown', onStart);
         window.addEventListener('mousemove', onMove);
         window.addEventListener('mouseup', onEnd);
 
-        function isPanelInteractionTarget(target) {
-            return bubblePanel.contains(target);
-        }
-
         window.addEventListener('touchstart', (e) => {
-            if (isPanelInteractionTarget(e.target)) return;
+            if (isInteractiveTarget(e.target)) return;
             e.preventDefault();
             onStart(e);
         }, { passive: false });
         window.addEventListener('touchmove', (e) => {
-            if (isPanelInteractionTarget(e.target)) return;
+            if (currentView !== 'experience') return;
+            if (isInteractiveTarget(e.target)) return;
             e.preventDefault();
             onMove(e);
         }, { passive: false });
         window.addEventListener('touchend', onEnd);
 
-        importBtn.addEventListener('click', () => audioInput.click());
-
-        audioInput.addEventListener('change', () => {
-            const file = audioInput.files?.[0];
-            if (!file) return;
-            activeAudioBlob = file;
-            activeAudioName = file.name;
-            audioName.textContent = `Son sélectionné : ${file.name}`;
-            dropBtn.disabled = false;
-        });
-
-        recordBtn.addEventListener('click', async () => {
-            if (recorder && recorder.state === 'recording') {
-                recorder.stop();
-                return;
-            }
-
-            try {
-                micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                recordingChunks = [];
-                recorder = new MediaRecorder(micStream);
-
-                recorder.ondataavailable = (event) => {
-                    if (event.data.size > 0) recordingChunks.push(event.data);
-                };
-
-                recorder.onstop = () => {
-                    activeAudioBlob = new Blob(recordingChunks, { type: recorder.mimeType || 'audio/webm' });
-                    activeAudioName = `Enregistrement ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
-                    audioName.textContent = `${activeAudioName} prêt`;
-                    dropBtn.disabled = false;
-                    recordBtn.textContent = 'Enregistrer';
-                    if (micStream) {
-                        micStream.getTracks().forEach(track => track.stop());
-                        micStream = null;
-                    }
-                };
-
-                recorder.start();
-                recordBtn.textContent = 'Arrêter';
-                audioName.textContent = 'Enregistrement en cours...';
-            } catch (error) {
-                audioName.textContent = 'Micro non disponible';
-            }
-        });
-
         cancelBtn.addEventListener('click', closeBubblePanel);
-
-        dropBtn.addEventListener('click', async () => {
-            if (!activeAudioBlob) return;
-            try {
-                const bubble = await buildSoundBubble(activeAudioBlob, activeAudioName, bubbleLayer.value);
-                BUBBLES.push(bubble);
-                closeBubblePanel();
-            } catch (error) {
-                audioName.textContent = 'Impossible de décoder ce son';
-            }
+        dropBtn.addEventListener('click', () => {
+            const sample = SAMPLE_LIBRARY.find(s => s.id === selectedSampleId);
+            if (!sample) return;
+            const bubble = buildSoundBubble(sample, bubbleLayer.value);
+            BUBBLES.push(bubble);
+            closeBubblePanel();
         });
 
         function openBubblePanel() {
@@ -332,22 +460,13 @@
             ship.vx = 0;
             ship.vy = 0;
             bubblePanel.classList.remove('hidden');
-            ui.textContent = 'Poisson stoppé • Choisissez votre bulle sonore';
+            ui.textContent = 'Collection ouverte • Choisissez sample + profondeur';
         }
 
         function closeBubblePanel() {
-            isInteractionPaused = false;
             bubblePanel.classList.add('hidden');
-            activeAudioBlob = null;
-            activeAudioName = '';
-            dropBtn.disabled = true;
-            audioInput.value = '';
-            audioName.textContent = 'Aucun son sélectionné';
-            bubbleLayer.value = 'surface';
-
-            if (recorder && recorder.state === 'recording') recorder.stop();
-            recordBtn.textContent = 'Enregistrer';
-            ui.textContent = 'Double tap sur le poisson pour déposer une bulle sonore';
+            isInteractionPaused = false;
+            ui.textContent = 'Double tap sur le poisson pour ouvrir la collection sonore';
         }
 
         function ensureAudioContext() {
@@ -361,16 +480,34 @@
             return audioCtx;
         }
 
-        function layerToDepthOffset(layer) {
-            return layer === 'surface' ? Z_DEPTH : -Z_DEPTH;
+        function buildSyntheticBuffer(ctx, seconds = 3.4) {
+            const sampleRate = ctx.sampleRate;
+            const frameCount = Math.floor(sampleRate * seconds);
+            const buffer = ctx.createBuffer(1, frameCount, sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < frameCount; i++) {
+                const t = i / sampleRate;
+                const env = 0.66 + Math.sin(t * Math.PI * 2 * 0.12) * 0.24;
+                data[i] = (Math.random() * 2 - 1) * env * 0.45;
+            }
+            return buffer;
         }
 
-        async function buildSoundBubble(audioBlob, label, layer = 'surface') {
+        function layerToSpatial(layer) {
+            if (layer === 'above') return { offsetY: -95, depthOffset: DEPTH_Z };
+            if (layer === 'below') return { offsetY: 95, depthOffset: -DEPTH_Z };
+            return { offsetY: 0, depthOffset: 0 };
+        }
+
+        function buildSoundBubble(sample, layer = 'front') {
             const mouthDistance = 20;
             const dirX = Math.cos(ship.angle - Math.PI / 2);
             const dirY = Math.sin(ship.angle - Math.PI / 2);
+            const spatial = layerToSpatial(layer);
+
             let x = ship.x + dirX * mouthDistance;
-            let y = ship.y + dirY * mouthDistance;
+            let y = ship.y + dirY * mouthDistance + spatial.offsetY;
+
             const maxRadius = ARENA_RADIUS - 80;
             const distance = Math.hypot(x, y);
             if (distance > maxRadius) {
@@ -378,36 +515,16 @@
                 y = (y / distance) * maxRadius;
             }
 
-            const sound = await createBinauralSound(audioBlob);
-
-            const bubble = {
-                x,
-                y,
-                r: 64,
-                layer,
-                depthOffset: layerToDepthOffset(layer),
-                isActive: false,
-                sound,
-                label,
-                currentVolume: 0,
-                zoneMix: 0,
-                resonance: 0,
-                wasInZone: false
+            const sound = createBinauralSound(sample);
+            return {
+                x, y, r: 64, layer, depthOffset: spatial.depthOffset, isActive: false,
+                sound, label: sample.name, currentVolume: 0, zoneMix: 0, resonance: 0, wasInZone: false
             };
-
-            ensureBubbleAudioRunning(bubble);
-            return bubble;
         }
 
-        async function createBinauralSound(audioBlob) {
+        function createBinauralSound(sample) {
             const ctx = ensureAudioContext();
             if (!ctx) return null;
-
-            const arrayBuffer = await audioBlob.arrayBuffer();
-            const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
-            const source = ctx.createBufferSource();
-            source.buffer = audioBuffer;
-            source.loop = true;
 
             const distanceGain = ctx.createGain();
             distanceGain.gain.value = 0;
@@ -431,18 +548,35 @@
             resonantGain.gain.value = 0;
 
             const panner = new PannerNode(ctx, {
-                panningModel: 'HRTF',
-                distanceModel: 'inverse',
-                refDistance: 90,
-                maxDistance: SOUND_HEAR_RADIUS * 2.2,
-                rolloffFactor: 1.2,
-                coneInnerAngle: 360,
-                coneOuterAngle: 0,
-                coneOuterGain: 1
+                panningModel: 'HRTF', distanceModel: 'inverse', refDistance: 90,
+                maxDistance: SOUND_HEAR_RADIUS * 2.2, rolloffFactor: 1.2, coneInnerAngle: 360,
+                coneOuterAngle: 0, coneOuterGain: 1
             });
 
-            source.connect(distanceGain);
-            source.connect(analyser);
+            const textureGain = ctx.createGain();
+            textureGain.gain.value = 0.4;
+
+            let source;
+            if (sample.type === 'noise') {
+                source = ctx.createBufferSource();
+                source.buffer = buildSyntheticBuffer(ctx);
+                source.loop = true;
+            } else {
+                source = ctx.createOscillator();
+                source.type = sample.type;
+                source.frequency.value = sample.freq;
+                const lfo = ctx.createOscillator();
+                const lfoGain = ctx.createGain();
+                lfo.frequency.value = Math.max(0.05, sample.lfo);
+                lfoGain.gain.value = sample.freq * 0.06;
+                lfo.connect(lfoGain);
+                lfoGain.connect(source.frequency);
+                lfo.start();
+            }
+
+            source.connect(textureGain);
+            textureGain.connect(distanceGain);
+            textureGain.connect(analyser);
             distanceGain.connect(toneFilter);
             toneFilter.connect(panner);
             distanceGain.connect(resonantFilter);
@@ -451,17 +585,7 @@
             panner.connect(masterGainNode);
             source.start();
 
-            return {
-                source,
-                distanceGain,
-                toneFilter,
-                resonantFilter,
-                resonantGain,
-                panner,
-                analyser,
-                analyserData,
-                isStarted: true
-            };
+            return { source, distanceGain, toneFilter, resonantFilter, resonantGain, panner, analyser, analyserData, isStarted: true };
         }
 
         function ensureBubbleAudioRunning(bubble) {
@@ -471,11 +595,7 @@
 
         function ensureAllAudioRunning() {
             const ctx = ensureAudioContext();
-            if (ctx?.state === 'suspended') {
-                ctx.resume().catch(() => {
-                    // Certains navigateurs exigent une interaction explicite.
-                });
-            }
+            if (ctx?.state === 'suspended') ctx.resume().catch(() => {});
             BUBBLES.forEach(ensureBubbleAudioRunning);
         }
 
@@ -502,6 +622,7 @@
         }
 
         function update() {
+            if (currentView !== 'experience') return;
             if (isTethered && !isInteractionPaused) {
                 const dx = mouseWorld.x - ship.x;
                 const dy = mouseWorld.y - ship.y;
@@ -559,19 +680,14 @@
                     }
                     b.isActive = dist3d < SOUND_HEAR_RADIUS;
 
-                    if (insideZone && !b.wasInZone) {
-                        spawnResonanceWave(b);
-                    }
-                    if (b.resonance > strongestResonance) {
-                        strongestResonance = b.resonance;
-                    }
-                    resonanceHueMix += b.resonance * (b.layer === 'deep' ? 228 : 192);
+                    if (insideZone && !b.wasInZone) spawnResonanceWave(b);
+                    if (b.resonance > strongestResonance) strongestResonance = b.resonance;
+                    resonanceHueMix += b.resonance * (b.layer === 'below' ? 228 : 192);
                     resonanceWeight += b.resonance;
                     b.wasInZone = insideZone;
                 } else {
                     b.isActive = false;
                 }
-
             });
 
             arenaResonance.level += (strongestResonance - arenaResonance.level) * 0.04;
@@ -580,14 +696,12 @@
 
             ship.vx *= ship.damping;
             ship.vy *= ship.damping;
-
             const speed = Math.hypot(ship.vx, ship.vy);
             if (speed > ship.maxSpeed) {
                 const ratio = ship.maxSpeed / speed;
                 ship.vx *= ratio;
                 ship.vy *= ratio;
             }
-
             ship.x += ship.vx;
             ship.y += ship.vy;
 
@@ -635,10 +749,7 @@
                 const tailY = ship.y + backY * 14;
                 const targetCount = Math.min(MAX_WAKE_PARTICLES, 3 + Math.round(speedNorm * 2));
 
-                while (WAKE_PARTICLES.length < targetCount) {
-                    spawnWakeParticle(tailX, tailY, backX, backY, now);
-                }
-
+                while (WAKE_PARTICLES.length < targetCount) spawnWakeParticle(tailX, tailY, backX, backY, now);
                 while (ship.wakeEmitter >= 1) {
                     ship.wakeEmitter -= 1;
                     if (WAKE_PARTICLES.length >= MAX_WAKE_PARTICLES) break;
@@ -654,16 +765,12 @@
                     WAKE_PARTICLES.splice(i, 1);
                     continue;
                 }
-
                 p.vx *= 0.993;
                 p.vy = p.vy * 0.992 - 0.01;
                 p.x += p.vx;
                 p.y += p.vy;
             }
-
-            if (WAKE_PARTICLES.length > MAX_WAKE_PARTICLES) {
-                WAKE_PARTICLES.splice(0, WAKE_PARTICLES.length - MAX_WAKE_PARTICLES);
-            }
+            if (WAKE_PARTICLES.length > MAX_WAKE_PARTICLES) WAKE_PARTICLES.splice(0, WAKE_PARTICLES.length - MAX_WAKE_PARTICLES);
         }
 
         function spawnWakeParticle(tailX, tailY, backX, backY, now) {
@@ -675,11 +782,8 @@
                 y: tailY + tangentY * (Math.random() - 0.5) * jitter + backY * (Math.random() * 4),
                 vx: backX * (0.06 + Math.random() * 0.18) + tangentX * (Math.random() - 0.5) * 0.07,
                 vy: backY * (0.06 + Math.random() * 0.18) + tangentY * (Math.random() - 0.5) * 0.07,
-                age: 0,
-                life: 520 + Math.random() * 260,
-                size: 2 + Math.random() * 1.4,
-                alpha: 0.32 + Math.random() * 0.2,
-                bornAt: now
+                age: 0, life: 520 + Math.random() * 260, size: 2 + Math.random() * 1.4,
+                alpha: 0.32 + Math.random() * 0.2, bornAt: now
             });
         }
 
@@ -705,16 +809,11 @@
                 ripple.alpha = ripple.baseAlpha * (1 - t);
             }
 
-            while (SURFACE_SPARKLES.length < MAX_SURFACE_SPARKLES) {
-                SURFACE_SPARKLES.push(spawnSparkle(now));
-            }
-
+            while (SURFACE_SPARKLES.length < MAX_SURFACE_SPARKLES) SURFACE_SPARKLES.push(spawnSparkle(now));
             for (let i = SURFACE_SPARKLES.length - 1; i >= 0; i--) {
                 const sparkle = SURFACE_SPARKLES[i];
                 sparkle.age = now - sparkle.bornAt;
-                if (sparkle.age > sparkle.life) {
-                    SURFACE_SPARKLES[i] = spawnSparkle(now);
-                }
+                if (sparkle.age > sparkle.life) SURFACE_SPARKLES[i] = spawnSparkle(now);
             }
         }
 
@@ -751,9 +850,7 @@
             bubble.sound.analyser.getByteFrequencyData(bubble.sound.analyserData);
             let sum = 0;
             const binsToSample = 18;
-            for (let i = 0; i < binsToSample; i++) {
-                sum += bubble.sound.analyserData[i];
-            }
+            for (let i = 0; i < binsToSample; i++) sum += bubble.sound.analyserData[i];
             const avg = sum / (binsToSample * 255);
             return Math.min(1, Math.max(0, avg * 1.9));
         }
@@ -768,7 +865,7 @@
                 radius: bubble.r * 0.9,
                 maxRadius: 520 + Math.random() * 340,
                 alpha: 0.22,
-                hue: bubble.layer === 'deep' ? 230 : 192
+                hue: bubble.layer === 'below' ? 230 : 192
             });
         }
 
@@ -789,6 +886,7 @@
         function draw() {
             ctx.fillStyle = '#030308';
             ctx.fillRect(0, 0, w, h);
+            if (currentView !== 'experience') return;
 
             ctx.save();
             ctx.translate(w / 2 - camera.x, h / 2 - camera.y);
@@ -800,7 +898,7 @@
             ctx.stroke();
 
             const drawBubble = (b) => {
-                const isSurface = b.layer !== 'deep';
+                const isSurface = b.layer !== 'below';
                 const opacityBoost = b.isActive ? 1.2 : 1;
                 ctx.save();
 
@@ -842,17 +940,14 @@
                     ctx.textBaseline = 'middle';
                     ctx.fillStyle = isSurface ? 'rgba(235, 248, 255, 0.95)' : 'rgba(220, 237, 255, 0.82)';
                     let text = b.label;
-                    while (ctx.measureText(text).width > maxWidth && text.length > 6) {
-                        text = `${text.slice(0, -2)}…`;
-                    }
+                    while (ctx.measureText(text).width > maxWidth && text.length > 6) text = `${text.slice(0, -2)}…`;
                     ctx.fillText(text, b.x, b.y, maxWidth);
                 }
 
                 ctx.restore();
             };
 
-            BUBBLES.filter((b) => b.layer === 'deep').forEach(drawBubble);
-
+            BUBBLES.filter((b) => b.layer === 'below').forEach(drawBubble);
             drawSurfaceSparkles();
             drawResonanceWaves();
             drawWakeParticles();
@@ -945,8 +1040,7 @@
             ctx.fill();
             ctx.restore();
 
-            BUBBLES.filter((b) => b.layer !== 'deep').forEach(drawBubble);
-
+            BUBBLES.filter((b) => b.layer !== 'below').forEach(drawBubble);
             ctx.restore();
             drawWaterSurface();
             drawArenaResonanceVeil();
@@ -962,7 +1056,6 @@
                 ctx.fill();
             });
         }
-
         function drawRipples() {
             RIPPLE_RINGS.forEach((ripple) => {
                 const thickness = 1 + (1 - ripple.alpha) * 2.6;
@@ -974,7 +1067,6 @@
                 ctx.stroke();
             });
         }
-
         function drawSurfaceSparkles() {
             const t = performance.now() * 0.002;
             SURFACE_SPARKLES.forEach((sparkle) => {
@@ -1029,14 +1121,7 @@
         function drawArenaResonanceVeil() {
             if (arenaResonance.level <= 0.01) return;
             const intensity = Math.min(0.22, arenaResonance.level * 0.24);
-            const g = ctx.createRadialGradient(
-                w * 0.5,
-                h * 0.46,
-                h * 0.14,
-                w * 0.5,
-                h * 0.46,
-                h * 0.74
-            );
+            const g = ctx.createRadialGradient(w * 0.5, h * 0.46, h * 0.14, w * 0.5, h * 0.46, h * 0.74);
             g.addColorStop(0, `hsla(${arenaResonance.hue}, 95%, 74%, ${intensity})`);
             g.addColorStop(1, `hsla(${arenaResonance.hue + 18}, 80%, 30%, 0)`);
             ctx.fillStyle = g;
@@ -1049,6 +1134,7 @@
             requestAnimationFrame(loop);
         }
 
+        showView('home');
         loop();
     </script>
 </body>
