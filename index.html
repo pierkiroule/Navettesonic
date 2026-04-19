@@ -93,11 +93,6 @@
       </div>
     </div>
 
-    <nav class="absolute bottom-4 left-1/2 -translate-x-1/2 glass rounded-full p-1.5 flex gap-1.5 z-10">
-      <button class="tab-btn px-4 py-2 rounded-full border border-transparent text-sm" data-tab="home">Accueil</button>
-      <button class="tab-btn active px-4 py-2 rounded-full border border-transparent text-sm" data-tab="soonoo">Soono••</button>
-      <button class="tab-btn px-4 py-2 rounded-full border border-transparent text-sm" data-tab="profile">Profil</button>
-    </nav>
   </section>
 
   <section id="profileScreen" class="screen hidden flex items-center justify-center px-4">
@@ -122,6 +117,12 @@
     </div>
   </section>
 
+  <nav id="appNav" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 glass rounded-full p-1.5 gap-1.5 z-30">
+    <button class="tab-btn px-4 py-2 rounded-full border border-transparent text-sm" data-tab="home">Accueil</button>
+    <button class="tab-btn active px-4 py-2 rounded-full border border-transparent text-sm" data-tab="soonoo">Soono••</button>
+    <button class="tab-btn px-4 py-2 rounded-full border border-transparent text-sm" data-tab="profile">Profil</button>
+  </nav>
+
   <script>
     const homeScreen = document.getElementById('homeScreen');
     const experienceScreen = document.getElementById('experienceScreen');
@@ -136,6 +137,7 @@
     const addSampleBtn = document.getElementById('addSampleBtn');
     const cancelModalBtn = document.getElementById('cancelModalBtn');
 
+    const appNav = document.getElementById('appNav');
     const tabButtons = Array.from(document.querySelectorAll('.tab-btn'));
 
     const canvas = document.getElementById('canvas');
@@ -195,12 +197,16 @@
     enterBtn.addEventListener('click', () => {
       showScreen(experienceScreen);
       setActiveTab('soonoo');
+      appNav.classList.remove('hidden');
+      appNav.classList.add('flex');
       ensureAudioContext();
     });
 
     backToExperienceBtn.addEventListener('click', () => {
       showScreen(experienceScreen);
       setActiveTab('soonoo');
+      appNav.classList.remove('hidden');
+      appNav.classList.add('flex');
     });
 
     tabButtons.forEach((btn) => {
@@ -218,6 +224,10 @@
         }
       });
     });
+
+    function isInteractiveTarget(target) {
+      return Boolean(target.closest('button, select, option, nav, input, a, label'));
+    }
 
     function ensureAudioContext() {
       if (audioCtx) return audioCtx;
@@ -335,6 +345,7 @@
 
     function onStart(e) {
       if (paused || experienceScreen.classList.contains('hidden')) return;
+      if (isInteractiveTarget(e.target)) return;
       const pos = getPointerWorld(e);
       mouseWorld = pos;
       ensureAudioContext()?.resume();
@@ -363,12 +374,12 @@
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onEnd);
     window.addEventListener('touchstart', (e) => {
-      if (sampleModal.contains(e.target)) return;
+      if (sampleModal.contains(e.target) || isInteractiveTarget(e.target)) return;
       e.preventDefault();
       onStart(e);
     }, { passive: false });
     window.addEventListener('touchmove', (e) => {
-      if (sampleModal.contains(e.target)) return;
+      if (sampleModal.contains(e.target) || isInteractiveTarget(e.target)) return;
       e.preventDefault();
       onMove(e);
     }, { passive: false });
