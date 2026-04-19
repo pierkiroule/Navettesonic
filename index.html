@@ -70,6 +70,7 @@
             box-shadow: 0 12px 40px rgba(72, 213, 255, 0.35);
         }
         .home-media { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+        .home-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
         .hero-video {
             width: min(520px, 88vw);
             aspect-ratio: 16 / 10;
@@ -216,12 +217,15 @@
             <h1 class="home-title">Soono•° — odyssée sonore</h1>
             <div class="home-media">
                 <img class="home-brand" src="logo.png" alt="Logo Soono" />
-                <video class="hero-video" autoplay muted loop playsinline>
+                <video id="heroVideo" class="hero-video" autoplay muted loop playsinline controls>
                     <source src="./video/soono2.mp4" type="video/mp4">
                     Votre navigateur ne supporte pas la lecture vidéo.
                 </video>
                 <p class="home-poem">Un souffle d’océan, une plume qui dérive, et des sons qui racontent doucement ton chemin.</p>
-                <button id="enterExperienceBtn" class="immersion-btn" type="button">Immersion Soono•°</button>
+                <div class="home-actions">
+                    <button id="toggleHeroSoundBtn" class="immersion-btn" type="button">Activer le son</button>
+                    <button id="enterExperienceBtn" class="immersion-btn" type="button">Immersion Soono•°</button>
+                </div>
             </div>
         </div>
     </section>
@@ -310,6 +314,8 @@
         const navSoono = document.getElementById('navSoono');
         const navProfile = document.getElementById('navProfile');
         const enterExperienceBtn = document.getElementById('enterExperienceBtn');
+        const heroVideo = document.getElementById('heroVideo');
+        const toggleHeroSoundBtn = document.getElementById('toggleHeroSoundBtn');
 
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
@@ -400,6 +406,29 @@
             showView('experience');
             ensureAllAudioRunning();
         });
+
+        function syncHeroSoundButton() {
+            if (!heroVideo || !toggleHeroSoundBtn) return;
+            const isMuted = heroVideo.muted || heroVideo.volume === 0;
+            toggleHeroSoundBtn.textContent = isMuted ? 'Activer le son' : 'Couper le son';
+        }
+
+        function toggleHeroSound() {
+            if (!heroVideo) return;
+            heroVideo.muted = !heroVideo.muted;
+            if (!heroVideo.muted && heroVideo.volume === 0) heroVideo.volume = 1;
+            heroVideo.play().catch(() => {});
+            syncHeroSoundButton();
+        }
+
+        if (toggleHeroSoundBtn) {
+            toggleHeroSoundBtn.addEventListener('click', toggleHeroSound);
+        }
+        if (heroVideo) {
+            heroVideo.addEventListener('volumechange', syncHeroSoundButton);
+            syncHeroSoundButton();
+        }
+
         navHome.addEventListener('click', () => showView('home'));
         navSoono.addEventListener('click', () => showView('experience'));
         navProfile.addEventListener('click', () => showView('profile'));
