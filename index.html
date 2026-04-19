@@ -778,7 +778,7 @@
                 const depthLift = (point.z || 0) * 0.75;
                 return {
                     x: point.x,
-                    y: point.y * 0.45 - depthLift
+                    y: point.y * 0.62 - depthLift
                 };
             }
 
@@ -826,7 +826,13 @@
             ctx.fillRect(0, 0, w, h);
 
             ctx.save();
-            ctx.translate(w / 2 - camera.x, h / 2 - camera.y);
+            if (modeForProjection === 'fpv') {
+                ctx.translate(w / 2, h / 2);
+            } else if (modeForProjection === 'side') {
+                ctx.translate(w / 2 - camera.x, h / 2 - camera.y * 0.62);
+            } else {
+                ctx.translate(w / 2 - camera.x, h / 2 - camera.y);
+            }
 
             ctx.beginPath();
             ctx.arc(0, 0, ARENA_RADIUS, 0, Math.PI * 2);
@@ -838,7 +844,7 @@
                 const projected = projectBlend({ x: b.x, y: b.y, z: b.depthOffset ?? 0 });
                 const radius = b.r * (modeForProjection === 'fpv' ? 0.9 : 1);
                 const isElliptic = modeForProjection !== 'top';
-                const ellipseFactor = modeForProjection === 'side' ? 0.78 : 0.85;
+                const ellipseFactor = modeForProjection === 'side' ? 0.92 : 0.88;
                 const ellipseY = isElliptic ? radius * ellipseFactor : radius;
                 const grad = ctx.createRadialGradient(projected.x, projected.y, 0, projected.x, projected.y, radius);
                 const opacityMult = b.isActive ? 2 : 1;
@@ -887,7 +893,7 @@
             const fishYaw = modeForProjection === 'fpv' ? 0 : ship.angle + Math.PI / 2;
             ctx.rotate(fishYaw);
             const fishScale = modeForProjection === 'fpv' ? 0.74 : (modeForProjection === 'side' ? 0.92 : 1);
-            ctx.scale(fishScale, modeForProjection === 'side' ? 0.9 : 1);
+            ctx.scale(fishScale, modeForProjection === 'side' ? 0.96 : 1);
             const swimT = performance.now() * 0.001;
             const glide = Math.hypot(ship.vx, ship.vy) / ship.maxSpeed;
             const wag = Math.sin(swimT * 9.5) * (0.14 + glide * 0.18);
