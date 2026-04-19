@@ -275,16 +275,16 @@
 
     <script>
         const SAMPLE_LIBRARY = [
-            { id: 'aurora-pad', name: 'Aurora Pad', texture: 'Nappe cristalline lente', type: 'sawtooth', freq: 176, lfo: 0.22 },
-            { id: 'deep-sub', name: 'Deep Sub', texture: 'Basse abyssale douce', type: 'sine', freq: 62, lfo: 0.08 },
-            { id: 'glass-bell', name: 'Glass Bell', texture: 'Cloche claire scintillante', type: 'triangle', freq: 700, lfo: 0.3 },
-            { id: 'noisy-foam', name: 'Noisy Foam', texture: 'Écume granuleuse aérée', type: 'noise', freq: 0, lfo: 0.18 },
-            { id: 'metal-drift', name: 'Metal Drift', texture: 'Drone métallique flottant', type: 'square', freq: 212, lfo: 0.11 },
-            { id: 'warm-reed', name: 'Warm Reed', texture: 'Anche chaleureuse médium', type: 'triangle', freq: 294, lfo: 0.16 },
-            { id: 'sonar-ping', name: 'Sonar Ping', texture: 'Ping organique pulsé', type: 'sine', freq: 880, lfo: 0.42 },
-            { id: 'grain-choir', name: 'Grain Choir', texture: 'Chœur granulaire flou', type: 'sawtooth', freq: 246, lfo: 0.27 },
-            { id: 'spark-pluck', name: 'Spark Pluck', texture: 'Texture nerveuse brillante', type: 'square', freq: 520, lfo: 0.5 },
-            { id: 'mist-tone', name: 'Mist Tone', texture: 'Voile harmonique suspendu', type: 'sine', freq: 338, lfo: 0.14 }
+            { id: 'zen-gong', name: 'Zen Gong', texture: 'Gong profond et respirant', type: 'triangle', freq: 132, lfo: 0.06, lfoDepth: 0.018, gain: 0.28, baseCutoff: 3400, resonanceFreq: 420, resonanceQ: 1.5 },
+            { id: 'harp-mist', name: 'Harp Mist', texture: 'Harpes douces dans la brume', type: 'sine', freq: 262, lfo: 0.14, lfoDepth: 0.02, gain: 0.25, baseCutoff: 4200, resonanceFreq: 520, resonanceQ: 1.35 },
+            { id: 'tibetan-bowl', name: 'Tibetan Bowl', texture: 'Bol tibétain chaud et stable', type: 'triangle', freq: 196, lfo: 0.08, lfoDepth: 0.016, gain: 0.27, baseCutoff: 3600, resonanceFreq: 480, resonanceQ: 1.8 },
+            { id: 'forest-breath', name: 'Forest Breath', texture: 'Souffle de forêt feutré', type: 'noise', freq: 0, lfo: 0.08, gain: 0.17, baseCutoff: 2600, resonanceFreq: 360, resonanceQ: 1.1 },
+            { id: 'river-flow', name: 'River Flow', texture: 'Ruissellement lent et soyeux', type: 'noise', freq: 0, lfo: 0.12, gain: 0.15, baseCutoff: 2100, resonanceFreq: 300, resonanceQ: 0.95 },
+            { id: 'lotus-drift', name: 'Lotus Drift', texture: 'Nappe méditative veloutée', type: 'sine', freq: 174, lfo: 0.05, lfoDepth: 0.014, gain: 0.24, baseCutoff: 3300, resonanceFreq: 440, resonanceQ: 1.25 },
+            { id: 'moon-choir', name: 'Moon Choir', texture: 'Chœur aérien apaisé', type: 'triangle', freq: 220, lfo: 0.09, lfoDepth: 0.017, gain: 0.22, baseCutoff: 3900, resonanceFreq: 540, resonanceQ: 1.4 },
+            { id: 'bamboo-wind', name: 'Bamboo Wind', texture: 'Vent léger entre les bambous', type: 'noise', freq: 0, lfo: 0.1, gain: 0.14, baseCutoff: 1900, resonanceFreq: 280, resonanceQ: 0.9 },
+            { id: 'temple-halo', name: 'Temple Halo', texture: 'Halo de temple lumineux', type: 'sine', freq: 294, lfo: 0.13, lfoDepth: 0.018, gain: 0.2, baseCutoff: 4400, resonanceFreq: 610, resonanceQ: 1.5 },
+            { id: 'dawn-birds', name: 'Dawn Birds', texture: 'Nature matinale très douce', type: 'triangle', freq: 330, lfo: 0.18, lfoDepth: 0.012, gain: 0.18, baseCutoff: 4700, resonanceFreq: 660, resonanceQ: 1.2 }
         ];
 
         const homeView = document.getElementById('homeView');
@@ -485,10 +485,12 @@
             const frameCount = Math.floor(sampleRate * seconds);
             const buffer = ctx.createBuffer(1, frameCount, sampleRate);
             const data = buffer.getChannelData(0);
+            let smooth = 0;
             for (let i = 0; i < frameCount; i++) {
                 const t = i / sampleRate;
-                const env = 0.66 + Math.sin(t * Math.PI * 2 * 0.12) * 0.24;
-                data[i] = (Math.random() * 2 - 1) * env * 0.45;
+                const env = 0.54 + Math.sin(t * Math.PI * 2 * 0.09) * 0.16;
+                smooth = smooth * 0.96 + (Math.random() * 2 - 1) * 0.04;
+                data[i] = smooth * env * 0.38;
             }
             return buffer;
         }
@@ -531,7 +533,7 @@
 
             const toneFilter = ctx.createBiquadFilter();
             toneFilter.type = 'lowpass';
-            toneFilter.frequency.value = 12000;
+            toneFilter.frequency.value = sample.baseCutoff ?? 4200;
             toneFilter.Q.value = 0.6;
 
             const analyser = ctx.createAnalyser();
@@ -541,8 +543,8 @@
 
             const resonantFilter = ctx.createBiquadFilter();
             resonantFilter.type = 'bandpass';
-            resonantFilter.frequency.value = 880;
-            resonantFilter.Q.value = 1.3;
+            resonantFilter.frequency.value = sample.resonanceFreq ?? 520;
+            resonantFilter.Q.value = sample.resonanceQ ?? 1.2;
 
             const resonantGain = ctx.createGain();
             resonantGain.gain.value = 0;
@@ -554,7 +556,7 @@
             });
 
             const textureGain = ctx.createGain();
-            textureGain.gain.value = 0.4;
+            textureGain.gain.value = sample.gain ?? 0.24;
 
             let source;
             if (sample.type === 'noise') {
@@ -568,7 +570,7 @@
                 const lfo = ctx.createOscillator();
                 const lfoGain = ctx.createGain();
                 lfo.frequency.value = Math.max(0.05, sample.lfo);
-                lfoGain.gain.value = sample.freq * 0.06;
+                lfoGain.gain.value = sample.freq * (sample.lfoDepth ?? 0.02);
                 lfo.connect(lfoGain);
                 lfoGain.connect(source.frequency);
                 lfo.start();
