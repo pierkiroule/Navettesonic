@@ -91,6 +91,21 @@
             font-size: 0.9rem;
             letter-spacing: 0.14em;
         }
+        #helperTips {
+            position: absolute;
+            top: 66px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(92vw, 680px);
+            z-index: 110;
+            pointer-events: none;
+            color: rgba(224, 243, 255, 0.92);
+            text-align: center;
+            font-size: 0.88rem;
+            line-height: 1.4;
+            font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
+        }
         #bubblePanel {
             position: absolute;
             inset: 0;
@@ -209,10 +224,11 @@
 
     <section id="experienceView" class="view hidden-view">
         <div id="ui">Double tap sur le poisson pour ouvrir la collection sonore</div>
+        <div id="helperTips">Garde le doigt (ou clic) appuyé dans l'océan : le poisson-plume suit ton mouvement.</div>
         <div id="bubblePanel" class="hidden">
             <div class="panel-card">
                 <h2>Collection Soono•° (demo)</h2>
-                <p>Choisissez un sample et son positionnement autour du poisson binaural.</p>
+                <p>Choisissez un sample, placez-le autour du poisson, puis validez pour déposer une bulle sonore.</p>
                 <div class="panel-row">
                     <label for="sampleSelect">Sample</label>
                     <select id="sampleSelect"></select>
@@ -294,6 +310,7 @@
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         const ui = document.getElementById('ui');
+        const helperTips = document.getElementById('helperTips');
         const bubblePanel = document.getElementById('bubblePanel');
         const cancelBtn = document.getElementById('cancelBtn');
         const dropBtn = document.getElementById('dropBtn');
@@ -310,6 +327,13 @@
         let selectedSampleId = SAMPLE_LIBRARY[0].id;
         let audioCtx = null;
         let masterGainNode = null;
+        let helperTipIndex = 0;
+        const helperTipsPlaylist = [
+            'Garde le doigt (ou clic) appuyé dans l’océan : le poisson-plume suit ton mouvement.',
+            'Pour ouvrir la collection, fais un double tap (ou double clic) directement sur le poisson.',
+            'Dans la collection, choisis un sample puis une position (face, dessus, dessous).',
+            'Valide avec « Ajouter à la collection » pour déposer une bulle sonore dans la scène.'
+        ];
 
         const ARENA_RADIUS = 2000;
         const SOUND_HEAR_RADIUS = 460;
@@ -351,8 +375,22 @@
                 isTethered = false;
                 closeBubblePanel();
             }
+            if (target === 'experience') {
+                rotateHelperTip(true);
+            }
             resize();
         }
+
+        function rotateHelperTip(reset = false) {
+            if (reset) helperTipIndex = 0;
+            if (!helperTips) return;
+            helperTips.textContent = helperTipsPlaylist[helperTipIndex];
+            helperTipIndex = (helperTipIndex + 1) % helperTipsPlaylist.length;
+        }
+        setInterval(() => {
+            if (currentView !== 'experience' || isInteractionPaused) return;
+            rotateHelperTip();
+        }, 5000);
 
         enterExperienceBtn.addEventListener('click', () => {
             showView('experience');
@@ -456,12 +494,14 @@
             ship.vy = 0;
             bubblePanel.classList.remove('hidden');
             ui.textContent = 'Collection ouverte • Choisissez sample + profondeur';
+            helperTips.textContent = 'Astuce : sélectionne un sample + une position, puis clique sur « Ajouter à la collection ».';
         }
 
         function closeBubblePanel() {
             bubblePanel.classList.add('hidden');
             isInteractionPaused = false;
             ui.textContent = 'Double tap sur le poisson pour ouvrir la collection sonore';
+            rotateHelperTip();
         }
 
         function ensureAudioContext() {
