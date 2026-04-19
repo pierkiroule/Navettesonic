@@ -1451,17 +1451,25 @@
                 const dy = tag.y - ship.y;
                 const d = Math.hypot(dx, dy);
                 const fishGlide = Math.min(1, fishForce / ship.maxSpeed);
-                if (d < 100) tag.revealedUntil = now + 2000;
                 if (d < 110 && d > 0.001) {
-                    if (fishGlide < 0.52 && !tag.attached) {
-                        const pull = (1 - d / 110) * 0.028;
+                    if (fishGlide < 0.52) {
+                        const pull = (1 - d / 110) * 0.024;
                         tag.vx -= (dx / d) * pull;
                         tag.vy -= (dy / d) * pull;
-                    } else if (d < 64) {
-                        const push = (1 - d / 64) * (0.010 + fishForce * 0.016);
-                        tag.vx += (dx / d) * push + ship.vx * 0.010;
-                        tag.vy += (dy / d) * push + ship.vy * 0.010;
+                    } else if (d < 60) {
+                        const push = (1 - d / 60) * (0.010 + fishForce * 0.016);
+                        tag.vx += (dx / d) * push;
+                        tag.vy += (dy / d) * push;
                     }
+                }
+
+                if (tag.nextWordPulse === undefined) {
+                    tag.nextWordPulse = now + 1500 + Math.random() * 5000;
+                    tag.wordPulseUntil = 0;
+                }
+                if (now > tag.nextWordPulse) {
+                    tag.wordPulseUntil = now + 2400;
+                    tag.nextWordPulse = now + 5000 + Math.random() * 9000;
                 }
 
                 tag.vx *= 0.968;
@@ -1506,58 +1514,45 @@
         }
 
         function updateHaikuAttachment(speed) {
+            const now = performance.now();
             const glide = Math.min(1, speed / ship.maxSpeed);
-            if (haikuTrailWords.length < 3 && glide < 0.58) {
-                for (const tag of RESOTAGS) {
-                    if (tag.attached) continue;
+            if (haikuTrailWords.length < 3 && glide < 0.60) {
+                for (let i = RESOTAGS.length - 1; i >= 0; i--) {
+                    const tag = RESOTAGS[i];
+                    const inWordState = tag.wordPulseUntil && now < tag.wordPulseUntil;
+                    if (!inWordState) continue;
                     const d = Math.hypot(ship.x - tag.x, ship.y - tag.y);
-                    if (d < 96) {
-                        const alreadySameWord = haikuTrailWords.some(w => w.text === tag.text);
-                        if (!alreadySameWord) {
-                            tag.attached = true;
-                            tag.trailSlot = haikuTrailWords.length;
-                            haikuTrailWords.push(tag);
-                            break;
+                    if (d < 80) {
+                        if (!haikuTrailWords.includes(tag.text)) {
+                            haikuTrailWords.push(tag.text);
+                            tag.wordPulseUntil = 0;
+                            tag.nextWordPulse = now + 15000;
                         }
+                        break;
                     }
                 }
             }
-            const now = performance.now();
-            haikuTrailWords.forEach((tag, slot) => {
-                const trailIdx = Math.max(0, ship.trail.length - 1 - (slot + 1) * 15);
-                if (ship.trail[trailIdx]) {
-                    const target = ship.trail[trailIdx];
-                    tag.x += (target.x - tag.x) * 0.13;
-                    tag.y += (target.y - tag.y) * 0.13;
-                }
-                tag.revealedUntil = now + 300;
-            });
             if (haikuTrailWords.length === 3) {
                 spawnHaikuTriangle(haikuTrailWords);
-                for (let i = RESOTAGS.length - 1; i >= 0; i--) {
-                    if (RESOTAGS[i].attached) RESOTAGS.splice(i, 1);
-                }
                 haikuTrailWords = [];
             }
         }
 
         function spawnHaikuTriangle(words) {
-            const texts = words.map(w => w.text);
-            const hues = words.map(w => w.motherHue ?? 195);
-            const avgHue = hues.reduce((a, b) => a + b, 0) / hues.length;
+            const hue = 185 + Math.random() * 50;
             HAIKU_TRIANGLES.push({
-                x: ship.x + (Math.random() - 0.5) * 50,
-                y: ship.y + (Math.random() - 0.5) * 50,
-                words: texts,
-                haiku: composeHaiku(texts),
-                notes: wordsToNotes(texts),
-                size: 38,
+                x: ship.x + (Math.random() - 0.5) * 60,
+                y: ship.y + (Math.random() - 0.5) * 60,
+                words: words,
+                haiku: composeHaiku(words),
+                notes: wordsToNotes(words),
+                size: 58,
                 angle: Math.random() * Math.PI * 2,
                 rotSpeed: 0.0038 + Math.random() * 0.003,
                 vx: (Math.random() - 0.5) * 0.18,
                 vy: (Math.random() - 0.5) * 0.18,
                 phase: Math.random() * Math.PI * 2,
-                hue: avgHue,
+                hue: hue,
                 open: false,
                 openedAt: null,
                 openDuration: 5200,
@@ -1569,17 +1564,17 @@
             const [w1, w2, w3] = words;
             const templates = [
                 [w1, `${w2} s'efface`, `reste ${w3}`],
-                [`encore ${w1}`, `ni ${w2} ni ${w3}`, `l'eau se souvient`],
-                [`${w1} fragile`, `comme ${w2}`, `${w3} demeure`],
-                [`au fond, ${w1}`, `${w2} dans l'ombre`, `${w3} là-haut`],
-                [`ce soir, ${w1}`, `${w2} comme un rêve`, `${w3} sans bruit`],
-                [`${w1} qui tremble`, `${w2}`, `${w3} qui s'efface`],
-                [w1, `${w2} et ${w3}`, `puis l'oubli`],
-                [`${w1} toujours`, `${w2} déjà loin`, w3],
-                [w1, `ni ${w2} ni ${w3}`, `l'abîme attend`],
-                [`${w1} sur l'eau`, `${w2} · ${w3}`, `rien ne répond`],
-                [`un souffle — ${w1}`, w2, `${w3} se dissout`],
-                [`${w1} seul`, `le ${w2} traverse`, `${w3} restera`],
+                [`encore ${w1}`, `${w2} et ${w3}`, `l'eau se souvient`],
+                [`${w1} fragile`, `sans ${w2}`, `juste ${w3}`],
+                [`sous ${w1}`, `${w2} — ${w3}`, `rien ne répond`],
+                [`${w1} seul`, `${w2} se tait`, `${w3} demeure`],
+                [`${w1}`, `entre ${w2} et ${w3}`, `l'abîme attend`],
+                [`${w1} toujours`, `${w2} se dissout`, `vers ${w3}`],
+                [`${w1} — silence`, `${w2}`, `${w3} perdure`],
+                [`${w1}`, `${w2} et ${w3}`, `puis l'oubli`],
+                [`${w1} encore`, `sans ${w2}`, `${w3} dans l'ombre`],
+                [`vers ${w1}`, `${w2} — dérive`, `${w3}`],
+                [`${w1}`, `${w2} s'endort`, `${w3} veille`],
             ];
             return templates[Math.floor(Math.random() * templates.length)];
         }
@@ -1643,29 +1638,30 @@
         function drawHaikuTriangles() {
             const now = performance.now();
             HAIKU_TRIANGLES.forEach(tri => {
-                const openFrac = tri.open && tri.openedAt
-                    ? Math.min(1, (now - tri.openedAt) / 480)
-                    : 0;
                 const elapsed = tri.open && tri.openedAt ? now - tri.openedAt : 0;
-                const closeFrac = elapsed > tri.openDuration - 700
-                    ? Math.min(1, (elapsed - (tri.openDuration - 700)) / 700)
+                const openFrac = tri.open && tri.openedAt
+                    ? Math.min(1, elapsed / 600)
                     : 0;
-                const textAlpha = openFrac > 0.4
-                    ? Math.min(1, (openFrac - 0.4) / 0.3) * (1 - closeFrac)
-                    : 0;
+                let textAlpha = 0;
+                if (tri.open && tri.openedAt) {
+                    const fadeIn  = Math.min(1, elapsed / 800);
+                    const fadeOut = elapsed > tri.openDuration - 900
+                        ? 1 - Math.min(1, (elapsed - (tri.openDuration - 900)) / 900)
+                        : 1;
+                    textAlpha = fadeIn * fadeOut;
+                }
                 const pulse = (Math.sin(now * 0.0026 + tri.phase) + 1) * 0.5;
-                const size = tri.size * (1 + openFrac * 0.52 + pulse * 0.04);
+                const size  = tri.size * (1 + openFrac * 0.40 + pulse * 0.04);
 
                 ctx.save();
                 ctx.translate(tri.x, tri.y);
 
                 ctx.save();
                 ctx.rotate(tri.angle);
-                const glowA = 0.28 + pulse * 0.22 + openFrac * 0.36;
-                ctx.shadowBlur = 15 + openFrac * 26;
-                ctx.shadowColor = `hsla(${tri.hue}, 92%, 82%, ${glowA})`;
-                ctx.strokeStyle = `hsla(${tri.hue}, 88%, 84%, ${0.48 + openFrac * 0.42})`;
-                ctx.lineWidth = 1.4 + openFrac * 1.7;
+                ctx.shadowBlur = 18 + openFrac * 30;
+                ctx.shadowColor = `hsla(${tri.hue}, 92%, 82%, ${0.3 + pulse * 0.2 + openFrac * 0.3})`;
+                ctx.strokeStyle = `hsla(${tri.hue}, 88%, 86%, ${0.55 + openFrac * 0.40})`;
+                ctx.lineWidth = 1.6 + openFrac * 2;
                 ctx.beginPath();
                 for (let v = 0; v < 3; v++) {
                     const a = (v / 3) * Math.PI * 2 - Math.PI / 2;
@@ -1675,21 +1671,21 @@
                 }
                 ctx.closePath();
                 if (openFrac > 0) {
-                    ctx.fillStyle = `hsla(${tri.hue}, 52%, 10%, ${openFrac * 0.9})`;
+                    ctx.fillStyle = `hsla(${tri.hue}, 45%, 8%, ${openFrac * 0.92})`;
                     ctx.fill();
                 }
                 ctx.stroke();
                 ctx.shadowBlur = 0;
                 ctx.restore();
 
-                if (textAlpha > 0.02 && tri.haiku) {
-                    ctx.font = '500 9.5px Georgia, serif';
+                if (textAlpha > 0.04 && tri.haiku) {
+                    ctx.font = '500 13px Georgia, serif';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillStyle = `hsla(${tri.hue}, 70%, 93%, ${textAlpha})`;
-                    ctx.shadowBlur = 10;
-                    ctx.shadowColor = `hsla(${tri.hue}, 90%, 82%, ${textAlpha * 0.5})`;
-                    const lh = 14;
+                    ctx.fillStyle = `hsla(${tri.hue}, 60%, 95%, ${textAlpha})`;
+                    ctx.shadowBlur = 14;
+                    ctx.shadowColor = `hsla(${tri.hue}, 90%, 80%, ${textAlpha * 0.55})`;
+                    const lh = 19;
                     tri.haiku.forEach((line, i) => ctx.fillText(line, 0, (i - 1) * lh));
                     ctx.shadowBlur = 0;
                 }
@@ -1856,6 +1852,22 @@
             drawResotagLinks();
             drawResotags();
             drawHaikuTriangles();
+
+            if (haikuTrailWords.length > 0) {
+                const now = performance.now();
+                const pulse = (Math.sin(now * 0.004) + 1) * 0.5;
+                ctx.save();
+                ctx.translate(ship.x, ship.y - 52);
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = '600 11px Georgia, serif';
+                ctx.fillStyle = `rgba(200, 240, 255, ${0.55 + pulse * 0.25})`;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = 'rgba(120, 210, 255, 0.4)';
+                ctx.fillText(haikuTrailWords.map((w, i) => i < haikuTrailWords.length - 1 ? w + ' ·' : w).join(' '), 0, 0);
+                ctx.shadowBlur = 0;
+                ctx.restore();
+            }
 
             ctx.save();
             ctx.translate(ship.x, ship.y);
@@ -2153,31 +2165,25 @@
             RESOTAGS.forEach((tag) => {
                 const driftPulse = (Math.sin(now * 0.003 + tag.orbitAngle * 9) + 1) * 0.5;
                 const tagHue = tag.motherHue ?? 195;
+                const inWordState = tag.wordPulseUntil && now < tag.wordPulseUntil;
 
-                if (tag.attached) {
-                    const breathe = (Math.sin(now * 0.004 + tag.trailSlot * 1.2) + 1) * 0.5;
-                    const sz = 13 + breathe * 3;
-                    ctx.font = `700 ${sz.toFixed(1)}px Georgia, serif`;
-                    ctx.fillStyle = `hsla(${tagHue}, 95%, 95%, 0.92)`;
-                    ctx.shadowBlur = 18;
-                    ctx.shadowColor = `hsla(${tagHue}, 92%, 78%, 0.62)`;
-                    ctx.fillText(tag.text, tag.x, tag.y - 10);
-                    ctx.shadowBlur = 4;
-                    ctx.fillStyle = `hsla(${tagHue}, 90%, 80%, 0.45)`;
-                    ctx.beginPath();
-                    ctx.arc(tag.x, tag.y - 2, 2.4, 0, Math.PI * 2);
-                    ctx.fill();
-                    return;
-                }
-
-                const isRevealed = now < tag.revealedUntil;
-                if (isRevealed) {
-                    const size = 13 + driftPulse * 2.1;
-                    ctx.font = `600 ${size.toFixed(1)}px Georgia, serif`;
-                    ctx.fillStyle = `hsla(${tagHue}, 92%, 88%, 0.72)`;
-                    ctx.shadowBlur = 7;
-                    ctx.shadowColor = `hsla(${tagHue}, 90%, 66%, 0.30)`;
+                if (inWordState) {
+                    const timeLeft = tag.wordPulseUntil - now;
+                    const wordFrac = Math.min(1, Math.min(timeLeft, tag.wordPulseUntil - (tag.wordPulseUntil - 2400)) / 350);
+                    const fadeFrac = timeLeft < 350 ? timeLeft / 350 : 1;
+                    const alpha = wordFrac * fadeFrac;
+                    const sz = 13 + driftPulse * 2;
+                    ctx.font = `600 ${sz.toFixed(1)}px Georgia, serif`;
+                    ctx.fillStyle = `hsla(${tagHue}, 90%, 92%, ${alpha * 0.88})`;
+                    ctx.shadowBlur = 14;
+                    ctx.shadowColor = `hsla(${tagHue}, 92%, 76%, ${alpha * 0.45})`;
                     ctx.fillText(tag.text, tag.x, tag.y);
+                    ctx.shadowBlur = 0;
+                    const dotR = 2.2 + driftPulse * 0.8;
+                    ctx.fillStyle = `hsla(${tagHue}, 92%, 88%, ${alpha * 0.6})`;
+                    ctx.beginPath();
+                    ctx.arc(tag.x, tag.y + sz * 0.8, dotR, 0, Math.PI * 2);
+                    ctx.fill();
                     return;
                 }
 
