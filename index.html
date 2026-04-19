@@ -102,21 +102,16 @@
     <div id="bubblePanel" class="hidden">
         <div class="panel-card">
             <h2>Bulle sonore</h2>
-            <p>Importez un son ou enregistrez-le, puis choisissez sa couleur.</p>
+            <p>Importez un son ou enregistrez-le, puis choisissez son style de bulle.</p>
             <div class="panel-row">
                 <button id="importBtn" type="button">Importer audio</button>
                 <button id="recordBtn" type="button">Enregistrer</button>
             </div>
             <div class="panel-row">
-                <label for="bubbleColor">Couleur</label>
-                <input id="bubbleColor" type="color" value="#54d2ff">
-            </div>
-            <div class="panel-row">
-                <label for="bubbleDepth">Profondeur</label>
+                <label for="bubbleDepth">Style</label>
                 <select id="bubbleDepth">
-                    <option value="same">Même profondeur</option>
-                    <option value="above">Au-dessus</option>
-                    <option value="below">En-dessous</option>
+                    <option value="deep">Bulle profonde (floue)</option>
+                    <option value="surface">Bulle surface (nette)</option>
                 </select>
             </div>
             <div id="audioName">Aucun son sélectionné</div>
@@ -140,7 +135,6 @@
         const cancelBtn = document.getElementById('cancelBtn');
         const dropBtn = document.getElementById('dropBtn');
         const audioInput = document.getElementById('audioInput');
-        const bubbleColor = document.getElementById('bubbleColor');
         const bubbleDepth = document.getElementById('bubbleDepth');
         const audioName = document.getElementById('audioName');
 
@@ -153,6 +147,7 @@
         let recorder = null;
         let recordingChunks = [];
         let micStream = null;
+        let pendingAudioName = '';
         let audioCtx = null;
         let masterGainNode = null;
 
@@ -193,7 +188,7 @@
                     x: Math.cos(angle) * dist,
                     y: Math.sin(angle) * dist,
                     r: 50 + Math.random() * 60,
-                    hue: 180 + Math.random() * 40,
+                    depthMode: Math.random() < 0.5 ? 'deep' : 'surface',
                     isActive: false,
                     sound: null
                 });
@@ -275,6 +270,7 @@
             const file = audioInput.files?.[0];
             if (!file) return;
             activeAudioBlob = file;
+            pendingAudioName = file.name;
             audioName.textContent = `Son sélectionné : ${file.name}`;
             dropBtn.disabled = false;
         });
@@ -296,6 +292,7 @@
 
                 recorder.onstop = () => {
                     activeAudioBlob = new Blob(recordingChunks, { type: recorder.mimeType || 'audio/webm' });
+                    pendingAudioName = `Enregistrement ${new Date().toLocaleTimeString('fr-FR')}`;
                     audioName.textContent = 'Enregistrement prêt';
                     dropBtn.disabled = false;
                     recordBtn.textContent = 'Enregistrer';
@@ -318,7 +315,7 @@
         dropBtn.addEventListener('click', async () => {
             if (!activeAudioBlob) return;
             try {
-                const bubble = await buildSoundBubble(activeAudioBlob, bubbleColor.value, bubbleDepth.value);
+                const bubble = await buildSoundBubble(activeAudioBlob, pendingAudioName, bubbleDepth.value);
                 BUBBLES.push(bubble);
                 closeBubblePanel();
             } catch (error) {
@@ -342,8 +339,8 @@
             dropBtn.disabled = true;
             audioInput.value = '';
             audioName.textContent = 'Aucun son sélectionné';
-            bubbleColor.value = '#54d2ff';
-            bubbleDepth.value = 'same';
+            pendingAudioName = '';
+            bubbleDepth.value = 'deep';
 
             if (recorder && recorder.state === 'recording') recorder.stop();
             recordBtn.textContent = 'Enregistrer';
@@ -362,12 +359,12 @@
         }
 
         function depthModeToOffset(depthMode) {
-            if (depthMode === 'above') return Z_DEPTH;
-            if (depthMode === 'below') return -Z_DEPTH;
+            if (depthMode === 'deep') return -Z_DEPTH;
+            if (depthMode === 'surface') return Z_DEPTH;
             return 0;
         }
 
-        async function buildSoundBubble(audioBlob, colorHex, depthMode = 'same') {
+        async function buildSoundBubble(audioBlob, bubbleLabel, depthMode = 'deep') {
             const mouthDistance = 20;
             const dirX = Math.cos(ship.angle - Math.PI / 2);
             const dirY = Math.sin(ship.angle - Math.PI / 2);
@@ -386,7 +383,7 @@
                 x,
                 y,
                 r: 64,
-                hue: hexToHue(colorHex),
+                label: bubbleLabel || 'Audio',
                 depthMode,
                 depthOffset: depthModeToOffset(depthMode),
                 isActive: false,
@@ -479,24 +476,6 @@
             }
         }
 
-        function hexToHue(hex) {
-            const value = hex.replace('#', '');
-            const r = parseInt(value.slice(0, 2), 16) / 255;
-            const g = parseInt(value.slice(2, 4), 16) / 255;
-            const b = parseInt(value.slice(4, 6), 16) / 255;
-            const max = Math.max(r, g, b);
-            const min = Math.min(r, g, b);
-            const delta = max - min;
-
-            if (delta === 0) return 180;
-            let hue;
-            if (max === r) hue = ((g - b) / delta) % 6;
-            else if (max === g) hue = (b - r) / delta + 2;
-            else hue = (r - g) / delta + 4;
-            const normalized = hue * 60;
-            return Math.round(normalized < 0 ? normalized + 360 : normalized);
-        }
-
         function update() {
             if (isTethered && !isInteractionPaused) {
                 const dx = mouseWorld.x - ship.x;
@@ -540,27 +519,6 @@
                     b.isActive = false;
                 }
 
-                const isDepthTraversable = b.depthMode === 'above' || b.depthMode === 'below';
-                if (!isDepthTraversable && dist < minDist + ship.repulsionRadius) {
-                    const safeDist = Math.max(0.0001, dist);
-                    const force = Math.pow(Math.max(0, (minDist + ship.repulsionRadius - safeDist) / ship.repulsionRadius), 2);
-                    const nx = dx / safeDist;
-                    const ny = dy / safeDist;
-
-                    ship.vx += nx * force * ship.repulsionStrength;
-                    ship.vy += ny * force * ship.repulsionStrength;
-
-                    if (safeDist < minDist) {
-                        const overlap = minDist - safeDist;
-                        ship.x += nx * overlap;
-                        ship.y += ny * overlap;
-                        const dot = ship.vx * nx + ship.vy * ny;
-                        if (dot < 0) {
-                            ship.vx -= nx * dot * 0.7;
-                            ship.vy -= ny * dot * 0.7;
-                        }
-                    }
-                }
             });
 
             ship.vx *= ship.damping;
@@ -681,25 +639,39 @@
 
             const drawBubble = (b) => {
                 const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
-                const opacityMult = b.isActive ? 2 : 1;
-                const hue = b.isActive ? 0 : b.hue;
+                const isDeep = b.depthMode === 'deep';
+                const edgeOpacity = b.isActive ? (isDeep ? 0.35 : 0.58) : (isDeep ? 0.24 : 0.42);
+                const midOpacity = b.isActive ? (isDeep ? 0.14 : 0.3) : (isDeep ? 0.08 : 0.2);
+                const strokeOpacity = b.isActive ? (isDeep ? 0.3 : 0.68) : (isDeep ? 0.2 : 0.48);
 
-                grad.addColorStop(0, `hsla(${hue}, 80%, 50%, 0)`);
-                grad.addColorStop(0.8, `hsla(${hue}, 80%, 50%, ${0.05 * opacityMult})`);
-                grad.addColorStop(1, `hsla(${hue}, 80%, 50%, ${0.2 * opacityMult})`);
+                grad.addColorStop(0, 'rgba(110, 205, 255, 0)');
+                grad.addColorStop(0.78, `rgba(110, 205, 255, ${midOpacity})`);
+                grad.addColorStop(1, `rgba(110, 205, 255, ${edgeOpacity})`);
 
                 ctx.fillStyle = grad;
                 ctx.beginPath();
                 ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
                 ctx.fill();
 
-                ctx.strokeStyle = `hsla(${hue}, 80%, 60%, ${0.1 * opacityMult})`;
-                ctx.lineWidth = b.isActive ? 3 : 1;
+                ctx.strokeStyle = `rgba(178, 232, 255, ${strokeOpacity})`;
+                ctx.lineWidth = b.isActive ? (isDeep ? 2 : 3) : (isDeep ? 1 : 2);
                 ctx.stroke();
+
+                if (b.label) {
+                    ctx.save();
+                    ctx.font = '600 12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = isDeep ? 'rgba(220, 245, 255, 0.72)' : 'rgba(232, 248, 255, 0.92)';
+                    if (isDeep) ctx.filter = 'blur(0.8px)';
+                    const maxWidth = b.r * 1.45;
+                    ctx.fillText(b.label, b.x, b.y, maxWidth);
+                    ctx.restore();
+                }
             };
 
             BUBBLES.forEach((b) => {
-                if (b.depthMode === 'above') return;
+                if (b.depthMode === 'surface') return;
                 drawBubble(b);
             });
 
@@ -789,7 +761,7 @@
             ctx.restore();
 
             BUBBLES.forEach((b) => {
-                if (b.depthMode !== 'above') return;
+                if (b.depthMode !== 'surface') return;
                 drawBubble(b);
             });
 
