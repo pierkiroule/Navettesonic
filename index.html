@@ -775,11 +775,10 @@
 
         function projectPoint(point, mode) {
             if (mode === 'side') {
-                const depthLift = (point.z || 0) * 0.95;
+                const depthLift = (point.z || 0) * 0.75;
                 return {
                     x: point.x,
-                    y: point.y * 0.32 - depthLift,
-                    scale: 0.92
+                    y: point.y * 0.45 - depthLift
                 };
             }
 
@@ -792,26 +791,22 @@
                 const rightY = -forwardX;
                 const forward = relX * forwardX + relY * forwardY;
                 const right = relX * rightX + relY * rightY;
-                const perspective = 1 + Math.max(-0.35, forward / 460);
                 return {
-                    x: right * 1.05,
-                    y: h * 0.14 - forward * 0.45 - (point.z || 0) * 0.72,
-                    scale: Math.max(0.4, Math.min(1.9, perspective))
+                    x: right * 0.9,
+                    y: h * 0.12 - forward * 0.55 - (point.z || 0) * 0.55
                 };
             }
 
             return {
                 x: point.x,
-                y: point.y - (point.z || 0) * 0.08,
-                scale: 1
+                y: point.y - (point.z || 0) * 0.12
             };
         }
 
         function mixProjection(a, b, blend) {
             return {
                 x: a.x + (b.x - a.x) * blend,
-                y: a.y + (b.y - a.y) * blend,
-                scale: a.scale + (b.scale - a.scale) * blend
+                y: a.y + (b.y - a.y) * blend
             };
         }
 
@@ -821,6 +816,11 @@
             const toMode = viewState.pendingMode || viewState.mode;
             const blend = viewState.transition?.type === 'rotate' ? transitionState.blend : 1;
             const modeForProjection = viewState.mode;
+            const projectBlend = (point) => {
+                const baseProjection = projectPoint(point, fromMode);
+                const targetProjection = projectPoint(point, toMode);
+                return mixProjection(baseProjection, targetProjection, blend);
+            };
 
             ctx.fillStyle = '#030308';
             ctx.fillRect(0, 0, w, h);
@@ -835,12 +835,11 @@
             ctx.stroke();
 
             const drawBubble = (b) => {
-                const baseProjection = projectPoint({ x: b.x, y: b.y, z: b.depthOffset ?? 0 }, fromMode);
-                const targetProjection = projectPoint({ x: b.x, y: b.y, z: b.depthOffset ?? 0 }, toMode);
-                const projected = mixProjection(baseProjection, targetProjection, blend);
-                const radius = b.r * projected.scale * (modeForProjection === 'side' ? 0.92 : 1);
+                const projected = projectBlend({ x: b.x, y: b.y, z: b.depthOffset ?? 0 });
+                const radius = b.r * (modeForProjection === 'fpv' ? 0.9 : 1);
                 const isElliptic = modeForProjection !== 'top';
-                const ellipseY = isElliptic ? radius * 0.72 : radius;
+                const ellipseFactor = modeForProjection === 'side' ? 0.78 : 0.85;
+                const ellipseY = isElliptic ? radius * ellipseFactor : radius;
                 const grad = ctx.createRadialGradient(projected.x, projected.y, 0, projected.x, projected.y, radius);
                 const opacityMult = b.isActive ? 2 : 1;
                 const hue = b.isActive ? 0 : b.hue;
@@ -867,26 +866,28 @@
             drawWakeParticles(fromMode, toMode, blend);
 
             if (ship.trail.length > 2) {
-                ctx.beginPath();
                 ctx.lineWidth = 2;
                 for (let i = 0; i < ship.trail.length - 1; i++) {
                     const alpha = (i / ship.trail.length) * 0.4;
+                    const p1 = projectBlend({ x: ship.trail[i].x, y: ship.trail[i].y, z: 0 });
+                    const p2 = projectBlend({ x: ship.trail[i + 1].x, y: ship.trail[i + 1].y, z: 0 });
                     ctx.strokeStyle = `rgba(100, 200, 255, ${alpha})`;
-                    ctx.moveTo(ship.trail[i].x, ship.trail[i].y);
-                    ctx.lineTo(ship.trail[i + 1].x, ship.trail[i + 1].y);
+                    ctx.beginPath();
+                    ctx.moveTo(p1.x, p1.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.stroke();
                 }
-                ctx.stroke();
             }
 
             ctx.save();
-            const shipBase = projectPoint({ x: ship.x, y: ship.y, z: 0 }, fromMode);
-            const shipTarget = projectPoint({ x: ship.x, y: ship.y, z: 0 }, toMode);
-            const shipProjected = mixProjection(shipBase, shipTarget, blend);
+            const shipProjected = modeForProjection === 'fpv'
+                ? { x: 0, y: h * 0.26 }
+                : projectBlend({ x: ship.x, y: ship.y, z: 0 });
             ctx.translate(shipProjected.x, shipProjected.y);
             const fishYaw = modeForProjection === 'fpv' ? 0 : ship.angle + Math.PI / 2;
             ctx.rotate(fishYaw);
-            const fishScale = modeForProjection === 'fpv' ? 0.68 : (modeForProjection === 'side' ? 0.9 : 1);
-            ctx.scale(fishScale, modeForProjection === 'side' ? 0.86 : 1);
+            const fishScale = modeForProjection === 'fpv' ? 0.74 : (modeForProjection === 'side' ? 0.92 : 1);
+            ctx.scale(fishScale, modeForProjection === 'side' ? 0.9 : 1);
             const swimT = performance.now() * 0.001;
             const glide = Math.hypot(ship.vx, ship.vy) / ship.maxSpeed;
             const wag = Math.sin(swimT * 9.5) * (0.14 + glide * 0.18);
@@ -988,7 +989,7 @@
                 const projected = mixProjection(baseProjection, targetProjection, blend);
                 ctx.fillStyle = `rgba(205, 240, 255, ${alpha})`;
                 ctx.beginPath();
-                ctx.arc(projected.x, projected.y, p.size * projected.scale, 0, Math.PI * 2);
+                ctx.arc(projected.x, projected.y, p.size, 0, Math.PI * 2);
                 ctx.fill();
             });
         }
