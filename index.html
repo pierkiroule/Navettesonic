@@ -270,7 +270,12 @@
             };
         }
 
+        function isUiInteractionTarget(target) {
+            return bubblePanel.contains(target) || viewToggle.contains(target);
+        }
+
         function onStart(e) {
+            if (isUiInteractionTarget(e.target)) return;
             if (isInteractionPaused) return;
             const pos = getMousePos(e);
             mouseWorld = pos;
@@ -356,7 +361,7 @@
         window.addEventListener('mouseup', onEnd);
 
         function isPanelInteractionTarget(target) {
-            return bubblePanel.contains(target);
+            return isUiInteractionTarget(target);
         }
 
         window.addEventListener('touchstart', (e) => {
