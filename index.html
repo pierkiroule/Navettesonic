@@ -555,6 +555,15 @@
             bubble.sound = createBinauralSound(sample);
             bubble.label = sample.name;
             bubble._sampleId = sample.id;
+            bubble.resotagQueue = createResotagList(sample);
+            bubble.lastImpactAt = 0;
+            bubble.fishTouching = false;
+            for (let i = RESOTAGS.length - 1; i >= 0; i--) {
+                if (RESOTAGS[i].bubbleId === bubble.id) {
+                    unlinkResotag(RESOTAGS[i].id);
+                    RESOTAGS.splice(i, 1);
+                }
+            }
             propsBubbleName.textContent = sample.name;
             bubble.currentVolume = 0;
             bubble.zoneMix = 0;
@@ -580,6 +589,12 @@
         propsDeleteBtn.addEventListener('click', () => {
             if (!selectedBubble) return;
             try { selectedBubble.sound?.source?.stop(); } catch (_) {}
+            for (let i = RESOTAGS.length - 1; i >= 0; i--) {
+                if (RESOTAGS[i].bubbleId === selectedBubble.id) {
+                    unlinkResotag(RESOTAGS[i].id);
+                    RESOTAGS.splice(i, 1);
+                }
+            }
             const idx = BUBBLES.indexOf(selectedBubble);
             if (idx !== -1) BUBBLES.splice(idx, 1);
             closeBubblePropsPanel();
@@ -600,7 +615,8 @@
             'Garde le doigt (ou clic) appuyé dans l’océan : le poisson-plume suit ton mouvement.',
             'Pour ouvrir la collection, fais un double tap (ou double clic) directement sur le poisson.',
             'Dans la collection, choisis un sample puis une position (face, dessus, dessous).',
-            'Valide avec « Ajouter à la collection » pour déposer une bulle sonore dans la scène.'
+            'Valide avec « Ajouter à la collection » pour déposer une bulle sonore dans la scène.',
+            'Resotags : chaque choc libère une luciole ; touche-la pour révéler son mot 3 secondes.'
         ];
 
         const ARENA_RADIUS = 2000;
@@ -619,7 +635,18 @@
         const MAX_BREATH_WAVES = 9;
         const DRIFT_MOTES = [];
         const MAX_DRIFT_MOTES = 22;
+        const RESOTAGS = [];
+        const RESOTAG_LINKS = [];
+        const MAX_RESOTAG_LINKS = 120;
+        const RESOTAG_POOL = [
+            'écume', 'abysses', 'lueur', 'frisson', 'pollen', 'sillage',
+            'corail', 'souffle', 'nacre', 'aurore', 'vertige', 'marée',
+            'brume', 'murmure', 'ivresse', 'algue', 'reflet', 'dérive',
+            'pulsation', 'source', 'plume', 'halo', 'onde', 'silence'
+        ];
         let shipBreathEmitter = 0;
+        let bubbleIdSeed = 1;
+        let resotagIdSeed = 1;
 
         const arenaResonance = { level: 0, hue: 198 };
 
@@ -857,6 +884,62 @@
             return { offsetY: 0, depthOffset: 0 };
         }
 
+        function createResotagList(sample) {
+            const seed = `${sample.name} ${sample.texture}`.toLowerCase()
+                .replace(/[^a-zàâçéèêëîïôûùüÿñæœ\s-]/gi, ' ')
+                .split(/\s+/)
+                .filter(Boolean);
+            const tags = [];
+            const taken = new Set();
+
+            seed.forEach(word => {
+                if (word.length < 4) return;
+                if (taken.has(word)) return;
+                taken.add(word);
+                tags.push(word);
+            });
+
+            const shuffledPool = [...RESOTAG_POOL].sort(() => Math.random() - 0.5);
+            shuffledPool.forEach(word => {
+                if (tags.length >= 12) return;
+                if (taken.has(word)) return;
+                taken.add(word);
+                tags.push(word);
+            });
+            while (tags.length < 12) tags.push(`réso-${tags.length + 1}`);
+            return tags.slice(0, 12);
+        }
+
+        function unlinkResotag(tagId) {
+            for (let i = RESOTAG_LINKS.length - 1; i >= 0; i--) {
+                const l = RESOTAG_LINKS[i];
+                if (l.a === tagId || l.b === tagId) RESOTAG_LINKS.splice(i, 1);
+            }
+        }
+
+        function releaseResotagFromBubble(bubble) {
+            if (!bubble.resotagQueue?.length) return;
+            const text = bubble.resotagQueue.shift();
+            const angle = Math.random() * Math.PI * 2;
+            const spawnRadius = bubble.r + 14 + Math.random() * 20;
+            RESOTAGS.push({
+                id: `rt-${resotagIdSeed++}`,
+                bubbleId: bubble.id,
+                bubbleRef: bubble,
+                text,
+                x: bubble.x + Math.cos(angle) * spawnRadius,
+                y: bubble.y + Math.sin(angle) * spawnRadius,
+                vx: Math.cos(angle) * (0.03 + Math.random() * 0.03),
+                vy: Math.sin(angle) * (0.03 + Math.random() * 0.03),
+                orbitRadius: bubble.r + 24 + Math.random() * 34,
+                orbitAngle: angle,
+                orbitSpeed: (Math.random() * 0.00065 + 0.00022) * (Math.random() < 0.5 ? -1 : 1),
+                drift: 0.0025 + Math.random() * 0.0035,
+                revealedUntil: 0,
+                bornAt: performance.now(),
+            });
+        }
+
         function buildSoundBubble(sample, layer = 'front') {
             const mouthDistance = 20;
             const dirX = Math.cos(ship.angle - Math.PI / 2);
@@ -875,9 +958,13 @@
 
             const sound = createBinauralSound(sample);
             return {
+                id: `bubble-${bubbleIdSeed++}`,
                 x, y, r: 64, layer, depthOffset: spatial.depthOffset, isActive: false,
                 sound, label: sample.name, _sampleId: sample.id,
-                currentVolume: 0, zoneMix: 0, resonance: 0, wasInZone: false, hue: 195
+                currentVolume: 0, zoneMix: 0, resonance: 0, wasInZone: false, hue: 195,
+                resotagQueue: createResotagList(sample),
+                lastImpactAt: 0,
+                fishTouching: false
             };
         }
 
@@ -1094,6 +1181,7 @@
             updateSurfaceEffects(speed);
             updateResonanceWaves();
             updatePoetryEffects(speed);
+            updateResotags(speed);
         }
 
         function updateWakeParticles(speed) {
@@ -1311,6 +1399,73 @@
             });
         }
 
+        function updateResotags(speed) {
+            const now = performance.now();
+            const fishRadius = 24;
+            const fishForce = Math.hypot(ship.vx, ship.vy);
+
+            BUBBLES.forEach((bubble) => {
+                const dist = Math.hypot(ship.x - bubble.x, ship.y - bubble.y);
+                const isTouching = dist <= bubble.r + fishRadius;
+                if (isTouching && !bubble.fishTouching && now - bubble.lastImpactAt > 30000) {
+                    bubble.lastImpactAt = now;
+                    releaseResotagFromBubble(bubble);
+                }
+                bubble.fishTouching = isTouching;
+            });
+
+            RESOTAGS.forEach((tag) => {
+                const mother = tag.bubbleRef;
+                const currents = Math.sin((now + tag.bornAt) * 0.00018 + tag.id.length) * 0.02;
+                const targetX = mother.x + Math.cos(tag.orbitAngle) * tag.orbitRadius;
+                const targetY = mother.y + Math.sin(tag.orbitAngle) * tag.orbitRadius;
+                tag.orbitAngle += tag.orbitSpeed;
+
+                tag.vx += (targetX - tag.x) * 0.0012 + currents * tag.drift;
+                tag.vy += (targetY - tag.y) * 0.0012 + currents * tag.drift * 0.7;
+
+                const dx = tag.x - ship.x;
+                const dy = tag.y - ship.y;
+                const d = Math.hypot(dx, dy);
+                if (d < 30) tag.revealedUntil = now + 3000;
+                if (d < 64 && d > 0.001) {
+                    const push = (1 - d / 64) * (0.012 + fishForce * 0.018);
+                    tag.vx += (dx / d) * push + ship.vx * 0.012;
+                    tag.vy += (dy / d) * push + ship.vy * 0.012;
+                }
+
+                tag.vx *= 0.968;
+                tag.vy *= 0.968;
+                tag.x += tag.vx;
+                tag.y += tag.vy;
+            });
+
+            for (let i = 0; i < RESOTAGS.length; i++) {
+                for (let j = i + 1; j < RESOTAGS.length; j++) {
+                    const a = RESOTAGS[i];
+                    const b = RESOTAGS[j];
+                    if (a.bubbleId === b.bubbleId) continue;
+                    const dist = Math.hypot(a.x - b.x, a.y - b.y);
+                    if (dist > 30) continue;
+                    const exists = RESOTAG_LINKS.some(l => (l.a === a.id && l.b === b.id) || (l.a === b.id && l.b === a.id));
+                    if (exists) continue;
+                    if (RESOTAG_LINKS.length >= MAX_RESOTAG_LINKS) RESOTAG_LINKS.shift();
+                    RESOTAG_LINKS.push({ a: a.id, b: b.id, bornAt: now });
+                }
+            }
+
+            for (let i = RESOTAG_LINKS.length - 1; i >= 0; i--) {
+                const link = RESOTAG_LINKS[i];
+                const a = RESOTAGS.find(t => t.id === link.a);
+                const b = RESOTAGS.find(t => t.id === link.b);
+                if (!a || !b) {
+                    RESOTAG_LINKS.splice(i, 1);
+                    continue;
+                }
+                if (Math.hypot(a.x - b.x, a.y - b.y) > 105) RESOTAG_LINKS.splice(i, 1);
+            }
+        }
+
         function drawBreathWaves() {
             BREATH_WAVES.forEach(bw => {
                 const rx = bw.maxRx * bw.t;
@@ -1467,6 +1622,8 @@
             drawWakeParticles();
             drawRipples();
             drawLuminousTrail();
+            drawResotagLinks();
+            drawResotags();
 
             ctx.save();
             ctx.translate(ship.x, ship.y);
@@ -1738,6 +1895,51 @@
                 ctx.arc(wave.x, wave.y, wave.radius, 0, Math.PI * 2);
                 ctx.stroke();
             });
+        }
+
+        function drawResotagLinks() {
+            RESOTAG_LINKS.forEach((link) => {
+                const a = RESOTAGS.find(t => t.id === link.a);
+                const b = RESOTAGS.find(t => t.id === link.b);
+                if (!a || !b) return;
+                const life = Math.min(1, (performance.now() - link.bornAt) / 900);
+                const alpha = 0.06 + life * 0.10;
+                ctx.strokeStyle = `rgba(172, 234, 255, ${alpha})`;
+                ctx.lineWidth = 0.8;
+                ctx.beginPath();
+                ctx.moveTo(a.x, a.y);
+                ctx.lineTo(b.x, b.y);
+                ctx.stroke();
+            });
+        }
+
+        function drawResotags() {
+            const now = performance.now();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            RESOTAGS.forEach((tag) => {
+                const driftPulse = (Math.sin(now * 0.003 + tag.orbitAngle * 9) + 1) * 0.5;
+                const isRevealed = now < tag.revealedUntil;
+                if (isRevealed) {
+                    const size = 11 + driftPulse * 1.6;
+                    ctx.font = `600 ${size.toFixed(1)}px Georgia, serif`;
+                    ctx.fillStyle = 'rgba(220, 245, 255, 0.5)';
+                    ctx.shadowBlur = 6;
+                    ctx.shadowColor = 'rgba(110, 220, 255, 0.28)';
+                    ctx.fillText(tag.text, tag.x, tag.y);
+                    return;
+                }
+
+                const dotR = 1.2 + driftPulse * 0.8;
+                const dotAlpha = 0.25 + driftPulse * 0.35;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = `rgba(160, 242, 255, ${dotAlpha * 0.8})`;
+                ctx.fillStyle = `rgba(210, 245, 255, ${dotAlpha})`;
+                ctx.beginPath();
+                ctx.arc(tag.x, tag.y, dotR, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.shadowBlur = 0;
         }
 
         function drawWaterSurface() {
