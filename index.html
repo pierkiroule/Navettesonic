@@ -3,9 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manipulation de Bulles - Navigation Organique</title>
+    <title>Soono•° — Odyssée sonore</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        :root {
+            color-scheme: dark;
+            --bottom-nav-clearance: 108px;
+        }
         body {
             margin: 0;
             overflow: hidden;
@@ -14,19 +18,98 @@
             width: 100vw;
             touch-action: none;
             cursor: crosshair;
+            font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
         }
+        .view { position: absolute; inset: 0; }
+        .hidden-view { display: none; }
+
+        #homeView {
+            background: radial-gradient(circle at 25% 20%, rgba(64, 130, 255, 0.22), transparent 45%),
+                        radial-gradient(circle at 80% 85%, rgba(106, 224, 255, 0.2), transparent 48%),
+                        #030308;
+            color: #ebf6ff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: clamp(22px, 4vw, 42px) clamp(22px, 4vw, 42px)
+                calc(clamp(22px, 4vw, 42px) + var(--bottom-nav-clearance) + env(safe-area-inset-bottom));
+            overflow: auto;
+        }
+        .home-layout { width: min(920px, 100%); margin: 0 auto; }
+        .home-brand {
+            width: clamp(210px, 42vw, 360px);
+            height: auto;
+            display: block;
+            margin: 0 auto 16px;
+            filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.35));
+        }
+        .home-title {
+            margin: 0 0 clamp(18px, 3vw, 28px);
+            font-size: clamp(2rem, 6vw, 3.5rem);
+            line-height: 1.1;
+            letter-spacing: 0.01em;
+        }
+        .home-poem {
+            margin: 0 auto 26px;
+            max-width: 620px;
+            color: rgba(235,246,255,0.88);
+            font-size: clamp(1rem, 2.4vw, 1.2rem);
+            line-height: 1.6;
+        }
+        .immersion-btn {
+            border: 0;
+            border-radius: 999px;
+            padding: 14px 26px;
+            background: linear-gradient(135deg, #48d5ff, #587dff);
+            color: #02111d;
+            font-weight: 800;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 12px 40px rgba(72, 213, 255, 0.35);
+        }
+        .home-media { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+        .home-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+        .hero-video {
+            width: min(520px, 88vw);
+            aspect-ratio: 16 / 10;
+            border-radius: 24px;
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+            object-fit: cover;
+            overflow: hidden;
+            background: rgba(8, 19, 35, 0.9);
+        }
+
+        #experienceView, #profileView { background: #030308; }
+
         #ui {
             position: absolute;
-            top: 30px;
+            top: 28px;
             width: 100%;
             text-align: center;
             pointer-events: none;
             z-index: 100;
-            color: rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.28);
             font-family: 'Georgia', serif;
             font-style: italic;
             font-size: 0.9rem;
-            letter-spacing: 0.2em;
+            letter-spacing: 0.14em;
+        }
+        #helperTips {
+            position: absolute;
+            top: 66px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(92vw, 680px);
+            z-index: 110;
+            pointer-events: none;
+            color: rgba(224, 243, 255, 0.92);
+            text-align: center;
+            font-size: 0.88rem;
+            line-height: 1.4;
+            font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
         }
         #bubblePanel {
             position: absolute;
@@ -34,36 +117,30 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(3, 3, 8, 0.75);
+            background: rgba(3, 3, 8, 0.76);
             z-index: 200;
             font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
         }
-        #bubblePanel.hidden {
-            display: none;
-        }
+        #bubblePanel.hidden { display: none; }
         .panel-card {
-            width: min(90vw, 380px);
+            width: min(92vw, 440px);
             padding: 18px;
             border-radius: 16px;
-            background: rgba(20, 24, 40, 0.95);
+            background: rgba(20, 24, 40, 0.96);
             border: 1px solid rgba(255, 255, 255, 0.15);
             color: #f0f6ff;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
         }
-        .panel-card h2 {
-            margin: 0 0 8px;
-            font-size: 1.1rem;
-        }
-        .panel-card p {
-            margin: 0 0 14px;
-            font-size: 0.9rem;
-            color: rgba(240, 246, 255, 0.75);
-        }
-        .panel-row {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-            align-items: center;
+        .panel-card h2 { margin: 0 0 8px; font-size: 1.15rem; }
+        .panel-card p { margin: 0 0 14px; font-size: 0.9rem; color: rgba(240,246,255,0.75); }
+        .panel-row { display: flex; gap: 10px; margin-top: 10px; align-items: center; }
+        .panel-row select {
+            flex: 1;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.22);
+            background: rgba(9,14,25,0.95);
+            color: #eef8ff;
+            padding: 8px 10px;
         }
         .panel-card button {
             border: 0;
@@ -74,123 +151,602 @@
             cursor: pointer;
             font-weight: 600;
         }
-        .panel-card button:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
+        #sampleHint { margin-top: 10px; font-size: 0.82rem; color: rgba(240, 246, 255, 0.84); min-height: 1.2em; }
+
+        .bottom-nav {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 230;
+            display: flex;
+            justify-content: center;
+            padding: 10px 10px calc(12px + env(safe-area-inset-bottom));
+            pointer-events: auto;
         }
-        #audioName {
-            margin-top: 10px;
-            font-size: 0.8rem;
-            color: rgba(240, 246, 255, 0.8);
-            min-height: 1.2em;
+        .nav-shell {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(88px, 1fr));
+            gap: 8px;
+            width: min(480px, 92vw);
+            border-radius: 999px;
+            background: rgba(9, 15, 28, 0.92);
+            border: 1px solid rgba(255,255,255,0.15);
+            padding: 8px;
+            backdrop-filter: blur(10px);
         }
-        .hidden-input {
-            display: none;
+        .nav-btn {
+            border: 0;
+            border-radius: 999px;
+            padding: 10px 12px;
+            background: transparent;
+            color: rgba(235,246,255,0.84);
+            font-weight: 650;
+            cursor: pointer;
         }
+        .nav-btn.active { background: rgba(87, 176, 255, 0.26); color: #fff; }
+
+        #profileView {
+            color: #e6f4ff;
+            padding: 26px 18px 120px;
+            overflow: auto;
+        }
+        .profile-wrap { width: min(980px, 100%); margin: 0 auto; }
+        .profile-wrap h1 { margin-top: 6px; margin-bottom: 8px; font-size: clamp(1.5rem, 3vw, 2.2rem); }
+        .profile-sub { margin-top: 0; color: rgba(230,244,255,0.75); }
+        .profile-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+            margin-top: 18px;
+        }
+        .card {
+            background: rgba(13, 22, 36, 0.9);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 16px;
+            padding: 14px;
+        }
+        .card h3 { margin: 0 0 8px; font-size: 1rem; }
+        .card p { margin: 0; color: rgba(230,244,255,0.74); font-size: 0.9rem; }
+        #canvas { display: block; }
+
+        #bubblePropsPanel {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%) translateY(100%);
+            width: min(92vw, 480px);
+            z-index: 205;
+            transition: transform 0.32s cubic-bezier(0.32, 0, 0.28, 1);
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+            pointer-events: none;
+        }
+        #bubblePropsPanel.visible {
+            transform: translateX(-50%) translateY(0);
+            pointer-events: auto;
+        }
+        .props-card {
+            background: rgba(10, 16, 30, 0.97);
+            border: 1px solid rgba(100, 200, 255, 0.22);
+            border-bottom: none;
+            border-radius: 20px 20px 0 0;
+            padding: 16px 18px 18px;
+            color: #f0f6ff;
+            backdrop-filter: blur(18px);
+            box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.55);
+        }
+        .props-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .props-header h3 { margin: 0; font-size: 1rem; color: rgba(170, 225, 255, 0.95); }
+        .props-close-btn {
+            background: rgba(255,255,255,0.08);
+            border: 0;
+            color: #dff7ff;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .props-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .props-label {
+            width: 70px;
+            font-size: 0.80rem;
+            color: rgba(180, 220, 255, 0.65);
+            flex-shrink: 0;
+        }
+        .props-select {
+            flex: 1;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.18);
+            background: rgba(9,14,25,0.95);
+            color: #eef8ff;
+            padding: 7px 10px;
+            font-size: 0.86rem;
+        }
+        .props-slider {
+            flex: 1;
+            accent-color: rgba(84, 210, 255, 0.9);
+            cursor: pointer;
+        }
+        .props-size-val {
+            font-size: 0.78rem;
+            color: rgba(160, 220, 255, 0.7);
+            width: 34px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+        .color-swatches { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; }
+        .color-swatch {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            border: 2.5px solid transparent;
+            cursor: pointer;
+            transition: transform 0.15s, border-color 0.15s;
+            flex-shrink: 0;
+        }
+        .color-swatch.selected { border-color: #fff; transform: scale(1.22); }
+        .props-drag-hint {
+            text-align: center;
+            font-size: 0.76rem;
+            color: rgba(120, 190, 255, 0.55);
+            margin: 10px 0 10px;
+            border-top: 1px solid rgba(255,255,255,0.07);
+            padding-top: 10px;
+            letter-spacing: 0.01em;
+        }
+        .props-delete-btn {
+            width: 100%;
+            background: rgba(255, 70, 95, 0.14);
+            border: 1px solid rgba(255, 70, 95, 0.28);
+            color: rgba(255, 155, 168, 0.95);
+            padding: 9px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.88rem;
+        }
+        .props-delete-btn:active { background: rgba(255, 70, 95, 0.28); }
+        .bubble-selected-ring { pointer-events: none; }
     </style>
 </head>
 <body>
-
-    <div id="ui">Double tap sur le poisson pour déposer une bulle sonore</div>
-    <div id="bubblePanel" class="hidden">
-        <div class="panel-card">
-            <h2>Bulle sonore</h2>
-            <p>Importez un son ou enregistrez-le, puis choisissez son style de bulle.</p>
-            <div class="panel-row">
-                <button id="importBtn" type="button">Importer audio</button>
-                <button id="recordBtn" type="button">Enregistrer</button>
+    <section id="homeView" class="view">
+        <div class="home-layout">
+            <h1 class="home-title">Soono•° — odyssée sonore</h1>
+            <div class="home-media">
+                <img class="home-brand" src="logo.png" alt="Logo Soono" />
+                <video id="heroVideo" class="hero-video" autoplay muted loop playsinline controls>
+                    <source src="./video/soono3.mp4" type="video/mp4">
+                    Votre navigateur ne supporte pas la lecture vidéo.
+                </video>
+                <p class="home-poem">Un souffle d’océan, une plume qui dérive, et des sons qui racontent doucement ton chemin.</p>
+                <div class="home-actions">
+                    <button id="toggleHeroSoundBtn" class="immersion-btn" type="button">Activer le son</button>
+                    <button id="enterExperienceBtn" class="immersion-btn" type="button">Immersion Soono•°</button>
+                </div>
             </div>
-            <div class="panel-row">
-                <label for="bubbleLayer">Style</label>
-                <select id="bubbleLayer">
-                    <option value="surface">Surface nette</option>
-                    <option value="deep">Profonde floue</option>
-                </select>
-            </div>
-            <div id="audioName">Aucun son sélectionné</div>
-            <div class="panel-row">
-                <button id="cancelBtn" type="button">Annuler</button>
-                <button id="dropBtn" type="button" disabled>Déposer la bulle</button>
-            </div>
-            <input id="audioInput" type="file" accept="audio/*" class="hidden-input">
         </div>
-    </div>
-    <canvas id="canvas"></canvas>
+    </section>
+
+    <section id="experienceView" class="view hidden-view">
+        <div id="ui">Double tap sur le poisson pour ouvrir la collection sonore</div>
+        <div id="helperTips">Garde le doigt (ou clic) appuyé dans l'océan : le poisson-plume suit ton mouvement.</div>
+        <div id="bubblePanel" class="hidden">
+            <div class="panel-card">
+                <h2>Collection Soono•° (demo)</h2>
+                <p>Choisissez un sample, placez-le autour du poisson, puis validez pour déposer une bulle sonore.</p>
+                <div class="panel-row">
+                    <label for="sampleSelect">Sample</label>
+                    <select id="sampleSelect"></select>
+                </div>
+                <div class="panel-row">
+                    <label for="bubbleLayer">Position</label>
+                    <select id="bubbleLayer">
+                        <option value="front">En face</option>
+                        <option value="above">Au-dessus</option>
+                        <option value="below">En dessous</option>
+                    </select>
+                </div>
+                <div id="sampleHint"></div>
+                <div class="panel-row">
+                    <button id="cancelBtn" type="button">Annuler</button>
+                    <button id="dropBtn" type="button">Ajouter à la collection</button>
+                </div>
+            </div>
+        </div>
+        <canvas id="canvas"></canvas>
+        <div id="bubblePropsPanel">
+            <div class="props-card">
+                <div class="props-header">
+                    <h3 id="propsBubbleName">Bulle sonore</h3>
+                    <button class="props-close-btn" id="propsCloseBtn" type="button">✕</button>
+                </div>
+                <div class="props-section">
+                    <span class="props-label">Sample</span>
+                    <select class="props-select" id="propsSampleSelect"></select>
+                </div>
+                <div class="props-section">
+                    <span class="props-label">Taille</span>
+                    <input type="range" class="props-slider" id="propsSizeRange" min="28" max="140" step="1" value="64">
+                    <span class="props-size-val" id="propsSizeVal">64</span>
+                </div>
+                <div class="props-section">
+                    <span class="props-label">Couleur</span>
+                    <div class="color-swatches" id="colorSwatches"></div>
+                </div>
+                <div class="props-section">
+                    <span class="props-label">Profondeur</span>
+                    <select class="props-select" id="propsLayerSelect">
+                        <option value="above">En hauteur</option>
+                        <option value="front">Niveau courant</option>
+                        <option value="below">En profondeur</option>
+                    </select>
+                </div>
+                <div class="props-drag-hint">⟡ Touche l'océan pour déplacer la bulle</div>
+                <button class="props-delete-btn" id="propsDeleteBtn" type="button">Supprimer cette bulle</button>
+            </div>
+        </div>
+    </section>
+
+    <section id="profileView" class="view hidden-view">
+        <div class="profile-wrap">
+            <h1>Profil Soono•°</h1>
+            <p class="profile-sub">Mode démo : cette page accueillera bientôt les infos user, l'historique de sessions et la collection de bulles sonores achetées.</p>
+            <div class="profile-grid">
+                <article class="card">
+                    <h3>Compte utilisateur</h3>
+                    <p>Authentification et préférences personnelles (prévu via Supabase).</p>
+                </article>
+                <article class="card">
+                    <h3>Historique d'exploration</h3>
+                    <p>Timeline des immersions, lieux audio visités et intensité des sessions.</p>
+                </article>
+                <article class="card">
+                    <h3>Collection de bulles</h3>
+                    <p>Inventaire des samples acquis, niveaux de profondeur et variations favorites.</p>
+                </article>
+                <article class="card">
+                    <h3>Store sonore</h3>
+                    <p>Prochainement : catalogue, achats et récupération d'URL sonores dynamiques.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <nav id="bottomNav" class="bottom-nav hidden-view" aria-label="Navigation principale">
+        <div class="nav-shell">
+            <button id="navHome" class="nav-btn" type="button">Accueil</button>
+            <button id="navSoono" class="nav-btn active" type="button">Soono•°</button>
+            <button id="navProfile" class="nav-btn" type="button">Profil</button>
+        </div>
+    </nav>
 
     <script>
+        const SAMPLE_LIBRARY = [
+            { id: 'zen-gong', name: 'Zen Gong', texture: 'Gong profond et respirant', type: 'triangle', freq: 132, lfo: 0.06, lfoDepth: 0.018, gain: 0.28, baseCutoff: 3400, resonanceFreq: 420, resonanceQ: 1.5 },
+            { id: 'harp-mist', name: 'Harp Mist', texture: 'Harpes douces dans la brume', type: 'sine', freq: 262, lfo: 0.14, lfoDepth: 0.02, gain: 0.25, baseCutoff: 4200, resonanceFreq: 520, resonanceQ: 1.35 },
+            { id: 'tibetan-bowl', name: 'Tibetan Bowl', texture: 'Bol tibétain chaud et stable', type: 'triangle', freq: 196, lfo: 0.08, lfoDepth: 0.016, gain: 0.27, baseCutoff: 3600, resonanceFreq: 480, resonanceQ: 1.8 },
+            { id: 'forest-breath', name: 'Forest Breath', texture: 'Souffle de forêt feutré', type: 'noise', freq: 0, lfo: 0.08, gain: 0.17, baseCutoff: 2600, resonanceFreq: 360, resonanceQ: 1.1 },
+            { id: 'river-flow', name: 'River Flow', texture: 'Ruissellement lent et soyeux', type: 'noise', freq: 0, lfo: 0.12, gain: 0.15, baseCutoff: 2100, resonanceFreq: 300, resonanceQ: 0.95 },
+            { id: 'lotus-drift', name: 'Lotus Drift', texture: 'Nappe méditative veloutée', type: 'sine', freq: 174, lfo: 0.05, lfoDepth: 0.014, gain: 0.24, baseCutoff: 3300, resonanceFreq: 440, resonanceQ: 1.25 },
+            { id: 'moon-choir', name: 'Moon Choir', texture: 'Chœur aérien apaisé', type: 'triangle', freq: 220, lfo: 0.09, lfoDepth: 0.017, gain: 0.22, baseCutoff: 3900, resonanceFreq: 540, resonanceQ: 1.4 },
+            { id: 'bamboo-wind', name: 'Bamboo Wind', texture: 'Vent léger entre les bambous', type: 'noise', freq: 0, lfo: 0.1, gain: 0.14, baseCutoff: 1900, resonanceFreq: 280, resonanceQ: 0.9 },
+            { id: 'temple-halo', name: 'Temple Halo', texture: 'Halo de temple lumineux', type: 'sine', freq: 294, lfo: 0.13, lfoDepth: 0.018, gain: 0.2, baseCutoff: 4400, resonanceFreq: 610, resonanceQ: 1.5 },
+            { id: 'dawn-birds', name: 'Dawn Birds', texture: 'Nature matinale très douce', type: 'triangle', freq: 330, lfo: 0.18, lfoDepth: 0.012, gain: 0.18, baseCutoff: 4700, resonanceFreq: 660, resonanceQ: 1.2 },
+            { id: 'ocean-deep', name: 'Ocean Deep', texture: 'Grondement sombre des abysses', type: 'noise', freq: 0, lfo: 0.04, gain: 0.21, baseCutoff: 680, resonanceFreq: 120, resonanceQ: 2.2 },
+            { id: 'pluie-douce', name: 'Pluie Douce', texture: 'Pluie fine sur les feuilles', type: 'noise', freq: 0, lfo: 0.26, gain: 0.16, baseCutoff: 3500, resonanceFreq: 520, resonanceQ: 0.85 },
+            { id: 'baleine-bleue', name: 'Baleine Bleue', texture: 'Chant grave et lointain de baleine', type: 'sine', freq: 82, lfo: 0.022, lfoDepth: 0.030, gain: 0.28, baseCutoff: 1800, resonanceFreq: 160, resonanceQ: 2.4 },
+            { id: 'grotte-silence', name: 'Grotte Silence', texture: 'Gouttes d\'eau dans la grotte', type: 'triangle', freq: 148, lfo: 0.03, lfoDepth: 0.011, gain: 0.22, baseCutoff: 2200, resonanceFreq: 260, resonanceQ: 2.8 },
+            { id: 'crickets-nuit', name: 'Crickets Nuit', texture: 'Grillons sous les étoiles d\'été', type: 'triangle', freq: 432, lfo: 0.40, lfoDepth: 0.008, gain: 0.14, baseCutoff: 5200, resonanceFreq: 780, resonanceQ: 1.1 },
+            { id: 'cascade-lointaine', name: 'Cascade Lointaine', texture: 'Murmure d\'une cascade dans le brouillard', type: 'noise', freq: 0, lfo: 0.19, gain: 0.17, baseCutoff: 5400, resonanceFreq: 680, resonanceQ: 0.78 },
+            { id: 'tonnerre-doux', name: 'Tonnerre Doux', texture: 'Tonnerre lointain qui roule et s\'efface', type: 'noise', freq: 0, lfo: 0.03, gain: 0.20, baseCutoff: 560, resonanceFreq: 95, resonanceQ: 1.9 },
+            { id: 'vent-desert', name: 'Vent Désert', texture: 'Vent chaud sur les dunes de sable', type: 'noise', freq: 0, lfo: 0.06, gain: 0.16, baseCutoff: 1350, resonanceFreq: 210, resonanceQ: 1.05 },
+            { id: 'aurore', name: 'Aurore', texture: 'Drone éthéré de l\'aurore boréale', type: 'sine', freq: 528, lfo: 0.034, lfoDepth: 0.016, gain: 0.18, baseCutoff: 6000, resonanceFreq: 740, resonanceQ: 1.6 },
+            { id: 'rosee-foret', name: 'Rosée Forêt', texture: 'Fraîcheur cristalline d\'un matin de forêt', type: 'triangle', freq: 370, lfo: 0.12, lfoDepth: 0.014, gain: 0.19, baseCutoff: 4900, resonanceFreq: 620, resonanceQ: 1.3 }
+        ];
+
+        const homeView = document.getElementById('homeView');
+        const experienceView = document.getElementById('experienceView');
+        const profileView = document.getElementById('profileView');
+        const bottomNav = document.getElementById('bottomNav');
+        const navHome = document.getElementById('navHome');
+        const navSoono = document.getElementById('navSoono');
+        const navProfile = document.getElementById('navProfile');
+        const enterExperienceBtn = document.getElementById('enterExperienceBtn');
+        const heroVideo = document.getElementById('heroVideo');
+        const toggleHeroSoundBtn = document.getElementById('toggleHeroSoundBtn');
+
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-
         const ui = document.getElementById('ui');
+        const helperTips = document.getElementById('helperTips');
         const bubblePanel = document.getElementById('bubblePanel');
-        const importBtn = document.getElementById('importBtn');
-        const recordBtn = document.getElementById('recordBtn');
         const cancelBtn = document.getElementById('cancelBtn');
         const dropBtn = document.getElementById('dropBtn');
-        const audioInput = document.getElementById('audioInput');
         const bubbleLayer = document.getElementById('bubbleLayer');
-        const audioName = document.getElementById('audioName');
+        const sampleSelect = document.getElementById('sampleSelect');
+        const sampleHint = document.getElementById('sampleHint');
+        const bubblePropsPanel = document.getElementById('bubblePropsPanel');
+        const propsBubbleName = document.getElementById('propsBubbleName');
+        const propsSampleSelect = document.getElementById('propsSampleSelect');
+        const propsSizeRange = document.getElementById('propsSizeRange');
+        const propsSizeVal = document.getElementById('propsSizeVal');
+        const colorSwatches = document.getElementById('colorSwatches');
+        const propsLayerSelect = document.getElementById('propsLayerSelect');
+        const propsDeleteBtn = document.getElementById('propsDeleteBtn');
+        const propsCloseBtn = document.getElementById('propsCloseBtn');
 
+        let selectedBubble = null;
+        let isDraggingBubble = false;
+        let lastBubbleTapTime = 0;
+        let lastBubbleTapTarget = null;
+
+        const BUBBLE_COLORS = [
+            { hue: 195 }, { hue: 230 }, { hue: 265 }, { hue: 315 },
+            { hue: 15 },  { hue: 45 },  { hue: 140 }, { hue: 175 },
+        ];
+        BUBBLE_COLORS.forEach((c, idx) => {
+            const sw = document.createElement('button');
+            sw.type = 'button';
+            sw.className = 'color-swatch';
+            sw.style.background = `hsl(${c.hue}, 78%, 60%)`;
+            sw.dataset.idx = idx;
+            sw.addEventListener('click', () => {
+                if (!selectedBubble) return;
+                selectedBubble.hue = c.hue;
+                refreshSwatchSelection();
+            });
+            colorSwatches.appendChild(sw);
+        });
+
+        SAMPLE_LIBRARY.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id; opt.textContent = s.name;
+            propsSampleSelect.appendChild(opt);
+        });
+
+        function refreshSwatchSelection() {
+            colorSwatches.querySelectorAll('.color-swatch').forEach((sw, i) => {
+                sw.classList.toggle('selected', !!selectedBubble && BUBBLE_COLORS[i].hue === selectedBubble.hue);
+            });
+        }
+
+        function openBubblePropsPanel(bubble) {
+            selectedBubble = bubble;
+            isTethered = false;
+            if (bubble.hue === undefined) bubble.hue = 195;
+            propsBubbleName.textContent = bubble.label || 'Bulle sonore';
+            propsSampleSelect.value = bubble._sampleId || SAMPLE_LIBRARY[0].id;
+            propsSizeRange.value = bubble.r;
+            propsSizeVal.textContent = Math.round(bubble.r) + 'px';
+            propsLayerSelect.value = bubble.layer;
+            refreshSwatchSelection();
+            bubblePropsPanel.classList.add('visible');
+            ui.textContent = '⟡ Touche l\'océan pour déplacer · Double tap pour fermer';
+        }
+
+        function closeBubblePropsPanel() {
+            bubblePropsPanel.classList.remove('visible');
+            selectedBubble = null;
+            isDraggingBubble = false;
+            ui.textContent = 'Double tap sur le poisson pour ouvrir la collection sonore';
+            rotateHelperTip();
+        }
+
+        function rebuildBubbleSound(bubble, sample) {
+            if (bubble.sound) {
+                try { bubble.sound.source.stop(); } catch (_) {}
+            }
+            bubble.sound = createBinauralSound(sample);
+            bubble.label = sample.name;
+            bubble._sampleId = sample.id;
+            bubble.resotagQueue = createResotagList(sample);
+            bubble.lastImpactAt = 0;
+            bubble.fishTouching = false;
+            for (let i = RESOTAGS.length - 1; i >= 0; i--) {
+                if (RESOTAGS[i].bubbleId === bubble.id) {
+                    unlinkResotag(RESOTAGS[i].id);
+                    RESOTAGS.splice(i, 1);
+                }
+            }
+            propsBubbleName.textContent = sample.name;
+            bubble.currentVolume = 0;
+            bubble.zoneMix = 0;
+            bubble.resonance = 0;
+        }
+
+        propsSampleSelect.addEventListener('change', () => {
+            if (!selectedBubble) return;
+            const sample = SAMPLE_LIBRARY.find(s => s.id === propsSampleSelect.value);
+            if (sample) rebuildBubbleSound(selectedBubble, sample);
+        });
+        propsSizeRange.addEventListener('input', () => {
+            if (!selectedBubble) return;
+            selectedBubble.r = parseInt(propsSizeRange.value);
+            propsSizeVal.textContent = propsSizeRange.value + 'px';
+        });
+        propsLayerSelect.addEventListener('change', () => {
+            if (!selectedBubble) return;
+            const spatial = layerToSpatial(propsLayerSelect.value);
+            selectedBubble.layer = propsLayerSelect.value;
+            selectedBubble.depthOffset = spatial.depthOffset;
+        });
+        propsDeleteBtn.addEventListener('click', () => {
+            if (!selectedBubble) return;
+            try { selectedBubble.sound?.source?.stop(); } catch (_) {}
+            for (let i = RESOTAGS.length - 1; i >= 0; i--) {
+                if (RESOTAGS[i].bubbleId === selectedBubble.id) {
+                    unlinkResotag(RESOTAGS[i].id);
+                    RESOTAGS.splice(i, 1);
+                }
+            }
+            const idx = BUBBLES.indexOf(selectedBubble);
+            if (idx !== -1) BUBBLES.splice(idx, 1);
+            closeBubblePropsPanel();
+        });
+        propsCloseBtn.addEventListener('click', closeBubblePropsPanel);
+
+        let currentView = 'home';
         let w, h;
         let isTethered = false;
         let mouseWorld = { x: 0, y: 0 };
         let isInteractionPaused = false;
         let lastFishTap = { time: 0, x: 0, y: 0 };
-        let activeAudioBlob = null;
-        let activeAudioName = '';
-        let recorder = null;
-        let recordingChunks = [];
-        let micStream = null;
+        let selectedSampleId = SAMPLE_LIBRARY[0].id;
         let audioCtx = null;
         let masterGainNode = null;
+        let helperTipIndex = 0;
+        const helperTipsPlaylist = [
+            'Garde le doigt (ou clic) appuyé dans l’océan : le poisson-plume suit ton mouvement.',
+            'Pour ouvrir la collection, fais un double tap (ou double clic) directement sur le poisson.',
+            'Dans la collection, choisis un sample puis une position (face, dessus, dessous).',
+            'Valide avec « Ajouter à la collection » pour déposer une bulle sonore dans la scène.',
+            'Resotags : chaque choc libère une luciole ; touche-la pour révéler son mot 3 secondes.'
+        ];
 
         const ARENA_RADIUS = 2000;
         const SOUND_HEAR_RADIUS = 460;
-        const Z_DEPTH = 140;
+        const DEPTH_Z = 140;
         const BUBBLES = [];
-        const NUM_BUBBLES = 18;
         const WAKE_PARTICLES = [];
         const MAX_WAKE_PARTICLES = 5;
         const RIPPLE_RINGS = [];
         const MAX_RIPPLES = 18;
         const SURFACE_SPARKLES = [];
         const MAX_SURFACE_SPARKLES = 30;
+        const RESONANCE_WAVES = [];
+        const MAX_RESONANCE_WAVES = 14;
+        const BREATH_WAVES = [];
+        const MAX_BREATH_WAVES = 9;
+        const DRIFT_MOTES = [];
+        const MAX_DRIFT_MOTES = 22;
+        const RESOTAGS = [];
+        const RESOTAG_LINKS = [];
+        const MAX_RESOTAG_LINKS = 120;
+        const HAIKU_TRIANGLES = [];
+        let haikuTrailWords = [];
+        const RESOTAG_POOL = [
+            'écume', 'abysses', 'lueur', 'frisson', 'pollen', 'sillage',
+            'corail', 'souffle', 'nacre', 'aurore', 'vertige', 'marée',
+            'brume', 'murmure', 'ivresse', 'algue', 'reflet', 'dérive',
+            'pulsation', 'source', 'plume', 'halo', 'onde', 'silence'
+        ];
+        const STARTING_BUBBLES = [
+            { sampleId: 'forêt-zen', layer: 'front', hue: 188, x: -240, y: -120, r: 72 },
+            { sampleId: 'ocean-deep', layer: 'below', hue: 235, x: 220, y: 170, r: 78 },
+            { sampleId: 'aurore', layer: 'above', hue: 318, x: 70, y: -255, r: 68 },
+        ];
+        let shipBreathEmitter = 0;
+        let bubbleIdSeed = 1;
+        let resotagIdSeed = 1;
+
+        const arenaResonance = { level: 0, hue: 198 };
 
         const ship = {
-            x: 0, y: 0,
-            vx: 0, vy: 0,
-            angle: 0,
-            trail: [],
-            maxTrail: 72,
-            stiffness: 0.0026,
-            damping: 0.93,
-            turnEase: 0.06,
-            maxSpeed: 3.1,
-            wakeEmitter: 0,
-            rippleEmitter: 0
+            x: 0, y: 0, vx: 0, vy: 0, angle: 0, trail: [], maxTrail: 72,
+            stiffness: 0.0026, damping: 0.93, turnEase: 0.06, maxSpeed: 3.1,
+            wakeEmitter: 0, rippleEmitter: 0
         };
+        const camera = { x: 0, y: 0, targetX: 0, targetY: 0, ease: 0.05 };
 
-        const camera = {
-            x: 0, y: 0,
-            targetX: 0, targetY: 0,
-            ease: 0.05
-        };
-
-        function initBubbles() {
-            for (let i = 0; i < NUM_BUBBLES; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const dist = Math.sqrt(Math.random()) * (ARENA_RADIUS - 220);
-                BUBBLES.push({
-                    x: Math.cos(angle) * dist,
-                    y: Math.sin(angle) * dist,
-                    r: 50 + Math.random() * 60,
-                    layer: Math.random() > 0.5 ? 'surface' : 'deep',
-                    isActive: false,
-                    sound: null,
-                    label: ''
-                });
-            }
+        function setActiveNav(target) {
+            [navHome, navSoono, navProfile].forEach(btn => btn.classList.remove('active'));
+            if (target === 'home') navHome.classList.add('active');
+            if (target === 'soono') navSoono.classList.add('active');
+            if (target === 'profile') navProfile.classList.add('active');
         }
+
+        function showView(target) {
+            currentView = target;
+            homeView.classList.toggle('hidden-view', target !== 'home');
+            experienceView.classList.toggle('hidden-view', target !== 'experience');
+            profileView.classList.toggle('hidden-view', target !== 'profile');
+            bottomNav.classList.remove('hidden-view');
+            setActiveNav(target === 'experience' ? 'soono' : target);
+            if (target !== 'experience') {
+                isTethered = false;
+                closeBubblePanel();
+            }
+            if (target === 'experience') {
+                rotateHelperTip(true);
+            }
+            resize();
+        }
+
+        function rotateHelperTip(reset = false) {
+            if (reset) helperTipIndex = 0;
+            if (!helperTips) return;
+            helperTips.textContent = helperTipsPlaylist[helperTipIndex];
+            helperTipIndex = (helperTipIndex + 1) % helperTipsPlaylist.length;
+        }
+        setInterval(() => {
+            if (currentView !== 'experience' || isInteractionPaused) return;
+            rotateHelperTip();
+        }, 5000);
+
+        enterExperienceBtn.addEventListener('click', () => {
+            showView('experience');
+            ensureAllAudioRunning();
+        });
+
+        function syncHeroSoundButton() {
+            if (!heroVideo || !toggleHeroSoundBtn) return;
+            const isMuted = heroVideo.muted || heroVideo.volume === 0;
+            toggleHeroSoundBtn.textContent = isMuted ? 'Activer le son' : 'Couper le son';
+        }
+
+        function toggleHeroSound() {
+            if (!heroVideo) return;
+            heroVideo.muted = !heroVideo.muted;
+            if (!heroVideo.muted && heroVideo.volume === 0) heroVideo.volume = 1;
+            heroVideo.play().catch(() => {});
+            syncHeroSoundButton();
+        }
+
+        if (toggleHeroSoundBtn) {
+            toggleHeroSoundBtn.addEventListener('click', toggleHeroSound);
+        }
+        if (heroVideo) {
+            heroVideo.addEventListener('volumechange', syncHeroSoundButton);
+            syncHeroSoundButton();
+        }
+
+        navHome.addEventListener('click', () => showView('home'));
+        navSoono.addEventListener('click', () => showView('experience'));
+        navProfile.addEventListener('click', () => showView('profile'));
+
+        SAMPLE_LIBRARY.forEach(sample => {
+            const option = document.createElement('option');
+            option.value = sample.id;
+            option.textContent = sample.name;
+            sampleSelect.appendChild(option);
+        });
+
+        function updateSampleHint() {
+            const sample = SAMPLE_LIBRARY.find(s => s.id === selectedSampleId) || SAMPLE_LIBRARY[0];
+            sampleHint.textContent = `${sample.texture} · ${sample.name}`;
+        }
+        updateSampleHint();
+
+        sampleSelect.addEventListener('change', () => {
+            selectedSampleId = sampleSelect.value;
+            updateSampleHint();
+        });
 
         function resize() {
             w = window.innerWidth;
@@ -198,126 +754,92 @@
             canvas.width = w;
             canvas.height = h;
         }
-
         window.addEventListener('resize', resize);
         resize();
-        initBubbles();
 
         function getMousePos(e) {
             const sx = e.clientX ?? (e.touches && e.touches[0]?.clientX);
             const sy = e.clientY ?? (e.touches && e.touches[0]?.clientY);
-            return {
-                x: sx - w / 2 + camera.x,
-                y: sy - h / 2 + camera.y
-            };
+            return { x: sx - w / 2 + camera.x, y: sy - h / 2 + camera.y };
+        }
+
+        function isInteractiveTarget(target) {
+            return bubblePanel.contains(target) || bubblePropsPanel.contains(target) ||
+                   bottomNav.contains(target) || homeView.contains(target) || profileView.contains(target);
         }
 
         function onStart(e) {
-            if (isInteractionPaused) return;
+            if (currentView !== 'experience') return;
             const pos = getMousePos(e);
             mouseWorld = pos;
             ensureAllAudioRunning();
-
-            const fishTapDistance = Math.hypot(pos.x - ship.x, pos.y - ship.y);
             const now = performance.now();
-            if (fishTapDistance < 28) {
-                const isDoubleTap = now - lastFishTap.time < 330 && Math.hypot(pos.x - lastFishTap.x, pos.y - lastFishTap.y) < 40;
-                lastFishTap = { time: now, x: pos.x, y: pos.y };
-                if (isDoubleTap) {
-                    openBubblePanel();
-                    return;
+
+            // Props panel open → canvas touch = drag selected bubble
+            if (selectedBubble) {
+                isDraggingBubble = true;
+                isTethered = false;
+                return;
+            }
+
+            if (isInteractionPaused) return;
+
+            // Detect double tap on a placed bubble
+            for (const b of BUBBLES) {
+                if (Math.hypot(pos.x - b.x, pos.y - b.y) <= b.r + 12) {
+                    const isDoubleTap = now - lastBubbleTapTime < 380 && lastBubbleTapTarget === b;
+                    lastBubbleTapTime = now;
+                    lastBubbleTapTarget = b;
+                    if (isDoubleTap) { openBubblePropsPanel(b); return; }
+                    return; // single tap on bubble: absorb, no tether
                 }
             }
 
+            // Fish double tap → open creation panel
+            const fishTapDistance = Math.hypot(pos.x - ship.x, pos.y - ship.y);
+            const now2 = now;
+            if (fishTapDistance < 28) {
+                const isDoubleTap = now2 - lastFishTap.time < 330 && Math.hypot(pos.x - lastFishTap.x, pos.y - lastFishTap.y) < 40;
+                lastFishTap = { time: now2, x: pos.x, y: pos.y };
+                if (isDoubleTap) { openBubblePanel(); return; }
+            }
             isTethered = true;
         }
-
         function onMove(e) {
-            if (isInteractionPaused) return;
-            mouseWorld = getMousePos(e);
+            if (currentView !== 'experience') return;
+            const pos = getMousePos(e);
+            mouseWorld = pos;
+            if (isDraggingBubble && selectedBubble) {
+                selectedBubble.x = pos.x;
+                selectedBubble.y = pos.y;
+            }
         }
-
-        function onEnd() {
-            isTethered = false;
-        }
+        function onEnd() { isTethered = false; isDraggingBubble = false; }
 
         window.addEventListener('mousedown', onStart);
         window.addEventListener('mousemove', onMove);
         window.addEventListener('mouseup', onEnd);
 
-        function isPanelInteractionTarget(target) {
-            return bubblePanel.contains(target);
-        }
-
         window.addEventListener('touchstart', (e) => {
-            if (isPanelInteractionTarget(e.target)) return;
+            if (isInteractiveTarget(e.target)) return;
             e.preventDefault();
             onStart(e);
         }, { passive: false });
         window.addEventListener('touchmove', (e) => {
-            if (isPanelInteractionTarget(e.target)) return;
+            if (currentView !== 'experience') return;
+            if (isInteractiveTarget(e.target)) return;
             e.preventDefault();
             onMove(e);
         }, { passive: false });
         window.addEventListener('touchend', onEnd);
 
-        importBtn.addEventListener('click', () => audioInput.click());
-
-        audioInput.addEventListener('change', () => {
-            const file = audioInput.files?.[0];
-            if (!file) return;
-            activeAudioBlob = file;
-            activeAudioName = file.name;
-            audioName.textContent = `Son sélectionné : ${file.name}`;
-            dropBtn.disabled = false;
-        });
-
-        recordBtn.addEventListener('click', async () => {
-            if (recorder && recorder.state === 'recording') {
-                recorder.stop();
-                return;
-            }
-
-            try {
-                micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                recordingChunks = [];
-                recorder = new MediaRecorder(micStream);
-
-                recorder.ondataavailable = (event) => {
-                    if (event.data.size > 0) recordingChunks.push(event.data);
-                };
-
-                recorder.onstop = () => {
-                    activeAudioBlob = new Blob(recordingChunks, { type: recorder.mimeType || 'audio/webm' });
-                    activeAudioName = `Enregistrement ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
-                    audioName.textContent = `${activeAudioName} prêt`;
-                    dropBtn.disabled = false;
-                    recordBtn.textContent = 'Enregistrer';
-                    if (micStream) {
-                        micStream.getTracks().forEach(track => track.stop());
-                        micStream = null;
-                    }
-                };
-
-                recorder.start();
-                recordBtn.textContent = 'Arrêter';
-                audioName.textContent = 'Enregistrement en cours...';
-            } catch (error) {
-                audioName.textContent = 'Micro non disponible';
-            }
-        });
-
         cancelBtn.addEventListener('click', closeBubblePanel);
-
-        dropBtn.addEventListener('click', async () => {
-            if (!activeAudioBlob) return;
-            try {
-                const bubble = await buildSoundBubble(activeAudioBlob, activeAudioName, bubbleLayer.value);
-                BUBBLES.push(bubble);
-                closeBubblePanel();
-            } catch (error) {
-                audioName.textContent = 'Impossible de décoder ce son';
-            }
+        dropBtn.addEventListener('click', () => {
+            const sample = SAMPLE_LIBRARY.find(s => s.id === selectedSampleId);
+            if (!sample) return;
+            const bubble = buildSoundBubble(sample, bubbleLayer.value);
+            BUBBLES.push(bubble);
+            closeBubblePanel();
         });
 
         function openBubblePanel() {
@@ -326,22 +848,15 @@
             ship.vx = 0;
             ship.vy = 0;
             bubblePanel.classList.remove('hidden');
-            ui.textContent = 'Poisson stoppé • Choisissez votre bulle sonore';
+            ui.textContent = 'Collection ouverte • Choisissez sample + profondeur';
+            helperTips.textContent = 'Astuce : sélectionne un sample + une position, puis clique sur « Ajouter à la collection ».';
         }
 
         function closeBubblePanel() {
-            isInteractionPaused = false;
             bubblePanel.classList.add('hidden');
-            activeAudioBlob = null;
-            activeAudioName = '';
-            dropBtn.disabled = true;
-            audioInput.value = '';
-            audioName.textContent = 'Aucun son sélectionné';
-            bubbleLayer.value = 'surface';
-
-            if (recorder && recorder.state === 'recording') recorder.stop();
-            recordBtn.textContent = 'Enregistrer';
-            ui.textContent = 'Double tap sur le poisson pour déposer une bulle sonore';
+            isInteractionPaused = false;
+            ui.textContent = 'Double tap sur le poisson pour ouvrir la collection sonore';
+            rotateHelperTip();
         }
 
         function ensureAudioContext() {
@@ -355,16 +870,93 @@
             return audioCtx;
         }
 
-        function layerToDepthOffset(layer) {
-            return layer === 'surface' ? Z_DEPTH : -Z_DEPTH;
+        function buildSyntheticBuffer(ctx, seconds = 3.4) {
+            const sampleRate = ctx.sampleRate;
+            const frameCount = Math.floor(sampleRate * seconds);
+            const buffer = ctx.createBuffer(1, frameCount, sampleRate);
+            const data = buffer.getChannelData(0);
+            let smooth = 0;
+            for (let i = 0; i < frameCount; i++) {
+                const t = i / sampleRate;
+                const env = 0.54 + Math.sin(t * Math.PI * 2 * 0.09) * 0.16;
+                smooth = smooth * 0.96 + (Math.random() * 2 - 1) * 0.04;
+                data[i] = smooth * env * 0.38;
+            }
+            return buffer;
         }
 
-        async function buildSoundBubble(audioBlob, label, layer = 'surface') {
+        function layerToSpatial(layer) {
+            if (layer === 'above') return { offsetY: -95, depthOffset: DEPTH_Z };
+            if (layer === 'below') return { offsetY: 95, depthOffset: -DEPTH_Z };
+            return { offsetY: 0, depthOffset: 0 };
+        }
+
+        function createResotagList(sample) {
+            const seed = `${sample.name} ${sample.texture}`.toLowerCase()
+                .replace(/[^a-zàâçéèêëîïôûùüÿñæœ\s-]/gi, ' ')
+                .split(/\s+/)
+                .filter(Boolean);
+            const tags = [];
+            const taken = new Set();
+
+            seed.forEach(word => {
+                if (word.length < 4) return;
+                if (taken.has(word)) return;
+                taken.add(word);
+                tags.push(word);
+            });
+
+            const shuffledPool = [...RESOTAG_POOL].sort(() => Math.random() - 0.5);
+            shuffledPool.forEach(word => {
+                if (tags.length >= 12) return;
+                if (taken.has(word)) return;
+                taken.add(word);
+                tags.push(word);
+            });
+            while (tags.length < 12) tags.push(`réso-${tags.length + 1}`);
+            return tags.slice(0, 12);
+        }
+
+        function unlinkResotag(tagId) {
+            for (let i = RESOTAG_LINKS.length - 1; i >= 0; i--) {
+                const l = RESOTAG_LINKS[i];
+                if (l.a === tagId || l.b === tagId) RESOTAG_LINKS.splice(i, 1);
+            }
+        }
+
+        function releaseResotagFromBubble(bubble) {
+            if (!bubble.resotagQueue?.length) return;
+            const text = bubble.resotagQueue.shift();
+            const angle = Math.random() * Math.PI * 2;
+            const spawnRadius = bubble.r + 14 + Math.random() * 20;
+            RESOTAGS.push({
+                id: `rt-${resotagIdSeed++}`,
+                bubbleId: bubble.id,
+                bubbleRef: bubble,
+                text,
+                x: bubble.x + Math.cos(angle) * spawnRadius,
+                y: bubble.y + Math.sin(angle) * spawnRadius,
+                vx: Math.cos(angle) * (0.03 + Math.random() * 0.03),
+                vy: Math.sin(angle) * (0.03 + Math.random() * 0.03),
+                orbitRadius: bubble.r + 24 + Math.random() * 34,
+                orbitAngle: angle,
+                orbitSpeed: (Math.random() * 0.00065 + 0.00022) * (Math.random() < 0.5 ? -1 : 1),
+                drift: 0.0025 + Math.random() * 0.0035,
+                motherHue: bubble.hue ?? 195,
+                revealedUntil: 0,
+                bornAt: performance.now(),
+            });
+        }
+
+        function buildSoundBubble(sample, layer = 'front') {
             const mouthDistance = 20;
             const dirX = Math.cos(ship.angle - Math.PI / 2);
             const dirY = Math.sin(ship.angle - Math.PI / 2);
+            const spatial = layerToSpatial(layer);
+
             let x = ship.x + dirX * mouthDistance;
-            let y = ship.y + dirY * mouthDistance;
+            let y = ship.y + dirY * mouthDistance + spatial.offsetY;
+
             const maxRadius = ARENA_RADIUS - 80;
             const distance = Math.hypot(x, y);
             if (distance > maxRadius) {
@@ -372,66 +964,95 @@
                 y = (y / distance) * maxRadius;
             }
 
-            const sound = await createBinauralSound(audioBlob);
-
-            const bubble = {
-                x,
-                y,
-                r: 64,
-                layer,
-                depthOffset: layerToDepthOffset(layer),
-                isActive: false,
-                sound,
-                label,
-                currentVolume: 0
+            const sound = createBinauralSound(sample);
+            return {
+                id: `bubble-${bubbleIdSeed++}`,
+                x, y, r: 64, layer, depthOffset: spatial.depthOffset, isActive: false,
+                sound, label: sample.name, _sampleId: sample.id,
+                currentVolume: 0, zoneMix: 0, resonance: 0, wasInZone: false, hue: 195,
+                resotagQueue: createResotagList(sample),
+                lastImpactAt: 0,
+                fishTouching: false
             };
-
-            ensureBubbleAudioRunning(bubble);
-            return bubble;
         }
 
-        async function createBinauralSound(audioBlob) {
+        function placeInitialArenaBubbles() {
+            if (BUBBLES.length) return;
+            STARTING_BUBBLES.forEach((cfg) => {
+                const sample = SAMPLE_LIBRARY.find(s => s.id === cfg.sampleId) || SAMPLE_LIBRARY[0];
+                const bubble = buildSoundBubble(sample, cfg.layer);
+                bubble.x = cfg.x;
+                bubble.y = cfg.y;
+                bubble.r = cfg.r;
+                bubble.hue = cfg.hue;
+                BUBBLES.push(bubble);
+            });
+        }
+
+        function createBinauralSound(sample) {
             const ctx = ensureAudioContext();
             if (!ctx) return null;
-
-            const arrayBuffer = await audioBlob.arrayBuffer();
-            const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
-            const source = ctx.createBufferSource();
-            source.buffer = audioBuffer;
-            source.loop = true;
 
             const distanceGain = ctx.createGain();
             distanceGain.gain.value = 0;
 
             const toneFilter = ctx.createBiquadFilter();
             toneFilter.type = 'lowpass';
-            toneFilter.frequency.value = 12000;
+            toneFilter.frequency.value = sample.baseCutoff ?? 4200;
             toneFilter.Q.value = 0.6;
 
+            const analyser = ctx.createAnalyser();
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.86;
+            const analyserData = new Uint8Array(analyser.frequencyBinCount);
+
+            const resonantFilter = ctx.createBiquadFilter();
+            resonantFilter.type = 'bandpass';
+            resonantFilter.frequency.value = sample.resonanceFreq ?? 520;
+            resonantFilter.Q.value = sample.resonanceQ ?? 1.2;
+
+            const resonantGain = ctx.createGain();
+            resonantGain.gain.value = 0;
+
             const panner = new PannerNode(ctx, {
-                panningModel: 'HRTF',
-                distanceModel: 'inverse',
-                refDistance: 90,
-                maxDistance: SOUND_HEAR_RADIUS * 2.2,
-                rolloffFactor: 1.2,
-                coneInnerAngle: 360,
-                coneOuterAngle: 0,
-                coneOuterGain: 1
+                panningModel: 'HRTF', distanceModel: 'inverse', refDistance: 90,
+                maxDistance: SOUND_HEAR_RADIUS * 2.2, rolloffFactor: 1.2, coneInnerAngle: 360,
+                coneOuterAngle: 0, coneOuterGain: 1
             });
 
-            source.connect(distanceGain);
+            const textureGain = ctx.createGain();
+            textureGain.gain.value = sample.gain ?? 0.24;
+
+            let source;
+            if (sample.type === 'noise') {
+                source = ctx.createBufferSource();
+                source.buffer = buildSyntheticBuffer(ctx);
+                source.loop = true;
+            } else {
+                source = ctx.createOscillator();
+                source.type = sample.type;
+                source.frequency.value = sample.freq;
+                const lfo = ctx.createOscillator();
+                const lfoGain = ctx.createGain();
+                lfo.frequency.value = Math.max(0.05, sample.lfo);
+                lfoGain.gain.value = sample.freq * (sample.lfoDepth ?? 0.02);
+                lfo.connect(lfoGain);
+                lfoGain.connect(source.frequency);
+                lfo.start();
+            }
+
+            source.connect(textureGain);
+            textureGain.connect(distanceGain);
+            textureGain.connect(analyser);
             distanceGain.connect(toneFilter);
             toneFilter.connect(panner);
+            distanceGain.connect(resonantFilter);
+            resonantFilter.connect(resonantGain);
+            resonantGain.connect(panner);
             panner.connect(masterGainNode);
             source.start();
 
-            return {
-                source,
-                distanceGain,
-                toneFilter,
-                panner,
-                isStarted: true
-            };
+            return { source, distanceGain, toneFilter, resonantFilter, resonantGain, panner, analyser, analyserData, isStarted: true };
         }
 
         function ensureBubbleAudioRunning(bubble) {
@@ -441,11 +1062,7 @@
 
         function ensureAllAudioRunning() {
             const ctx = ensureAudioContext();
-            if (ctx?.state === 'suspended') {
-                ctx.resume().catch(() => {
-                    // Certains navigateurs exigent une interaction explicite.
-                });
-            }
+            if (ctx?.state === 'suspended') ctx.resume().catch(() => {});
             BUBBLES.forEach(ensureBubbleAudioRunning);
         }
 
@@ -472,6 +1089,7 @@
         }
 
         function update() {
+            if (currentView !== 'experience') return;
             if (isTethered && !isInteractionPaused) {
                 const dx = mouseWorld.x - ship.x;
                 const dy = mouseWorld.y - ship.y;
@@ -479,11 +1097,17 @@
                 ship.vy += dy * ship.stiffness;
             }
 
+            let strongestResonance = 0;
+            let resonanceHueMix = 0;
+            let resonanceWeight = 0;
+
             BUBBLES.forEach(b => {
                 const dx = ship.x - b.x;
                 const dy = ship.y - b.y;
                 const dz = (b.depthOffset ?? 0);
                 const dist3d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                const zoneRadius = SOUND_HEAR_RADIUS * 0.7;
+                const insideZone = dist3d < zoneRadius;
 
                 if (b.sound) {
                     const normalized = Math.max(0, 1 - (dist3d / SOUND_HEAR_RADIUS));
@@ -497,8 +1121,22 @@
                     const front = Math.cos(relativeAngle);
                     const rearFactor = Math.min(1, Math.max(0, (1 - front) * 0.5));
                     const distFactor = Math.min(1, dist3d / SOUND_HEAR_RADIUS);
-                    const cutoff = 12000 - (rearFactor * 7000) - (distFactor * 2600);
+                    const audioEnergy = sampleBubbleEnergy(b);
+                    const cutoff = 12000 - (rearFactor * 7000) - (distFactor * 2600) + audioEnergy * 1100;
                     b.sound.toneFilter.frequency.value = Math.max(1800, cutoff);
+
+                    b.zoneMix += ((insideZone ? 1 : 0) - b.zoneMix) * 0.05;
+                    const resonanceTarget = b.zoneMix * (0.45 + audioEnergy * 0.55);
+                    b.resonance += (resonanceTarget - b.resonance) * 0.08;
+
+                    if (b.sound.resonantFilter) {
+                        b.sound.resonantFilter.frequency.value = 680 + audioEnergy * 650 + b.resonance * 320;
+                        b.sound.resonantFilter.Q.value = 1.2 + b.resonance * 2.8;
+                    }
+                    if (b.sound.resonantGain) {
+                        const resonantVolume = b.currentVolume * (0.12 + b.resonance * 0.25);
+                        b.sound.resonantGain.gain.value = resonantVolume;
+                    }
 
                     if (b.sound.panner.positionX) {
                         b.sound.panner.positionX.value = b.x;
@@ -508,22 +1146,29 @@
                         b.sound.panner.setPosition(b.x, b.y, b.depthOffset ?? 0);
                     }
                     b.isActive = dist3d < SOUND_HEAR_RADIUS;
+
+                    if (insideZone && !b.wasInZone) spawnResonanceWave(b);
+                    if (b.resonance > strongestResonance) strongestResonance = b.resonance;
+                    resonanceHueMix += b.resonance * (b.layer === 'below' ? 228 : 192);
+                    resonanceWeight += b.resonance;
+                    b.wasInZone = insideZone;
                 } else {
                     b.isActive = false;
                 }
-
             });
+
+            arenaResonance.level += (strongestResonance - arenaResonance.level) * 0.04;
+            const targetHue = resonanceWeight > 0 ? (resonanceHueMix / resonanceWeight) : 198;
+            arenaResonance.hue += (targetHue - arenaResonance.hue) * 0.05;
 
             ship.vx *= ship.damping;
             ship.vy *= ship.damping;
-
             const speed = Math.hypot(ship.vx, ship.vy);
             if (speed > ship.maxSpeed) {
                 const ratio = ship.maxSpeed / speed;
                 ship.vx *= ratio;
                 ship.vy *= ratio;
             }
-
             ship.x += ship.vx;
             ship.y += ship.vy;
 
@@ -555,6 +1200,11 @@
             updateAudioListener();
             updateWakeParticles(speed);
             updateSurfaceEffects(speed);
+            updateResonanceWaves();
+            updatePoetryEffects(speed);
+            updateResotags(speed);
+            updateHaikuAttachment(speed);
+            updateHaikuTriangles();
         }
 
         function updateWakeParticles(speed) {
@@ -570,10 +1220,7 @@
                 const tailY = ship.y + backY * 14;
                 const targetCount = Math.min(MAX_WAKE_PARTICLES, 3 + Math.round(speedNorm * 2));
 
-                while (WAKE_PARTICLES.length < targetCount) {
-                    spawnWakeParticle(tailX, tailY, backX, backY, now);
-                }
-
+                while (WAKE_PARTICLES.length < targetCount) spawnWakeParticle(tailX, tailY, backX, backY, now);
                 while (ship.wakeEmitter >= 1) {
                     ship.wakeEmitter -= 1;
                     if (WAKE_PARTICLES.length >= MAX_WAKE_PARTICLES) break;
@@ -589,16 +1236,12 @@
                     WAKE_PARTICLES.splice(i, 1);
                     continue;
                 }
-
                 p.vx *= 0.993;
                 p.vy = p.vy * 0.992 - 0.01;
                 p.x += p.vx;
                 p.y += p.vy;
             }
-
-            if (WAKE_PARTICLES.length > MAX_WAKE_PARTICLES) {
-                WAKE_PARTICLES.splice(0, WAKE_PARTICLES.length - MAX_WAKE_PARTICLES);
-            }
+            if (WAKE_PARTICLES.length > MAX_WAKE_PARTICLES) WAKE_PARTICLES.splice(0, WAKE_PARTICLES.length - MAX_WAKE_PARTICLES);
         }
 
         function spawnWakeParticle(tailX, tailY, backX, backY, now) {
@@ -610,11 +1253,8 @@
                 y: tailY + tangentY * (Math.random() - 0.5) * jitter + backY * (Math.random() * 4),
                 vx: backX * (0.06 + Math.random() * 0.18) + tangentX * (Math.random() - 0.5) * 0.07,
                 vy: backY * (0.06 + Math.random() * 0.18) + tangentY * (Math.random() - 0.5) * 0.07,
-                age: 0,
-                life: 520 + Math.random() * 260,
-                size: 2 + Math.random() * 1.4,
-                alpha: 0.32 + Math.random() * 0.2,
-                bornAt: now
+                age: 0, life: 520 + Math.random() * 260, size: 2 + Math.random() * 1.4,
+                alpha: 0.32 + Math.random() * 0.2, bornAt: now
             });
         }
 
@@ -640,16 +1280,11 @@
                 ripple.alpha = ripple.baseAlpha * (1 - t);
             }
 
-            while (SURFACE_SPARKLES.length < MAX_SURFACE_SPARKLES) {
-                SURFACE_SPARKLES.push(spawnSparkle(now));
-            }
-
+            while (SURFACE_SPARKLES.length < MAX_SURFACE_SPARKLES) SURFACE_SPARKLES.push(spawnSparkle(now));
             for (let i = SURFACE_SPARKLES.length - 1; i >= 0; i--) {
                 const sparkle = SURFACE_SPARKLES[i];
                 sparkle.age = now - sparkle.bornAt;
-                if (sparkle.age > sparkle.life) {
-                    SURFACE_SPARKLES[i] = spawnSparkle(now);
-                }
+                if (sparkle.age > sparkle.life) SURFACE_SPARKLES[i] = spawnSparkle(now);
             }
         }
 
@@ -681,9 +1316,456 @@
             };
         }
 
+        function sampleBubbleEnergy(bubble) {
+            if (!bubble.sound?.analyser || !bubble.sound?.analyserData) return 0;
+            bubble.sound.analyser.getByteFrequencyData(bubble.sound.analyserData);
+            let sum = 0;
+            const binsToSample = 18;
+            for (let i = 0; i < binsToSample; i++) sum += bubble.sound.analyserData[i];
+            const avg = sum / (binsToSample * 255);
+            return Math.min(1, Math.max(0, avg * 1.9));
+        }
+
+        function spawnResonanceWave(bubble) {
+            if (RESONANCE_WAVES.length >= MAX_RESONANCE_WAVES) RESONANCE_WAVES.shift();
+            RESONANCE_WAVES.push({
+                x: bubble.x,
+                y: bubble.y,
+                bornAt: performance.now(),
+                life: 2800 + Math.random() * 1600,
+                radius: bubble.r * 0.9,
+                maxRadius: 520 + Math.random() * 340,
+                alpha: 0.22,
+                hue: bubble.layer === 'below' ? 230 : 192
+            });
+        }
+
+        function updateResonanceWaves() {
+            const now = performance.now();
+            for (let i = RESONANCE_WAVES.length - 1; i >= 0; i--) {
+                const wave = RESONANCE_WAVES[i];
+                const t = (now - wave.bornAt) / wave.life;
+                if (t >= 1) {
+                    RESONANCE_WAVES.splice(i, 1);
+                    continue;
+                }
+                wave.radius = wave.maxRadius * t;
+                wave.alpha = (1 - t) * 0.22;
+            }
+        }
+
+        function updatePoetryEffects(speed) {
+            const now = performance.now();
+            const speedNorm = Math.min(1, speed / ship.maxSpeed);
+
+            // --- BREATH WAVES ---
+            const breathInterval = 1.6 + (1 - speedNorm) * 1.2;
+            shipBreathEmitter += (0.016 + speedNorm * 0.022);
+            if (shipBreathEmitter >= breathInterval) {
+                shipBreathEmitter = 0;
+                if (BREATH_WAVES.length < MAX_BREATH_WAVES) {
+                    const elongation = 1 + speedNorm * 1.4;
+                    BREATH_WAVES.push({
+                        x: ship.x, y: ship.y,
+                        angle: ship.angle,
+                        bornAt: now,
+                        life: 3200 + Math.random() * 1400,
+                        maxRx: 180 + Math.random() * 120 + speedNorm * 80,
+                        maxRy: (180 + Math.random() * 120 + speedNorm * 80) * elongation,
+                        hue: 192 + Math.random() * 18,
+                        peakAlpha: 0.055 + speedNorm * 0.035,
+                    });
+                }
+            }
+            for (let i = BREATH_WAVES.length - 1; i >= 0; i--) {
+                const bw = BREATH_WAVES[i];
+                const t = (now - bw.bornAt) / bw.life;
+                if (t >= 1) { BREATH_WAVES.splice(i, 1); continue; }
+                bw.t = t;
+                bw.alpha = bw.peakAlpha * Math.sin(t * Math.PI);
+            }
+
+            // --- DRIFT MOTES ---
+            while (DRIFT_MOTES.length < MAX_DRIFT_MOTES) {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 180 + Math.random() * 520;
+                DRIFT_MOTES.push({
+                    x: ship.x + Math.cos(angle) * dist,
+                    y: ship.y + Math.sin(angle) * dist,
+                    baseAlpha: 0.06 + Math.random() * 0.10,
+                    size: 1.2 + Math.random() * 2.2,
+                    phase: Math.random() * Math.PI * 2,
+                    driftAngle: Math.random() * Math.PI * 2,
+                    driftSpeed: 0.06 + Math.random() * 0.10,
+                    hue: 188 + Math.random() * 30,
+                });
+            }
+            DRIFT_MOTES.forEach(m => {
+                const dx = ship.x - m.x;
+                const dy = ship.y - m.y;
+                const dist = Math.hypot(dx, dy);
+                const pull = speedNorm < 0.15
+                    ? Math.max(0, 1 - dist / 400) * 0.018
+                    : -Math.max(0, 1 - dist / 280) * 0.012;
+                if (dist > 1) {
+                    m.x += (dx / dist) * pull;
+                    m.y += (dy / dist) * pull;
+                }
+                m.x += Math.cos(m.driftAngle) * m.driftSpeed;
+                m.y += Math.sin(m.driftAngle) * m.driftSpeed;
+                m.driftAngle += (Math.random() - 0.5) * 0.04;
+                if (dist > 700) {
+                    const a = Math.atan2(ship.y - m.y, ship.x - m.x);
+                    m.x = ship.x + Math.cos(a + Math.PI) * 680;
+                    m.y = ship.y + Math.sin(a + Math.PI) * 680;
+                }
+            });
+        }
+
+        function updateResotags(speed) {
+            const now = performance.now();
+            const fishRadius = 24;
+            const fishForce = Math.hypot(ship.vx, ship.vy);
+
+            BUBBLES.forEach((bubble) => {
+                const dist = Math.hypot(ship.x - bubble.x, ship.y - bubble.y);
+                const isTouching = dist <= bubble.r + fishRadius;
+                if (isTouching && !bubble.fishTouching && now - bubble.lastImpactAt > 10000) {
+                    bubble.lastImpactAt = now;
+                    releaseResotagFromBubble(bubble);
+                }
+                bubble.fishTouching = isTouching;
+            });
+
+            RESOTAGS.forEach((tag) => {
+                const mother = tag.bubbleRef;
+                const currents = Math.sin((now + tag.bornAt) * 0.00018 + tag.id.length) * 0.02;
+                const targetX = mother.x + Math.cos(tag.orbitAngle) * tag.orbitRadius;
+                const targetY = mother.y + Math.sin(tag.orbitAngle) * tag.orbitRadius;
+                tag.orbitAngle += tag.orbitSpeed;
+
+                tag.vx += (targetX - tag.x) * 0.0012 + currents * tag.drift;
+                tag.vy += (targetY - tag.y) * 0.0012 + currents * tag.drift * 0.7;
+
+                const dx = tag.x - ship.x;
+                const dy = tag.y - ship.y;
+                const d = Math.hypot(dx, dy);
+                const fishGlide = Math.min(1, fishForce / ship.maxSpeed);
+                if (d < 110 && d > 0.001) {
+                    if (fishGlide < 0.52) {
+                        const pull = (1 - d / 110) * 0.024;
+                        tag.vx -= (dx / d) * pull;
+                        tag.vy -= (dy / d) * pull;
+                    } else if (d < 60) {
+                        const push = (1 - d / 60) * (0.010 + fishForce * 0.016);
+                        tag.vx += (dx / d) * push;
+                        tag.vy += (dy / d) * push;
+                    }
+                }
+
+                if (tag.nextWordPulse === undefined) {
+                    tag.nextWordPulse = now + 1500 + Math.random() * 5000;
+                    tag.wordPulseUntil = 0;
+                }
+                if (now > tag.nextWordPulse) {
+                    tag.wordPulseUntil = now + 2400;
+                    tag.nextWordPulse = now + 5000 + Math.random() * 9000;
+                }
+
+                tag.vx *= 0.968;
+                tag.vy *= 0.968;
+                tag.x += tag.vx;
+                tag.y += tag.vy;
+            });
+
+            for (let i = 0; i < RESOTAGS.length; i++) {
+                for (let j = i + 1; j < RESOTAGS.length; j++) {
+                    const a = RESOTAGS[i];
+                    const b = RESOTAGS[j];
+                    if (a.bubbleId === b.bubbleId) continue;
+                    const dist = Math.hypot(a.x - b.x, a.y - b.y);
+                    if (dist < 240 && dist > 0.001) {
+                        const attraction = (1 - dist / 240) * 0.0022;
+                        const ax = (b.x - a.x) / dist;
+                        const ay = (b.y - a.y) / dist;
+                        a.vx += ax * attraction;
+                        a.vy += ay * attraction;
+                        b.vx -= ax * attraction;
+                        b.vy -= ay * attraction;
+                    }
+                    if (dist > 30) continue;
+                    const exists = RESOTAG_LINKS.some(l => (l.a === a.id && l.b === b.id) || (l.a === b.id && l.b === a.id));
+                    if (exists) continue;
+                    if (RESOTAG_LINKS.length >= MAX_RESOTAG_LINKS) RESOTAG_LINKS.shift();
+                    RESOTAG_LINKS.push({ a: a.id, b: b.id, bornAt: now });
+                }
+            }
+
+            for (let i = RESOTAG_LINKS.length - 1; i >= 0; i--) {
+                const link = RESOTAG_LINKS[i];
+                const a = RESOTAGS.find(t => t.id === link.a);
+                const b = RESOTAGS.find(t => t.id === link.b);
+                if (!a || !b) {
+                    RESOTAG_LINKS.splice(i, 1);
+                    continue;
+                }
+                if (Math.hypot(a.x - b.x, a.y - b.y) > 105) RESOTAG_LINKS.splice(i, 1);
+            }
+        }
+
+        function updateHaikuAttachment(speed) {
+            const now = performance.now();
+            const glide = Math.min(1, speed / ship.maxSpeed);
+            if (haikuTrailWords.length < 3 && glide < 0.60) {
+                for (let i = RESOTAGS.length - 1; i >= 0; i--) {
+                    const tag = RESOTAGS[i];
+                    const inWordState = tag.wordPulseUntil && now < tag.wordPulseUntil;
+                    if (!inWordState) continue;
+                    const d = Math.hypot(ship.x - tag.x, ship.y - tag.y);
+                    if (d < 80) {
+                        if (!haikuTrailWords.includes(tag.text)) {
+                            haikuTrailWords.push(tag.text);
+                            tag.wordPulseUntil = 0;
+                            tag.nextWordPulse = now + 15000;
+                        }
+                        break;
+                    }
+                }
+            }
+            if (haikuTrailWords.length === 3) {
+                spawnHaikuTriangle(haikuTrailWords);
+                haikuTrailWords = [];
+            }
+        }
+
+        function spawnHaikuTriangle(words) {
+            const hue = 185 + Math.random() * 50;
+            HAIKU_TRIANGLES.push({
+                x: ship.x + (Math.random() - 0.5) * 60,
+                y: ship.y + (Math.random() - 0.5) * 60,
+                words: words,
+                haiku: composeHaiku(words),
+                notes: wordsToNotes(words),
+                size: 58,
+                angle: Math.random() * Math.PI * 2,
+                rotSpeed: 0.0038 + Math.random() * 0.003,
+                vx: (Math.random() - 0.5) * 0.18,
+                vy: (Math.random() - 0.5) * 0.18,
+                phase: Math.random() * Math.PI * 2,
+                hue: hue,
+                open: false,
+                openedAt: null,
+                openDuration: 5200,
+                cooldownUntil: 0,
+            });
+        }
+
+        function composeHaiku(words) {
+            const [w1, w2, w3] = words;
+            const templates = [
+                [w1, `${w2} s'efface`, `reste ${w3}`],
+                [`encore ${w1}`, `${w2} et ${w3}`, `l'eau se souvient`],
+                [`${w1} fragile`, `sans ${w2}`, `juste ${w3}`],
+                [`sous ${w1}`, `${w2} — ${w3}`, `rien ne répond`],
+                [`${w1} seul`, `${w2} se tait`, `${w3} demeure`],
+                [`${w1}`, `entre ${w2} et ${w3}`, `l'abîme attend`],
+                [`${w1} toujours`, `${w2} se dissout`, `vers ${w3}`],
+                [`${w1} — silence`, `${w2}`, `${w3} perdure`],
+                [`${w1}`, `${w2} et ${w3}`, `puis l'oubli`],
+                [`${w1} encore`, `sans ${w2}`, `${w3} dans l'ombre`],
+                [`vers ${w1}`, `${w2} — dérive`, `${w3}`],
+                [`${w1}`, `${w2} s'endort`, `${w3} veille`],
+            ];
+            return templates[Math.floor(Math.random() * templates.length)];
+        }
+
+        function wordsToNotes(words) {
+            const penta = [261.6, 293.7, 329.6, 392.0, 440.0, 523.3, 587.3, 659.3];
+            return words.map(w => {
+                let h = 7;
+                for (const c of w) h = (h * 31 + c.charCodeAt(0)) & 0x7fffffff;
+                return penta[Math.abs(h) % penta.length];
+            });
+        }
+
+        function playHaikuMelody(notes) {
+            const actx = ensureAudioContext();
+            if (!actx) return;
+            notes.forEach((freq, i) => {
+                const t0 = actx.currentTime + i * 1.55;
+                [[1, 0.22], [2.005, 0.07]].forEach(([harmonic, peak]) => {
+                    const osc = actx.createOscillator();
+                    const gain = actx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq * harmonic;
+                    gain.gain.setValueAtTime(0, t0);
+                    gain.gain.linearRampToValueAtTime(peak, t0 + 0.018);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.45);
+                    osc.connect(gain);
+                    gain.connect(masterGainNode);
+                    osc.start(t0);
+                    osc.stop(t0 + 1.5);
+                });
+            });
+        }
+
+        function updateHaikuTriangles() {
+            const now = performance.now();
+            HAIKU_TRIANGLES.forEach(tri => {
+                tri.angle += tri.rotSpeed;
+                tri.vx += (Math.random() - 0.5) * 0.007;
+                tri.vy += (Math.random() - 0.5) * 0.007;
+                tri.vx *= 0.993;
+                tri.vy *= 0.993;
+                tri.x += tri.vx;
+                tri.y += tri.vy;
+                if (tri.open && tri.openedAt && now - tri.openedAt > tri.openDuration) {
+                    tri.open = false;
+                    tri.openedAt = null;
+                    tri.cooldownUntil = now + 3000;
+                }
+                if (!tri.open && now > tri.cooldownUntil) {
+                    const d = Math.hypot(ship.x - tri.x, ship.y - tri.y);
+                    if (d < tri.size + 24) {
+                        tri.open = true;
+                        tri.openedAt = now;
+                        playHaikuMelody(tri.notes);
+                    }
+                }
+            });
+        }
+
+        function drawHaikuTriangles() {
+            const now = performance.now();
+            HAIKU_TRIANGLES.forEach(tri => {
+                const elapsed = tri.open && tri.openedAt ? now - tri.openedAt : 0;
+                const openFrac = tri.open && tri.openedAt
+                    ? Math.min(1, elapsed / 600)
+                    : 0;
+                let textAlpha = 0;
+                if (tri.open && tri.openedAt) {
+                    const fadeIn  = Math.min(1, elapsed / 800);
+                    const fadeOut = elapsed > tri.openDuration - 900
+                        ? 1 - Math.min(1, (elapsed - (tri.openDuration - 900)) / 900)
+                        : 1;
+                    textAlpha = fadeIn * fadeOut;
+                }
+                const pulse = (Math.sin(now * 0.0026 + tri.phase) + 1) * 0.5;
+                const size  = tri.size * (1 + openFrac * 0.40 + pulse * 0.04);
+
+                ctx.save();
+                ctx.translate(tri.x, tri.y);
+
+                ctx.save();
+                ctx.rotate(tri.angle);
+                ctx.shadowBlur = 18 + openFrac * 30;
+                ctx.shadowColor = `hsla(${tri.hue}, 92%, 82%, ${0.3 + pulse * 0.2 + openFrac * 0.3})`;
+                ctx.strokeStyle = `hsla(${tri.hue}, 88%, 86%, ${0.55 + openFrac * 0.40})`;
+                ctx.lineWidth = 1.6 + openFrac * 2;
+                ctx.beginPath();
+                for (let v = 0; v < 3; v++) {
+                    const a = (v / 3) * Math.PI * 2 - Math.PI / 2;
+                    const px = Math.cos(a) * size;
+                    const py = Math.sin(a) * size;
+                    v === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+                }
+                ctx.closePath();
+                if (openFrac > 0) {
+                    ctx.fillStyle = `hsla(${tri.hue}, 45%, 8%, ${openFrac * 0.92})`;
+                    ctx.fill();
+                }
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+                ctx.restore();
+
+                if (textAlpha > 0.04 && tri.haiku) {
+                    ctx.font = '500 13px Georgia, serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = `hsla(${tri.hue}, 60%, 95%, ${textAlpha})`;
+                    ctx.shadowBlur = 14;
+                    ctx.shadowColor = `hsla(${tri.hue}, 90%, 80%, ${textAlpha * 0.55})`;
+                    const lh = 19;
+                    tri.haiku.forEach((line, i) => ctx.fillText(line, 0, (i - 1) * lh));
+                    ctx.shadowBlur = 0;
+                }
+                ctx.restore();
+            });
+        }
+
+        function drawBreathWaves() {
+            BREATH_WAVES.forEach(bw => {
+                const rx = bw.maxRx * bw.t;
+                const ry = bw.maxRy * bw.t;
+                ctx.save();
+                ctx.translate(bw.x, bw.y);
+                ctx.rotate(bw.angle + Math.PI / 2);
+                ctx.strokeStyle = `hsla(${bw.hue}, 85%, 78%, ${bw.alpha})`;
+                ctx.lineWidth = 0.8 + (1 - bw.t) * 0.7;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+                ctx.stroke();
+                if (bw.t < 0.6) {
+                    const innerAlpha = bw.alpha * 0.4 * (1 - bw.t / 0.6);
+                    ctx.strokeStyle = `hsla(${bw.hue + 8}, 90%, 88%, ${innerAlpha})`;
+                    ctx.lineWidth = 0.5;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, rx * 0.6, ry * 0.6, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            });
+        }
+
+        function drawDriftMotes() {
+            const t = performance.now() * 0.0018;
+            DRIFT_MOTES.forEach(m => {
+                const twinkle = (Math.sin(t * 2.2 + m.phase) + 1) * 0.5;
+                const alpha = m.baseAlpha * (0.5 + twinkle * 0.5);
+                ctx.fillStyle = `hsla(${m.hue}, 80%, 80%, ${alpha})`;
+                ctx.beginPath();
+                ctx.arc(m.x, m.y, m.size * (0.8 + twinkle * 0.3), 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function drawLuminousTrail() {
+            const trail = ship.trail;
+            if (trail.length < 3) return;
+            const len = trail.length;
+            for (let i = 1; i < len - 1; i++) {
+                const t = i / len;
+                const width = (1 - t) * 4.5 + 0.4;
+                const alpha = t * t * 0.38;
+                const hue = 192 + Math.sin(t * Math.PI * 3) * 10;
+                ctx.strokeStyle = `hsla(${hue}, 85%, 78%, ${alpha})`;
+                ctx.lineWidth = width;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                const mx = (trail[i].x + trail[i + 1].x) / 2;
+                const my = (trail[i].y + trail[i + 1].y) / 2;
+                ctx.moveTo((trail[i - 1].x + trail[i].x) / 2, (trail[i - 1].y + trail[i].y) / 2);
+                ctx.quadraticCurveTo(trail[i].x, trail[i].y, mx, my);
+                ctx.stroke();
+            }
+            // soft glow core
+            const last = trail[len - 1];
+            const prev = trail[Math.max(0, len - 6)];
+            const glowGrad = ctx.createLinearGradient(prev.x, prev.y, last.x, last.y);
+            glowGrad.addColorStop(0, 'rgba(140, 210, 255, 0)');
+            glowGrad.addColorStop(1, 'rgba(180, 235, 255, 0.18)');
+            ctx.strokeStyle = glowGrad;
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.moveTo(prev.x, prev.y);
+            ctx.lineTo(last.x, last.y);
+            ctx.stroke();
+        }
+
         function draw() {
             ctx.fillStyle = '#030308';
             ctx.fillRect(0, 0, w, h);
+            if (currentView !== 'experience') return;
 
             ctx.save();
             ctx.translate(w / 2 - camera.x, h / 2 - camera.y);
@@ -695,39 +1777,54 @@
             ctx.stroke();
 
             const drawBubble = (b) => {
-                const isSurface = b.layer !== 'deep';
+                const isSurface = b.layer !== 'below';
                 const opacityBoost = b.isActive ? 1.2 : 1;
+                const bHue = b.hue ?? 195;
                 ctx.save();
 
                 if (!isSurface) {
                     const grad = ctx.createRadialGradient(b.x, b.y, b.r * 0.05, b.x, b.y, b.r);
-                    grad.addColorStop(0, `rgba(130, 195, 255, ${0.02 * opacityBoost})`);
-                    grad.addColorStop(0.72, `rgba(80, 155, 235, ${0.11 * opacityBoost})`);
-                    grad.addColorStop(1, `rgba(45, 105, 188, ${0.22 * opacityBoost})`);
+                    grad.addColorStop(0, `hsla(${bHue}, 70%, 70%, ${0.02 * opacityBoost})`);
+                    grad.addColorStop(0.72, `hsla(${bHue}, 72%, 58%, ${0.11 * opacityBoost})`);
+                    grad.addColorStop(1, `hsla(${bHue + 15}, 68%, 40%, ${0.22 * opacityBoost})`);
                     ctx.filter = 'blur(7px)';
                     ctx.fillStyle = grad;
                     ctx.beginPath();
                     ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.filter = 'none';
-                    ctx.strokeStyle = `rgba(138, 202, 255, ${0.2 * opacityBoost})`;
+                    ctx.strokeStyle = `hsla(${bHue}, 75%, 72%, ${0.20 * opacityBoost})`;
                     ctx.lineWidth = 1.4;
                 } else {
                     const grad = ctx.createRadialGradient(b.x - b.r * 0.25, b.y - b.r * 0.28, b.r * 0.15, b.x, b.y, b.r);
-                    grad.addColorStop(0, `rgba(222, 245, 255, ${0.52 * opacityBoost})`);
-                    grad.addColorStop(0.65, `rgba(120, 198, 255, ${0.36 * opacityBoost})`);
-                    grad.addColorStop(1, `rgba(42, 126, 220, ${0.6 * opacityBoost})`);
+                    grad.addColorStop(0, `hsla(${bHue}, 80%, 90%, ${0.52 * opacityBoost})`);
+                    grad.addColorStop(0.65, `hsla(${bHue}, 78%, 68%, ${0.36 * opacityBoost})`);
+                    grad.addColorStop(1, `hsla(${bHue + 15}, 72%, 46%, ${0.60 * opacityBoost})`);
                     ctx.fillStyle = grad;
                     ctx.beginPath();
                     ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
                     ctx.fill();
-                    ctx.strokeStyle = `rgba(214, 243, 255, ${0.66 * opacityBoost})`;
+                    ctx.strokeStyle = `hsla(${bHue}, 88%, 84%, ${0.66 * opacityBoost})`;
                     ctx.lineWidth = b.isActive ? 2.8 : 2.1;
                 }
 
                 ctx.beginPath();
                 ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
                 ctx.stroke();
+
+                // Selection ring
+                if (b === selectedBubble) {
+                    const pulse = (Math.sin(performance.now() * 0.004) + 1) * 0.5;
+                    ctx.strokeStyle = `hsla(${bHue}, 90%, 88%, ${0.45 + pulse * 0.35})`;
+                    ctx.lineWidth = 1.8;
+                    ctx.setLineDash([7, 5]);
+                    ctx.lineDashOffset = performance.now() * 0.04;
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, b.r + 10 + pulse * 3, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.lineDashOffset = 0;
+                }
 
                 if (b.label) {
                     const maxWidth = b.r * 1.42;
@@ -737,31 +1834,39 @@
                     ctx.textBaseline = 'middle';
                     ctx.fillStyle = isSurface ? 'rgba(235, 248, 255, 0.95)' : 'rgba(220, 237, 255, 0.82)';
                     let text = b.label;
-                    while (ctx.measureText(text).width > maxWidth && text.length > 6) {
-                        text = `${text.slice(0, -2)}…`;
-                    }
+                    while (ctx.measureText(text).width > maxWidth && text.length > 6) text = `${text.slice(0, -2)}…`;
                     ctx.fillText(text, b.x, b.y, maxWidth);
                 }
 
                 ctx.restore();
             };
 
-            BUBBLES.filter((b) => b.layer === 'deep').forEach(drawBubble);
-
+            BUBBLES.filter((b) => b.layer === 'below').forEach(drawBubble);
+            drawBreathWaves();
+            drawDriftMotes();
             drawSurfaceSparkles();
+            drawResonanceWaves();
             drawWakeParticles();
             drawRipples();
+            drawLuminousTrail();
+            drawResotagLinks();
+            drawResotags();
+            drawHaikuTriangles();
 
-            if (ship.trail.length > 2) {
-                ctx.beginPath();
-                ctx.lineWidth = 2;
-                for (let i = 0; i < ship.trail.length - 1; i++) {
-                    const alpha = (i / ship.trail.length) * 0.4;
-                    ctx.strokeStyle = `rgba(100, 200, 255, ${alpha})`;
-                    ctx.moveTo(ship.trail[i].x, ship.trail[i].y);
-                    ctx.lineTo(ship.trail[i + 1].x, ship.trail[i + 1].y);
-                }
-                ctx.stroke();
+            if (haikuTrailWords.length > 0) {
+                const now = performance.now();
+                const pulse = (Math.sin(now * 0.004) + 1) * 0.5;
+                ctx.save();
+                ctx.translate(ship.x, ship.y - 52);
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = '600 11px Georgia, serif';
+                ctx.fillStyle = `rgba(200, 240, 255, ${0.55 + pulse * 0.25})`;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = 'rgba(120, 210, 255, 0.4)';
+                ctx.fillText(haikuTrailWords.map((w, i) => i < haikuTrailWords.length - 1 ? w + ' ·' : w).join(' '), 0, 0);
+                ctx.shadowBlur = 0;
+                ctx.restore();
             }
 
             ctx.save();
@@ -769,80 +1874,209 @@
             ctx.rotate(ship.angle + Math.PI / 2);
             const swimT = performance.now() * 0.001;
             const glide = Math.hypot(ship.vx, ship.vy) / ship.maxSpeed;
-            const wag = Math.sin(swimT * 9.5) * (0.14 + glide * 0.18);
-            const finFlap = Math.sin(swimT * 7.2 + 0.5) * (0.12 + glide * 0.08);
-            const bodyBreath = Math.sin(swimT * 2.5) * 0.6;
+            const wag = Math.sin(swimT * 9.5) * (0.16 + glide * 0.22);
+            const finFlap = Math.sin(swimT * 7.2 + 0.5) * (0.14 + glide * 0.10);
+            const bodyBreath = Math.sin(swimT * 2.5) * 0.65;
             const shimmerPulse = (Math.sin(swimT * 2.2) + 1) * 0.5;
+            const bodyUndulate = Math.sin(swimT * 5.8) * (0.03 + glide * 0.055);
             const bodyHueTop = 186 + Math.sin(swimT * 1.7) * 8;
             const bodyHueMid = 198 + Math.sin(swimT * 1.3 + 1.4) * 12;
             const bodyHueLow = 210 + Math.sin(swimT * 1.9 + 2.1) * 10;
 
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = 'rgba(185, 245, 255, 0.55)';
-
-            const bodyGrad = ctx.createLinearGradient(0, -18, 0, 24);
-            bodyGrad.addColorStop(0, `hsla(${bodyHueTop}, 85%, 92%, ${0.85 + shimmerPulse * 0.15})`);
-            bodyGrad.addColorStop(0.5, `hsla(${bodyHueMid}, 82%, 78%, ${0.76 + shimmerPulse * 0.12})`);
-            bodyGrad.addColorStop(1, `hsla(${bodyHueLow}, 80%, 66%, ${0.74 + shimmerPulse * 0.16})`);
-            ctx.fillStyle = bodyGrad;
-
+            // --- AURA GLOW ---
+            const auraR = 34 + shimmerPulse * 9;
+            const auraGrad = ctx.createRadialGradient(0, 2, 0, 0, 2, auraR);
+            auraGrad.addColorStop(0, `hsla(${bodyHueMid}, 90%, 82%, ${0.22 + shimmerPulse * 0.14})`);
+            auraGrad.addColorStop(0.6, `hsla(${bodyHueLow}, 85%, 75%, ${0.08 + shimmerPulse * 0.06})`);
+            auraGrad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = auraGrad;
             ctx.beginPath();
-            ctx.moveTo(0, -17);
-            ctx.bezierCurveTo(-8.5, -13, -11, -3 + bodyBreath, -9, 8);
-            ctx.bezierCurveTo(-7, 15, -3, 19 + bodyBreath, 0, 21);
-            ctx.bezierCurveTo(3, 19 + bodyBreath, 7, 15, 9, 8);
-            ctx.bezierCurveTo(11, -3 + bodyBreath, 8.5, -13, 0, -17);
+            ctx.ellipse(0, 2, auraR, auraR * 1.25, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // --- TRAILING PLUMES (feather wisps behind tail) ---
+            const plumeData = [
+                { ox: -3.5, phase: 0.0, spread: -14, len: 34, hueOff: 0 },
+                { ox: -1.5, phase: 0.9, spread: -7, len: 40, hueOff: 8 },
+                { ox: 0,    phase: 1.7, spread: 0,  len: 44, hueOff: 14 },
+                { ox: 1.5,  phase: 2.5, spread: 7,  len: 40, hueOff: 8 },
+                { ox: 3.5,  phase: 3.3, spread: 14, len: 34, hueOff: 0 },
+            ];
+            plumeData.forEach((p, i) => {
+                const pw = Math.sin(swimT * 7.5 + p.phase) * (0.18 + glide * 0.14);
+                const alpha = (0.28 + shimmerPulse * 0.18) * (1 - Math.abs(i - 2) * 0.12);
+                const hue = bodyHueLow + p.hueOff;
+                ctx.save();
+                ctx.translate(p.ox, 21);
+                const pGrad = ctx.createLinearGradient(0, 0, p.spread * 0.4, p.len);
+                pGrad.addColorStop(0, `hsla(${hue}, 82%, 78%, ${alpha})`);
+                pGrad.addColorStop(0.5, `hsla(${hue + 6}, 85%, 86%, ${alpha * 0.5})`);
+                pGrad.addColorStop(1, `hsla(${hue + 12}, 90%, 90%, 0)`);
+                ctx.fillStyle = pGrad;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.bezierCurveTo(
+                    p.spread * 0.3 + pw * 12, p.len * 0.28,
+                    p.spread * 0.6 + pw * 20, p.len * 0.62,
+                    p.spread * 0.35 + pw * 8, p.len
+                );
+                ctx.bezierCurveTo(
+                    p.spread * 0.1 + pw * 4, p.len * 0.65,
+                    -p.spread * 0.1 + pw * 6, p.len * 0.3,
+                    0, 0
+                );
+                ctx.fill();
+                ctx.restore();
+            });
+
+            // --- BODY ---
+            ctx.shadowBlur = 22;
+            ctx.shadowColor = `hsla(${bodyHueMid}, 95%, 85%, 0.58)`;
+            const bu = bodyUndulate;
+            const bodyGrad = ctx.createLinearGradient(-10, -18, 10, 24);
+            bodyGrad.addColorStop(0,    `hsla(${bodyHueTop}, 90%, 95%, ${0.88 + shimmerPulse * 0.12})`);
+            bodyGrad.addColorStop(0.38, `hsla(${bodyHueMid}, 85%, 80%, ${0.78 + shimmerPulse * 0.12})`);
+            bodyGrad.addColorStop(0.72, `hsla(${bodyHueLow}, 80%, 68%, ${0.76 + shimmerPulse * 0.14})`);
+            bodyGrad.addColorStop(1,    `hsla(${bodyHueLow + 14}, 75%, 58%, 0.80)`);
+            ctx.fillStyle = bodyGrad;
+            ctx.beginPath();
+            ctx.moveTo(0, -18);
+            ctx.bezierCurveTo(-8.5 + bu * 55, -13, -11 + bu * 36, -3 + bodyBreath, -9 + bu * 18, 8);
+            ctx.bezierCurveTo(-7, 15, -3, 20 + bodyBreath, 0, 22);
+            ctx.bezierCurveTo(3, 20 + bodyBreath, 7, 15, 9 - bu * 18, 8);
+            ctx.bezierCurveTo(11 - bu * 36, -3 + bodyBreath, 8.5 - bu * 55, -13, 0, -18);
             ctx.closePath();
             ctx.fill();
 
+            // --- IRIDESCENT SHEEN ---
+            const sheenGrad = ctx.createLinearGradient(-10, -18, 8, 4);
+            sheenGrad.addColorStop(0, `rgba(255, 255, 255, ${0.26 + shimmerPulse * 0.22})`);
+            sheenGrad.addColorStop(0.45, `rgba(200, 245, 255, ${0.10 + shimmerPulse * 0.10})`);
+            sheenGrad.addColorStop(1, 'rgba(180, 220, 255, 0)');
+            ctx.fillStyle = sheenGrad;
+            ctx.beginPath();
+            ctx.moveTo(0, -18);
+            ctx.bezierCurveTo(-8.5 + bu * 55, -13, -11 + bu * 36, -3 + bodyBreath, -9 + bu * 18, 8);
+            ctx.bezierCurveTo(-7, 15, -3, 20 + bodyBreath, 0, 22);
+            ctx.bezierCurveTo(3, 20 + bodyBreath, 7, 15, 9 - bu * 18, 8);
+            ctx.bezierCurveTo(11 - bu * 36, -3 + bodyBreath, 8.5 - bu * 55, -13, 0, -18);
+            ctx.closePath();
+            ctx.fill();
+
+            // --- PECTORAL FINS ---
+            ctx.shadowBlur = 6;
             ctx.save();
             ctx.translate(-7, 2);
-            ctx.rotate(-0.35 + finFlap);
+            ctx.rotate(-0.38 + finFlap);
+            const finGradL = ctx.createLinearGradient(0, -1, -12, 14);
+            finGradL.addColorStop(0, `hsla(${bodyHueMid}, 80%, 82%, 0.70)`);
+            finGradL.addColorStop(1, `hsla(${bodyHueMid + 12}, 78%, 88%, 0)`);
+            ctx.fillStyle = finGradL;
+            ctx.shadowColor = `hsla(${bodyHueMid}, 80%, 80%, 0.3)`;
             ctx.beginPath();
             ctx.moveTo(0, -1);
-            ctx.quadraticCurveTo(-9, 2, -6, 12);
-            ctx.quadraticCurveTo(-1, 7, 0, -1);
+            ctx.bezierCurveTo(-10, 0, -14, 7, -8, 15);
+            ctx.bezierCurveTo(-4, 10, -1, 4, 0, -1);
             ctx.fill();
             ctx.restore();
-
             ctx.save();
             ctx.translate(7, 2);
-            ctx.rotate(0.35 - finFlap);
+            ctx.rotate(0.38 - finFlap);
+            const finGradR = ctx.createLinearGradient(0, -1, 12, 14);
+            finGradR.addColorStop(0, `hsla(${bodyHueMid}, 80%, 82%, 0.70)`);
+            finGradR.addColorStop(1, `hsla(${bodyHueMid + 12}, 78%, 88%, 0)`);
+            ctx.fillStyle = finGradR;
+            ctx.shadowColor = `hsla(${bodyHueMid}, 80%, 80%, 0.3)`;
             ctx.beginPath();
             ctx.moveTo(0, -1);
-            ctx.quadraticCurveTo(9, 2, 6, 12);
-            ctx.quadraticCurveTo(1, 7, 0, -1);
+            ctx.bezierCurveTo(10, 0, 14, 7, 8, 15);
+            ctx.bezierCurveTo(4, 10, 1, 4, 0, -1);
             ctx.fill();
             ctx.restore();
 
+            // --- TAIL with feathered tips ---
             ctx.save();
-            ctx.translate(0, 18);
+            ctx.translate(0, 20);
             ctx.rotate(wag);
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = `hsla(${bodyHueLow}, 85%, 80%, 0.45)`;
+            const tailGrad = ctx.createLinearGradient(0, 0, 0, 26);
+            tailGrad.addColorStop(0, `hsla(${bodyHueMid}, 84%, 80%, 0.92)`);
+            tailGrad.addColorStop(1, `hsla(${bodyHueLow + 10}, 80%, 74%, 0)`);
+            ctx.fillStyle = tailGrad;
             ctx.beginPath();
             ctx.moveTo(0, 0);
-            ctx.bezierCurveTo(-7, 6, -8, 16, -2.2, 22);
-            ctx.quadraticCurveTo(0, 18, 2.2, 22);
-            ctx.bezierCurveTo(8, 16, 7, 6, 0, 0);
+            ctx.bezierCurveTo(-7, 5, -9, 14, -3.5, 22);
+            ctx.quadraticCurveTo(0, 18, 3.5, 22);
+            ctx.bezierCurveTo(9, 14, 7, 5, 0, 0);
+            ctx.fill();
+            // Left feather tip
+            const tipGrad = ctx.createLinearGradient(0, 18, -6, 36);
+            tipGrad.addColorStop(0, `hsla(${bodyHueTop}, 90%, 90%, 0.65)`);
+            tipGrad.addColorStop(1, `hsla(${bodyHueTop + 8}, 88%, 94%, 0)`);
+            ctx.fillStyle = tipGrad;
+            ctx.beginPath();
+            ctx.moveTo(-1.5, 18);
+            ctx.bezierCurveTo(-5, 23, -8, 31, -4.5, 36);
+            ctx.quadraticCurveTo(-2, 30, -1.5, 18);
+            ctx.fill();
+            // Right feather tip
+            const tipGrad2 = ctx.createLinearGradient(0, 18, 6, 36);
+            tipGrad2.addColorStop(0, `hsla(${bodyHueTop}, 90%, 90%, 0.65)`);
+            tipGrad2.addColorStop(1, `hsla(${bodyHueTop + 8}, 88%, 94%, 0)`);
+            ctx.fillStyle = tipGrad2;
+            ctx.beginPath();
+            ctx.moveTo(1.5, 18);
+            ctx.bezierCurveTo(5, 23, 8, 31, 4.5, 36);
+            ctx.quadraticCurveTo(2, 30, 1.5, 18);
             ctx.fill();
             ctx.restore();
-
-            ctx.fillStyle = `rgba(255, 255, 255, ${0.32 + shimmerPulse * 0.32})`;
-            ctx.beginPath();
-            ctx.ellipse(0, -7, 2.8, 5.4, 0, 0, Math.PI * 2);
-            ctx.fill();
 
             ctx.shadowBlur = 0;
+
+            // --- BIOLUMINESCENT SPOTS ---
+            const spotT = swimT * 3.2;
+            [
+                { x: -4.5, y: -1, r: 1.1, ph: 0.0 },
+                { x:  4.2, y:  1, r: 0.9, ph: 1.4 },
+                { x: -2.0, y:  7, r: 0.85, ph: 2.6 },
+                { x:  3.0, y: -6, r: 0.75, ph: 3.8 },
+                { x:  0.5, y:  3, r: 0.6,  ph: 0.7 },
+            ].forEach((s) => {
+                const sp = (Math.sin(spotT + s.ph) + 1) * 0.5;
+                ctx.fillStyle = `rgba(175, 255, 235, ${0.10 + sp * 0.20})`;
+                ctx.shadowBlur = 7;
+                ctx.shadowColor = 'rgba(160, 255, 230, 0.55)';
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.r * (1 + sp * 0.35), 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // --- EYES ---
+            // Eye halo
+            ctx.fillStyle = `rgba(160, 232, 255, ${0.30 + shimmerPulse * 0.20})`;
+            ctx.beginPath();
+            ctx.arc(-6.2, -12, 3.0, 0, Math.PI * 2);
+            ctx.arc(6.2, -12, 3.0, 0, Math.PI * 2);
+            ctx.fill();
+            // Iris
             ctx.fillStyle = '#062436';
             ctx.beginPath();
-            ctx.arc(-2.2, -10, 1.35, 0, Math.PI * 2);
-            ctx.arc(2.2, -10, 1.35, 0, Math.PI * 2);
+            ctx.arc(-6.2, -12, 1.45, 0, Math.PI * 2);
+            ctx.arc(6.2, -12, 1.45, 0, Math.PI * 2);
+            ctx.fill();
+            // Specular
+            ctx.fillStyle = `rgba(255, 255, 255, ${0.75 + shimmerPulse * 0.25})`;
+            ctx.beginPath();
+            ctx.arc(-5.6, -12.6, 0.52, 0, Math.PI * 2);
+            ctx.arc(6.8, -12.6, 0.52, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
 
-            BUBBLES.filter((b) => b.layer !== 'deep').forEach(drawBubble);
-
+            BUBBLES.filter((b) => b.layer !== 'below').forEach(drawBubble);
             ctx.restore();
             drawWaterSurface();
+            drawArenaResonanceVeil();
         }
 
         function drawWakeParticles() {
@@ -855,7 +2089,6 @@
                 ctx.fill();
             });
         }
-
         function drawRipples() {
             RIPPLE_RINGS.forEach((ripple) => {
                 const thickness = 1 + (1 - ripple.alpha) * 2.6;
@@ -867,7 +2100,6 @@
                 ctx.stroke();
             });
         }
-
         function drawSurfaceSparkles() {
             const t = performance.now() * 0.002;
             SURFACE_SPARKLES.forEach((sparkle) => {
@@ -897,31 +2129,94 @@
             });
         }
 
-        function drawWaterSurface() {
-            const now = performance.now() * 0.0012;
-            const horizonY = Math.max(30, h * 0.17);
+        function drawResonanceWaves() {
+            RESONANCE_WAVES.forEach((wave) => {
+                const width = 1.2 + (1 - wave.alpha) * 2.1;
+                const pulse = 0.5 + Math.sin((performance.now() - wave.bornAt) * 0.003) * 0.5;
+                ctx.strokeStyle = `hsla(${wave.hue}, 88%, 76%, ${wave.alpha * (0.7 + pulse * 0.3)})`;
+                ctx.lineWidth = width;
+                ctx.beginPath();
+                ctx.arc(wave.x, wave.y, wave.radius, 0, Math.PI * 2);
+                ctx.stroke();
+            });
+        }
 
+        function drawResotagLinks() {
+            RESOTAG_LINKS.forEach((link) => {
+                const a = RESOTAGS.find(t => t.id === link.a);
+                const b = RESOTAGS.find(t => t.id === link.b);
+                if (!a || !b) return;
+                const life = Math.min(1, (performance.now() - link.bornAt) / 900);
+                const alpha = 0.06 + life * 0.10;
+                const hue = (((a.motherHue ?? 195) + (b.motherHue ?? 195)) / 2);
+                ctx.strokeStyle = `hsla(${hue}, 86%, 78%, ${alpha})`;
+                ctx.lineWidth = 0.8;
+                ctx.beginPath();
+                ctx.moveTo(a.x, a.y);
+                ctx.lineTo(b.x, b.y);
+                ctx.stroke();
+            });
+        }
+
+        function drawResotags() {
+            const now = performance.now();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            RESOTAGS.forEach((tag) => {
+                const driftPulse = (Math.sin(now * 0.003 + tag.orbitAngle * 9) + 1) * 0.5;
+                const tagHue = tag.motherHue ?? 195;
+                const inWordState = tag.wordPulseUntil && now < tag.wordPulseUntil;
+
+                if (inWordState) {
+                    const timeLeft = tag.wordPulseUntil - now;
+                    const wordFrac = Math.min(1, Math.min(timeLeft, tag.wordPulseUntil - (tag.wordPulseUntil - 2400)) / 350);
+                    const fadeFrac = timeLeft < 350 ? timeLeft / 350 : 1;
+                    const alpha = wordFrac * fadeFrac;
+                    const sz = 13 + driftPulse * 2;
+                    ctx.font = `600 ${sz.toFixed(1)}px Georgia, serif`;
+                    ctx.fillStyle = `hsla(${tagHue}, 90%, 92%, ${alpha * 0.88})`;
+                    ctx.shadowBlur = 14;
+                    ctx.shadowColor = `hsla(${tagHue}, 92%, 76%, ${alpha * 0.45})`;
+                    ctx.fillText(tag.text, tag.x, tag.y);
+                    ctx.shadowBlur = 0;
+                    const dotR = 2.2 + driftPulse * 0.8;
+                    ctx.fillStyle = `hsla(${tagHue}, 92%, 88%, ${alpha * 0.6})`;
+                    ctx.beginPath();
+                    ctx.arc(tag.x, tag.y + sz * 0.8, dotR, 0, Math.PI * 2);
+                    ctx.fill();
+                    return;
+                }
+
+                const dotR = 2.3 + driftPulse * 1.2;
+                const dotAlpha = 0.32 + driftPulse * 0.40;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = `hsla(${tagHue}, 92%, 70%, ${dotAlpha * 0.85})`;
+                ctx.fillStyle = `hsla(${tagHue}, 94%, 84%, ${dotAlpha})`;
+                ctx.beginPath();
+                ctx.arc(tag.x, tag.y, dotR, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.shadowBlur = 0;
+        }
+
+        function drawWaterSurface() {
+            const horizonY = Math.max(30, h * 0.17);
             const gradient = ctx.createLinearGradient(0, 0, 0, horizonY + 120);
             gradient.addColorStop(0, 'rgba(32, 100, 155, 0.28)');
             gradient.addColorStop(0.7, 'rgba(20, 70, 130, 0.14)');
             gradient.addColorStop(1, 'rgba(6, 22, 40, 0)');
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, w, horizonY + 120);
+        }
 
-            for (let band = 0; band < 3; band++) {
-                const yBase = horizonY + band * 14;
-                const amp = 3 + band * 1.8;
-                ctx.beginPath();
-                for (let x = 0; x <= w; x += 12) {
-                    const y = yBase + Math.sin((x * 0.011) + now * (1.2 + band * 0.4) + band) * amp;
-                    if (x === 0) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
-                }
-                const alpha = 0.26 - band * 0.06;
-                ctx.strokeStyle = `rgba(130, 210, 255, ${alpha})`;
-                ctx.lineWidth = 1.2;
-                ctx.stroke();
-            }
+        function drawArenaResonanceVeil() {
+            if (arenaResonance.level <= 0.01) return;
+            const intensity = Math.min(0.22, arenaResonance.level * 0.24);
+            const g = ctx.createRadialGradient(w * 0.5, h * 0.46, h * 0.14, w * 0.5, h * 0.46, h * 0.74);
+            g.addColorStop(0, `hsla(${arenaResonance.hue}, 95%, 74%, ${intensity})`);
+            g.addColorStop(1, `hsla(${arenaResonance.hue + 18}, 80%, 30%, 0)`);
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, w, h);
         }
 
         function loop() {
@@ -930,6 +2225,8 @@
             requestAnimationFrame(loop);
         }
 
+        placeInitialArenaBubbles();
+        showView('home');
         loop();
     </script>
 </body>
