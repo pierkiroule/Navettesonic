@@ -155,6 +155,13 @@
         const MAX_RIPPLES = 18;
         const SURFACE_SPARKLES = [];
         const MAX_SURFACE_SPARKLES = 30;
+        const RESONANCE_WAVES = [];
+        const MAX_RESONANCE_WAVES = 14;
+
+        const arenaResonance = {
+            level: 0,
+            hue: 198
+        };
 
         const ship = {
             x: 0, y: 0,
@@ -382,7 +389,10 @@
                 isActive: false,
                 sound,
                 label,
-                currentVolume: 0
+                currentVolume: 0,
+                zoneMix: 0,
+                resonance: 0,
+                wasInZone: false
             };
 
             ensureBubbleAudioRunning(bubble);
@@ -407,6 +417,19 @@
             toneFilter.frequency.value = 12000;
             toneFilter.Q.value = 0.6;
 
+            const analyser = ctx.createAnalyser();
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.86;
+            const analyserData = new Uint8Array(analyser.frequencyBinCount);
+
+            const resonantFilter = ctx.createBiquadFilter();
+            resonantFilter.type = 'bandpass';
+            resonantFilter.frequency.value = 880;
+            resonantFilter.Q.value = 1.3;
+
+            const resonantGain = ctx.createGain();
+            resonantGain.gain.value = 0;
+
             const panner = new PannerNode(ctx, {
                 panningModel: 'HRTF',
                 distanceModel: 'inverse',
@@ -419,8 +442,12 @@
             });
 
             source.connect(distanceGain);
+            source.connect(analyser);
             distanceGain.connect(toneFilter);
             toneFilter.connect(panner);
+            distanceGain.connect(resonantFilter);
+            resonantFilter.connect(resonantGain);
+            resonantGain.connect(panner);
             panner.connect(masterGainNode);
             source.start();
 
@@ -428,7 +455,11 @@
                 source,
                 distanceGain,
                 toneFilter,
+                resonantFilter,
+                resonantGain,
                 panner,
+                analyser,
+                analyserData,
                 isStarted: true
             };
         }
@@ -478,11 +509,17 @@
                 ship.vy += dy * ship.stiffness;
             }
 
+            let strongestResonance = 0;
+            let resonanceHueMix = 0;
+            let resonanceWeight = 0;
+
             BUBBLES.forEach(b => {
                 const dx = ship.x - b.x;
                 const dy = ship.y - b.y;
                 const dz = (b.depthOffset ?? 0);
                 const dist3d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                const zoneRadius = SOUND_HEAR_RADIUS * 0.7;
+                const insideZone = dist3d < zoneRadius;
 
                 if (b.sound) {
                     const normalized = Math.max(0, 1 - (dist3d / SOUND_HEAR_RADIUS));
@@ -496,8 +533,22 @@
                     const front = Math.cos(relativeAngle);
                     const rearFactor = Math.min(1, Math.max(0, (1 - front) * 0.5));
                     const distFactor = Math.min(1, dist3d / SOUND_HEAR_RADIUS);
-                    const cutoff = 12000 - (rearFactor * 7000) - (distFactor * 2600);
+                    const audioEnergy = sampleBubbleEnergy(b);
+                    const cutoff = 12000 - (rearFactor * 7000) - (distFactor * 2600) + audioEnergy * 1100;
                     b.sound.toneFilter.frequency.value = Math.max(1800, cutoff);
+
+                    b.zoneMix += ((insideZone ? 1 : 0) - b.zoneMix) * 0.05;
+                    const resonanceTarget = b.zoneMix * (0.45 + audioEnergy * 0.55);
+                    b.resonance += (resonanceTarget - b.resonance) * 0.08;
+
+                    if (b.sound.resonantFilter) {
+                        b.sound.resonantFilter.frequency.value = 680 + audioEnergy * 650 + b.resonance * 320;
+                        b.sound.resonantFilter.Q.value = 1.2 + b.resonance * 2.8;
+                    }
+                    if (b.sound.resonantGain) {
+                        const resonantVolume = b.currentVolume * (0.12 + b.resonance * 0.25);
+                        b.sound.resonantGain.gain.value = resonantVolume;
+                    }
 
                     if (b.sound.panner.positionX) {
                         b.sound.panner.positionX.value = b.x;
@@ -507,11 +558,25 @@
                         b.sound.panner.setPosition(b.x, b.y, b.depthOffset ?? 0);
                     }
                     b.isActive = dist3d < SOUND_HEAR_RADIUS;
+
+                    if (insideZone && !b.wasInZone) {
+                        spawnResonanceWave(b);
+                    }
+                    if (b.resonance > strongestResonance) {
+                        strongestResonance = b.resonance;
+                    }
+                    resonanceHueMix += b.resonance * (b.layer === 'deep' ? 228 : 192);
+                    resonanceWeight += b.resonance;
+                    b.wasInZone = insideZone;
                 } else {
                     b.isActive = false;
                 }
 
             });
+
+            arenaResonance.level += (strongestResonance - arenaResonance.level) * 0.04;
+            const targetHue = resonanceWeight > 0 ? (resonanceHueMix / resonanceWeight) : 198;
+            arenaResonance.hue += (targetHue - arenaResonance.hue) * 0.05;
 
             ship.vx *= ship.damping;
             ship.vy *= ship.damping;
@@ -554,6 +619,7 @@
             updateAudioListener();
             updateWakeParticles(speed);
             updateSurfaceEffects(speed);
+            updateResonanceWaves();
         }
 
         function updateWakeParticles(speed) {
@@ -680,6 +746,46 @@
             };
         }
 
+        function sampleBubbleEnergy(bubble) {
+            if (!bubble.sound?.analyser || !bubble.sound?.analyserData) return 0;
+            bubble.sound.analyser.getByteFrequencyData(bubble.sound.analyserData);
+            let sum = 0;
+            const binsToSample = 18;
+            for (let i = 0; i < binsToSample; i++) {
+                sum += bubble.sound.analyserData[i];
+            }
+            const avg = sum / (binsToSample * 255);
+            return Math.min(1, Math.max(0, avg * 1.9));
+        }
+
+        function spawnResonanceWave(bubble) {
+            if (RESONANCE_WAVES.length >= MAX_RESONANCE_WAVES) RESONANCE_WAVES.shift();
+            RESONANCE_WAVES.push({
+                x: bubble.x,
+                y: bubble.y,
+                bornAt: performance.now(),
+                life: 2800 + Math.random() * 1600,
+                radius: bubble.r * 0.9,
+                maxRadius: 520 + Math.random() * 340,
+                alpha: 0.22,
+                hue: bubble.layer === 'deep' ? 230 : 192
+            });
+        }
+
+        function updateResonanceWaves() {
+            const now = performance.now();
+            for (let i = RESONANCE_WAVES.length - 1; i >= 0; i--) {
+                const wave = RESONANCE_WAVES[i];
+                const t = (now - wave.bornAt) / wave.life;
+                if (t >= 1) {
+                    RESONANCE_WAVES.splice(i, 1);
+                    continue;
+                }
+                wave.radius = wave.maxRadius * t;
+                wave.alpha = (1 - t) * 0.22;
+            }
+        }
+
         function draw() {
             ctx.fillStyle = '#030308';
             ctx.fillRect(0, 0, w, h);
@@ -748,6 +854,7 @@
             BUBBLES.filter((b) => b.layer === 'deep').forEach(drawBubble);
 
             drawSurfaceSparkles();
+            drawResonanceWaves();
             drawWakeParticles();
             drawRipples();
 
@@ -842,6 +949,7 @@
 
             ctx.restore();
             drawWaterSurface();
+            drawArenaResonanceVeil();
         }
 
         function drawWakeParticles() {
@@ -896,6 +1004,18 @@
             });
         }
 
+        function drawResonanceWaves() {
+            RESONANCE_WAVES.forEach((wave) => {
+                const width = 1.2 + (1 - wave.alpha) * 2.1;
+                const pulse = 0.5 + Math.sin((performance.now() - wave.bornAt) * 0.003) * 0.5;
+                ctx.strokeStyle = `hsla(${wave.hue}, 88%, 76%, ${wave.alpha * (0.7 + pulse * 0.3)})`;
+                ctx.lineWidth = width;
+                ctx.beginPath();
+                ctx.arc(wave.x, wave.y, wave.radius, 0, Math.PI * 2);
+                ctx.stroke();
+            });
+        }
+
         function drawWaterSurface() {
             const horizonY = Math.max(30, h * 0.17);
             const gradient = ctx.createLinearGradient(0, 0, 0, horizonY + 120);
@@ -904,6 +1024,23 @@
             gradient.addColorStop(1, 'rgba(6, 22, 40, 0)');
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, w, horizonY + 120);
+        }
+
+        function drawArenaResonanceVeil() {
+            if (arenaResonance.level <= 0.01) return;
+            const intensity = Math.min(0.22, arenaResonance.level * 0.24);
+            const g = ctx.createRadialGradient(
+                w * 0.5,
+                h * 0.46,
+                h * 0.14,
+                w * 0.5,
+                h * 0.46,
+                h * 0.74
+            );
+            g.addColorStop(0, `hsla(${arenaResonance.hue}, 95%, 74%, ${intensity})`);
+            g.addColorStop(1, `hsla(${arenaResonance.hue + 18}, 80%, 30%, 0)`);
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, w, h);
         }
 
         function loop() {
