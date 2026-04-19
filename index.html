@@ -78,13 +78,6 @@
             opacity: 0.45;
             cursor: not-allowed;
         }
-        .panel-card input[type="color"] {
-            width: 52px;
-            height: 34px;
-            border: 0;
-            border-radius: 6px;
-            background: transparent;
-        }
         #audioName {
             margin-top: 10px;
             font-size: 0.8rem;
@@ -102,21 +95,16 @@
     <div id="bubblePanel" class="hidden">
         <div class="panel-card">
             <h2>Bulle sonore</h2>
-            <p>Importez un son ou enregistrez-le, puis choisissez sa couleur.</p>
+            <p>Importez un son ou enregistrez-le, puis choisissez son style de bulle.</p>
             <div class="panel-row">
                 <button id="importBtn" type="button">Importer audio</button>
                 <button id="recordBtn" type="button">Enregistrer</button>
             </div>
             <div class="panel-row">
-                <label for="bubbleColor">Couleur</label>
-                <input id="bubbleColor" type="color" value="#54d2ff">
-            </div>
-            <div class="panel-row">
-                <label for="bubbleDepth">Profondeur</label>
-                <select id="bubbleDepth">
-                    <option value="same">Même profondeur</option>
-                    <option value="above">Au-dessus</option>
-                    <option value="below">En-dessous</option>
+                <label for="bubbleLayer">Style</label>
+                <select id="bubbleLayer">
+                    <option value="surface">Surface nette</option>
+                    <option value="deep">Profonde floue</option>
                 </select>
             </div>
             <div id="audioName">Aucun son sélectionné</div>
@@ -140,8 +128,7 @@
         const cancelBtn = document.getElementById('cancelBtn');
         const dropBtn = document.getElementById('dropBtn');
         const audioInput = document.getElementById('audioInput');
-        const bubbleColor = document.getElementById('bubbleColor');
-        const bubbleDepth = document.getElementById('bubbleDepth');
+        const bubbleLayer = document.getElementById('bubbleLayer');
         const audioName = document.getElementById('audioName');
 
         let w, h;
@@ -150,6 +137,7 @@
         let isInteractionPaused = false;
         let lastFishTap = { time: 0, x: 0, y: 0 };
         let activeAudioBlob = null;
+        let activeAudioName = '';
         let recorder = null;
         let recordingChunks = [];
         let micStream = null;
@@ -177,8 +165,6 @@
             stiffness: 0.0026,
             damping: 0.93,
             turnEase: 0.06,
-            repulsionRadius: 110,
-            repulsionStrength: 0.38,
             maxSpeed: 3.1,
             wakeEmitter: 0,
             rippleEmitter: 0
@@ -198,9 +184,10 @@
                     x: Math.cos(angle) * dist,
                     y: Math.sin(angle) * dist,
                     r: 50 + Math.random() * 60,
-                    hue: 180 + Math.random() * 40,
+                    layer: Math.random() > 0.5 ? 'surface' : 'deep',
                     isActive: false,
-                    sound: null
+                    sound: null,
+                    label: ''
                 });
             }
         }
@@ -280,6 +267,7 @@
             const file = audioInput.files?.[0];
             if (!file) return;
             activeAudioBlob = file;
+            activeAudioName = file.name;
             audioName.textContent = `Son sélectionné : ${file.name}`;
             dropBtn.disabled = false;
         });
@@ -301,7 +289,8 @@
 
                 recorder.onstop = () => {
                     activeAudioBlob = new Blob(recordingChunks, { type: recorder.mimeType || 'audio/webm' });
-                    audioName.textContent = 'Enregistrement prêt';
+                    activeAudioName = `Enregistrement ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+                    audioName.textContent = `${activeAudioName} prêt`;
                     dropBtn.disabled = false;
                     recordBtn.textContent = 'Enregistrer';
                     if (micStream) {
@@ -323,7 +312,7 @@
         dropBtn.addEventListener('click', async () => {
             if (!activeAudioBlob) return;
             try {
-                const bubble = await buildSoundBubble(activeAudioBlob, bubbleColor.value, bubbleDepth.value);
+                const bubble = await buildSoundBubble(activeAudioBlob, activeAudioName, bubbleLayer.value);
                 BUBBLES.push(bubble);
                 closeBubblePanel();
             } catch (error) {
@@ -344,11 +333,11 @@
             isInteractionPaused = false;
             bubblePanel.classList.add('hidden');
             activeAudioBlob = null;
+            activeAudioName = '';
             dropBtn.disabled = true;
             audioInput.value = '';
             audioName.textContent = 'Aucun son sélectionné';
-            bubbleColor.value = '#54d2ff';
-            bubbleDepth.value = 'same';
+            bubbleLayer.value = 'surface';
 
             if (recorder && recorder.state === 'recording') recorder.stop();
             recordBtn.textContent = 'Enregistrer';
@@ -366,13 +355,11 @@
             return audioCtx;
         }
 
-        function depthModeToOffset(depthMode) {
-            if (depthMode === 'above') return Z_DEPTH;
-            if (depthMode === 'below') return -Z_DEPTH;
-            return 0;
+        function layerToDepthOffset(layer) {
+            return layer === 'surface' ? Z_DEPTH : -Z_DEPTH;
         }
 
-        async function buildSoundBubble(audioBlob, colorHex, depthMode = 'same') {
+        async function buildSoundBubble(audioBlob, label, layer = 'surface') {
             const mouthDistance = 20;
             const dirX = Math.cos(ship.angle - Math.PI / 2);
             const dirY = Math.sin(ship.angle - Math.PI / 2);
@@ -391,11 +378,11 @@
                 x,
                 y,
                 r: 64,
-                hue: hexToHue(colorHex),
-                depthMode,
-                depthOffset: depthModeToOffset(depthMode),
+                layer,
+                depthOffset: layerToDepthOffset(layer),
                 isActive: false,
                 sound,
+                label,
                 currentVolume: 0
             };
 
@@ -484,24 +471,6 @@
             }
         }
 
-        function hexToHue(hex) {
-            const value = hex.replace('#', '');
-            const r = parseInt(value.slice(0, 2), 16) / 255;
-            const g = parseInt(value.slice(2, 4), 16) / 255;
-            const b = parseInt(value.slice(4, 6), 16) / 255;
-            const max = Math.max(r, g, b);
-            const min = Math.min(r, g, b);
-            const delta = max - min;
-
-            if (delta === 0) return 180;
-            let hue;
-            if (max === r) hue = ((g - b) / delta) % 6;
-            else if (max === g) hue = (b - r) / delta + 2;
-            else hue = (r - g) / delta + 4;
-            const normalized = hue * 60;
-            return Math.round(normalized < 0 ? normalized + 360 : normalized);
-        }
-
         function update() {
             if (isTethered && !isInteractionPaused) {
                 const dx = mouseWorld.x - ship.x;
@@ -514,9 +483,7 @@
                 const dx = ship.x - b.x;
                 const dy = ship.y - b.y;
                 const dz = (b.depthOffset ?? 0);
-                const dist = Math.hypot(dx, dy);
                 const dist3d = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                const minDist = b.r + 25;
 
                 if (b.sound) {
                     const normalized = Math.max(0, 1 - (dist3d / SOUND_HEAR_RADIUS));
@@ -545,27 +512,6 @@
                     b.isActive = false;
                 }
 
-                const isDepthTraversable = b.depthMode === 'above' || b.depthMode === 'below';
-                if (!isDepthTraversable && dist < minDist + ship.repulsionRadius) {
-                    const safeDist = Math.max(0.0001, dist);
-                    const force = Math.pow(Math.max(0, (minDist + ship.repulsionRadius - safeDist) / ship.repulsionRadius), 2);
-                    const nx = dx / safeDist;
-                    const ny = dy / safeDist;
-
-                    ship.vx += nx * force * ship.repulsionStrength;
-                    ship.vy += ny * force * ship.repulsionStrength;
-
-                    if (safeDist < minDist) {
-                        const overlap = minDist - safeDist;
-                        ship.x += nx * overlap;
-                        ship.y += ny * overlap;
-                        const dot = ship.vx * nx + ship.vy * ny;
-                        if (dot < 0) {
-                            ship.vx -= nx * dot * 0.7;
-                            ship.vy -= ny * dot * 0.7;
-                        }
-                    }
-                }
             });
 
             ship.vx *= ship.damping;
@@ -749,28 +695,58 @@
             ctx.stroke();
 
             const drawBubble = (b) => {
-                const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
-                const opacityMult = b.isActive ? 2 : 1;
-                const hue = b.isActive ? 0 : b.hue;
+                const isSurface = b.layer !== 'deep';
+                const opacityBoost = b.isActive ? 1.2 : 1;
+                ctx.save();
 
-                grad.addColorStop(0, `hsla(${hue}, 80%, 50%, 0)`);
-                grad.addColorStop(0.8, `hsla(${hue}, 80%, 50%, ${0.05 * opacityMult})`);
-                grad.addColorStop(1, `hsla(${hue}, 80%, 50%, ${0.2 * opacityMult})`);
+                if (!isSurface) {
+                    const grad = ctx.createRadialGradient(b.x, b.y, b.r * 0.05, b.x, b.y, b.r);
+                    grad.addColorStop(0, `rgba(130, 195, 255, ${0.02 * opacityBoost})`);
+                    grad.addColorStop(0.72, `rgba(80, 155, 235, ${0.11 * opacityBoost})`);
+                    grad.addColorStop(1, `rgba(45, 105, 188, ${0.22 * opacityBoost})`);
+                    ctx.filter = 'blur(7px)';
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.filter = 'none';
+                    ctx.strokeStyle = `rgba(138, 202, 255, ${0.2 * opacityBoost})`;
+                    ctx.lineWidth = 1.4;
+                } else {
+                    const grad = ctx.createRadialGradient(b.x - b.r * 0.25, b.y - b.r * 0.28, b.r * 0.15, b.x, b.y, b.r);
+                    grad.addColorStop(0, `rgba(222, 245, 255, ${0.52 * opacityBoost})`);
+                    grad.addColorStop(0.65, `rgba(120, 198, 255, ${0.36 * opacityBoost})`);
+                    grad.addColorStop(1, `rgba(42, 126, 220, ${0.6 * opacityBoost})`);
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = `rgba(214, 243, 255, ${0.66 * opacityBoost})`;
+                    ctx.lineWidth = b.isActive ? 2.8 : 2.1;
+                }
 
-                ctx.fillStyle = grad;
                 ctx.beginPath();
                 ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.strokeStyle = `hsla(${hue}, 80%, 60%, ${0.1 * opacityMult})`;
-                ctx.lineWidth = b.isActive ? 3 : 1;
                 ctx.stroke();
+
+                if (b.label) {
+                    const maxWidth = b.r * 1.42;
+                    const fontSize = Math.max(11, Math.min(15, b.r * 0.25));
+                    ctx.font = `600 ${fontSize}px system-ui, -apple-system, Segoe UI, Roboto, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = isSurface ? 'rgba(235, 248, 255, 0.95)' : 'rgba(220, 237, 255, 0.82)';
+                    let text = b.label;
+                    while (ctx.measureText(text).width > maxWidth && text.length > 6) {
+                        text = `${text.slice(0, -2)}…`;
+                    }
+                    ctx.fillText(text, b.x, b.y, maxWidth);
+                }
+
+                ctx.restore();
             };
 
-            BUBBLES.forEach((b) => {
-                if (b.depthMode === 'above') return;
-                drawBubble(b);
-            });
+            BUBBLES.filter((b) => b.layer === 'deep').forEach(drawBubble);
 
             drawSurfaceSparkles();
             drawWakeParticles();
@@ -863,10 +839,7 @@
             ctx.fill();
             ctx.restore();
 
-            BUBBLES.forEach((b) => {
-                if (b.depthMode !== 'above') return;
-                drawBubble(b);
-            });
+            BUBBLES.filter((b) => b.layer !== 'deep').forEach(drawBubble);
 
             ctx.restore();
             drawWaterSurface();
