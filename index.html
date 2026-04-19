@@ -1215,12 +1215,7 @@
             ctx.fill();
             ctx.restore();
 
-            // --- SHIMMER HIGHLIGHT ---
             ctx.shadowBlur = 0;
-            ctx.fillStyle = `rgba(255, 255, 255, ${0.30 + shimmerPulse * 0.36})`;
-            ctx.beginPath();
-            ctx.ellipse(-0.5, -9, 2.4, 5.2, -0.15, 0, Math.PI * 2);
-            ctx.fill();
 
             // --- BIOLUMINESCENT SPOTS ---
             const spotT = swimT * 3.2;
@@ -1241,24 +1236,23 @@
             });
 
             // --- EYES ---
-            ctx.shadowBlur = 0;
             // Eye halo
-            ctx.fillStyle = `rgba(160, 232, 255, ${0.32 + shimmerPulse * 0.22})`;
+            ctx.fillStyle = `rgba(160, 232, 255, ${0.30 + shimmerPulse * 0.20})`;
             ctx.beginPath();
-            ctx.arc(-2.2, -11, 3.4, 0, Math.PI * 2);
-            ctx.arc(2.2, -11, 3.4, 0, Math.PI * 2);
+            ctx.arc(-6.2, -12, 3.0, 0, Math.PI * 2);
+            ctx.arc(6.2, -12, 3.0, 0, Math.PI * 2);
             ctx.fill();
             // Iris
             ctx.fillStyle = '#062436';
             ctx.beginPath();
-            ctx.arc(-2.2, -11, 1.4, 0, Math.PI * 2);
-            ctx.arc(2.2, -11, 1.4, 0, Math.PI * 2);
+            ctx.arc(-6.2, -12, 1.45, 0, Math.PI * 2);
+            ctx.arc(6.2, -12, 1.45, 0, Math.PI * 2);
             ctx.fill();
             // Specular
-            ctx.fillStyle = `rgba(255, 255, 255, ${0.72 + shimmerPulse * 0.28})`;
+            ctx.fillStyle = `rgba(255, 255, 255, ${0.75 + shimmerPulse * 0.25})`;
             ctx.beginPath();
-            ctx.arc(-1.65, -11.5, 0.5, 0, Math.PI * 2);
-            ctx.arc(2.75, -11.5, 0.5, 0, Math.PI * 2);
+            ctx.arc(-5.6, -12.6, 0.52, 0, Math.PI * 2);
+            ctx.arc(6.8, -12.6, 0.52, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
 
