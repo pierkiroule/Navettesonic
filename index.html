@@ -63,22 +63,15 @@
             cursor: pointer;
             box-shadow: 0 12px 40px rgba(72, 213, 255, 0.35);
         }
-        .video-placeholder {
+        .hero-video {
             width: min(360px, 80vw);
-            aspect-ratio: 1;
-            border-radius: 999px;
+            aspect-ratio: 16 / 10;
+            border-radius: 24px;
             border: 1px solid rgba(179, 233, 255, 0.4);
-            background:
-                radial-gradient(circle at 35% 30%, rgba(199, 241, 255, 0.45), transparent 42%),
-                radial-gradient(circle at 60% 70%, rgba(74, 148, 255, 0.45), transparent 55%),
-                rgba(8, 19, 35, 0.9);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            color: rgba(240, 248, 255, 0.8);
-            font-size: 0.95rem;
-            padding: 24px;
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+            object-fit: cover;
+            overflow: hidden;
+            background: rgba(8, 19, 35, 0.9);
         }
 
         #experienceView, #profileView { background: #030308; }
@@ -208,7 +201,10 @@
                 </ul>
                 <button id="enterExperienceBtn" class="immersion-btn" type="button">Immersion Soono•°</button>
             </div>
-            <div class="video-placeholder">Vidéo circulaire<br>placeholder</div>
+            <video class="hero-video" autoplay muted loop playsinline>
+                <source src="video/soono.mp4" type="video/mp4">
+                Votre navigateur ne supporte pas la lecture vidéo.
+            </video>
         </div>
     </section>
 
