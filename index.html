@@ -557,6 +557,7 @@
             bubble._sampleId = sample.id;
             bubble.resotagQueue = createResotagList(sample);
             bubble.lastImpactAt = 0;
+            bubble.fishTouching = false;
             for (let i = RESOTAGS.length - 1; i >= 0; i--) {
                 if (RESOTAGS[i].bubbleId === bubble.id) {
                     unlinkResotag(RESOTAGS[i].id);
@@ -962,7 +963,8 @@
                 sound, label: sample.name, _sampleId: sample.id,
                 currentVolume: 0, zoneMix: 0, resonance: 0, wasInZone: false, hue: 195,
                 resotagQueue: createResotagList(sample),
-                lastImpactAt: 0
+                lastImpactAt: 0,
+                fishTouching: false
             };
         }
 
@@ -1404,10 +1406,12 @@
 
             BUBBLES.forEach((bubble) => {
                 const dist = Math.hypot(ship.x - bubble.x, ship.y - bubble.y);
-                if (dist <= bubble.r + fishRadius && now - bubble.lastImpactAt > 420) {
+                const isTouching = dist <= bubble.r + fishRadius;
+                if (isTouching && !bubble.fishTouching && now - bubble.lastImpactAt > 30000) {
                     bubble.lastImpactAt = now;
                     releaseResotagFromBubble(bubble);
                 }
+                bubble.fishTouching = isTouching;
             });
 
             RESOTAGS.forEach((tag) => {
@@ -1917,7 +1921,7 @@
                 const driftPulse = (Math.sin(now * 0.003 + tag.orbitAngle * 9) + 1) * 0.5;
                 const isRevealed = now < tag.revealedUntil;
                 if (isRevealed) {
-                    const size = 9 + driftPulse * 1.2;
+                    const size = 11 + driftPulse * 1.6;
                     ctx.font = `600 ${size.toFixed(1)}px Georgia, serif`;
                     ctx.fillStyle = 'rgba(220, 245, 255, 0.5)';
                     ctx.shadowBlur = 6;
