@@ -1430,7 +1430,7 @@
             BUBBLES.forEach((bubble) => {
                 const dist = Math.hypot(ship.x - bubble.x, ship.y - bubble.y);
                 const isTouching = dist <= bubble.r + fishRadius;
-                if (isTouching && !bubble.fishTouching && now - bubble.lastImpactAt > 30000) {
+                if (isTouching && !bubble.fishTouching && now - bubble.lastImpactAt > 10000) {
                     bubble.lastImpactAt = now;
                     releaseResotagFromBubble(bubble);
                 }
@@ -1450,11 +1450,18 @@
                 const dx = tag.x - ship.x;
                 const dy = tag.y - ship.y;
                 const d = Math.hypot(dx, dy);
-                if (d < 30) tag.revealedUntil = now + 3000;
-                if (d < 64 && d > 0.001) {
-                    const push = (1 - d / 64) * (0.012 + fishForce * 0.018);
-                    tag.vx += (dx / d) * push + ship.vx * 0.012;
-                    tag.vy += (dy / d) * push + ship.vy * 0.012;
+                const fishGlide = Math.min(1, fishForce / ship.maxSpeed);
+                if (d < 100) tag.revealedUntil = now + 2000;
+                if (d < 110 && d > 0.001) {
+                    if (fishGlide < 0.52 && !tag.attached) {
+                        const pull = (1 - d / 110) * 0.028;
+                        tag.vx -= (dx / d) * pull;
+                        tag.vy -= (dy / d) * pull;
+                    } else if (d < 64) {
+                        const push = (1 - d / 64) * (0.010 + fishForce * 0.016);
+                        tag.vx += (dx / d) * push + ship.vx * 0.010;
+                        tag.vy += (dy / d) * push + ship.vy * 0.010;
+                    }
                 }
 
                 tag.vx *= 0.968;
@@ -1500,13 +1507,13 @@
 
         function updateHaikuAttachment(speed) {
             const glide = Math.min(1, speed / ship.maxSpeed);
-            if (haikuTrailWords.length < 3 && glide < 0.32) {
+            if (haikuTrailWords.length < 3 && glide < 0.58) {
                 for (const tag of RESOTAGS) {
                     if (tag.attached) continue;
                     const d = Math.hypot(ship.x - tag.x, ship.y - tag.y);
-                    if (d < 58) {
-                        const alreadySameBubble = haikuTrailWords.some(w => w.bubbleId === tag.bubbleId);
-                        if (!alreadySameBubble) {
+                    if (d < 96) {
+                        const alreadySameWord = haikuTrailWords.some(w => w.text === tag.text);
+                        if (!alreadySameWord) {
                             tag.attached = true;
                             tag.trailSlot = haikuTrailWords.length;
                             haikuTrailWords.push(tag);
@@ -1561,11 +1568,18 @@
         function composeHaiku(words) {
             const [w1, w2, w3] = words;
             const templates = [
-                [w1, `${w2}  ${w3}`, '\u223c'],
-                [w1, w2, w3],
-                [`dans le ${w1}`, w2, `${w3}\u2026`],
-                [w1, `${w2} seul`, w3],
-                [`${w1} et ${w2}`, w3, '\u2014'],
+                [w1, `${w2} s'efface`, `reste ${w3}`],
+                [`encore ${w1}`, `ni ${w2} ni ${w3}`, `l'eau se souvient`],
+                [`${w1} fragile`, `comme ${w2}`, `${w3} demeure`],
+                [`au fond, ${w1}`, `${w2} dans l'ombre`, `${w3} là-haut`],
+                [`ce soir, ${w1}`, `${w2} comme un rêve`, `${w3} sans bruit`],
+                [`${w1} qui tremble`, `${w2}`, `${w3} qui s'efface`],
+                [w1, `${w2} et ${w3}`, `puis l'oubli`],
+                [`${w1} toujours`, `${w2} déjà loin`, w3],
+                [w1, `ni ${w2} ni ${w3}`, `l'abîme attend`],
+                [`${w1} sur l'eau`, `${w2} · ${w3}`, `rien ne répond`],
+                [`un souffle — ${w1}`, w2, `${w3} se dissout`],
+                [`${w1} seul`, `le ${w2} traverse`, `${w3} restera`],
             ];
             return templates[Math.floor(Math.random() * templates.length)];
         }
