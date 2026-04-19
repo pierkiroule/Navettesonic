@@ -644,6 +644,11 @@
             'brume', 'murmure', 'ivresse', 'algue', 'reflet', 'dérive',
             'pulsation', 'source', 'plume', 'halo', 'onde', 'silence'
         ];
+        const STARTING_BUBBLES = [
+            { sampleId: 'forêt-zen', layer: 'front', hue: 188, x: -240, y: -120, r: 72 },
+            { sampleId: 'ocean-deep', layer: 'below', hue: 235, x: 220, y: 170, r: 78 },
+            { sampleId: 'aurore', layer: 'above', hue: 318, x: 70, y: -255, r: 68 },
+        ];
         let shipBreathEmitter = 0;
         let bubbleIdSeed = 1;
         let resotagIdSeed = 1;
@@ -935,6 +940,7 @@
                 orbitAngle: angle,
                 orbitSpeed: (Math.random() * 0.00065 + 0.00022) * (Math.random() < 0.5 ? -1 : 1),
                 drift: 0.0025 + Math.random() * 0.0035,
+                motherHue: bubble.hue ?? 195,
                 revealedUntil: 0,
                 bornAt: performance.now(),
             });
@@ -966,6 +972,19 @@
                 lastImpactAt: 0,
                 fishTouching: false
             };
+        }
+
+        function placeInitialArenaBubbles() {
+            if (BUBBLES.length) return;
+            STARTING_BUBBLES.forEach((cfg) => {
+                const sample = SAMPLE_LIBRARY.find(s => s.id === cfg.sampleId) || SAMPLE_LIBRARY[0];
+                const bubble = buildSoundBubble(sample, cfg.layer);
+                bubble.x = cfg.x;
+                bubble.y = cfg.y;
+                bubble.r = cfg.r;
+                bubble.hue = cfg.hue;
+                BUBBLES.push(bubble);
+            });
         }
 
         function createBinauralSound(sample) {
@@ -1446,6 +1465,15 @@
                     const b = RESOTAGS[j];
                     if (a.bubbleId === b.bubbleId) continue;
                     const dist = Math.hypot(a.x - b.x, a.y - b.y);
+                    if (dist < 240 && dist > 0.001) {
+                        const attraction = (1 - dist / 240) * 0.0022;
+                        const ax = (b.x - a.x) / dist;
+                        const ay = (b.y - a.y) / dist;
+                        a.vx += ax * attraction;
+                        a.vy += ay * attraction;
+                        b.vx -= ax * attraction;
+                        b.vy -= ay * attraction;
+                    }
                     if (dist > 30) continue;
                     const exists = RESOTAG_LINKS.some(l => (l.a === a.id && l.b === b.id) || (l.a === b.id && l.b === a.id));
                     if (exists) continue;
@@ -1904,7 +1932,8 @@
                 if (!a || !b) return;
                 const life = Math.min(1, (performance.now() - link.bornAt) / 900);
                 const alpha = 0.06 + life * 0.10;
-                ctx.strokeStyle = `rgba(172, 234, 255, ${alpha})`;
+                const hue = (((a.motherHue ?? 195) + (b.motherHue ?? 195)) / 2);
+                ctx.strokeStyle = `hsla(${hue}, 86%, 78%, ${alpha})`;
                 ctx.lineWidth = 0.8;
                 ctx.beginPath();
                 ctx.moveTo(a.x, a.y);
@@ -1920,21 +1949,22 @@
             RESOTAGS.forEach((tag) => {
                 const driftPulse = (Math.sin(now * 0.003 + tag.orbitAngle * 9) + 1) * 0.5;
                 const isRevealed = now < tag.revealedUntil;
+                const tagHue = tag.motherHue ?? 195;
                 if (isRevealed) {
-                    const size = 11 + driftPulse * 1.6;
+                    const size = 13 + driftPulse * 2.1;
                     ctx.font = `600 ${size.toFixed(1)}px Georgia, serif`;
-                    ctx.fillStyle = 'rgba(220, 245, 255, 0.5)';
-                    ctx.shadowBlur = 6;
-                    ctx.shadowColor = 'rgba(110, 220, 255, 0.28)';
+                    ctx.fillStyle = `hsla(${tagHue}, 92%, 88%, 0.72)`;
+                    ctx.shadowBlur = 7;
+                    ctx.shadowColor = `hsla(${tagHue}, 90%, 66%, 0.30)`;
                     ctx.fillText(tag.text, tag.x, tag.y);
                     return;
                 }
 
-                const dotR = 1.2 + driftPulse * 0.8;
-                const dotAlpha = 0.25 + driftPulse * 0.35;
+                const dotR = 2.3 + driftPulse * 1.2;
+                const dotAlpha = 0.32 + driftPulse * 0.40;
                 ctx.shadowBlur = 10;
-                ctx.shadowColor = `rgba(160, 242, 255, ${dotAlpha * 0.8})`;
-                ctx.fillStyle = `rgba(210, 245, 255, ${dotAlpha})`;
+                ctx.shadowColor = `hsla(${tagHue}, 92%, 70%, ${dotAlpha * 0.85})`;
+                ctx.fillStyle = `hsla(${tagHue}, 94%, 84%, ${dotAlpha})`;
                 ctx.beginPath();
                 ctx.arc(tag.x, tag.y, dotR, 0, Math.PI * 2);
                 ctx.fill();
@@ -1968,6 +1998,7 @@
             requestAnimationFrame(loop);
         }
 
+        placeInitialArenaBubbles();
         showView('home');
         loop();
     </script>
