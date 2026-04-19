@@ -638,6 +638,8 @@
         const RESOTAGS = [];
         const RESOTAG_LINKS = [];
         const MAX_RESOTAG_LINKS = 120;
+        const HAIKU_TRIANGLES = [];
+        let haikuTrailWords = [];
         const RESOTAG_POOL = [
             'écume', 'abysses', 'lueur', 'frisson', 'pollen', 'sillage',
             'corail', 'souffle', 'nacre', 'aurore', 'vertige', 'marée',
@@ -1201,6 +1203,8 @@
             updateResonanceWaves();
             updatePoetryEffects(speed);
             updateResotags(speed);
+            updateHaikuAttachment(speed);
+            updateHaikuTriangles();
         }
 
         function updateWakeParticles(speed) {
@@ -1494,6 +1498,191 @@
             }
         }
 
+        function updateHaikuAttachment(speed) {
+            const glide = Math.min(1, speed / ship.maxSpeed);
+            if (haikuTrailWords.length < 3 && glide < 0.32) {
+                for (const tag of RESOTAGS) {
+                    if (tag.attached) continue;
+                    const d = Math.hypot(ship.x - tag.x, ship.y - tag.y);
+                    if (d < 58) {
+                        const alreadySameBubble = haikuTrailWords.some(w => w.bubbleId === tag.bubbleId);
+                        if (!alreadySameBubble) {
+                            tag.attached = true;
+                            tag.trailSlot = haikuTrailWords.length;
+                            haikuTrailWords.push(tag);
+                            break;
+                        }
+                    }
+                }
+            }
+            const now = performance.now();
+            haikuTrailWords.forEach((tag, slot) => {
+                const trailIdx = Math.max(0, ship.trail.length - 1 - (slot + 1) * 15);
+                if (ship.trail[trailIdx]) {
+                    const target = ship.trail[trailIdx];
+                    tag.x += (target.x - tag.x) * 0.13;
+                    tag.y += (target.y - tag.y) * 0.13;
+                }
+                tag.revealedUntil = now + 300;
+            });
+            if (haikuTrailWords.length === 3) {
+                spawnHaikuTriangle(haikuTrailWords);
+                for (let i = RESOTAGS.length - 1; i >= 0; i--) {
+                    if (RESOTAGS[i].attached) RESOTAGS.splice(i, 1);
+                }
+                haikuTrailWords = [];
+            }
+        }
+
+        function spawnHaikuTriangle(words) {
+            const texts = words.map(w => w.text);
+            const hues = words.map(w => w.motherHue ?? 195);
+            const avgHue = hues.reduce((a, b) => a + b, 0) / hues.length;
+            HAIKU_TRIANGLES.push({
+                x: ship.x + (Math.random() - 0.5) * 50,
+                y: ship.y + (Math.random() - 0.5) * 50,
+                words: texts,
+                haiku: composeHaiku(texts),
+                notes: wordsToNotes(texts),
+                size: 38,
+                angle: Math.random() * Math.PI * 2,
+                rotSpeed: 0.0038 + Math.random() * 0.003,
+                vx: (Math.random() - 0.5) * 0.18,
+                vy: (Math.random() - 0.5) * 0.18,
+                phase: Math.random() * Math.PI * 2,
+                hue: avgHue,
+                open: false,
+                openedAt: null,
+                openDuration: 5200,
+                cooldownUntil: 0,
+            });
+        }
+
+        function composeHaiku(words) {
+            const [w1, w2, w3] = words;
+            const templates = [
+                [w1, `${w2}  ${w3}`, '\u223c'],
+                [w1, w2, w3],
+                [`dans le ${w1}`, w2, `${w3}\u2026`],
+                [w1, `${w2} seul`, w3],
+                [`${w1} et ${w2}`, w3, '\u2014'],
+            ];
+            return templates[Math.floor(Math.random() * templates.length)];
+        }
+
+        function wordsToNotes(words) {
+            const penta = [261.6, 293.7, 329.6, 392.0, 440.0, 523.3, 587.3, 659.3];
+            return words.map(w => {
+                let h = 7;
+                for (const c of w) h = (h * 31 + c.charCodeAt(0)) & 0x7fffffff;
+                return penta[Math.abs(h) % penta.length];
+            });
+        }
+
+        function playHaikuMelody(notes) {
+            const actx = ensureAudioContext();
+            if (!actx) return;
+            notes.forEach((freq, i) => {
+                const t0 = actx.currentTime + i * 1.55;
+                [[1, 0.22], [2.005, 0.07]].forEach(([harmonic, peak]) => {
+                    const osc = actx.createOscillator();
+                    const gain = actx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq * harmonic;
+                    gain.gain.setValueAtTime(0, t0);
+                    gain.gain.linearRampToValueAtTime(peak, t0 + 0.018);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.45);
+                    osc.connect(gain);
+                    gain.connect(masterGainNode);
+                    osc.start(t0);
+                    osc.stop(t0 + 1.5);
+                });
+            });
+        }
+
+        function updateHaikuTriangles() {
+            const now = performance.now();
+            HAIKU_TRIANGLES.forEach(tri => {
+                tri.angle += tri.rotSpeed;
+                tri.vx += (Math.random() - 0.5) * 0.007;
+                tri.vy += (Math.random() - 0.5) * 0.007;
+                tri.vx *= 0.993;
+                tri.vy *= 0.993;
+                tri.x += tri.vx;
+                tri.y += tri.vy;
+                if (tri.open && tri.openedAt && now - tri.openedAt > tri.openDuration) {
+                    tri.open = false;
+                    tri.openedAt = null;
+                    tri.cooldownUntil = now + 3000;
+                }
+                if (!tri.open && now > tri.cooldownUntil) {
+                    const d = Math.hypot(ship.x - tri.x, ship.y - tri.y);
+                    if (d < tri.size + 24) {
+                        tri.open = true;
+                        tri.openedAt = now;
+                        playHaikuMelody(tri.notes);
+                    }
+                }
+            });
+        }
+
+        function drawHaikuTriangles() {
+            const now = performance.now();
+            HAIKU_TRIANGLES.forEach(tri => {
+                const openFrac = tri.open && tri.openedAt
+                    ? Math.min(1, (now - tri.openedAt) / 480)
+                    : 0;
+                const elapsed = tri.open && tri.openedAt ? now - tri.openedAt : 0;
+                const closeFrac = elapsed > tri.openDuration - 700
+                    ? Math.min(1, (elapsed - (tri.openDuration - 700)) / 700)
+                    : 0;
+                const textAlpha = openFrac > 0.4
+                    ? Math.min(1, (openFrac - 0.4) / 0.3) * (1 - closeFrac)
+                    : 0;
+                const pulse = (Math.sin(now * 0.0026 + tri.phase) + 1) * 0.5;
+                const size = tri.size * (1 + openFrac * 0.52 + pulse * 0.04);
+
+                ctx.save();
+                ctx.translate(tri.x, tri.y);
+
+                ctx.save();
+                ctx.rotate(tri.angle);
+                const glowA = 0.28 + pulse * 0.22 + openFrac * 0.36;
+                ctx.shadowBlur = 15 + openFrac * 26;
+                ctx.shadowColor = `hsla(${tri.hue}, 92%, 82%, ${glowA})`;
+                ctx.strokeStyle = `hsla(${tri.hue}, 88%, 84%, ${0.48 + openFrac * 0.42})`;
+                ctx.lineWidth = 1.4 + openFrac * 1.7;
+                ctx.beginPath();
+                for (let v = 0; v < 3; v++) {
+                    const a = (v / 3) * Math.PI * 2 - Math.PI / 2;
+                    const px = Math.cos(a) * size;
+                    const py = Math.sin(a) * size;
+                    v === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+                }
+                ctx.closePath();
+                if (openFrac > 0) {
+                    ctx.fillStyle = `hsla(${tri.hue}, 52%, 10%, ${openFrac * 0.9})`;
+                    ctx.fill();
+                }
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+                ctx.restore();
+
+                if (textAlpha > 0.02 && tri.haiku) {
+                    ctx.font = '500 9.5px Georgia, serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = `hsla(${tri.hue}, 70%, 93%, ${textAlpha})`;
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = `hsla(${tri.hue}, 90%, 82%, ${textAlpha * 0.5})`;
+                    const lh = 14;
+                    tri.haiku.forEach((line, i) => ctx.fillText(line, 0, (i - 1) * lh));
+                    ctx.shadowBlur = 0;
+                }
+                ctx.restore();
+            });
+        }
+
         function drawBreathWaves() {
             BREATH_WAVES.forEach(bw => {
                 const rx = bw.maxRx * bw.t;
@@ -1652,6 +1841,7 @@
             drawLuminousTrail();
             drawResotagLinks();
             drawResotags();
+            drawHaikuTriangles();
 
             ctx.save();
             ctx.translate(ship.x, ship.y);
@@ -1948,8 +2138,25 @@
             ctx.textBaseline = 'middle';
             RESOTAGS.forEach((tag) => {
                 const driftPulse = (Math.sin(now * 0.003 + tag.orbitAngle * 9) + 1) * 0.5;
-                const isRevealed = now < tag.revealedUntil;
                 const tagHue = tag.motherHue ?? 195;
+
+                if (tag.attached) {
+                    const breathe = (Math.sin(now * 0.004 + tag.trailSlot * 1.2) + 1) * 0.5;
+                    const sz = 13 + breathe * 3;
+                    ctx.font = `700 ${sz.toFixed(1)}px Georgia, serif`;
+                    ctx.fillStyle = `hsla(${tagHue}, 95%, 95%, 0.92)`;
+                    ctx.shadowBlur = 18;
+                    ctx.shadowColor = `hsla(${tagHue}, 92%, 78%, 0.62)`;
+                    ctx.fillText(tag.text, tag.x, tag.y - 10);
+                    ctx.shadowBlur = 4;
+                    ctx.fillStyle = `hsla(${tagHue}, 90%, 80%, 0.45)`;
+                    ctx.beginPath();
+                    ctx.arc(tag.x, tag.y - 2, 2.4, 0, Math.PI * 2);
+                    ctx.fill();
+                    return;
+                }
+
+                const isRevealed = now < tag.revealedUntil;
                 if (isRevealed) {
                     const size = 13 + driftPulse * 2.1;
                     ctx.font = `600 ${size.toFixed(1)}px Georgia, serif`;
