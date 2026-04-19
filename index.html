@@ -615,7 +615,7 @@
             'Pour ouvrir la collection, fais un double tap (ou double clic) directement sur le poisson.',
             'Dans la collection, choisis un sample puis une position (face, dessus, dessous).',
             'Valide avec « Ajouter à la collection » pour déposer une bulle sonore dans la scène.',
-            'Resotags : chaque choc du poisson sur une bulle libère un mot résonant qui dérive et se relie.'
+            'Resotags : chaque choc libère une luciole ; touche-la pour révéler son mot 3 secondes.'
         ];
 
         const ARENA_RADIUS = 2000;
@@ -928,13 +928,13 @@
                 text,
                 x: bubble.x + Math.cos(angle) * spawnRadius,
                 y: bubble.y + Math.sin(angle) * spawnRadius,
-                vx: Math.cos(angle) * (0.25 + Math.random() * 0.35),
-                vy: Math.sin(angle) * (0.25 + Math.random() * 0.35),
-                orbitRadius: bubble.r + 26 + Math.random() * 40,
+                vx: Math.cos(angle) * (0.03 + Math.random() * 0.03),
+                vy: Math.sin(angle) * (0.03 + Math.random() * 0.03),
+                orbitRadius: bubble.r + 24 + Math.random() * 34,
                 orbitAngle: angle,
-                orbitSpeed: (Math.random() * 0.0025 + 0.0008) * (Math.random() < 0.5 ? -1 : 1),
-                drift: 0.025 + Math.random() * 0.035,
-                detachedUntil: 0,
+                orbitSpeed: (Math.random() * 0.00065 + 0.00022) * (Math.random() < 0.5 ? -1 : 1),
+                drift: 0.0025 + Math.random() * 0.0035,
+                revealedUntil: 0,
                 bornAt: performance.now(),
             });
         }
@@ -1404,7 +1404,7 @@
 
             BUBBLES.forEach((bubble) => {
                 const dist = Math.hypot(ship.x - bubble.x, ship.y - bubble.y);
-                if (dist <= bubble.r + fishRadius && now - bubble.lastImpactAt > 300) {
+                if (dist <= bubble.r + fishRadius && now - bubble.lastImpactAt > 420) {
                     bubble.lastImpactAt = now;
                     releaseResotagFromBubble(bubble);
                 }
@@ -1412,31 +1412,26 @@
 
             RESOTAGS.forEach((tag) => {
                 const mother = tag.bubbleRef;
-                const currents = Math.sin((now + tag.bornAt) * 0.00045 + tag.id.length) * 0.06;
+                const currents = Math.sin((now + tag.bornAt) * 0.00018 + tag.id.length) * 0.02;
                 const targetX = mother.x + Math.cos(tag.orbitAngle) * tag.orbitRadius;
                 const targetY = mother.y + Math.sin(tag.orbitAngle) * tag.orbitRadius;
                 tag.orbitAngle += tag.orbitSpeed;
 
-                if (now > tag.detachedUntil) {
-                    tag.vx += (targetX - tag.x) * 0.004 + currents * tag.drift;
-                    tag.vy += (targetY - tag.y) * 0.004 + currents * tag.drift * 0.7;
-                }
+                tag.vx += (targetX - tag.x) * 0.0012 + currents * tag.drift;
+                tag.vy += (targetY - tag.y) * 0.0012 + currents * tag.drift * 0.7;
 
                 const dx = tag.x - ship.x;
                 const dy = tag.y - ship.y;
                 const d = Math.hypot(dx, dy);
-                if (d < 78 && d > 0.001) {
-                    const push = (1 - d / 78) * (0.22 + fishForce * 0.34);
-                    tag.vx += (dx / d) * push + ship.vx * 0.05;
-                    tag.vy += (dy / d) * push + ship.vy * 0.05;
-                    if (push > 0.42) {
-                        tag.detachedUntil = now + 1600;
-                        unlinkResotag(tag.id);
-                    }
+                if (d < 30) tag.revealedUntil = now + 3000;
+                if (d < 64 && d > 0.001) {
+                    const push = (1 - d / 64) * (0.012 + fishForce * 0.018);
+                    tag.vx += (dx / d) * push + ship.vx * 0.012;
+                    tag.vy += (dy / d) * push + ship.vy * 0.012;
                 }
 
-                tag.vx *= 0.985;
-                tag.vy *= 0.985;
+                tag.vx *= 0.968;
+                tag.vy *= 0.968;
                 tag.x += tag.vx;
                 tag.y += tag.vy;
             });
@@ -1447,7 +1442,7 @@
                     const b = RESOTAGS[j];
                     if (a.bubbleId === b.bubbleId) continue;
                     const dist = Math.hypot(a.x - b.x, a.y - b.y);
-                    if (dist > 26) continue;
+                    if (dist > 30) continue;
                     const exists = RESOTAG_LINKS.some(l => (l.a === a.id && l.b === b.id) || (l.a === b.id && l.b === a.id));
                     if (exists) continue;
                     if (RESOTAG_LINKS.length >= MAX_RESOTAG_LINKS) RESOTAG_LINKS.shift();
@@ -1463,7 +1458,7 @@
                     RESOTAG_LINKS.splice(i, 1);
                     continue;
                 }
-                if (Math.hypot(a.x - b.x, a.y - b.y) > 96) RESOTAG_LINKS.splice(i, 1);
+                if (Math.hypot(a.x - b.x, a.y - b.y) > 105) RESOTAG_LINKS.splice(i, 1);
             }
         }
 
@@ -1904,9 +1899,9 @@
                 const b = RESOTAGS.find(t => t.id === link.b);
                 if (!a || !b) return;
                 const life = Math.min(1, (performance.now() - link.bornAt) / 900);
-                const alpha = 0.08 + life * 0.12;
+                const alpha = 0.06 + life * 0.10;
                 ctx.strokeStyle = `rgba(172, 234, 255, ${alpha})`;
-                ctx.lineWidth = 0.9;
+                ctx.lineWidth = 0.8;
                 ctx.beginPath();
                 ctx.moveTo(a.x, a.y);
                 ctx.lineTo(b.x, b.y);
@@ -1919,15 +1914,26 @@
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             RESOTAGS.forEach((tag) => {
-                const age = Math.min(1, (now - tag.bornAt) / 700);
-                const alpha = 0.36 + age * 0.52;
                 const driftPulse = (Math.sin(now * 0.003 + tag.orbitAngle * 9) + 1) * 0.5;
-                const size = 11 + driftPulse * 1.8;
-                ctx.font = `600 ${size.toFixed(1)}px Georgia, serif`;
-                ctx.fillStyle = `rgba(220, 245, 255, ${alpha})`;
+                const isRevealed = now < tag.revealedUntil;
+                if (isRevealed) {
+                    const size = 9 + driftPulse * 1.2;
+                    ctx.font = `600 ${size.toFixed(1)}px Georgia, serif`;
+                    ctx.fillStyle = 'rgba(220, 245, 255, 0.5)';
+                    ctx.shadowBlur = 6;
+                    ctx.shadowColor = 'rgba(110, 220, 255, 0.28)';
+                    ctx.fillText(tag.text, tag.x, tag.y);
+                    return;
+                }
+
+                const dotR = 1.2 + driftPulse * 0.8;
+                const dotAlpha = 0.25 + driftPulse * 0.35;
                 ctx.shadowBlur = 10;
-                ctx.shadowColor = `rgba(110, 220, 255, ${alpha * 0.6})`;
-                ctx.fillText(tag.text, tag.x, tag.y);
+                ctx.shadowColor = `rgba(160, 242, 255, ${dotAlpha * 0.8})`;
+                ctx.fillStyle = `rgba(210, 245, 255, ${dotAlpha})`;
+                ctx.beginPath();
+                ctx.arc(tag.x, tag.y, dotR, 0, Math.PI * 2);
+                ctx.fill();
             });
             ctx.shadowBlur = 0;
         }
