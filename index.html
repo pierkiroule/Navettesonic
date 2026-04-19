@@ -1095,23 +1095,6 @@
                 ctx.restore();
             });
 
-            // --- DORSAL FIN (ribbon) ---
-            ctx.save();
-            const dorsalWave = Math.sin(swimT * 8.2 + 0.4) * 0.09;
-            const dorsalGrad = ctx.createLinearGradient(-3, -16, 3, -8);
-            dorsalGrad.addColorStop(0, `hsla(${bodyHueTop - 8}, 88%, 92%, ${0.5 + shimmerPulse * 0.28})`);
-            dorsalGrad.addColorStop(1, `hsla(${bodyHueTop}, 80%, 80%, 0.08)`);
-            ctx.fillStyle = dorsalGrad;
-            ctx.shadowBlur = 8;
-            ctx.shadowColor = `hsla(${bodyHueTop}, 90%, 88%, 0.45)`;
-            ctx.beginPath();
-            ctx.moveTo(-2.5, -14);
-            ctx.bezierCurveTo(-7 + dorsalWave * 35, -22, -2 + dorsalWave * 22, -30, 0, -26);
-            ctx.bezierCurveTo(2 - dorsalWave * 22, -30, 7 - dorsalWave * 35, -22, 2.5, -14);
-            ctx.closePath();
-            ctx.fill();
-            ctx.restore();
-
             // --- BODY ---
             ctx.shadowBlur = 22;
             ctx.shadowColor = `hsla(${bodyHueMid}, 95%, 85%, 0.58)`;
