@@ -1040,73 +1040,225 @@
             ctx.rotate(ship.angle + Math.PI / 2);
             const swimT = performance.now() * 0.001;
             const glide = Math.hypot(ship.vx, ship.vy) / ship.maxSpeed;
-            const wag = Math.sin(swimT * 9.5) * (0.14 + glide * 0.18);
-            const finFlap = Math.sin(swimT * 7.2 + 0.5) * (0.12 + glide * 0.08);
-            const bodyBreath = Math.sin(swimT * 2.5) * 0.6;
+            const wag = Math.sin(swimT * 9.5) * (0.16 + glide * 0.22);
+            const finFlap = Math.sin(swimT * 7.2 + 0.5) * (0.14 + glide * 0.10);
+            const bodyBreath = Math.sin(swimT * 2.5) * 0.65;
             const shimmerPulse = (Math.sin(swimT * 2.2) + 1) * 0.5;
+            const bodyUndulate = Math.sin(swimT * 5.8) * (0.03 + glide * 0.055);
             const bodyHueTop = 186 + Math.sin(swimT * 1.7) * 8;
             const bodyHueMid = 198 + Math.sin(swimT * 1.3 + 1.4) * 12;
             const bodyHueLow = 210 + Math.sin(swimT * 1.9 + 2.1) * 10;
 
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = 'rgba(185, 245, 255, 0.55)';
-
-            const bodyGrad = ctx.createLinearGradient(0, -18, 0, 24);
-            bodyGrad.addColorStop(0, `hsla(${bodyHueTop}, 85%, 92%, ${0.85 + shimmerPulse * 0.15})`);
-            bodyGrad.addColorStop(0.5, `hsla(${bodyHueMid}, 82%, 78%, ${0.76 + shimmerPulse * 0.12})`);
-            bodyGrad.addColorStop(1, `hsla(${bodyHueLow}, 80%, 66%, ${0.74 + shimmerPulse * 0.16})`);
-            ctx.fillStyle = bodyGrad;
-
+            // --- AURA GLOW ---
+            const auraR = 34 + shimmerPulse * 9;
+            const auraGrad = ctx.createRadialGradient(0, 2, 0, 0, 2, auraR);
+            auraGrad.addColorStop(0, `hsla(${bodyHueMid}, 90%, 82%, ${0.22 + shimmerPulse * 0.14})`);
+            auraGrad.addColorStop(0.6, `hsla(${bodyHueLow}, 85%, 75%, ${0.08 + shimmerPulse * 0.06})`);
+            auraGrad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = auraGrad;
             ctx.beginPath();
-            ctx.moveTo(0, -17);
-            ctx.bezierCurveTo(-8.5, -13, -11, -3 + bodyBreath, -9, 8);
-            ctx.bezierCurveTo(-7, 15, -3, 19 + bodyBreath, 0, 21);
-            ctx.bezierCurveTo(3, 19 + bodyBreath, 7, 15, 9, 8);
-            ctx.bezierCurveTo(11, -3 + bodyBreath, 8.5, -13, 0, -17);
+            ctx.ellipse(0, 2, auraR, auraR * 1.25, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // --- TRAILING PLUMES (feather wisps behind tail) ---
+            const plumeData = [
+                { ox: -3.5, phase: 0.0, spread: -14, len: 34, hueOff: 0 },
+                { ox: -1.5, phase: 0.9, spread: -7, len: 40, hueOff: 8 },
+                { ox: 0,    phase: 1.7, spread: 0,  len: 44, hueOff: 14 },
+                { ox: 1.5,  phase: 2.5, spread: 7,  len: 40, hueOff: 8 },
+                { ox: 3.5,  phase: 3.3, spread: 14, len: 34, hueOff: 0 },
+            ];
+            plumeData.forEach((p, i) => {
+                const pw = Math.sin(swimT * 7.5 + p.phase) * (0.18 + glide * 0.14);
+                const alpha = (0.28 + shimmerPulse * 0.18) * (1 - Math.abs(i - 2) * 0.12);
+                const hue = bodyHueLow + p.hueOff;
+                ctx.save();
+                ctx.translate(p.ox, 21);
+                const pGrad = ctx.createLinearGradient(0, 0, p.spread * 0.4, p.len);
+                pGrad.addColorStop(0, `hsla(${hue}, 82%, 78%, ${alpha})`);
+                pGrad.addColorStop(0.5, `hsla(${hue + 6}, 85%, 86%, ${alpha * 0.5})`);
+                pGrad.addColorStop(1, `hsla(${hue + 12}, 90%, 90%, 0)`);
+                ctx.fillStyle = pGrad;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.bezierCurveTo(
+                    p.spread * 0.3 + pw * 12, p.len * 0.28,
+                    p.spread * 0.6 + pw * 20, p.len * 0.62,
+                    p.spread * 0.35 + pw * 8, p.len
+                );
+                ctx.bezierCurveTo(
+                    p.spread * 0.1 + pw * 4, p.len * 0.65,
+                    -p.spread * 0.1 + pw * 6, p.len * 0.3,
+                    0, 0
+                );
+                ctx.fill();
+                ctx.restore();
+            });
+
+            // --- DORSAL FIN (ribbon) ---
+            ctx.save();
+            const dorsalWave = Math.sin(swimT * 8.2 + 0.4) * 0.09;
+            const dorsalGrad = ctx.createLinearGradient(-3, -16, 3, -8);
+            dorsalGrad.addColorStop(0, `hsla(${bodyHueTop - 8}, 88%, 92%, ${0.5 + shimmerPulse * 0.28})`);
+            dorsalGrad.addColorStop(1, `hsla(${bodyHueTop}, 80%, 80%, 0.08)`);
+            ctx.fillStyle = dorsalGrad;
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = `hsla(${bodyHueTop}, 90%, 88%, 0.45)`;
+            ctx.beginPath();
+            ctx.moveTo(-2.5, -14);
+            ctx.bezierCurveTo(-7 + dorsalWave * 35, -22, -2 + dorsalWave * 22, -30, 0, -26);
+            ctx.bezierCurveTo(2 - dorsalWave * 22, -30, 7 - dorsalWave * 35, -22, 2.5, -14);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+
+            // --- BODY ---
+            ctx.shadowBlur = 22;
+            ctx.shadowColor = `hsla(${bodyHueMid}, 95%, 85%, 0.58)`;
+            const bu = bodyUndulate;
+            const bodyGrad = ctx.createLinearGradient(-10, -18, 10, 24);
+            bodyGrad.addColorStop(0,    `hsla(${bodyHueTop}, 90%, 95%, ${0.88 + shimmerPulse * 0.12})`);
+            bodyGrad.addColorStop(0.38, `hsla(${bodyHueMid}, 85%, 80%, ${0.78 + shimmerPulse * 0.12})`);
+            bodyGrad.addColorStop(0.72, `hsla(${bodyHueLow}, 80%, 68%, ${0.76 + shimmerPulse * 0.14})`);
+            bodyGrad.addColorStop(1,    `hsla(${bodyHueLow + 14}, 75%, 58%, 0.80)`);
+            ctx.fillStyle = bodyGrad;
+            ctx.beginPath();
+            ctx.moveTo(0, -18);
+            ctx.bezierCurveTo(-8.5 + bu * 55, -13, -11 + bu * 36, -3 + bodyBreath, -9 + bu * 18, 8);
+            ctx.bezierCurveTo(-7, 15, -3, 20 + bodyBreath, 0, 22);
+            ctx.bezierCurveTo(3, 20 + bodyBreath, 7, 15, 9 - bu * 18, 8);
+            ctx.bezierCurveTo(11 - bu * 36, -3 + bodyBreath, 8.5 - bu * 55, -13, 0, -18);
             ctx.closePath();
             ctx.fill();
 
+            // --- IRIDESCENT SHEEN ---
+            const sheenGrad = ctx.createLinearGradient(-10, -18, 8, 4);
+            sheenGrad.addColorStop(0, `rgba(255, 255, 255, ${0.26 + shimmerPulse * 0.22})`);
+            sheenGrad.addColorStop(0.45, `rgba(200, 245, 255, ${0.10 + shimmerPulse * 0.10})`);
+            sheenGrad.addColorStop(1, 'rgba(180, 220, 255, 0)');
+            ctx.fillStyle = sheenGrad;
+            ctx.beginPath();
+            ctx.moveTo(0, -18);
+            ctx.bezierCurveTo(-8.5 + bu * 55, -13, -11 + bu * 36, -3 + bodyBreath, -9 + bu * 18, 8);
+            ctx.bezierCurveTo(-7, 15, -3, 20 + bodyBreath, 0, 22);
+            ctx.bezierCurveTo(3, 20 + bodyBreath, 7, 15, 9 - bu * 18, 8);
+            ctx.bezierCurveTo(11 - bu * 36, -3 + bodyBreath, 8.5 - bu * 55, -13, 0, -18);
+            ctx.closePath();
+            ctx.fill();
+
+            // --- PECTORAL FINS ---
+            ctx.shadowBlur = 6;
             ctx.save();
             ctx.translate(-7, 2);
-            ctx.rotate(-0.35 + finFlap);
+            ctx.rotate(-0.38 + finFlap);
+            const finGradL = ctx.createLinearGradient(0, -1, -12, 14);
+            finGradL.addColorStop(0, `hsla(${bodyHueMid}, 80%, 82%, 0.70)`);
+            finGradL.addColorStop(1, `hsla(${bodyHueMid + 12}, 78%, 88%, 0)`);
+            ctx.fillStyle = finGradL;
+            ctx.shadowColor = `hsla(${bodyHueMid}, 80%, 80%, 0.3)`;
             ctx.beginPath();
             ctx.moveTo(0, -1);
-            ctx.quadraticCurveTo(-9, 2, -6, 12);
-            ctx.quadraticCurveTo(-1, 7, 0, -1);
+            ctx.bezierCurveTo(-10, 0, -14, 7, -8, 15);
+            ctx.bezierCurveTo(-4, 10, -1, 4, 0, -1);
             ctx.fill();
             ctx.restore();
-
             ctx.save();
             ctx.translate(7, 2);
-            ctx.rotate(0.35 - finFlap);
+            ctx.rotate(0.38 - finFlap);
+            const finGradR = ctx.createLinearGradient(0, -1, 12, 14);
+            finGradR.addColorStop(0, `hsla(${bodyHueMid}, 80%, 82%, 0.70)`);
+            finGradR.addColorStop(1, `hsla(${bodyHueMid + 12}, 78%, 88%, 0)`);
+            ctx.fillStyle = finGradR;
+            ctx.shadowColor = `hsla(${bodyHueMid}, 80%, 80%, 0.3)`;
             ctx.beginPath();
             ctx.moveTo(0, -1);
-            ctx.quadraticCurveTo(9, 2, 6, 12);
-            ctx.quadraticCurveTo(1, 7, 0, -1);
+            ctx.bezierCurveTo(10, 0, 14, 7, 8, 15);
+            ctx.bezierCurveTo(4, 10, 1, 4, 0, -1);
             ctx.fill();
             ctx.restore();
 
+            // --- TAIL with feathered tips ---
             ctx.save();
-            ctx.translate(0, 18);
+            ctx.translate(0, 20);
             ctx.rotate(wag);
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = `hsla(${bodyHueLow}, 85%, 80%, 0.45)`;
+            const tailGrad = ctx.createLinearGradient(0, 0, 0, 26);
+            tailGrad.addColorStop(0, `hsla(${bodyHueMid}, 84%, 80%, 0.92)`);
+            tailGrad.addColorStop(1, `hsla(${bodyHueLow + 10}, 80%, 74%, 0)`);
+            ctx.fillStyle = tailGrad;
             ctx.beginPath();
             ctx.moveTo(0, 0);
-            ctx.bezierCurveTo(-7, 6, -8, 16, -2.2, 22);
-            ctx.quadraticCurveTo(0, 18, 2.2, 22);
-            ctx.bezierCurveTo(8, 16, 7, 6, 0, 0);
+            ctx.bezierCurveTo(-7, 5, -9, 14, -3.5, 22);
+            ctx.quadraticCurveTo(0, 18, 3.5, 22);
+            ctx.bezierCurveTo(9, 14, 7, 5, 0, 0);
+            ctx.fill();
+            // Left feather tip
+            const tipGrad = ctx.createLinearGradient(0, 18, -6, 36);
+            tipGrad.addColorStop(0, `hsla(${bodyHueTop}, 90%, 90%, 0.65)`);
+            tipGrad.addColorStop(1, `hsla(${bodyHueTop + 8}, 88%, 94%, 0)`);
+            ctx.fillStyle = tipGrad;
+            ctx.beginPath();
+            ctx.moveTo(-1.5, 18);
+            ctx.bezierCurveTo(-5, 23, -8, 31, -4.5, 36);
+            ctx.quadraticCurveTo(-2, 30, -1.5, 18);
+            ctx.fill();
+            // Right feather tip
+            const tipGrad2 = ctx.createLinearGradient(0, 18, 6, 36);
+            tipGrad2.addColorStop(0, `hsla(${bodyHueTop}, 90%, 90%, 0.65)`);
+            tipGrad2.addColorStop(1, `hsla(${bodyHueTop + 8}, 88%, 94%, 0)`);
+            ctx.fillStyle = tipGrad2;
+            ctx.beginPath();
+            ctx.moveTo(1.5, 18);
+            ctx.bezierCurveTo(5, 23, 8, 31, 4.5, 36);
+            ctx.quadraticCurveTo(2, 30, 1.5, 18);
             ctx.fill();
             ctx.restore();
 
-            ctx.fillStyle = `rgba(255, 255, 255, ${0.32 + shimmerPulse * 0.32})`;
+            // --- SHIMMER HIGHLIGHT ---
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = `rgba(255, 255, 255, ${0.30 + shimmerPulse * 0.36})`;
             ctx.beginPath();
-            ctx.ellipse(0, -7, 2.8, 5.4, 0, 0, Math.PI * 2);
+            ctx.ellipse(-0.5, -9, 2.4, 5.2, -0.15, 0, Math.PI * 2);
             ctx.fill();
 
+            // --- BIOLUMINESCENT SPOTS ---
+            const spotT = swimT * 3.2;
+            [
+                { x: -4.5, y: -1, r: 1.1, ph: 0.0 },
+                { x:  4.2, y:  1, r: 0.9, ph: 1.4 },
+                { x: -2.0, y:  7, r: 0.85, ph: 2.6 },
+                { x:  3.0, y: -6, r: 0.75, ph: 3.8 },
+                { x:  0.5, y:  3, r: 0.6,  ph: 0.7 },
+            ].forEach((s) => {
+                const sp = (Math.sin(spotT + s.ph) + 1) * 0.5;
+                ctx.fillStyle = `rgba(175, 255, 235, ${0.10 + sp * 0.20})`;
+                ctx.shadowBlur = 7;
+                ctx.shadowColor = 'rgba(160, 255, 230, 0.55)';
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.r * (1 + sp * 0.35), 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // --- EYES ---
             ctx.shadowBlur = 0;
+            // Eye halo
+            ctx.fillStyle = `rgba(160, 232, 255, ${0.32 + shimmerPulse * 0.22})`;
+            ctx.beginPath();
+            ctx.arc(-2.2, -11, 3.4, 0, Math.PI * 2);
+            ctx.arc(2.2, -11, 3.4, 0, Math.PI * 2);
+            ctx.fill();
+            // Iris
             ctx.fillStyle = '#062436';
             ctx.beginPath();
-            ctx.arc(-2.2, -10, 1.35, 0, Math.PI * 2);
-            ctx.arc(2.2, -10, 1.35, 0, Math.PI * 2);
+            ctx.arc(-2.2, -11, 1.4, 0, Math.PI * 2);
+            ctx.arc(2.2, -11, 1.4, 0, Math.PI * 2);
+            ctx.fill();
+            // Specular
+            ctx.fillStyle = `rgba(255, 255, 255, ${0.72 + shimmerPulse * 0.28})`;
+            ctx.beginPath();
+            ctx.arc(-1.65, -11.5, 0.5, 0, Math.PI * 2);
+            ctx.arc(2.75, -11.5, 0.5, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
 
