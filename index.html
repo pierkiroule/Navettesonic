@@ -1,1055 +1,542 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manipulation de Bulles - Navigation Organique</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #030308;
-            height: 100vh;
-            width: 100vw;
-            touch-action: none;
-            cursor: crosshair;
-        }
-        #ui {
-            position: absolute;
-            top: 30px;
-            width: 100%;
-            text-align: center;
-            pointer-events: none;
-            z-index: 100;
-            color: rgba(255, 255, 255, 0.2);
-            font-family: 'Georgia', serif;
-            font-style: italic;
-            font-size: 0.9rem;
-            letter-spacing: 0.2em;
-        }
-        #bubblePanel {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(3, 3, 8, 0.75);
-            z-index: 200;
-            font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-        }
-        #bubblePanel.hidden {
-            display: none;
-        }
-        .panel-card {
-            width: min(90vw, 380px);
-            padding: 18px;
-            border-radius: 16px;
-            background: rgba(20, 24, 40, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            color: #f0f6ff;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
-        }
-        .panel-card h2 {
-            margin: 0 0 8px;
-            font-size: 1.1rem;
-        }
-        .panel-card p {
-            margin: 0 0 14px;
-            font-size: 0.9rem;
-            color: rgba(240, 246, 255, 0.75);
-        }
-        .panel-row {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-            align-items: center;
-        }
-        .panel-card button {
-            border: 0;
-            padding: 9px 12px;
-            border-radius: 10px;
-            background: rgba(84, 210, 255, 0.2);
-            color: #dff7ff;
-            cursor: pointer;
-            font-weight: 600;
-        }
-        .panel-card button:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-        }
-        #audioName {
-            margin-top: 10px;
-            font-size: 0.8rem;
-            color: rgba(240, 246, 255, 0.8);
-            min-height: 1.2em;
-        }
-        .hidden-input {
-            display: none;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Soono•° — Odyssée sonore d'un poisson plume</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at 20% 20%, #0f1e39 0%, #060711 55%, #030308 100%);
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      overflow: hidden;
+      color: #e8f6ff;
+    }
+    .screen { position: fixed; inset: 0; }
+    .hidden { display: none !important; }
+    .video-placeholder {
+      width: min(72vw, 320px);
+      aspect-ratio: 1;
+      border-radius: 999px;
+      border: 2px solid rgba(195, 238, 255, 0.6);
+      background: radial-gradient(circle at 30% 30%, rgba(145, 212, 255, 0.4), rgba(18, 39, 88, 0.35), rgba(5, 7, 16, 0.9));
+      display: grid;
+      place-items: center;
+      box-shadow: 0 0 50px rgba(107, 196, 255, 0.25);
+      margin: 0 auto;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 0.8rem;
+    }
+    #canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+      cursor: crosshair;
+    }
+    .glass {
+      background: rgba(8, 17, 35, 0.68);
+      border: 1px solid rgba(188, 232, 255, 0.22);
+      backdrop-filter: blur(7px);
+    }
+    .tab-btn.active {
+      background: rgba(102, 199, 255, 0.22);
+      border-color: rgba(172, 226, 255, 0.72);
+      color: #fff;
+    }
+  </style>
 </head>
 <body>
-
-    <div id="ui">Double tap sur le poisson pour déposer une bulle sonore</div>
-    <div id="bubblePanel" class="hidden">
-        <div class="panel-card">
-            <h2>Bulle sonore</h2>
-            <p>Importez un son ou enregistrez-le, puis choisissez son style de bulle.</p>
-            <div class="panel-row">
-                <button id="importBtn" type="button">Importer audio</button>
-                <button id="recordBtn" type="button">Enregistrer</button>
-            </div>
-            <div class="panel-row">
-                <label for="bubbleLayer">Style</label>
-                <select id="bubbleLayer">
-                    <option value="surface">Surface nette</option>
-                    <option value="deep">Profonde floue</option>
-                </select>
-            </div>
-            <div id="audioName">Aucun son sélectionné</div>
-            <div class="panel-row">
-                <button id="cancelBtn" type="button">Annuler</button>
-                <button id="dropBtn" type="button" disabled>Déposer la bulle</button>
-            </div>
-            <input id="audioInput" type="file" accept="audio/*" class="hidden-input">
-        </div>
+  <section id="homeScreen" class="screen flex flex-col items-center justify-center px-6 text-center gap-7">
+    <h1 class="text-3xl sm:text-4xl font-semibold leading-tight max-w-3xl">Soono•° : odyssée sonore d'un poisson plume</h1>
+    <div class="max-w-xl text-cyan-100/90 space-y-2 text-sm sm:text-base">
+      <p>• Plonge dans un aquarium sonore où chaque bulle devient un souvenir musical.</p>
+      <p>• Guide Soono•° et compose des textures 3D autour de ton poisson binaural.</p>
+      <p>• Collectionne des bulles rares comme dans un mini store immersif.</p>
     </div>
+    <div class="video-placeholder">video circulaire<br/>placeholder</div>
+    <button id="enterBtn" class="px-8 py-4 rounded-full text-lg font-semibold bg-cyan-400/25 border border-cyan-200/70 hover:bg-cyan-300/35 transition">
+      Immersion Soono•°
+    </button>
+  </section>
+
+  <section id="experienceScreen" class="screen hidden">
     <canvas id="canvas"></canvas>
 
-    <script>
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
+    <div id="uiHint" class="absolute top-5 inset-x-0 text-center text-xs tracking-[0.2em] text-cyan-50/70 pointer-events-none">
+      Double tap sur Soono•° pour ouvrir la collection
+    </div>
 
-        const ui = document.getElementById('ui');
-        const bubblePanel = document.getElementById('bubblePanel');
-        const importBtn = document.getElementById('importBtn');
-        const recordBtn = document.getElementById('recordBtn');
-        const cancelBtn = document.getElementById('cancelBtn');
-        const dropBtn = document.getElementById('dropBtn');
-        const audioInput = document.getElementById('audioInput');
-        const bubbleLayer = document.getElementById('bubbleLayer');
-        const audioName = document.getElementById('audioName');
+    <div id="sampleModal" class="hidden absolute inset-0 z-20 bg-black/55 flex items-center justify-center p-4">
+      <div class="glass rounded-2xl w-full max-w-md p-5">
+        <h2 class="text-xl font-semibold">Collection Soono•° (démo)</h2>
+        <p class="text-sm text-cyan-100/80 mt-1">Choisis un sample puis sa profondeur binaurale.</p>
 
-        let w, h;
-        let isTethered = false;
-        let mouseWorld = { x: 0, y: 0 };
-        let isInteractionPaused = false;
-        let lastFishTap = { time: 0, x: 0, y: 0 };
-        let activeAudioBlob = null;
-        let activeAudioName = '';
-        let recorder = null;
-        let recordingChunks = [];
-        let micStream = null;
-        let audioCtx = null;
-        let masterGainNode = null;
+        <label class="text-sm mt-4 block">Sample</label>
+        <select id="sampleSelect" class="w-full mt-1 rounded-lg bg-slate-950/70 border border-cyan-100/25 p-2 text-sm"></select>
 
-        const ARENA_RADIUS = 2000;
-        const SOUND_HEAR_RADIUS = 460;
-        const Z_DEPTH = 140;
-        const BUBBLES = [];
-        const NUM_BUBBLES = 0;
-        const WAKE_PARTICLES = [];
-        const MAX_WAKE_PARTICLES = 5;
-        const RIPPLE_RINGS = [];
-        const MAX_RIPPLES = 18;
-        const SURFACE_SPARKLES = [];
-        const MAX_SURFACE_SPARKLES = 30;
-        const RESONANCE_WAVES = [];
-        const MAX_RESONANCE_WAVES = 14;
+        <label class="text-sm mt-4 block">Profondeur</label>
+        <select id="depthSelect" class="w-full mt-1 rounded-lg bg-slate-950/70 border border-cyan-100/25 p-2 text-sm">
+          <option value="above">Au-dessus</option>
+          <option value="front" selected>En face</option>
+          <option value="below">En dessous</option>
+        </select>
 
-        const arenaResonance = {
-            level: 0,
-            hue: 198
-        };
+        <div class="mt-5 flex justify-end gap-2">
+          <button id="cancelModalBtn" class="px-4 py-2 rounded-lg border border-cyan-100/30">Annuler</button>
+          <button id="addSampleBtn" class="px-4 py-2 rounded-lg bg-cyan-300/25 border border-cyan-100/70">Ajouter la bulle</button>
+        </div>
+      </div>
+    </div>
 
-        const ship = {
-            x: 0, y: 0,
-            vx: 0, vy: 0,
-            angle: 0,
-            trail: [],
-            maxTrail: 72,
-            stiffness: 0.0026,
-            damping: 0.93,
-            turnEase: 0.06,
-            maxSpeed: 3.1,
-            wakeEmitter: 0,
-            rippleEmitter: 0
-        };
+    <nav class="absolute bottom-4 left-1/2 -translate-x-1/2 glass rounded-full p-1.5 flex gap-1.5 z-10">
+      <button class="tab-btn px-4 py-2 rounded-full border border-transparent text-sm" data-tab="home">Accueil</button>
+      <button class="tab-btn active px-4 py-2 rounded-full border border-transparent text-sm" data-tab="soonoo">Soono••</button>
+      <button class="tab-btn px-4 py-2 rounded-full border border-transparent text-sm" data-tab="profile">Profil</button>
+    </nav>
+  </section>
 
-        const camera = {
-            x: 0, y: 0,
-            targetX: 0, targetY: 0,
-            ease: 0.05
-        };
+  <section id="profileScreen" class="screen hidden flex items-center justify-center px-4">
+    <div class="glass rounded-2xl p-6 w-full max-w-2xl">
+      <h2 class="text-2xl font-semibold">Profil Soono•°</h2>
+      <p class="text-cyan-100/75 mt-1">Espace en préparation pour la future version Supabase (auth + collection).</p>
+      <div class="mt-5 grid sm:grid-cols-3 gap-3 text-sm">
+        <article class="rounded-xl border border-cyan-100/20 p-3 bg-slate-950/35">
+          <h3 class="font-semibold">Infos user</h3>
+          <p class="text-cyan-100/70 mt-1">Pseudo, avatar, niveau d'exploration.</p>
+        </article>
+        <article class="rounded-xl border border-cyan-100/20 p-3 bg-slate-950/35">
+          <h3 class="font-semibold">Sessions</h3>
+          <p class="text-cyan-100/70 mt-1">Historique des immersions et durées.</p>
+        </article>
+        <article class="rounded-xl border border-cyan-100/20 p-3 bg-slate-950/35">
+          <h3 class="font-semibold">Bulles achetées</h3>
+          <p class="text-cyan-100/70 mt-1">Collection store de textures sonores Soono•°.</p>
+        </article>
+      </div>
+      <button id="backToExperienceBtn" class="mt-6 px-4 py-2 rounded-lg bg-cyan-300/25 border border-cyan-100/60">Retour à l'expérience</button>
+    </div>
+  </section>
 
-        function initBubbles() {
-            for (let i = 0; i < NUM_BUBBLES; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const dist = Math.sqrt(Math.random()) * (ARENA_RADIUS - 220);
-                BUBBLES.push({
-                    x: Math.cos(angle) * dist,
-                    y: Math.sin(angle) * dist,
-                    r: 50 + Math.random() * 60,
-                    layer: Math.random() > 0.5 ? 'surface' : 'deep',
-                    isActive: false,
-                    sound: null,
-                    label: ''
-                });
-            }
+  <script>
+    const homeScreen = document.getElementById('homeScreen');
+    const experienceScreen = document.getElementById('experienceScreen');
+    const profileScreen = document.getElementById('profileScreen');
+    const enterBtn = document.getElementById('enterBtn');
+    const backToExperienceBtn = document.getElementById('backToExperienceBtn');
+
+    const uiHint = document.getElementById('uiHint');
+    const sampleModal = document.getElementById('sampleModal');
+    const sampleSelect = document.getElementById('sampleSelect');
+    const depthSelect = document.getElementById('depthSelect');
+    const addSampleBtn = document.getElementById('addSampleBtn');
+    const cancelModalBtn = document.getElementById('cancelModalBtn');
+
+    const tabButtons = Array.from(document.querySelectorAll('.tab-btn'));
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let w = 0;
+    let h = 0;
+    let isTethered = false;
+    let paused = false;
+    let mouseWorld = { x: 0, y: 0 };
+    let lastFishTap = { time: 0, x: 0, y: 0 };
+    let rafId = 0;
+
+    const ARENA_RADIUS = 1800;
+    const HEAR_RADIUS = 500;
+
+    let audioCtx = null;
+    let masterGain = null;
+
+    const ship = {
+      x: 0, y: 0, vx: 0, vy: 0, angle: 0,
+      stiffness: 0.0025, damping: 0.93, maxSpeed: 3.1, turnEase: 0.06
+    };
+    const camera = { x: 0, y: 0, targetX: 0, targetY: 0, ease: 0.05 };
+    const bubbles = [];
+
+    const sampleLibrary = [
+      { id: 'crystal-pad', name: 'Crystal Pad', wave: 'sine', note: 261.63, lfoHz: 0.21, lfoDepth: 0.22, filterHz: 1700 },
+      { id: 'sub-drift', name: 'Sub Drift', wave: 'sawtooth', note: 65.41, lfoHz: 0.08, lfoDepth: 0.5, filterHz: 420 },
+      { id: 'glass-bell', name: 'Glass Bell', wave: 'triangle', note: 783.99, lfoHz: 2.1, lfoDepth: 0.1, filterHz: 3400 },
+      { id: 'grain-cloud', name: 'Grain Cloud', wave: 'square', note: 146.83, lfoHz: 4.8, lfoDepth: 0.42, filterHz: 1200 },
+      { id: 'acid-bloom', name: 'Acid Bloom', wave: 'sawtooth', note: 329.63, lfoHz: 0.33, lfoDepth: 0.35, filterHz: 2400 },
+      { id: 'mist-whistle', name: 'Mist Whistle', wave: 'sine', note: 987.77, lfoHz: 0.5, lfoDepth: 0.14, filterHz: 3600 },
+      { id: 'orbital-hum', name: 'Orbital Hum', wave: 'triangle', note: 98, lfoHz: 0.17, lfoDepth: 0.3, filterHz: 900 },
+      { id: 'neon-reed', name: 'Neon Reed', wave: 'square', note: 220, lfoHz: 5.2, lfoDepth: 0.28, filterHz: 2000 },
+      { id: 'sunken-flute', name: 'Sunken Flute', wave: 'sine', note: 392, lfoHz: 0.12, lfoDepth: 0.2, filterHz: 2800 },
+      { id: 'frost-spark', name: 'Frost Spark', wave: 'triangle', note: 1174.66, lfoHz: 7.6, lfoDepth: 0.08, filterHz: 4200 }
+    ];
+
+    sampleLibrary.forEach((s) => {
+      const option = document.createElement('option');
+      option.value = s.id;
+      option.textContent = s.name;
+      sampleSelect.appendChild(option);
+    });
+
+    function showScreen(screen) {
+      homeScreen.classList.add('hidden');
+      experienceScreen.classList.add('hidden');
+      profileScreen.classList.add('hidden');
+      screen.classList.remove('hidden');
+    }
+
+    function setActiveTab(tab) {
+      tabButtons.forEach((btn) => btn.classList.toggle('active', btn.dataset.tab === tab));
+    }
+
+    enterBtn.addEventListener('click', () => {
+      showScreen(experienceScreen);
+      setActiveTab('soonoo');
+      ensureAudioContext();
+    });
+
+    backToExperienceBtn.addEventListener('click', () => {
+      showScreen(experienceScreen);
+      setActiveTab('soonoo');
+    });
+
+    tabButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+        if (tab === 'home') {
+          showScreen(homeScreen);
+          setActiveTab('home');
+        } else if (tab === 'profile') {
+          showScreen(profileScreen);
+          setActiveTab('profile');
+        } else {
+          showScreen(experienceScreen);
+          setActiveTab('soonoo');
         }
+      });
+    });
 
-        function resize() {
-            w = window.innerWidth;
-            h = window.innerHeight;
-            canvas.width = w;
-            canvas.height = h;
+    function ensureAudioContext() {
+      if (audioCtx) return audioCtx;
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      audioCtx = new Ctx();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0.9;
+      masterGain.connect(audioCtx.destination);
+      return audioCtx;
+    }
+
+    function depthToZ(depth) {
+      if (depth === 'above') return 140;
+      if (depth === 'below') return -140;
+      return 0;
+    }
+
+    function buildSynth(sample) {
+      const ctxAudio = ensureAudioContext();
+      if (!ctxAudio) return null;
+
+      const osc = ctxAudio.createOscillator();
+      osc.type = sample.wave;
+      osc.frequency.value = sample.note;
+
+      const textureOsc = ctxAudio.createOscillator();
+      textureOsc.type = sample.wave === 'sine' ? 'triangle' : 'sine';
+      textureOsc.frequency.value = sample.note * 1.5;
+
+      const gainMain = ctxAudio.createGain();
+      gainMain.gain.value = 0;
+      const textureGain = ctxAudio.createGain();
+      textureGain.gain.value = 0;
+
+      const filter = ctxAudio.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = sample.filterHz;
+      filter.Q.value = 1.1;
+
+      const lfo = ctxAudio.createOscillator();
+      lfo.frequency.value = sample.lfoHz;
+      const lfoGain = ctxAudio.createGain();
+      lfoGain.gain.value = sample.note * sample.lfoDepth;
+      lfo.connect(lfoGain);
+      lfoGain.connect(osc.frequency);
+
+      const panner = new PannerNode(ctxAudio, {
+        panningModel: 'HRTF', distanceModel: 'inverse',
+        refDistance: 90, maxDistance: HEAR_RADIUS * 2.4, rolloffFactor: 1.1
+      });
+
+      osc.connect(gainMain);
+      textureOsc.connect(textureGain);
+      gainMain.connect(filter);
+      textureGain.connect(filter);
+      filter.connect(panner);
+      panner.connect(masterGain);
+
+      osc.start();
+      textureOsc.start();
+      lfo.start();
+
+      return { osc, textureOsc, gainMain, textureGain, filter, panner, lfo };
+    }
+
+    function addBubbleFromCollection(sampleId, depth) {
+      const sample = sampleLibrary.find((s) => s.id === sampleId);
+      if (!sample) return;
+
+      const spawnDist = 70;
+      const x = ship.x + Math.cos(ship.angle - Math.PI / 2) * spawnDist;
+      const y = ship.y + Math.sin(ship.angle - Math.PI / 2) * spawnDist;
+
+      bubbles.push({
+        x,
+        y,
+        r: 62,
+        z: depthToZ(depth),
+        depth,
+        label: sample.name,
+        synth: buildSynth(sample),
+        volume: 0,
+        hue: 190 + Math.random() * 40
+      });
+    }
+
+    function resize() {
+      w = window.innerWidth;
+      h = window.innerHeight;
+      canvas.width = w;
+      canvas.height = h;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function getPointerWorld(e) {
+      const sx = e.clientX ?? e.touches?.[0]?.clientX;
+      const sy = e.clientY ?? e.touches?.[0]?.clientY;
+      return { x: sx - w / 2 + camera.x, y: sy - h / 2 + camera.y };
+    }
+
+    function openModal() {
+      paused = true;
+      isTethered = false;
+      sampleModal.classList.remove('hidden');
+      uiHint.textContent = 'Choisis un sample dans la collection Soono•°';
+    }
+
+    function closeModal() {
+      paused = false;
+      sampleModal.classList.add('hidden');
+      uiHint.textContent = 'Double tap sur Soono•° pour ouvrir la collection';
+    }
+
+    function onStart(e) {
+      if (paused || experienceScreen.classList.contains('hidden')) return;
+      const pos = getPointerWorld(e);
+      mouseWorld = pos;
+      ensureAudioContext()?.resume();
+
+      const now = performance.now();
+      const fishDist = Math.hypot(pos.x - ship.x, pos.y - ship.y);
+      if (fishDist < 28) {
+        const doubleTap = now - lastFishTap.time < 330 && Math.hypot(pos.x - lastFishTap.x, pos.y - lastFishTap.y) < 44;
+        lastFishTap = { time: now, x: pos.x, y: pos.y };
+        if (doubleTap) {
+          openModal();
+          return;
         }
+      }
+      isTethered = true;
+    }
 
-        window.addEventListener('resize', resize);
-        resize();
+    function onMove(e) {
+      if (paused || experienceScreen.classList.contains('hidden')) return;
+      mouseWorld = getPointerWorld(e);
+    }
 
-        function getMousePos(e) {
-            const sx = e.clientX ?? (e.touches && e.touches[0]?.clientX);
-            const sy = e.clientY ?? (e.touches && e.touches[0]?.clientY);
-            return {
-                x: sx - w / 2 + camera.x,
-                y: sy - h / 2 + camera.y
-            };
+    function onEnd() { isTethered = false; }
+
+    window.addEventListener('mousedown', onStart);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onEnd);
+    window.addEventListener('touchstart', (e) => {
+      if (sampleModal.contains(e.target)) return;
+      e.preventDefault();
+      onStart(e);
+    }, { passive: false });
+    window.addEventListener('touchmove', (e) => {
+      if (sampleModal.contains(e.target)) return;
+      e.preventDefault();
+      onMove(e);
+    }, { passive: false });
+    window.addEventListener('touchend', onEnd);
+
+    cancelModalBtn.addEventListener('click', closeModal);
+    addSampleBtn.addEventListener('click', () => {
+      addBubbleFromCollection(sampleSelect.value, depthSelect.value);
+      closeModal();
+    });
+
+    function update() {
+      if (isTethered && !paused) {
+        ship.vx += (mouseWorld.x - ship.x) * ship.stiffness;
+        ship.vy += (mouseWorld.y - ship.y) * ship.stiffness;
+      }
+
+      ship.vx *= ship.damping;
+      ship.vy *= ship.damping;
+      const speed = Math.hypot(ship.vx, ship.vy);
+      if (speed > ship.maxSpeed) {
+        const r = ship.maxSpeed / speed;
+        ship.vx *= r;
+        ship.vy *= r;
+      }
+
+      ship.x += ship.vx;
+      ship.y += ship.vy;
+      const centerD = Math.hypot(ship.x, ship.y);
+      if (centerD > ARENA_RADIUS) {
+        const a = Math.atan2(ship.y, ship.x);
+        ship.x = Math.cos(a) * ARENA_RADIUS;
+        ship.y = Math.sin(a) * ARENA_RADIUS;
+        ship.vx *= -0.45;
+        ship.vy *= -0.45;
+      }
+
+      if (speed > 0.08) {
+        const va = Math.atan2(ship.vy, ship.vx);
+        let d = va - ship.angle;
+        while (d < -Math.PI) d += Math.PI * 2;
+        while (d > Math.PI) d -= Math.PI * 2;
+        ship.angle += d * ship.turnEase;
+      }
+
+      camera.targetX = ship.x + ship.vx * 10;
+      camera.targetY = ship.y + ship.vy * 10;
+      camera.x += (camera.targetX - camera.x) * camera.ease;
+      camera.y += (camera.targetY - camera.y) * camera.ease;
+
+      bubbles.forEach((b) => {
+        if (!b.synth || !audioCtx) return;
+        const dx = ship.x - b.x;
+        const dy = ship.y - b.y;
+        const dz = b.z;
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        const norm = Math.max(0, 1 - dist / HEAR_RADIUS);
+        b.volume += (Math.pow(norm, 2) - b.volume) * 0.1;
+        b.synth.gainMain.gain.value = b.volume * 0.22;
+        b.synth.textureGain.gain.value = b.volume * 0.12;
+        b.synth.filter.frequency.value = 300 + norm * 4600;
+
+        if (b.synth.panner.positionX) {
+          b.synth.panner.positionX.value = b.x;
+          b.synth.panner.positionY.value = b.y;
+          b.synth.panner.positionZ.value = b.z;
         }
+      });
 
-        function onStart(e) {
-            if (isInteractionPaused) return;
-            const pos = getMousePos(e);
-            mouseWorld = pos;
-            ensureAllAudioRunning();
-
-            const fishTapDistance = Math.hypot(pos.x - ship.x, pos.y - ship.y);
-            const now = performance.now();
-            if (fishTapDistance < 28) {
-                const isDoubleTap = now - lastFishTap.time < 330 && Math.hypot(pos.x - lastFishTap.x, pos.y - lastFishTap.y) < 40;
-                lastFishTap = { time: now, x: pos.x, y: pos.y };
-                if (isDoubleTap) {
-                    openBubblePanel();
-                    return;
-                }
-            }
-
-            isTethered = true;
+      if (audioCtx) {
+        const listener = audioCtx.listener;
+        const fx = Math.cos(ship.angle - Math.PI / 2);
+        const fy = Math.sin(ship.angle - Math.PI / 2);
+        if (listener.positionX) {
+          listener.positionX.value = ship.x; listener.positionY.value = ship.y; listener.positionZ.value = 0;
+          listener.forwardX.value = fx; listener.forwardY.value = fy; listener.forwardZ.value = 0;
+          listener.upX.value = 0; listener.upY.value = 0; listener.upZ.value = 1;
         }
-
-        function onMove(e) {
-            if (isInteractionPaused) return;
-            mouseWorld = getMousePos(e);
-        }
-
-        function onEnd() {
-            isTethered = false;
-        }
-
-        window.addEventListener('mousedown', onStart);
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup', onEnd);
-
-        function isPanelInteractionTarget(target) {
-            return bubblePanel.contains(target);
-        }
-
-        window.addEventListener('touchstart', (e) => {
-            if (isPanelInteractionTarget(e.target)) return;
-            e.preventDefault();
-            onStart(e);
-        }, { passive: false });
-        window.addEventListener('touchmove', (e) => {
-            if (isPanelInteractionTarget(e.target)) return;
-            e.preventDefault();
-            onMove(e);
-        }, { passive: false });
-        window.addEventListener('touchend', onEnd);
-
-        importBtn.addEventListener('click', () => audioInput.click());
-
-        audioInput.addEventListener('change', () => {
-            const file = audioInput.files?.[0];
-            if (!file) return;
-            activeAudioBlob = file;
-            activeAudioName = file.name;
-            audioName.textContent = `Son sélectionné : ${file.name}`;
-            dropBtn.disabled = false;
-        });
-
-        recordBtn.addEventListener('click', async () => {
-            if (recorder && recorder.state === 'recording') {
-                recorder.stop();
-                return;
-            }
-
-            try {
-                micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                recordingChunks = [];
-                recorder = new MediaRecorder(micStream);
-
-                recorder.ondataavailable = (event) => {
-                    if (event.data.size > 0) recordingChunks.push(event.data);
-                };
-
-                recorder.onstop = () => {
-                    activeAudioBlob = new Blob(recordingChunks, { type: recorder.mimeType || 'audio/webm' });
-                    activeAudioName = `Enregistrement ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
-                    audioName.textContent = `${activeAudioName} prêt`;
-                    dropBtn.disabled = false;
-                    recordBtn.textContent = 'Enregistrer';
-                    if (micStream) {
-                        micStream.getTracks().forEach(track => track.stop());
-                        micStream = null;
-                    }
-                };
-
-                recorder.start();
-                recordBtn.textContent = 'Arrêter';
-                audioName.textContent = 'Enregistrement en cours...';
-            } catch (error) {
-                audioName.textContent = 'Micro non disponible';
-            }
-        });
-
-        cancelBtn.addEventListener('click', closeBubblePanel);
-
-        dropBtn.addEventListener('click', async () => {
-            if (!activeAudioBlob) return;
-            try {
-                const bubble = await buildSoundBubble(activeAudioBlob, activeAudioName, bubbleLayer.value);
-                BUBBLES.push(bubble);
-                closeBubblePanel();
-            } catch (error) {
-                audioName.textContent = 'Impossible de décoder ce son';
-            }
-        });
-
-        function openBubblePanel() {
-            isInteractionPaused = true;
-            isTethered = false;
-            ship.vx = 0;
-            ship.vy = 0;
-            bubblePanel.classList.remove('hidden');
-            ui.textContent = 'Poisson stoppé • Choisissez votre bulle sonore';
-        }
-
-        function closeBubblePanel() {
-            isInteractionPaused = false;
-            bubblePanel.classList.add('hidden');
-            activeAudioBlob = null;
-            activeAudioName = '';
-            dropBtn.disabled = true;
-            audioInput.value = '';
-            audioName.textContent = 'Aucun son sélectionné';
-            bubbleLayer.value = 'surface';
-
-            if (recorder && recorder.state === 'recording') recorder.stop();
-            recordBtn.textContent = 'Enregistrer';
-            ui.textContent = 'Double tap sur le poisson pour déposer une bulle sonore';
-        }
-
-        function ensureAudioContext() {
-            if (audioCtx) return audioCtx;
-            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-            if (!AudioContextClass) return null;
-            audioCtx = new AudioContextClass();
-            masterGainNode = audioCtx.createGain();
-            masterGainNode.gain.value = 1;
-            masterGainNode.connect(audioCtx.destination);
-            return audioCtx;
-        }
-
-        function layerToDepthOffset(layer) {
-            return layer === 'surface' ? Z_DEPTH : -Z_DEPTH;
-        }
-
-        async function buildSoundBubble(audioBlob, label, layer = 'surface') {
-            const mouthDistance = 20;
-            const dirX = Math.cos(ship.angle - Math.PI / 2);
-            const dirY = Math.sin(ship.angle - Math.PI / 2);
-            let x = ship.x + dirX * mouthDistance;
-            let y = ship.y + dirY * mouthDistance;
-            const maxRadius = ARENA_RADIUS - 80;
-            const distance = Math.hypot(x, y);
-            if (distance > maxRadius) {
-                x = (x / distance) * maxRadius;
-                y = (y / distance) * maxRadius;
-            }
-
-            const sound = await createBinauralSound(audioBlob);
-
-            const bubble = {
-                x,
-                y,
-                r: 64,
-                layer,
-                depthOffset: layerToDepthOffset(layer),
-                isActive: false,
-                sound,
-                label,
-                currentVolume: 0,
-                zoneMix: 0,
-                resonance: 0,
-                wasInZone: false
-            };
-
-            ensureBubbleAudioRunning(bubble);
-            return bubble;
-        }
-
-        async function createBinauralSound(audioBlob) {
-            const ctx = ensureAudioContext();
-            if (!ctx) return null;
-
-            const arrayBuffer = await audioBlob.arrayBuffer();
-            const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
-            const source = ctx.createBufferSource();
-            source.buffer = audioBuffer;
-            source.loop = true;
-
-            const distanceGain = ctx.createGain();
-            distanceGain.gain.value = 0;
-
-            const toneFilter = ctx.createBiquadFilter();
-            toneFilter.type = 'lowpass';
-            toneFilter.frequency.value = 12000;
-            toneFilter.Q.value = 0.6;
-
-            const analyser = ctx.createAnalyser();
-            analyser.fftSize = 256;
-            analyser.smoothingTimeConstant = 0.86;
-            const analyserData = new Uint8Array(analyser.frequencyBinCount);
-
-            const resonantFilter = ctx.createBiquadFilter();
-            resonantFilter.type = 'bandpass';
-            resonantFilter.frequency.value = 880;
-            resonantFilter.Q.value = 1.3;
-
-            const resonantGain = ctx.createGain();
-            resonantGain.gain.value = 0;
-
-            const panner = new PannerNode(ctx, {
-                panningModel: 'HRTF',
-                distanceModel: 'inverse',
-                refDistance: 90,
-                maxDistance: SOUND_HEAR_RADIUS * 2.2,
-                rolloffFactor: 1.2,
-                coneInnerAngle: 360,
-                coneOuterAngle: 0,
-                coneOuterGain: 1
-            });
-
-            source.connect(distanceGain);
-            source.connect(analyser);
-            distanceGain.connect(toneFilter);
-            toneFilter.connect(panner);
-            distanceGain.connect(resonantFilter);
-            resonantFilter.connect(resonantGain);
-            resonantGain.connect(panner);
-            panner.connect(masterGainNode);
-            source.start();
-
-            return {
-                source,
-                distanceGain,
-                toneFilter,
-                resonantFilter,
-                resonantGain,
-                panner,
-                analyser,
-                analyserData,
-                isStarted: true
-            };
-        }
-
-        function ensureBubbleAudioRunning(bubble) {
-            if (!bubble.sound) return;
-            if (!bubble.sound.isStarted) return;
-        }
-
-        function ensureAllAudioRunning() {
-            const ctx = ensureAudioContext();
-            if (ctx?.state === 'suspended') {
-                ctx.resume().catch(() => {
-                    // Certains navigateurs exigent une interaction explicite.
-                });
-            }
-            BUBBLES.forEach(ensureBubbleAudioRunning);
-        }
-
-        function updateAudioListener() {
-            if (!audioCtx) return;
-            const listener = audioCtx.listener;
-            const forwardX = Math.cos(ship.angle - Math.PI / 2);
-            const forwardY = Math.sin(ship.angle - Math.PI / 2);
-
-            if (listener.positionX) {
-                listener.positionX.value = ship.x;
-                listener.positionY.value = ship.y;
-                listener.positionZ.value = 0;
-                listener.forwardX.value = forwardX;
-                listener.forwardY.value = forwardY;
-                listener.forwardZ.value = 0;
-                listener.upX.value = 0;
-                listener.upY.value = 0;
-                listener.upZ.value = 1;
-            } else if (listener.setPosition && listener.setOrientation) {
-                listener.setPosition(ship.x, ship.y, 0);
-                listener.setOrientation(forwardX, forwardY, 0, 0, 0, 1);
-            }
-        }
-
-        function update() {
-            if (isTethered && !isInteractionPaused) {
-                const dx = mouseWorld.x - ship.x;
-                const dy = mouseWorld.y - ship.y;
-                ship.vx += dx * ship.stiffness;
-                ship.vy += dy * ship.stiffness;
-            }
-
-            let strongestResonance = 0;
-            let resonanceHueMix = 0;
-            let resonanceWeight = 0;
-
-            BUBBLES.forEach(b => {
-                const dx = ship.x - b.x;
-                const dy = ship.y - b.y;
-                const dz = (b.depthOffset ?? 0);
-                const dist3d = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                const zoneRadius = SOUND_HEAR_RADIUS * 0.7;
-                const insideZone = dist3d < zoneRadius;
-
-                if (b.sound) {
-                    const normalized = Math.max(0, 1 - (dist3d / SOUND_HEAR_RADIUS));
-                    const targetVolume = Math.pow(normalized, 2);
-                    b.currentVolume += (targetVolume - b.currentVolume) * 0.1;
-                    const clampedVolume = Math.min(1, Math.max(0, b.currentVolume));
-                    b.sound.distanceGain.gain.value = clampedVolume;
-
-                    const angleToBubble = Math.atan2(b.y - ship.y, b.x - ship.x);
-                    const relativeAngle = angleToBubble - (ship.angle - Math.PI / 2);
-                    const front = Math.cos(relativeAngle);
-                    const rearFactor = Math.min(1, Math.max(0, (1 - front) * 0.5));
-                    const distFactor = Math.min(1, dist3d / SOUND_HEAR_RADIUS);
-                    const audioEnergy = sampleBubbleEnergy(b);
-                    const cutoff = 12000 - (rearFactor * 7000) - (distFactor * 2600) + audioEnergy * 1100;
-                    b.sound.toneFilter.frequency.value = Math.max(1800, cutoff);
-
-                    b.zoneMix += ((insideZone ? 1 : 0) - b.zoneMix) * 0.05;
-                    const resonanceTarget = b.zoneMix * (0.45 + audioEnergy * 0.55);
-                    b.resonance += (resonanceTarget - b.resonance) * 0.08;
-
-                    if (b.sound.resonantFilter) {
-                        b.sound.resonantFilter.frequency.value = 680 + audioEnergy * 650 + b.resonance * 320;
-                        b.sound.resonantFilter.Q.value = 1.2 + b.resonance * 2.8;
-                    }
-                    if (b.sound.resonantGain) {
-                        const resonantVolume = b.currentVolume * (0.12 + b.resonance * 0.25);
-                        b.sound.resonantGain.gain.value = resonantVolume;
-                    }
-
-                    if (b.sound.panner.positionX) {
-                        b.sound.panner.positionX.value = b.x;
-                        b.sound.panner.positionY.value = b.y;
-                        b.sound.panner.positionZ.value = b.depthOffset ?? 0;
-                    } else if (b.sound.panner.setPosition) {
-                        b.sound.panner.setPosition(b.x, b.y, b.depthOffset ?? 0);
-                    }
-                    b.isActive = dist3d < SOUND_HEAR_RADIUS;
-
-                    if (insideZone && !b.wasInZone) {
-                        spawnResonanceWave(b);
-                    }
-                    if (b.resonance > strongestResonance) {
-                        strongestResonance = b.resonance;
-                    }
-                    resonanceHueMix += b.resonance * (b.layer === 'deep' ? 228 : 192);
-                    resonanceWeight += b.resonance;
-                    b.wasInZone = insideZone;
-                } else {
-                    b.isActive = false;
-                }
-
-            });
-
-            arenaResonance.level += (strongestResonance - arenaResonance.level) * 0.04;
-            const targetHue = resonanceWeight > 0 ? (resonanceHueMix / resonanceWeight) : 198;
-            arenaResonance.hue += (targetHue - arenaResonance.hue) * 0.05;
-
-            ship.vx *= ship.damping;
-            ship.vy *= ship.damping;
-
-            const speed = Math.hypot(ship.vx, ship.vy);
-            if (speed > ship.maxSpeed) {
-                const ratio = ship.maxSpeed / speed;
-                ship.vx *= ratio;
-                ship.vy *= ratio;
-            }
-
-            ship.x += ship.vx;
-            ship.y += ship.vy;
-
-            ship.trail.push({ x: ship.x, y: ship.y });
-            if (ship.trail.length > ship.maxTrail) ship.trail.shift();
-
-            const dCenter = Math.hypot(ship.x, ship.y);
-            if (dCenter > ARENA_RADIUS) {
-                const angle = Math.atan2(ship.y, ship.x);
-                ship.x = Math.cos(angle) * ARENA_RADIUS;
-                ship.y = Math.sin(angle) * ARENA_RADIUS;
-                ship.vx *= -0.5;
-                ship.vy *= -0.5;
-            }
-
-            if (speed > 0.08) {
-                const angleVitesse = Math.atan2(ship.vy, ship.vx);
-                let diff = angleVitesse - ship.angle;
-                while (diff < -Math.PI) diff += Math.PI * 2;
-                while (diff > Math.PI) diff -= Math.PI * 2;
-                ship.angle += diff * ship.turnEase;
-            }
-
-            camera.targetX = ship.x + ship.vx * 10;
-            camera.targetY = ship.y + ship.vy * 10;
-            camera.x += (camera.targetX - camera.x) * camera.ease;
-            camera.y += (camera.targetY - camera.y) * camera.ease;
-
-            updateAudioListener();
-            updateWakeParticles(speed);
-            updateSurfaceEffects(speed);
-            updateResonanceWaves();
-        }
-
-        function updateWakeParticles(speed) {
-            const now = performance.now();
-            const speedNorm = Math.min(1, speed / ship.maxSpeed);
-            ship.wakeEmitter += 0.06 + speedNorm * 0.24;
-
-            if (speed > 0.04) {
-                const invSpeed = 1 / Math.max(0.0001, speed);
-                const backX = -ship.vx * invSpeed;
-                const backY = -ship.vy * invSpeed;
-                const tailX = ship.x + backX * 14;
-                const tailY = ship.y + backY * 14;
-                const targetCount = Math.min(MAX_WAKE_PARTICLES, 3 + Math.round(speedNorm * 2));
-
-                while (WAKE_PARTICLES.length < targetCount) {
-                    spawnWakeParticle(tailX, tailY, backX, backY, now);
-                }
-
-                while (ship.wakeEmitter >= 1) {
-                    ship.wakeEmitter -= 1;
-                    if (WAKE_PARTICLES.length >= MAX_WAKE_PARTICLES) break;
-                    spawnWakeParticle(tailX, tailY, backX, backY, now);
-                }
-            }
-
-            for (let i = WAKE_PARTICLES.length - 1; i >= 0; i--) {
-                const p = WAKE_PARTICLES[i];
-                p.age = now - p.bornAt;
-                const t = p.age / p.life;
-                if (t >= 1) {
-                    WAKE_PARTICLES.splice(i, 1);
-                    continue;
-                }
-
-                p.vx *= 0.993;
-                p.vy = p.vy * 0.992 - 0.01;
-                p.x += p.vx;
-                p.y += p.vy;
-            }
-
-            if (WAKE_PARTICLES.length > MAX_WAKE_PARTICLES) {
-                WAKE_PARTICLES.splice(0, WAKE_PARTICLES.length - MAX_WAKE_PARTICLES);
-            }
-        }
-
-        function spawnWakeParticle(tailX, tailY, backX, backY, now) {
-            const jitter = 3 + Math.random() * 3;
-            const tangentX = -backY;
-            const tangentY = backX;
-            WAKE_PARTICLES.push({
-                x: tailX + tangentX * (Math.random() - 0.5) * jitter + backX * (Math.random() * 4),
-                y: tailY + tangentY * (Math.random() - 0.5) * jitter + backY * (Math.random() * 4),
-                vx: backX * (0.06 + Math.random() * 0.18) + tangentX * (Math.random() - 0.5) * 0.07,
-                vy: backY * (0.06 + Math.random() * 0.18) + tangentY * (Math.random() - 0.5) * 0.07,
-                age: 0,
-                life: 520 + Math.random() * 260,
-                size: 2 + Math.random() * 1.4,
-                alpha: 0.32 + Math.random() * 0.2,
-                bornAt: now
-            });
-        }
-
-        function updateSurfaceEffects(speed) {
-            const now = performance.now();
-            const speedNorm = Math.min(1, speed / ship.maxSpeed);
-            ship.rippleEmitter += 0.025 + speedNorm * 0.2;
-
-            while (ship.rippleEmitter >= 1) {
-                ship.rippleEmitter -= 1;
-                spawnRipple(ship.x, ship.y, now, speedNorm);
-            }
-
-            for (let i = RIPPLE_RINGS.length - 1; i >= 0; i--) {
-                const ripple = RIPPLE_RINGS[i];
-                ripple.age = now - ripple.bornAt;
-                const t = ripple.age / ripple.life;
-                if (t >= 1) {
-                    RIPPLE_RINGS.splice(i, 1);
-                    continue;
-                }
-                ripple.radius = ripple.baseRadius + ripple.expand * t;
-                ripple.alpha = ripple.baseAlpha * (1 - t);
-            }
-
-            while (SURFACE_SPARKLES.length < MAX_SURFACE_SPARKLES) {
-                SURFACE_SPARKLES.push(spawnSparkle(now));
-            }
-
-            for (let i = SURFACE_SPARKLES.length - 1; i >= 0; i--) {
-                const sparkle = SURFACE_SPARKLES[i];
-                sparkle.age = now - sparkle.bornAt;
-                if (sparkle.age > sparkle.life) {
-                    SURFACE_SPARKLES[i] = spawnSparkle(now);
-                }
-            }
-        }
-
-        function spawnRipple(x, y, now, speedNorm) {
-            if (RIPPLE_RINGS.length >= MAX_RIPPLES) RIPPLE_RINGS.shift();
-            RIPPLE_RINGS.push({
-                x: x + (Math.random() - 0.5) * 8,
-                y: y + (Math.random() - 0.5) * 8,
-                baseRadius: 8 + speedNorm * 4 + Math.random() * 2,
-                expand: 32 + speedNorm * 36 + Math.random() * 18,
-                baseAlpha: 0.22 + speedNorm * 0.2,
-                alpha: 0.2,
-                life: 760 + Math.random() * 360,
-                age: 0,
-                bornAt: now
-            });
-        }
-
-        function spawnSparkle(now) {
-            return {
-                x: (Math.random() - 0.5) * ARENA_RADIUS * 1.8,
-                y: (Math.random() - 0.5) * ARENA_RADIUS * 1.8,
-                size: 0.8 + Math.random() * 1.8,
-                life: 900 + Math.random() * 1400,
-                age: 0,
-                bornAt: now,
-                phase: Math.random() * Math.PI * 2,
-                hueShift: 190 + Math.random() * 40
-            };
-        }
-
-        function sampleBubbleEnergy(bubble) {
-            if (!bubble.sound?.analyser || !bubble.sound?.analyserData) return 0;
-            bubble.sound.analyser.getByteFrequencyData(bubble.sound.analyserData);
-            let sum = 0;
-            const binsToSample = 18;
-            for (let i = 0; i < binsToSample; i++) {
-                sum += bubble.sound.analyserData[i];
-            }
-            const avg = sum / (binsToSample * 255);
-            return Math.min(1, Math.max(0, avg * 1.9));
-        }
-
-        function spawnResonanceWave(bubble) {
-            if (RESONANCE_WAVES.length >= MAX_RESONANCE_WAVES) RESONANCE_WAVES.shift();
-            RESONANCE_WAVES.push({
-                x: bubble.x,
-                y: bubble.y,
-                bornAt: performance.now(),
-                life: 2800 + Math.random() * 1600,
-                radius: bubble.r * 0.9,
-                maxRadius: 520 + Math.random() * 340,
-                alpha: 0.22,
-                hue: bubble.layer === 'deep' ? 230 : 192
-            });
-        }
-
-        function updateResonanceWaves() {
-            const now = performance.now();
-            for (let i = RESONANCE_WAVES.length - 1; i >= 0; i--) {
-                const wave = RESONANCE_WAVES[i];
-                const t = (now - wave.bornAt) / wave.life;
-                if (t >= 1) {
-                    RESONANCE_WAVES.splice(i, 1);
-                    continue;
-                }
-                wave.radius = wave.maxRadius * t;
-                wave.alpha = (1 - t) * 0.22;
-            }
-        }
-
-        function draw() {
-            ctx.fillStyle = '#030308';
-            ctx.fillRect(0, 0, w, h);
-
-            ctx.save();
-            ctx.translate(w / 2 - camera.x, h / 2 - camera.y);
-
-            ctx.beginPath();
-            ctx.arc(0, 0, ARENA_RADIUS, 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            const drawBubble = (b) => {
-                const isSurface = b.layer !== 'deep';
-                const opacityBoost = b.isActive ? 1.2 : 1;
-                ctx.save();
-
-                if (!isSurface) {
-                    const grad = ctx.createRadialGradient(b.x, b.y, b.r * 0.05, b.x, b.y, b.r);
-                    grad.addColorStop(0, `rgba(130, 195, 255, ${0.02 * opacityBoost})`);
-                    grad.addColorStop(0.72, `rgba(80, 155, 235, ${0.11 * opacityBoost})`);
-                    grad.addColorStop(1, `rgba(45, 105, 188, ${0.22 * opacityBoost})`);
-                    ctx.filter = 'blur(7px)';
-                    ctx.fillStyle = grad;
-                    ctx.beginPath();
-                    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.filter = 'none';
-                    ctx.strokeStyle = `rgba(138, 202, 255, ${0.2 * opacityBoost})`;
-                    ctx.lineWidth = 1.4;
-                } else {
-                    const grad = ctx.createRadialGradient(b.x - b.r * 0.25, b.y - b.r * 0.28, b.r * 0.15, b.x, b.y, b.r);
-                    grad.addColorStop(0, `rgba(222, 245, 255, ${0.52 * opacityBoost})`);
-                    grad.addColorStop(0.65, `rgba(120, 198, 255, ${0.36 * opacityBoost})`);
-                    grad.addColorStop(1, `rgba(42, 126, 220, ${0.6 * opacityBoost})`);
-                    ctx.fillStyle = grad;
-                    ctx.beginPath();
-                    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.strokeStyle = `rgba(214, 243, 255, ${0.66 * opacityBoost})`;
-                    ctx.lineWidth = b.isActive ? 2.8 : 2.1;
-                }
-
-                ctx.beginPath();
-                ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-                ctx.stroke();
-
-                if (b.label) {
-                    const maxWidth = b.r * 1.42;
-                    const fontSize = Math.max(11, Math.min(15, b.r * 0.25));
-                    ctx.font = `600 ${fontSize}px system-ui, -apple-system, Segoe UI, Roboto, sans-serif`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillStyle = isSurface ? 'rgba(235, 248, 255, 0.95)' : 'rgba(220, 237, 255, 0.82)';
-                    let text = b.label;
-                    while (ctx.measureText(text).width > maxWidth && text.length > 6) {
-                        text = `${text.slice(0, -2)}…`;
-                    }
-                    ctx.fillText(text, b.x, b.y, maxWidth);
-                }
-
-                ctx.restore();
-            };
-
-            BUBBLES.filter((b) => b.layer === 'deep').forEach(drawBubble);
-
-            drawSurfaceSparkles();
-            drawResonanceWaves();
-            drawWakeParticles();
-            drawRipples();
-
-            if (ship.trail.length > 2) {
-                ctx.beginPath();
-                ctx.lineWidth = 2;
-                for (let i = 0; i < ship.trail.length - 1; i++) {
-                    const alpha = (i / ship.trail.length) * 0.4;
-                    ctx.strokeStyle = `rgba(100, 200, 255, ${alpha})`;
-                    ctx.moveTo(ship.trail[i].x, ship.trail[i].y);
-                    ctx.lineTo(ship.trail[i + 1].x, ship.trail[i + 1].y);
-                }
-                ctx.stroke();
-            }
-
-            ctx.save();
-            ctx.translate(ship.x, ship.y);
-            ctx.rotate(ship.angle + Math.PI / 2);
-            const swimT = performance.now() * 0.001;
-            const glide = Math.hypot(ship.vx, ship.vy) / ship.maxSpeed;
-            const wag = Math.sin(swimT * 9.5) * (0.14 + glide * 0.18);
-            const finFlap = Math.sin(swimT * 7.2 + 0.5) * (0.12 + glide * 0.08);
-            const bodyBreath = Math.sin(swimT * 2.5) * 0.6;
-            const shimmerPulse = (Math.sin(swimT * 2.2) + 1) * 0.5;
-            const bodyHueTop = 186 + Math.sin(swimT * 1.7) * 8;
-            const bodyHueMid = 198 + Math.sin(swimT * 1.3 + 1.4) * 12;
-            const bodyHueLow = 210 + Math.sin(swimT * 1.9 + 2.1) * 10;
-
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = 'rgba(185, 245, 255, 0.55)';
-
-            const bodyGrad = ctx.createLinearGradient(0, -18, 0, 24);
-            bodyGrad.addColorStop(0, `hsla(${bodyHueTop}, 85%, 92%, ${0.85 + shimmerPulse * 0.15})`);
-            bodyGrad.addColorStop(0.5, `hsla(${bodyHueMid}, 82%, 78%, ${0.76 + shimmerPulse * 0.12})`);
-            bodyGrad.addColorStop(1, `hsla(${bodyHueLow}, 80%, 66%, ${0.74 + shimmerPulse * 0.16})`);
-            ctx.fillStyle = bodyGrad;
-
-            ctx.beginPath();
-            ctx.moveTo(0, -17);
-            ctx.bezierCurveTo(-8.5, -13, -11, -3 + bodyBreath, -9, 8);
-            ctx.bezierCurveTo(-7, 15, -3, 19 + bodyBreath, 0, 21);
-            ctx.bezierCurveTo(3, 19 + bodyBreath, 7, 15, 9, 8);
-            ctx.bezierCurveTo(11, -3 + bodyBreath, 8.5, -13, 0, -17);
-            ctx.closePath();
-            ctx.fill();
-
-            ctx.save();
-            ctx.translate(-7, 2);
-            ctx.rotate(-0.35 + finFlap);
-            ctx.beginPath();
-            ctx.moveTo(0, -1);
-            ctx.quadraticCurveTo(-9, 2, -6, 12);
-            ctx.quadraticCurveTo(-1, 7, 0, -1);
-            ctx.fill();
-            ctx.restore();
-
-            ctx.save();
-            ctx.translate(7, 2);
-            ctx.rotate(0.35 - finFlap);
-            ctx.beginPath();
-            ctx.moveTo(0, -1);
-            ctx.quadraticCurveTo(9, 2, 6, 12);
-            ctx.quadraticCurveTo(1, 7, 0, -1);
-            ctx.fill();
-            ctx.restore();
-
-            ctx.save();
-            ctx.translate(0, 18);
-            ctx.rotate(wag);
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.bezierCurveTo(-7, 6, -8, 16, -2.2, 22);
-            ctx.quadraticCurveTo(0, 18, 2.2, 22);
-            ctx.bezierCurveTo(8, 16, 7, 6, 0, 0);
-            ctx.fill();
-            ctx.restore();
-
-            ctx.fillStyle = `rgba(255, 255, 255, ${0.32 + shimmerPulse * 0.32})`;
-            ctx.beginPath();
-            ctx.ellipse(0, -7, 2.8, 5.4, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = '#062436';
-            ctx.beginPath();
-            ctx.arc(-2.2, -10, 1.35, 0, Math.PI * 2);
-            ctx.arc(2.2, -10, 1.35, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
-
-            BUBBLES.filter((b) => b.layer !== 'deep').forEach(drawBubble);
-
-            ctx.restore();
-            drawWaterSurface();
-            drawArenaResonanceVeil();
-        }
-
-        function drawWakeParticles() {
-            WAKE_PARTICLES.forEach((p) => {
-                const t = p.age / p.life;
-                const alpha = Math.max(0, 1 - t) * p.alpha;
-                ctx.fillStyle = `rgba(205, 240, 255, ${alpha})`;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fill();
-            });
-        }
-
-        function drawRipples() {
-            RIPPLE_RINGS.forEach((ripple) => {
-                const thickness = 1 + (1 - ripple.alpha) * 2.6;
-                const hue = 192 + Math.sin((ripple.age / ripple.life) * Math.PI * 2) * 12;
-                ctx.strokeStyle = `hsla(${hue}, 90%, 72%, ${ripple.alpha})`;
-                ctx.lineWidth = thickness;
-                ctx.beginPath();
-                ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
-                ctx.stroke();
-            });
-        }
-
-        function drawSurfaceSparkles() {
-            const t = performance.now() * 0.002;
-            SURFACE_SPARKLES.forEach((sparkle) => {
-                const lifeT = sparkle.age / sparkle.life;
-                const twinkle = (Math.sin(t * 6 + sparkle.phase) + 1) * 0.5;
-                const alpha = (0.08 + twinkle * 0.42) * (1 - Math.abs(lifeT - 0.5) * 1.5);
-                if (alpha <= 0) return;
-
-                const offsetX = Math.sin(t + sparkle.phase) * 5;
-                const offsetY = Math.cos(t * 0.6 + sparkle.phase) * 3;
-                const x = sparkle.x + offsetX;
-                const y = sparkle.y + offsetY;
-
-                ctx.fillStyle = `hsla(${sparkle.hueShift}, 95%, 82%, ${alpha})`;
-                ctx.beginPath();
-                ctx.arc(x, y, sparkle.size, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.strokeStyle = `hsla(${sparkle.hueShift + 8}, 100%, 88%, ${alpha * 0.7})`;
-                ctx.lineWidth = 0.7;
-                ctx.beginPath();
-                ctx.moveTo(x - sparkle.size * 1.8, y);
-                ctx.lineTo(x + sparkle.size * 1.8, y);
-                ctx.moveTo(x, y - sparkle.size * 1.8);
-                ctx.lineTo(x, y + sparkle.size * 1.8);
-                ctx.stroke();
-            });
-        }
-
-        function drawResonanceWaves() {
-            RESONANCE_WAVES.forEach((wave) => {
-                const width = 1.2 + (1 - wave.alpha) * 2.1;
-                const pulse = 0.5 + Math.sin((performance.now() - wave.bornAt) * 0.003) * 0.5;
-                ctx.strokeStyle = `hsla(${wave.hue}, 88%, 76%, ${wave.alpha * (0.7 + pulse * 0.3)})`;
-                ctx.lineWidth = width;
-                ctx.beginPath();
-                ctx.arc(wave.x, wave.y, wave.radius, 0, Math.PI * 2);
-                ctx.stroke();
-            });
-        }
-
-        function drawWaterSurface() {
-            const horizonY = Math.max(30, h * 0.17);
-            const gradient = ctx.createLinearGradient(0, 0, 0, horizonY + 120);
-            gradient.addColorStop(0, 'rgba(32, 100, 155, 0.28)');
-            gradient.addColorStop(0.7, 'rgba(20, 70, 130, 0.14)');
-            gradient.addColorStop(1, 'rgba(6, 22, 40, 0)');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, w, horizonY + 120);
-        }
-
-        function drawArenaResonanceVeil() {
-            if (arenaResonance.level <= 0.01) return;
-            const intensity = Math.min(0.22, arenaResonance.level * 0.24);
-            const g = ctx.createRadialGradient(
-                w * 0.5,
-                h * 0.46,
-                h * 0.14,
-                w * 0.5,
-                h * 0.46,
-                h * 0.74
-            );
-            g.addColorStop(0, `hsla(${arenaResonance.hue}, 95%, 74%, ${intensity})`);
-            g.addColorStop(1, `hsla(${arenaResonance.hue + 18}, 80%, 30%, 0)`);
-            ctx.fillStyle = g;
-            ctx.fillRect(0, 0, w, h);
-        }
-
-        function loop() {
-            update();
-            draw();
-            requestAnimationFrame(loop);
-        }
-
-        loop();
-    </script>
+      }
+    }
+
+    function drawFish() {
+      const t = performance.now() * 0.001;
+      const wag = Math.sin(t * 9) * 0.2;
+      ctx.save();
+      ctx.translate(ship.x, ship.y);
+      ctx.rotate(ship.angle + Math.PI / 2);
+
+      const grad = ctx.createLinearGradient(0, -18, 0, 24);
+      grad.addColorStop(0, 'rgba(228,249,255,0.95)');
+      grad.addColorStop(1, 'rgba(104,195,255,0.86)');
+      ctx.fillStyle = grad;
+      ctx.shadowBlur = 16;
+      ctx.shadowColor = 'rgba(125,214,255,.58)';
+
+      ctx.beginPath();
+      ctx.moveTo(0, -17);
+      ctx.bezierCurveTo(-9, -12, -12, -2, -9, 9);
+      ctx.bezierCurveTo(-7, 15, -3, 20, 0, 21);
+      ctx.bezierCurveTo(3, 20, 7, 15, 9, 9);
+      ctx.bezierCurveTo(12, -2, 9, -12, 0, -17);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.save();
+      ctx.translate(0, 18);
+      ctx.rotate(wag);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.bezierCurveTo(-7, 7, -8, 16, -2, 22);
+      ctx.quadraticCurveTo(0, 18, 2, 22);
+      ctx.bezierCurveTo(8, 16, 7, 7, 0, 0);
+      ctx.fill();
+      ctx.restore();
+
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#052537';
+      ctx.beginPath();
+      ctx.arc(-2.2, -10, 1.2, 0, Math.PI * 2);
+      ctx.arc(2.2, -10, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function draw() {
+      ctx.fillStyle = '#030308';
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.save();
+      ctx.translate(w / 2 - camera.x, h / 2 - camera.y);
+
+      ctx.beginPath();
+      ctx.arc(0, 0, ARENA_RADIUS, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(200,238,255,.1)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      bubbles.forEach((b) => {
+        const grad = ctx.createRadialGradient(b.x - 10, b.y - 12, 6, b.x, b.y, b.r);
+        const alpha = 0.35 + b.volume * 0.5;
+        grad.addColorStop(0, `hsla(${b.hue}, 100%, 86%, ${alpha})`);
+        grad.addColorStop(1, `hsla(${b.hue + 18}, 82%, 48%, ${0.2 + b.volume * 0.3})`);
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = `rgba(218,243,255, ${0.6 + b.volume * 0.3})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(240,249,255,0.9)';
+        ctx.font = '600 12px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText(b.label, b.x, b.y);
+      });
+
+      drawFish();
+      ctx.restore();
+    }
+
+    function loop() {
+      update();
+      draw();
+      rafId = requestAnimationFrame(loop);
+    }
+
+    cancelAnimationFrame(rafId);
+    loop();
+  </script>
 </body>
 </html>
