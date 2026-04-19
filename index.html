@@ -44,6 +44,13 @@
             gap: 24px;
             align-items: center;
         }
+        .home-brand {
+            width: clamp(130px, 30vw, 210px);
+            height: auto;
+            display: block;
+            margin-bottom: 18px;
+            filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.35));
+        }
         .home-title {
             margin: 0;
             font-size: clamp(1.8rem, 4vw, 3rem);
@@ -193,6 +200,7 @@
     <section id="homeView" class="view">
         <div class="home-card">
             <div>
+                <img class="home-brand" src="logo.png" alt="Logo Soono" />
                 <h1 class="home-title">Soono•° : odyssée sonore d'un poisson plume</h1>
                 <ul class="punchlines">
                     <li>Un voyage marin binaural où chaque bulle devient mémoire.</li>
