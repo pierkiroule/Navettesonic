@@ -41,6 +41,12 @@ body {
 .home-title {
   margin: 0 0 20px;
   font-size: clamp(2rem, 6vw, 3.5rem);
+  background: linear-gradient(120deg, #7ee8ff 0%, #38c7ff 25%, #5b8cff 50%, #38c7ff 75%, #9ef3ff 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: aquaticShimmer 5.2s ease-in-out infinite;
 }
 
 .home-media {
@@ -49,14 +55,22 @@ body {
   gap: 16px;
 }
 
-.home-brand {
-  width: min(260px, 68vw);
-}
-
 .home-poem {
   margin: 0;
   max-width: 620px;
   color: rgba(235, 246, 255, 0.88);
+}
+
+@keyframes aquaticShimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 .home-actions {
