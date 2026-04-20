@@ -1357,9 +1357,34 @@
             return /\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(fileName);
         }
 
+        function buildPublicSoonbucketUrl(objectPath) {
+            const projectUrl = supabaseUrlInput.value.trim() || getSupabaseConfig().url;
+            if (!projectUrl || !objectPath) return null;
+            const cleanBase = projectUrl.replace(/\/+$/g, '');
+            const cleanPath = objectPath.replace(/^\/+/g, '');
+            return `${cleanBase}/storage/v1/object/public/${SUPABASE_BUCKET}/${cleanPath}`;
+        }
+
+        function buildFallbackSooncutVocals() {
+            const tracks = Array.from({ length: ARENA_TRIANGLE_COUNT }, (_, index) => {
+                const fileNumber = String(index + 1).padStart(3, '0');
+                const name = `extrait_${fileNumber}.mp3`;
+                const objectPath = `${SOONCUT_BUCKET_FOLDER}/${name}`;
+                const url = buildPublicSoonbucketUrl(objectPath);
+                return url ? { name, objectPath, url } : null;
+            }).filter(Boolean);
+            return tracks;
+        }
+
         async function fetchSooncutVocalsFromBucket() {
             const client = buildSupabaseClient();
             if (!client) {
+                sooncutBucketVocals = buildFallbackSooncutVocals();
+                if (sooncutBucketVocals.length) {
+                    setArenaTriangleStatus(`Mode URL publique Soonbucket activé (${sooncutBucketVocals.length} extraits).`);
+                    renderArenaTriangles();
+                    return sooncutBucketVocals;
+                }
                 setArenaTriangleStatus('Triangles Sooncut: configure Supabase pour charger les vocaux.', true);
                 return [];
             }
@@ -1371,21 +1396,33 @@
             });
 
             if (error) {
+                sooncutBucketVocals = buildFallbackSooncutVocals();
+                if (sooncutBucketVocals.length) {
+                    setArenaTriangleStatus(`Listing refusé, fallback URL publique activé (${sooncutBucketVocals.length} extraits).`);
+                    renderArenaTriangles();
+                    return sooncutBucketVocals;
+                }
                 setArenaTriangleStatus(`Sooncut bucket: ${error.message}`, true);
                 return [];
             }
 
             const audioFiles = (data || []).filter((item) => item?.name && isAudioObject(item.name));
             if (!audioFiles.length) {
+                sooncutBucketVocals = buildFallbackSooncutVocals();
+                if (sooncutBucketVocals.length) {
+                    setArenaTriangleStatus(`Aucun fichier listé, fallback URL publique activé (${sooncutBucketVocals.length} extraits).`);
+                    renderArenaTriangles();
+                    return sooncutBucketVocals;
+                }
                 setArenaTriangleStatus(`Aucun vocal trouvé dans ${SUPABASE_BUCKET}/${SOONCUT_BUCKET_FOLDER}.`, true);
                 return [];
             }
 
-            const resolved = await Promise.all(audioFiles.map(async (item) => {
+            const resolved = audioFiles.map((item) => {
                 const objectPath = `${SOONCUT_BUCKET_FOLDER}/${item.name}`;
-                const url = await resolveSampleUrl(objectPath);
+                const url = buildPublicSoonbucketUrl(objectPath);
                 return url ? { name: item.name, objectPath, url } : null;
-            }));
+            });
 
             sooncutBucketVocals = resolved.filter(Boolean);
             setArenaTriangleStatus(`Vocaux chargés: ${sooncutBucketVocals.length} depuis ${SUPABASE_BUCKET}/${SOONCUT_BUCKET_FOLDER}.`);
