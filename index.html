@@ -820,6 +820,7 @@
         const ARENA_RADIUS = 2000;
         const SOUND_HEAR_RADIUS = 460;
         const ARENA_TRIANGLE_COUNT = 10;
+        const DEFAULT_SUPABASE_URL = 'https://qyffktrggapfzlmmlerq.supabase.co';
         const SOONCUT_BUCKET_FOLDER = 'sooncut';
         const SOONCUT_TRIANGLE_SAMPLE_IDS = SAMPLE_LIBRARY.slice(0, ARENA_TRIANGLE_COUNT).map(sample => sample.id);
         const DEPTH_Z = 140;
@@ -1358,7 +1359,7 @@
         }
 
         function buildPublicSoonbucketUrl(objectPath) {
-            const projectUrl = supabaseUrlInput.value.trim() || getSupabaseConfig().url;
+            const projectUrl = supabaseUrlInput.value.trim() || getSupabaseConfig().url || DEFAULT_SUPABASE_URL;
             if (!projectUrl || !objectPath) return null;
             const cleanBase = projectUrl.replace(/\/+$/g, '');
             const cleanPath = objectPath.replace(/^\/+/g, '');
