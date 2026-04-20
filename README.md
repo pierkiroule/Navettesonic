@@ -1,63 +1,41 @@
-# Navettesonic
+# Navettesonic (React + Vite)
 
-## Repository policy
+Application Soon•° migrée sur une base **React + Vite** avec conservation du flow/UX existant.
 
-To avoid CI/review issues with unsupported binary diffs, do not add new binary assets directly to Git (videos/images) unless explicitly requested. Existing tracked demo assets are kept as-is.
+## Stack
 
-## Supabase setup (CLI + Vercel)
+- React 18
+- Vite 5
+- Runtime legacy encapsulé dans `src/legacy/`
 
-Le projet est prêt pour un workflow Supabase sans exposer de secrets dans Git.
+## Architecture actuelle
 
-### 1) Authentification et lien du projet Supabase
+- `index.html` : shell Vite minimal + scripts CDN nécessaires (Tailwind, Supabase).
+- `src/main.jsx` : point d’entrée React.
+- `src/App.jsx` : exporte l’application consolidée.
+- `src/LegacyApp.jsx` : monte le markup historique et initialise le runtime legacy une seule fois.
+- `src/legacy/legacyMarkup.html` : structure DOM historique.
+- `src/legacy/legacy.css` : styles historiques.
+- `src/legacy/legacyApp.js` : logique historique encapsulée (`initLegacyApp`).
 
-Depuis la racine du repo :
-
-```bash
-supabase login
-supabase init
-supabase link --project-ref qyffktrggapfzlmmlerq
-```
-
-> `supabase init` va créer le dossier `supabase/` (config locale).
-
-### 2) Variables d'environnement locales
-
-Copiez le template :
+## Démarrage
 
 ```bash
-cp .env.example .env.local
+npm install
+npm run dev
 ```
 
-Puis renseignez les valeurs réelles dans `.env.local` (notamment le mot de passe DB).
+## Build production
 
-### 3) Variables d'environnement Vercel
+```bash
+npm run build
+npm run preview
+```
 
-Ajoutez les mêmes variables dans **Vercel → Project Settings → Environment Variables** :
+## Notes de consolidation
 
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-- `SUPABASE_PROJECT_REF`
-- `SUPABASE_DB_URL`
+Le code legacy a été regroupé dans `src/legacy/` afin de:
 
-### 4) Bucket Storage (Soonbucket)
-
-Le profil inclut maintenant une carte “Supabase Storage · Soonbucket” qui permet :
-
-- de tester la connexion Supabase avec URL + clé publishable ;
-- d’uploader un fichier vers le bucket `Soonbucket` ;
-- d’obtenir l’URL publique générée.
-
-> La config est stockée en local dans le navigateur (localStorage), pas dans le repo.
-
-### 5) Auth + Session + Store (simulation)
-
-La vue Profil contient aussi :
-
-- un bloc **Auth Supabase** (email/password) avec restauration de session ;
-- un **store audio** avec paiement simulé (*activation gratuite temporaire*) ;
-- une **collection utilisateur** qui tente de charger les previews audio depuis `Soonbucket`.
-
-### 6) Sécurité
-
-- Ne jamais commiter `.env` / `.env.local`.
-- La clé *publishable* peut être publique côté front, mais les secrets DB restent côté serveur.
+1. garantir l’UX existante sans régression,
+2. isoler l’existant,
+3. permettre un refactor incrémental vers des composants React natifs.

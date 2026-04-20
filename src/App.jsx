@@ -1,7 +1,3 @@
 import LegacyApp from './LegacyApp';
 
-function App() {
-  return <LegacyApp />;
-}
-
-export default App;
+export default LegacyApp;
