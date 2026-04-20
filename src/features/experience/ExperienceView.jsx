@@ -4,11 +4,12 @@ import ExperienceScreen from './view/ExperienceScreen';
 
 function ExperienceView() {
   const { state, dispatch } = useExperienceState();
-  const { experienceRef, onBubbleChange, onArenaTriangleTap } = useExperiencePresenter({ state, dispatch });
+  const { experienceRef, canvasRef, onBubbleChange, onArenaTriangleTap } = useExperiencePresenter({ state, dispatch });
 
   return (
     <ExperienceScreen
       experienceRef={experienceRef}
+      canvasRef={canvasRef}
       state={state}
       onBubbleChange={onBubbleChange}
       onArenaTriangleTap={onArenaTriangleTap}

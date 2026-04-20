@@ -7,8 +7,75 @@ import { usePointerControls } from '../hooks/usePointerControls';
 import { useResizeCanvas } from '../hooks/useResizeCanvas';
 import { resolveSampleId, resolveSooncutSequence } from '../model/experienceModel';
 
+function drawScene(canvas, worldState) {
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    return;
+  }
+
+  const width = canvas.width;
+  const height = canvas.height;
+  const cx = width / 2;
+  const cy = height / 2;
+
+  const bgGradient = ctx.createRadialGradient(cx, cy, 10, cx, cy, Math.max(width, height));
+  bgGradient.addColorStop(0, '#061022');
+  bgGradient.addColorStop(1, '#02040d');
+  ctx.fillStyle = bgGradient;
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.save();
+  ctx.translate(cx, cy);
+
+  BUBBLES.forEach((bubble) => {
+    ctx.beginPath();
+    ctx.fillStyle = 'rgba(120, 205, 255, 0.14)';
+    ctx.strokeStyle = 'rgba(120, 205, 255, 0.55)';
+    ctx.lineWidth = 1.5;
+    ctx.arc(bubble.x, bubble.y, 44, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  });
+
+  worldState.fireflies.forEach((firefly) => {
+    ctx.beginPath();
+    ctx.fillStyle = 'rgba(255, 236, 170, 0.95)';
+    ctx.shadowColor = 'rgba(255, 226, 138, 0.8)';
+    ctx.shadowBlur = 12;
+    ctx.arc(firefly.x, firefly.y, 4.2, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  if (worldState.activeTriangle) {
+    const [a, b, c] = worldState.activeTriangle.fireflies;
+
+    if (a && b && c) {
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.lineTo(c.x, c.y);
+      ctx.closePath();
+      ctx.strokeStyle = 'rgba(255, 80, 80, 0.95)';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = 'rgba(255, 80, 80, 0.6)';
+      ctx.shadowBlur = 14;
+      ctx.stroke();
+    }
+  }
+
+  ctx.shadowBlur = 0;
+  ctx.beginPath();
+  ctx.fillStyle = '#8be8ff';
+  ctx.arc(worldState.fish.x, worldState.fish.y, 16, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
 export function useExperiencePresenter({ state, dispatch }) {
   const experienceRef = useRef(null);
+  const canvasRef = useRef(null);
   const audioEngineRef = useRef(null);
   const sceneEngineRef = useRef(null);
 
@@ -17,10 +84,19 @@ export function useExperiencePresenter({ state, dispatch }) {
 
   useEffect(() => {
     const container = experienceRef.current;
+    const canvas = canvasRef.current;
 
-    if (!container) {
+    if (!container || !canvas) {
       return undefined;
     }
+
+    const resizeCanvas = () => {
+      canvas.width = Math.max(1, container.clientWidth);
+      canvas.height = Math.max(1, container.clientHeight);
+    };
+
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
 
     const audioEngine = new AudioEngine();
     const sceneEngine = new SceneEngine({
@@ -32,6 +108,7 @@ export function useExperiencePresenter({ state, dispatch }) {
         const arenaDiameter = window.innerWidth || 1;
         const xInViewport = worldState.fish.x + arenaDiameter / 2;
         audioEngine.setSpatialPosition(xInViewport, arenaDiameter);
+        drawScene(canvas, worldState);
 
         dispatch({
           type: 'SET_SCENE_SNAPSHOT',
@@ -70,6 +147,7 @@ export function useExperiencePresenter({ state, dispatch }) {
     container.addEventListener('touchmove', onPointerMove, { passive: true });
 
     return () => {
+      window.removeEventListener('resize', resizeCanvas);
       container.removeEventListener('mousemove', onPointerMove);
       container.removeEventListener('touchmove', onPointerMove);
 
@@ -126,6 +204,7 @@ export function useExperiencePresenter({ state, dispatch }) {
 
   return {
     experienceRef,
+    canvasRef,
     onBubbleChange,
     onArenaTriangleTap,
   };
