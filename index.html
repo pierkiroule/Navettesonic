@@ -675,6 +675,15 @@
                 isTethered = false;
                 closeBubblePanel();
             }
+            if (heroVideo) {
+                if (target === 'home') {
+                    heroVideo.play().catch(() => {});
+                } else {
+                    heroVideo.pause();
+                    heroVideo.muted = true;
+                    syncHeroSoundButton();
+                }
+            }
             if (target === 'experience') {
                 rotateHelperTip(true);
             }
