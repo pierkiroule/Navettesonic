@@ -55,10 +55,40 @@ body {
   gap: 16px;
 }
 
+.home-subtitle {
+  margin: 0 0 14px;
+  color: rgba(206, 236, 255, 0.92);
+  font-size: clamp(1rem, 2.5vw, 1.25rem);
+}
+
+.home-bubble-video-wrap {
+  width: min(340px, 82vw);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid rgba(154, 230, 255, 0.45);
+  box-shadow: 0 0 0 1px rgba(133, 197, 255, 0.25), 0 25px 90px rgba(25, 125, 255, 0.25);
+  background: radial-gradient(circle at 22% 22%, rgba(156, 230, 255, 0.35), rgba(10, 33, 66, 0.85));
+}
+
+.home-bubble-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(1.2) contrast(1.05);
+}
+
 .home-intro {
   margin: 0;
   max-width: 620px;
   color: rgba(235, 246, 255, 0.88);
+}
+
+.home-sound-status {
+  margin: 0;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  color: rgba(152, 222, 255, 0.92);
 }
 
 @keyframes aquaticShimmer {
