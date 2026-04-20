@@ -202,6 +202,28 @@
         }
         .card h3 { margin: 0 0 8px; font-size: 1rem; }
         .card p { margin: 0; color: rgba(230,244,255,0.74); font-size: 0.9rem; }
+        .card .stack { display: grid; gap: 8px; margin-top: 10px; }
+        .card input[type="text"], .card input[type="file"] {
+            width: 100%;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(5, 12, 20, 0.86);
+            color: #e8f5ff;
+            padding: 9px 10px;
+            box-sizing: border-box;
+        }
+        .card button {
+            border: 0;
+            border-radius: 10px;
+            padding: 9px 12px;
+            cursor: pointer;
+            background: rgba(87, 176, 255, 0.26);
+            color: #eef8ff;
+            font-weight: 650;
+        }
+        .card .muted { font-size: 0.82rem; color: rgba(230,244,255,0.62); }
+        .card .status { font-size: 0.82rem; color: rgba(146, 247, 210, 0.95); min-height: 1.3em; }
+        .card a { color: #7ed8ff; }
         #canvas { display: block; }
 
         #bubblePropsPanel {
@@ -417,6 +439,22 @@
                     <h3>Store sonore</h3>
                     <p>Prochainement : catalogue, achats et récupération d'URL sonores dynamiques.</p>
                 </article>
+                <article class="card">
+                    <h3>Supabase Storage · Soonbucket</h3>
+                    <p>Connexion rapide au bucket <strong>Soonbucket</strong> pour tester un upload depuis l'interface.</p>
+                    <div class="stack">
+                        <input id="supabaseUrlInput" type="text" placeholder="https://<project-ref>.supabase.co">
+                        <input id="supabaseKeyInput" type="text" placeholder="sb_publishable_xxx">
+                        <div class="stack" style="grid-template-columns: 1fr 1fr;">
+                            <button id="supabaseSaveConfigBtn" type="button">Sauver config</button>
+                            <button id="supabaseTestBtn" type="button">Tester connexion</button>
+                        </div>
+                        <input id="supabaseFileInput" type="file" accept="audio/*,image/*">
+                        <button id="supabaseUploadBtn" type="button">Uploader vers Soonbucket</button>
+                        <p id="supabaseStatus" class="status"></p>
+                        <p id="supabaseUploadedLink" class="muted"></p>
+                    </div>
+                </article>
             </div>
         </div>
     </section>
@@ -429,6 +467,7 @@
         </div>
     </nav>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         const SAMPLE_LIBRARY = [
             { id: 'zen-gong', name: 'Zen Gong', texture: 'Gong profond et respirant', type: 'triangle', freq: 132, lfo: 0.06, lfoDepth: 0.018, gain: 0.28, baseCutoff: 3400, resonanceFreq: 420, resonanceQ: 1.5 },
@@ -483,6 +522,14 @@
         const propsLayerSelect = document.getElementById('propsLayerSelect');
         const propsDeleteBtn = document.getElementById('propsDeleteBtn');
         const propsCloseBtn = document.getElementById('propsCloseBtn');
+        const supabaseUrlInput = document.getElementById('supabaseUrlInput');
+        const supabaseKeyInput = document.getElementById('supabaseKeyInput');
+        const supabaseSaveConfigBtn = document.getElementById('supabaseSaveConfigBtn');
+        const supabaseTestBtn = document.getElementById('supabaseTestBtn');
+        const supabaseFileInput = document.getElementById('supabaseFileInput');
+        const supabaseUploadBtn = document.getElementById('supabaseUploadBtn');
+        const supabaseStatus = document.getElementById('supabaseStatus');
+        const supabaseUploadedLink = document.getElementById('supabaseUploadedLink');
 
         let selectedBubble = null;
         let isDraggingBubble = false;
@@ -647,6 +694,12 @@
         let shipBreathEmitter = 0;
         let bubbleIdSeed = 1;
         let resotagIdSeed = 1;
+        let supabaseClient = null;
+        const SUPABASE_BUCKET = 'Soonbucket';
+        const SUPABASE_LOCAL_KEYS = {
+            url: 'soono.supabase.url',
+            key: 'soono.supabase.key',
+        };
 
         const arenaResonance = { level: 0, hue: 198 };
 
@@ -731,6 +784,117 @@
         navHome.addEventListener('click', () => showView('home'));
         navSoono.addEventListener('click', () => showView('experience'));
         navProfile.addEventListener('click', () => showView('profile'));
+
+        function maskApiKey(key) {
+            if (!key || key.length < 12) return key;
+            return `${key.slice(0, 10)}…${key.slice(-4)}`;
+        }
+
+        function setSupabaseStatus(message, isError = false) {
+            if (!supabaseStatus) return;
+            supabaseStatus.textContent = message;
+            supabaseStatus.style.color = isError ? 'rgba(255, 148, 148, 0.95)' : 'rgba(146, 247, 210, 0.95)';
+        }
+
+        function getSupabaseConfig() {
+            const bootConfig = window.__SOONO_CONFIG__ || {};
+            const urlFromStorage = localStorage.getItem(SUPABASE_LOCAL_KEYS.url);
+            const keyFromStorage = localStorage.getItem(SUPABASE_LOCAL_KEYS.key);
+            return {
+                url: urlFromStorage || bootConfig.supabaseUrl || '',
+                key: keyFromStorage || bootConfig.supabasePublishableKey || '',
+            };
+        }
+
+        function buildSupabaseClient() {
+            const url = supabaseUrlInput.value.trim();
+            const key = supabaseKeyInput.value.trim();
+            if (!url || !key) {
+                setSupabaseStatus('Ajoute URL + clé publishable Supabase.', true);
+                return null;
+            }
+            if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+                setSupabaseStatus('SDK Supabase introuvable dans la page.', true);
+                return null;
+            }
+            supabaseClient = window.supabase.createClient(url, key);
+            return supabaseClient;
+        }
+
+        async function testSupabaseConnection() {
+            const client = buildSupabaseClient();
+            if (!client) return;
+            setSupabaseStatus('Connexion en cours…');
+            const { error } = await client.storage.from(SUPABASE_BUCKET).list('', { limit: 1 });
+            if (error) {
+                setSupabaseStatus(`Connexion OK mais accès bucket refusé: ${error.message}`, true);
+                return;
+            }
+            setSupabaseStatus(`Connecté à ${SUPABASE_BUCKET} avec ${maskApiKey(supabaseKeyInput.value.trim())}.`);
+        }
+
+        function sanitizeFileName(name) {
+            return name.toLowerCase()
+                .replace(/[^a-z0-9._-]/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '');
+        }
+
+        async function uploadToSoonbucket() {
+            const file = supabaseFileInput.files?.[0];
+            if (!file) {
+                setSupabaseStatus('Choisis un fichier avant upload.', true);
+                return;
+            }
+            const client = buildSupabaseClient();
+            if (!client) return;
+            setSupabaseStatus('Upload en cours…');
+
+            const objectPath = `uploads/${Date.now()}-${sanitizeFileName(file.name)}`;
+            const { error: uploadError } = await client.storage.from(SUPABASE_BUCKET).upload(objectPath, file, {
+                cacheControl: '3600',
+                upsert: false,
+            });
+            if (uploadError) {
+                setSupabaseStatus(`Échec upload: ${uploadError.message}`, true);
+                return;
+            }
+            const { data } = client.storage.from(SUPABASE_BUCKET).getPublicUrl(objectPath);
+            const url = data?.publicUrl;
+            setSupabaseStatus('Upload terminé ✅');
+            if (url) {
+                supabaseUploadedLink.innerHTML = `Fichier disponible: <a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+            } else {
+                supabaseUploadedLink.textContent = `Uploadé: ${objectPath}`;
+            }
+        }
+
+        function initSupabaseProfileCard() {
+            const cfg = getSupabaseConfig();
+            supabaseUrlInput.value = cfg.url;
+            supabaseKeyInput.value = cfg.key;
+            if (cfg.url && cfg.key) {
+                setSupabaseStatus(`Configuration chargée (${maskApiKey(cfg.key)}).`);
+            } else {
+                setSupabaseStatus('Renseigne URL + clé publishable pour activer Soonbucket.');
+            }
+
+            supabaseSaveConfigBtn.addEventListener('click', () => {
+                const url = supabaseUrlInput.value.trim();
+                const key = supabaseKeyInput.value.trim();
+                localStorage.setItem(SUPABASE_LOCAL_KEYS.url, url);
+                localStorage.setItem(SUPABASE_LOCAL_KEYS.key, key);
+                setSupabaseStatus(`Configuration sauvegardée localement (${maskApiKey(key)}).`);
+            });
+
+            supabaseTestBtn.addEventListener('click', () => {
+                testSupabaseConnection();
+            });
+            supabaseUploadBtn.addEventListener('click', () => {
+                uploadToSoonbucket();
+            });
+        }
+        initSupabaseProfileCard();
 
         SAMPLE_LIBRARY.forEach(sample => {
             const option = document.createElement('option');

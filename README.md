@@ -39,7 +39,17 @@ Ajoutez les mêmes variables dans **Vercel → Project Settings → Environment 
 - `SUPABASE_PROJECT_REF`
 - `SUPABASE_DB_URL`
 
-### 4) Sécurité
+### 4) Bucket Storage (Soonbucket)
+
+Le profil inclut maintenant une carte “Supabase Storage · Soonbucket” qui permet :
+
+- de tester la connexion Supabase avec URL + clé publishable ;
+- d’uploader un fichier vers le bucket `Soonbucket` ;
+- d’obtenir l’URL publique générée.
+
+> La config est stockée en local dans le navigateur (localStorage), pas dans le repo.
+
+### 5) Sécurité
 
 - Ne jamais commiter `.env` / `.env.local`.
 - La clé *publishable* peut être publique côté front, mais les secrets DB restent côté serveur.
