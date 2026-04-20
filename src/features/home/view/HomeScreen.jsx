@@ -4,7 +4,7 @@ function HomeScreen({ content, onEnterExperience }) {
       <div className="home-layout">
         <h1 className="home-title">{content.title}</h1>
         <div className="home-media">
-          <p className="home-poem">{content.poem}</p>
+          <p className="home-intro">{content.intro}</p>
           <div className="home-actions">
             <button className="immersion-btn" type="button">
               {content.audioButtonLabel}
