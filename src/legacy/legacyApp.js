@@ -1025,12 +1025,15 @@ export function initLegacyApp() {
 
                   btn.addEventListener('click', async () => {
                       ensureAllAudioRunning();
+                      if (!sooncutBucketVocals.length) {
+                          await fetchSooncutVocalsFromBucket();
+                      }
                       if (sooncutBucketVocals.length) {
                           const played = await playSooncutBucketVocal();
                           if (played) return;
                       }
                       triggerArenaSample(sampleId);
-                      setArenaTriangleStatus(`Mode synth local: ${sampleId}`);
+                      setArenaTriangleStatus(`Mode synth local (${sampleId}) · Configure Profil > Supabase pour lire Soonbucket/sooncut.`);
                   });
                   arenaTrianglePad.appendChild(btn);
               });
