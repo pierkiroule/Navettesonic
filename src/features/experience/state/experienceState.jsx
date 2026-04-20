@@ -1,13 +1,6 @@
 import { createContext, useContext, useMemo, useReducer } from 'react';
 import { APP_VIEWS } from '../../../core/utils/views';
-
-export const BUBBLES = [
-  { id: 'bubble-aube', label: 'Aube liquide' },
-  { id: 'bubble-brume', label: 'Brume claire' },
-  { id: 'bubble-abyss', label: 'Abysses calmes' },
-];
-
-export const RESOTAGS = ['ambient', 'texture', 'field-recording'];
+import { BUBBLES, RESOTAGS } from '../../../core/config/experienceConfig';
 
 const ExperienceStateContext = createContext(null);
 

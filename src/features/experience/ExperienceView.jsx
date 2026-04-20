@@ -1,15 +1,109 @@
-import { useRef } from 'react';
-import { SAMPLE_LIBRARY } from '../../core/audio/sampleLibrary';
+import { useEffect, useRef } from 'react';
+import { SAMPLE_LIBRARY } from '../../core/config/audioConfig';
+import { AudioEngine } from '../../core/audio/audioEngine';
+import { SceneEngine } from '../../core/canvas/sceneEngine';
+import { APP_VIEWS } from '../../core/utils/views';
 import { usePointerControls } from './hooks/usePointerControls';
 import { useResizeCanvas } from './hooks/useResizeCanvas';
 import { useExperienceState } from './state/experienceState.jsx';
 
 function ExperienceView() {
   const experienceRef = useRef(null);
+  const audioEngineRef = useRef(null);
+  const sceneEngineRef = useRef(null);
+
   const { state, dispatch } = useExperienceState();
 
   usePointerControls(experienceRef);
   useResizeCanvas();
+
+  useEffect(() => {
+    const container = experienceRef.current;
+
+    if (!container) {
+      return undefined;
+    }
+
+    const audioEngine = new AudioEngine();
+    const sceneEngine = new SceneEngine({
+      onUpdate: (worldState) => {
+        const arenaDiameter = window.innerWidth || 1;
+        const xInViewport = worldState.fish.x + arenaDiameter / 2;
+        audioEngine.setSpatialPosition(xInViewport, arenaDiameter);
+      },
+    });
+
+    audioEngineRef.current = audioEngine;
+    sceneEngineRef.current = sceneEngine;
+
+    sceneEngine.init(container);
+    sceneEngine.start();
+    audioEngine.start();
+
+    const onPointerMove = (event) => {
+      const rect = container.getBoundingClientRect();
+      const clientX = event.clientX ?? event.touches?.[0]?.clientX;
+      const clientY = event.clientY ?? event.touches?.[0]?.clientY;
+
+      if (typeof clientX !== 'number' || typeof clientY !== 'number') {
+        return;
+      }
+
+      const x = clientX - rect.left - rect.width / 2;
+      const y = clientY - rect.top - rect.height / 2;
+      sceneEngine.setPointer({ x, y });
+    };
+
+    container.addEventListener('mousemove', onPointerMove);
+    container.addEventListener('touchmove', onPointerMove, { passive: true });
+
+    return () => {
+      container.removeEventListener('mousemove', onPointerMove);
+      container.removeEventListener('touchmove', onPointerMove);
+
+      sceneEngine.destroy();
+      audioEngine.destroy();
+
+      sceneEngineRef.current = null;
+      audioEngineRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const sceneEngine = sceneEngineRef.current;
+    const audioEngine = audioEngineRef.current;
+
+    if (!sceneEngine || !audioEngine) {
+      return;
+    }
+
+    const isExperienceActive = state.currentView === APP_VIEWS.EXPERIENCE;
+    const shouldPause = !isExperienceActive || state.isInteractionPaused;
+
+    if (shouldPause) {
+      sceneEngine.pause();
+      audioEngine.pause();
+      return;
+    }
+
+    sceneEngine.resume();
+    audioEngine.resume();
+  }, [state.currentView, state.isInteractionPaused]);
+
+  useEffect(() => {
+    if (!state.selectedBubble || !audioEngineRef.current) {
+      return;
+    }
+
+    const sample = SAMPLE_LIBRARY.find((entry) => entry.id === state.selectedBubble.replace('bubble-', ''));
+    if (sample) {
+      audioEngineRef.current.triggerSample(sample.id);
+      return;
+    }
+
+    const fallbackSample = SAMPLE_LIBRARY[Math.floor(Math.random() * SAMPLE_LIBRARY.length)];
+    audioEngineRef.current.triggerSample(fallbackSample.id);
+  }, [state.selectedBubble]);
 
   return (
     <section ref={experienceRef} className="view experience-view">
