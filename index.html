@@ -172,6 +172,56 @@
             font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
             text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
         }
+        #arenaTrianglePad {
+            position: absolute;
+            left: 50%;
+            bottom: calc(90px + env(safe-area-inset-bottom));
+            transform: translateX(-50%);
+            z-index: 150;
+            width: min(92vw, 560px);
+            display: grid;
+            grid-template-columns: repeat(5, minmax(60px, 1fr));
+            gap: 8px;
+            pointer-events: auto;
+        }
+        #arenaTriangleStatus {
+            position: absolute;
+            left: 50%;
+            bottom: calc(56px + env(safe-area-inset-bottom));
+            transform: translateX(-50%);
+            z-index: 151;
+            width: min(92vw, 560px);
+            text-align: center;
+            font-size: 0.74rem;
+            color: rgba(255, 220, 220, 0.88);
+            text-shadow: 0 1px 8px rgba(0, 0, 0, 0.42);
+            pointer-events: none;
+        }
+        .arena-triangle-btn {
+            border: 1px solid rgba(255, 82, 82, 0.68);
+            border-radius: 12px;
+            background: rgba(62, 16, 16, 0.48);
+            color: #ffd8d8;
+            padding: 8px 6px;
+            display: grid;
+            justify-items: center;
+            gap: 4px;
+            cursor: pointer;
+            box-shadow: inset 0 0 0 1px rgba(255, 120, 120, 0.08);
+        }
+        .arena-triangle-btn:active { transform: scale(0.98); }
+        .arena-triangle-shape {
+            width: 24px;
+            height: 21px;
+            background: linear-gradient(180deg, #ff6464 0%, #ff2d2d 100%);
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+            filter: drop-shadow(0 0 8px rgba(255, 60, 60, 0.65));
+        }
+        .arena-triangle-label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
         #bubblePanel {
             position: absolute;
             inset: 0;
@@ -451,6 +501,8 @@
     <section id="experienceView" class="view hidden-view">
         <div id="ui">Double tap sur le poisson pour ouvrir la collection sonore</div>
         <div id="helperTips">Garde le doigt (ou clic) appuyé dans l'océan : le poisson-plume suit ton mouvement.</div>
+        <div id="arenaTrianglePad" aria-label="Triggers Sooncut"></div>
+        <div id="arenaTriangleStatus">Triangles Sooncut: mode synth local.</div>
         <div id="bubblePanel" class="hidden">
             <div class="panel-card">
                 <h2>Collection Soon•° (demo)</h2>
@@ -613,6 +665,8 @@
         const bubbleLayer = document.getElementById('bubbleLayer');
         const sampleSelect = document.getElementById('sampleSelect');
         const sampleHint = document.getElementById('sampleHint');
+        const arenaTrianglePad = document.getElementById('arenaTrianglePad');
+        const arenaTriangleStatus = document.getElementById('arenaTriangleStatus');
         const bubblePropsPanel = document.getElementById('bubblePropsPanel');
         const propsBubbleName = document.getElementById('propsBubbleName');
         const propsSampleSelect = document.getElementById('propsSampleSelect');
@@ -753,6 +807,8 @@
         let heroHaloRAF = null;
         let heroHaloEnergy = 0;
         let helperTipIndex = 0;
+        let sooncutBucketVocals = [];
+        let activeArenaAudio = null;
         const helperTipsPlaylist = [
             'Garde le doigt (ou clic) appuyé dans l’océan : le poisson-plume suit ton mouvement.',
             'Pour ouvrir la collection, fais un double tap (ou double clic) directement sur le poisson.',
@@ -763,6 +819,10 @@
 
         const ARENA_RADIUS = 2000;
         const SOUND_HEAR_RADIUS = 460;
+        const ARENA_TRIANGLE_COUNT = 10;
+        const DEFAULT_SUPABASE_URL = 'https://qyffktrggapfzlmmlerq.supabase.co';
+        const SOONCUT_BUCKET_FOLDER = 'sooncut';
+        const SOONCUT_TRIANGLE_SAMPLE_IDS = SAMPLE_LIBRARY.slice(0, ARENA_TRIANGLE_COUNT).map(sample => sample.id);
         const DEPTH_Z = 140;
         const BUBBLES = [];
         const WAKE_PARTICLES = [];
@@ -1005,6 +1065,7 @@
                 return;
             }
             setSupabaseStatus(`Connecté à ${SUPABASE_BUCKET} avec ${maskApiKey(supabaseKeyInput.value.trim())}.`);
+            await fetchSooncutVocalsFromBucket();
         }
 
         function sanitizeFileName(name) {
@@ -1209,6 +1270,7 @@
             refreshAuthUi(currentSession ? 'Session restaurée.' : 'Pas de session active.');
             renderStoreCatalog();
             await renderOwnedCollection();
+            await fetchSooncutVocalsFromBucket();
         }
 
         function initSupabaseProfileCard() {
@@ -1252,6 +1314,7 @@
             option.textContent = sample.name;
             sampleSelect.appendChild(option);
         });
+        renderArenaTriangles();
 
         function updateSampleHint() {
             const sample = SAMPLE_LIBRARY.find(s => s.id === selectedSampleId) || SAMPLE_LIBRARY[0];
@@ -1281,7 +1344,181 @@
 
         function isInteractiveTarget(target) {
             return bubblePanel.contains(target) || bubblePropsPanel.contains(target) ||
-                   bottomNav.contains(target) || homeView.contains(target) || profileView.contains(target);
+                   arenaTrianglePad.contains(target) || bottomNav.contains(target) ||
+                   homeView.contains(target) || profileView.contains(target);
+        }
+
+        function setArenaTriangleStatus(message, isError = false) {
+            if (!arenaTriangleStatus) return;
+            arenaTriangleStatus.textContent = message;
+            arenaTriangleStatus.style.color = isError ? 'rgba(255, 172, 172, 0.95)' : 'rgba(255, 220, 220, 0.88)';
+        }
+
+        function isAudioObject(fileName = '') {
+            return /\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(fileName);
+        }
+
+        function buildPublicSoonbucketUrl(objectPath) {
+            const projectUrl = supabaseUrlInput.value.trim() || getSupabaseConfig().url || DEFAULT_SUPABASE_URL;
+            if (!projectUrl || !objectPath) return null;
+            const cleanBase = projectUrl.replace(/\/+$/g, '');
+            const cleanPath = objectPath.replace(/^\/+/g, '');
+            return `${cleanBase}/storage/v1/object/public/${SUPABASE_BUCKET}/${cleanPath}`;
+        }
+
+        function buildFallbackSooncutVocals() {
+            const tracks = Array.from({ length: ARENA_TRIANGLE_COUNT }, (_, index) => {
+                const fileNumber = String(index + 1).padStart(3, '0');
+                const name = `extrait_${fileNumber}.mp3`;
+                const objectPath = `${SOONCUT_BUCKET_FOLDER}/${name}`;
+                const url = buildPublicSoonbucketUrl(objectPath);
+                return url ? { name, objectPath, url } : null;
+            }).filter(Boolean);
+            return tracks;
+        }
+
+        async function fetchSooncutVocalsFromBucket() {
+            const client = buildSupabaseClient();
+            if (!client) {
+                sooncutBucketVocals = buildFallbackSooncutVocals();
+                if (sooncutBucketVocals.length) {
+                    setArenaTriangleStatus(`Mode URL publique Soonbucket activé (${sooncutBucketVocals.length} extraits).`);
+                    renderArenaTriangles();
+                    return sooncutBucketVocals;
+                }
+                setArenaTriangleStatus('Triangles Sooncut: configure Supabase pour charger les vocaux.', true);
+                return [];
+            }
+
+            const { data, error } = await client.storage.from(SUPABASE_BUCKET).list(SOONCUT_BUCKET_FOLDER, {
+                limit: 100,
+                offset: 0,
+                sortBy: { column: 'name', order: 'asc' },
+            });
+
+            if (error) {
+                sooncutBucketVocals = buildFallbackSooncutVocals();
+                if (sooncutBucketVocals.length) {
+                    setArenaTriangleStatus(`Listing refusé, fallback URL publique activé (${sooncutBucketVocals.length} extraits).`);
+                    renderArenaTriangles();
+                    return sooncutBucketVocals;
+                }
+                setArenaTriangleStatus(`Sooncut bucket: ${error.message}`, true);
+                return [];
+            }
+
+            const audioFiles = (data || []).filter((item) => item?.name && isAudioObject(item.name));
+            if (!audioFiles.length) {
+                sooncutBucketVocals = buildFallbackSooncutVocals();
+                if (sooncutBucketVocals.length) {
+                    setArenaTriangleStatus(`Aucun fichier listé, fallback URL publique activé (${sooncutBucketVocals.length} extraits).`);
+                    renderArenaTriangles();
+                    return sooncutBucketVocals;
+                }
+                setArenaTriangleStatus(`Aucun vocal trouvé dans ${SUPABASE_BUCKET}/${SOONCUT_BUCKET_FOLDER}.`, true);
+                return [];
+            }
+
+            const resolved = audioFiles.map((item) => {
+                const objectPath = `${SOONCUT_BUCKET_FOLDER}/${item.name}`;
+                const url = buildPublicSoonbucketUrl(objectPath);
+                return url ? { name: item.name, objectPath, url } : null;
+            });
+
+            sooncutBucketVocals = resolved.filter(Boolean);
+            setArenaTriangleStatus(`Vocaux chargés: ${sooncutBucketVocals.length} depuis ${SUPABASE_BUCKET}/${SOONCUT_BUCKET_FOLDER}.`);
+            renderArenaTriangles();
+            return sooncutBucketVocals;
+        }
+
+        async function playSooncutBucketVocal(index) {
+            const track = sooncutBucketVocals[index % sooncutBucketVocals.length];
+            if (!track?.url) return false;
+
+            try {
+                if (activeArenaAudio) {
+                    activeArenaAudio.pause();
+                    activeArenaAudio.currentTime = 0;
+                }
+                activeArenaAudio = new Audio(track.url);
+                activeArenaAudio.preload = 'auto';
+                activeArenaAudio.volume = 0.98;
+                await activeArenaAudio.play();
+                setArenaTriangleStatus(`Lecture bucket: ${track.name}`);
+                return true;
+            } catch (_) {
+                setArenaTriangleStatus(`Lecture impossible pour ${track.name}`, true);
+                return false;
+            }
+        }
+
+        function triggerArenaSample(sampleId) {
+            const sample = SAMPLE_LIBRARY.find(s => s.id === sampleId);
+            const context = ensureAudioContext();
+            if (!sample || !context || !masterGainNode) return;
+
+            const gain = context.createGain();
+            const filter = context.createBiquadFilter();
+            const now = context.currentTime;
+            const attack = 0.02;
+            const hold = 0.32;
+            const release = 0.65;
+            const peak = Math.max(0.05, Math.min(0.48, (sample.gain ?? 0.2) * 1.4));
+
+            filter.type = 'lowpass';
+            filter.frequency.value = sample.baseCutoff ?? 4200;
+            filter.Q.value = 0.6;
+
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(peak, now + attack);
+            gain.gain.setValueAtTime(peak, now + attack + hold);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + attack + hold + release);
+            gain.connect(filter);
+            filter.connect(masterGainNode);
+
+            if (sample.type === 'noise') {
+                const source = context.createBufferSource();
+                source.buffer = buildSyntheticBuffer(context, 1.1);
+                source.connect(gain);
+                source.start(now);
+                source.stop(now + attack + hold + release + 0.08);
+                return;
+            }
+
+            const source = context.createOscillator();
+            source.type = sample.type || 'sine';
+            source.frequency.setValueAtTime(sample.freq || 220, now);
+            source.connect(gain);
+            source.start(now);
+            source.stop(now + attack + hold + release + 0.08);
+        }
+
+        function renderArenaTriangles() {
+            arenaTrianglePad.innerHTML = '';
+
+            SOONCUT_TRIANGLE_SAMPLE_IDS.forEach((sampleId, index) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'arena-triangle-btn';
+                const bucketTrack = sooncutBucketVocals[index % Math.max(1, sooncutBucketVocals.length)];
+                const displayName = bucketTrack?.name || sampleId;
+                btn.setAttribute('aria-label', `Triangle rouge ${index + 1} · ${displayName}`);
+                btn.innerHTML = `
+                    <span class="arena-triangle-shape" aria-hidden="true"></span>
+                    <span class="arena-triangle-label">T${index + 1}</span>
+                `;
+
+                btn.addEventListener('click', async () => {
+                    ensureAllAudioRunning();
+                    if (sooncutBucketVocals.length) {
+                        const played = await playSooncutBucketVocal(index);
+                        if (played) return;
+                    }
+                    triggerArenaSample(sampleId);
+                    setArenaTriangleStatus(`Mode synth local: ${sampleId}`);
+                });
+                arenaTrianglePad.appendChild(btn);
+            });
         }
 
         function onStart(e) {

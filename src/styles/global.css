@@ -116,8 +116,52 @@ body {
   border-radius: 16px;
   border: 1px dashed rgba(95, 187, 255, 0.5);
   display: grid;
-  place-items: center;
+  align-content: center;
+  justify-items: center;
+  gap: 18px;
+  padding: 18px;
   color: rgba(170, 225, 255, 0.82);
+}
+
+.arena-status {
+  text-align: center;
+}
+
+.arena-triangle-grid {
+  width: min(520px, 100%);
+  display: grid;
+  grid-template-columns: repeat(5, minmax(70px, 1fr));
+  gap: 12px;
+}
+
+.arena-triangle-btn {
+  border: 1px solid rgba(255, 82, 82, 0.6);
+  border-radius: 12px;
+  background: rgba(62, 16, 16, 0.45);
+  padding: 10px 6px;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  color: #ffd1d1;
+  cursor: pointer;
+}
+
+.arena-triangle-btn:active {
+  transform: scale(0.98);
+}
+
+.arena-triangle-shape {
+  width: 0;
+  height: 0;
+  border-left: 16px solid transparent;
+  border-right: 16px solid transparent;
+  border-bottom: 28px solid #ff3535;
+  filter: drop-shadow(0 0 8px rgba(255, 72, 72, 0.6));
+}
+
+.arena-triangle-label {
+  font-size: 0.76rem;
+  font-weight: 700;
 }
 
 .profile-view {

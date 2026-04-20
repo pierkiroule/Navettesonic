@@ -116,8 +116,17 @@ export function useExperiencePresenter({ state, dispatch }) {
     dispatch({ type: 'SET_SELECTED_BUBBLE', payload: bubbleId });
   };
 
+  const onArenaTriangleTap = (sampleId) => {
+    if (!sampleId || !audioEngineRef.current) {
+      return;
+    }
+
+    audioEngineRef.current.triggerSample(sampleId);
+  };
+
   return {
     experienceRef,
     onBubbleChange,
+    onArenaTriangleTap,
   };
 }
