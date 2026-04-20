@@ -2,7 +2,7 @@ function ProfileView() {
   return (
     <section className="view profile-view">
       <div className="profile-wrap">
-        <h1>Profil Soono•°</h1>
+        <h1>Profil Soon•°</h1>
         <p className="profile-sub">Connecte Supabase Auth, teste le store audio et active gratuitement tes premiers samples.</p>
         <div className="profile-grid">
           <article className="card">
