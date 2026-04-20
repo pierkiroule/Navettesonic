@@ -1093,8 +1093,7 @@ export function initLegacyApp() {
               ARENA_FIREFLY_LINKS.push({
                   aId: a.id,
                   bId: b.id,
-                  bornAt: now,
-                  expiresAt: now + FIREFLY_LINK_TTL
+                  bornAt: now
               });
           }
 
@@ -1191,20 +1190,11 @@ export function initLegacyApp() {
               const now = performance.now();
               const timeSeconds = now * 0.001;
               const flowStrength = Math.min(1, Math.hypot(ship.vx, ship.vy) / ship.maxSpeed);
-
-              ARENA_FIREFLY_LINKS.forEach((link) => {
-                  if (link.expiresAt < now) link.expiresAt = now - 1;
-              });
               for (let i = ARENA_FIREFLY_LINKS.length - 1; i >= 0; i--) {
                   const link = ARENA_FIREFLY_LINKS[i];
                   const a = getArenaFireflyById(link.aId);
                   const b = getArenaFireflyById(link.bId);
-                  if (!a || !b || link.expiresAt <= now) {
-                      ARENA_FIREFLY_LINKS.splice(i, 1);
-                      continue;
-                  }
-                  const distance = Math.hypot(a.x - b.x, a.y - b.y);
-                  if (distance > FIREFLY_LINK_BREAK_DISTANCE && !a.lockedTriangleId && !b.lockedTriangleId) {
+                  if (!a || !b) {
                       ARENA_FIREFLY_LINKS.splice(i, 1);
                   }
               }
@@ -1243,14 +1233,24 @@ export function initLegacyApp() {
                   }
                   firefly.glow = 0.42 + ((Math.sin(timeSeconds * 4.3 + idx * 1.3) + 1) * 0.5) * 0.56;
 
-                  if (!firefly.lockedTriangleId) {
-                      const touchDistance = Math.hypot(ship.x - firefly.x, ship.y - firefly.y);
-                      const minDistance = FIREFLY_COLLISION_RADIUS + firefly.size;
-                      if (touchDistance <= minDistance && now - firefly.lastTriggerAt > 450) {
-                          firefly.lastTriggerAt = now;
-                          triggerArenaFirefly(firefly);
-                      }
-                  }
+              });
+
+              ARENA_FIREFLY_LINKS.forEach((link) => {
+                  const a = getArenaFireflyById(link.aId);
+                  const b = getArenaFireflyById(link.bId);
+                  if (!a || !b || a.lockedTriangleId || b.lockedTriangleId) return;
+                  const dx = b.x - a.x;
+                  const dy = b.y - a.y;
+                  const distance = Math.max(0.0001, Math.hypot(dx, dy));
+                  const targetDistance = FIREFLY_LINK_DISTANCE * 0.62;
+                  const stretch = distance - targetDistance;
+                  const pull = Math.max(-8, Math.min(8, stretch)) * 0.0065;
+                  const nx = dx / distance;
+                  const ny = dy / distance;
+                  a.vx += nx * pull;
+                  a.vy += ny * pull;
+                  b.vx -= nx * pull;
+                  b.vy -= ny * pull;
               });
 
               for (let i = 0; i < ARENA_FIREFLIES.length - 1; i++) {
@@ -2001,9 +2001,10 @@ export function initLegacyApp() {
                   const a = getArenaFireflyById(link.aId);
                   const b = getArenaFireflyById(link.bId);
                   if (!a || !b) return;
-                  const life = Math.max(0, Math.min(1, (link.expiresAt - performance.now()) / FIREFLY_LINK_TTL));
-                  ctx.strokeStyle = `rgba(255, 106, 106, ${0.24 + life * 0.32})`;
-                  ctx.lineWidth = 1.2 + life * 1.4;
+                  const age = (performance.now() - link.bornAt) * 0.001;
+                  const pulse = (Math.sin(age * 2.8) + 1) * 0.5;
+                  ctx.strokeStyle = `rgba(255, 106, 106, ${0.36 + pulse * 0.24})`;
+                  ctx.lineWidth = 1.6 + pulse * 0.9;
                   ctx.beginPath();
                   ctx.moveTo(a.x, a.y);
                   ctx.lineTo(b.x, b.y);
