@@ -66,8 +66,11 @@ export function initLegacyApp() {
           const supabaseTestBtn = document.getElementById('supabaseTestBtn');
           const supabaseFileInput = document.getElementById('supabaseFileInput');
           const supabaseUploadBtn = document.getElementById('supabaseUploadBtn');
+          const supabaseProbeUrlInput = document.getElementById('supabaseProbeUrlInput');
+          const supabaseProbeBtn = document.getElementById('supabaseProbeBtn');
           const supabaseStatus = document.getElementById('supabaseStatus');
           const supabaseUploadedLink = document.getElementById('supabaseUploadedLink');
+          const supabaseProbeStatus = document.getElementById('supabaseProbeStatus');
           const authEmailInput = document.getElementById('authEmailInput');
           const authPasswordInput = document.getElementById('authPasswordInput');
           const authSignInBtn = document.getElementById('authSignInBtn');
@@ -401,6 +404,12 @@ export function initLegacyApp() {
               supabaseStatus.style.color = isError ? 'rgba(255, 148, 148, 0.95)' : 'rgba(146, 247, 210, 0.95)';
           }
 
+          function setSupabaseProbeStatus(message, isError = false) {
+              if (!supabaseProbeStatus) return;
+              supabaseProbeStatus.textContent = message;
+              supabaseProbeStatus.style.color = isError ? 'rgba(255, 172, 172, 0.95)' : 'rgba(197, 223, 255, 0.95)';
+          }
+
           function setAuthStatus(message, isError = false) {
               if (!authStatus) return;
               authStatus.textContent = message;
@@ -486,6 +495,71 @@ export function initLegacyApp() {
               } else {
                   supabaseUploadedLink.textContent = `Uploadé: ${objectPath}`;
               }
+          }
+
+          async function probeAudioFile(url) {
+              if (!url) return { ok: false, reason: 'URL vide.' };
+              try {
+                  const response = await fetch(url, {
+                      method: 'GET',
+                      headers: { Range: 'bytes=0-64' },
+                  });
+                  if (!response.ok) {
+                      return { ok: false, reason: `HTTP ${response.status}` };
+                  }
+                  const contentType = response.headers.get('content-type') || '';
+                  const looksAudio = /^audio\//i.test(contentType) || /\.mp3(\?|$)/i.test(url);
+                  if (!looksAudio) {
+                      return { ok: false, reason: `Type inattendu: ${contentType || 'inconnu'}` };
+                  }
+                  return { ok: true, reason: `OK (${response.status}${contentType ? ` · ${contentType}` : ''})` };
+              } catch (error) {
+                  return { ok: false, reason: error?.message || 'Erreur réseau/CORS' };
+              }
+          }
+
+          async function testSooncutFilesReadability() {
+              const directUrl = supabaseProbeUrlInput?.value?.trim() || '';
+              setSupabaseProbeStatus('Test lecture bucket en cours…');
+
+              const directProbe = await probeAudioFile(directUrl);
+              const directLine = directProbe.ok
+                  ? `URL directe: lisible ✅ (${directProbe.reason})`
+                  : `URL directe: échec ❌ (${directProbe.reason})`;
+
+              const client = buildSupabaseClient();
+              if (!client) {
+                  setSupabaseProbeStatus(`${directLine} · Ajoute URL + clé pour tester plusieurs fichiers.`, !directProbe.ok);
+                  return;
+              }
+
+              const { data, error } = await client.storage.from(SUPABASE_BUCKET).list(SOONCUT_BUCKET_FOLDER, {
+                  limit: 5,
+                  offset: 0,
+                  sortBy: { column: 'name', order: 'asc' },
+              });
+              if (error) {
+                  setSupabaseProbeStatus(`${directLine} · Listing Sooncut refusé: ${error.message}`, true);
+                  return;
+              }
+
+              const audioFiles = (data || []).filter((item) => item?.name && isAudioObject(item.name));
+              if (!audioFiles.length) {
+                  setSupabaseProbeStatus(`${directLine} · Aucun .mp3 trouvé dans ${SUPABASE_BUCKET}/${SOONCUT_BUCKET_FOLDER}.`, true);
+                  return;
+              }
+
+              let readableCount = 0;
+              for (const file of audioFiles) {
+                  const objectPath = `${SOONCUT_BUCKET_FOLDER}/${file.name}`;
+                  const { data: signedData } = await client.storage.from(SUPABASE_BUCKET).createSignedUrl(objectPath, 60 * 5);
+                  const candidateUrl = signedData?.signedUrl || buildPublicSoonbucketUrl(objectPath);
+                  const probe = await probeAudioFile(candidateUrl);
+                  if (probe.ok) readableCount += 1;
+              }
+
+              const allReadable = readableCount === audioFiles.length;
+              setSupabaseProbeStatus(`${directLine} · Fichiers testés: ${audioFiles.length}, lisibles: ${readableCount}.`, !allReadable);
           }
 
           function getCollectionStorageKey() {
@@ -682,6 +756,9 @@ export function initLegacyApp() {
               });
               supabaseUploadBtn.addEventListener('click', () => {
                   uploadToSoonbucket();
+              });
+              supabaseProbeBtn.addEventListener('click', () => {
+                  testSooncutFilesReadability();
               });
           }
           initSupabaseProfileCard();
