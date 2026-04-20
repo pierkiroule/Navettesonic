@@ -1,11 +1,8 @@
 import { createContext, useContext, useMemo, useReducer } from 'react';
 import { APP_VIEWS } from '../../../core/utils/views';
+import { DEFAULT_BUBBLES } from '../../../core/config/defaultBubbles';
 
-export const BUBBLES = [
-  { id: 'bubble-aube', label: 'Aube liquide' },
-  { id: 'bubble-brume', label: 'Brume claire' },
-  { id: 'bubble-abyss', label: 'Abysses calmes' },
-];
+export const BUBBLES = DEFAULT_BUBBLES;
 
 export const RESOTAGS = ['ambient', 'texture', 'field-recording'];
 
@@ -26,7 +23,7 @@ const initialState = {
   currentView: APP_VIEWS.EXPERIENCE,
   isTethered: false,
   isInteractionPaused: false,
-  selectedBubble: null,
+  selectedBubble: BUBBLES[0]?.id ?? null,
   BUBBLES,
   RESOTAGS,
   canvasSize: getInitialCanvasSize(),
