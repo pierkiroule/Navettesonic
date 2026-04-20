@@ -38,13 +38,6 @@
             overflow: auto;
         }
         .home-layout { width: min(920px, 100%); margin: 0 auto; }
-        .home-brand {
-            width: clamp(210px, 42vw, 360px);
-            height: auto;
-            display: block;
-            margin: 0 auto 16px;
-            filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.35));
-        }
         .home-title {
             margin: 0 0 clamp(18px, 3vw, 28px);
             font-size: clamp(2rem, 6vw, 3.5rem);
@@ -72,9 +65,10 @@
         .home-media { display: flex; flex-direction: column; align-items: center; gap: 18px; }
         .home-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
         .hero-video {
-            width: min(520px, 88vw);
-            aspect-ratio: 16 / 10;
-            border-radius: 24px;
+            width: min(420px, 75vw);
+            aspect-ratio: 1 / 1;
+            border-radius: 50%;
+            clip-path: circle(50% at 50% 50%);
             box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
             object-fit: cover;
             overflow: hidden;
@@ -329,9 +323,8 @@
         <div class="home-layout">
             <h1 class="home-title">Soon•°</h1>
             <div class="home-media">
-                <img class="home-brand" src="logo.png" alt="Logo Soono" />
                 <video id="heroVideo" class="hero-video" autoplay muted loop playsinline controls>
-                    <source src="./video/soono3.mp4" type="video/mp4">
+                    <source src="./video/soon.mp4" type="video/mp4">
                     Votre navigateur ne supporte pas la lecture vidéo.
                 </video>
                 <p class="home-poem">L'Odyssée sonore d'un petit poisson plume...</p>
@@ -681,6 +674,15 @@
             if (target !== 'experience') {
                 isTethered = false;
                 closeBubblePanel();
+            }
+            if (heroVideo) {
+                if (target === 'home') {
+                    heroVideo.play().catch(() => {});
+                } else {
+                    heroVideo.pause();
+                    heroVideo.muted = true;
+                    syncHeroSoundButton();
+                }
             }
             if (target === 'experience') {
                 rotateHelperTip(true);
