@@ -936,13 +936,14 @@ export function initLegacyApp() {
           function tryPlayArenaUrl(url, trackName) {
               return new Promise((resolve) => {
                   try {
+                      const audio = activeArenaAudio || new Audio();
                       if (activeArenaAudio) {
                           activeArenaAudio.pause();
                           activeArenaAudio.currentTime = 0;
                       }
-                      const audio = new Audio(url);
                       audio.preload = 'auto';
                       audio.volume = 0.98;
+                      audio.src = url;
                       activeArenaAudio = audio;
                       audio.play().then(() => {
                           setArenaTriangleStatus(`Lecture bucket aléatoire: ${trackName}`);
@@ -1053,10 +1054,17 @@ export function initLegacyApp() {
           async function triggerArenaFirefly(firefly) {
               if (!firefly) return;
               ensureAllAudioRunning();
+              if (!firefly.bucketTrack && sooncutBucketVocals.length) {
+                  firefly.bucketTrack = pickRandomSooncutTrack();
+              }
+              if (!firefly.bucketTrack) {
+                  await fetchSooncutVocalsFromBucket();
+                  firefly.bucketTrack = pickRandomSooncutTrack();
+              }
               const played = await playSooncutBucketTrack(firefly.bucketTrack);
               if (played) return;
               triggerArenaSample(firefly.sampleId);
-              setArenaTriangleStatus(`Mode synth local (${firefly.sampleId}) · Configure Profil > Supabase pour lire Soonbucket/sooncut.`);
+              setArenaTriangleStatus(`Mode synth local (${firefly.sampleId}) · Bucket inaccessible (fichier privé/policy Storage) ou autoplay bloqué.`);
           }
 
           function updateArenaFireflies() {
