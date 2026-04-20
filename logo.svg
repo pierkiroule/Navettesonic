@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 240" role="img" aria-labelledby="title desc">
+  <title id="title">Logo animé Soon•°</title>
+  <desc id="desc">Un petit poisson plume lumineux qui ondule dans un courant océanique.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#061125"/>
+      <stop offset="100%" stop-color="#10294a"/>
+    </linearGradient>
+    <linearGradient id="fish" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#79edff"/>
+      <stop offset="100%" stop-color="#6b8cff"/>
+      <animate attributeName="x1" values="0;0.2;0" dur="7s" repeatCount="indefinite"/>
+      <animate attributeName="y2" values="1;0.7;1" dur="7s" repeatCount="indefinite"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#8ff4ff" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#8ff4ff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="640" height="240" rx="44" fill="url(#bg)"/>
+
+  <g opacity="0.55">
+    <circle cx="140" cy="58" r="4" fill="#baf4ff">
+      <animate attributeName="cy" values="58;40;58" dur="6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="512" cy="188" r="6" fill="#8ce8ff">
+      <animate attributeName="cy" values="188;168;188" dur="5.2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="470" cy="76" r="3" fill="#d1fbff">
+      <animate attributeName="cy" values="76;52;76" dur="4.4s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <g transform="translate(120 66)" filter="url(#softGlow)">
+    <ellipse cx="200" cy="56" rx="118" ry="56" fill="url(#glow)" opacity="0.46"/>
+    <path d="M72 88 C96 28, 188 10, 260 52 C190 104, 110 112, 72 88 Z" fill="url(#fish)">
+      <animateTransform attributeName="transform" type="translate" values="0 0; 3 -2; 0 0; -3 2; 0 0" dur="6.5s" repeatCount="indefinite"/>
+    </path>
+    <path d="M254 52 L314 20 L300 52 L314 84 Z" fill="#6de3ff" opacity="0.9">
+      <animateTransform attributeName="transform" type="rotate" values="0 254 52; -8 254 52; 0 254 52; 8 254 52; 0 254 52" dur="2.8s" repeatCount="indefinite"/>
+    </path>
+    <path d="M128 90 C146 76, 168 70, 190 70" stroke="#d8f9ff" stroke-width="8" stroke-linecap="round" fill="none" opacity="0.72"/>
+    <circle cx="224" cy="44" r="6" fill="#001430"/>
+    <circle cx="226" cy="42" r="2" fill="#e8fdff"/>
+
+    <path d="M122 56 C92 34, 74 14, 66 -8" stroke="#c8fbff" stroke-width="7" stroke-linecap="round" fill="none" opacity="0.78">
+      <animate attributeName="d" dur="4.6s" repeatCount="indefinite"
+        values="M122 56 C92 34, 74 14, 66 -8; M122 56 C88 32, 70 12, 62 -14; M122 56 C92 34, 74 14, 66 -8"/>
+    </path>
+    <path d="M112 66 C80 54, 58 40, 38 18" stroke="#aef5ff" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.7">
+      <animate attributeName="d" dur="4s" repeatCount="indefinite"
+        values="M112 66 C80 54, 58 40, 38 18; M112 66 C76 52, 54 38, 30 10; M112 66 C80 54, 58 40, 38 18"/>
+    </path>
+  </g>
+
+  <g fill="#e8f7ff" font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="700">
+    <text x="44" y="190" font-size="54" letter-spacing="1.2">Soon•°</text>
+    <text x="48" y="218" font-size="20" opacity="0.88" font-weight="500">L'Odyssée sonore d'un petit poisson plume...</text>
+  </g>
+</svg>
