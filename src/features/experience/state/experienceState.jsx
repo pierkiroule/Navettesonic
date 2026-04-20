@@ -19,7 +19,7 @@ const initialState = {
   currentView: APP_VIEWS.EXPERIENCE,
   isTethered: false,
   isInteractionPaused: false,
-  selectedBubble: null,
+  selectedBubble: BUBBLES[0]?.id ?? null,
   BUBBLES,
   RESOTAGS,
   canvasSize: getInitialCanvasSize(),
