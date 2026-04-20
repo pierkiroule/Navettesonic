@@ -102,6 +102,7 @@
                 <article class="card">
                     <h3>Supabase Storage · Soonbucket</h3>
                     <p>Connexion rapide au bucket <strong>Soonbucket</strong> pour tester un upload depuis l'interface.</p>
+                    <p class="muted">Triangles rouges: renseigne URL + clé publishable, clique « Tester connexion », puis retourne dans Soon•°.</p>
                     <div class="stack">
                         <input id="supabaseUrlInput" type="text" placeholder="https://<project-ref>.supabase.co">
                         <input id="supabaseKeyInput" type="text" placeholder="sb_publishable_xxx">
@@ -111,8 +112,11 @@
                         </div>
                         <input id="supabaseFileInput" type="file" accept="audio/*,image/*">
                         <button id="supabaseUploadBtn" type="button">Uploader vers Soonbucket</button>
+                        <input id="supabaseProbeUrlInput" type="text" value="https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/sooncut/extrait_001.mp3">
+                        <button id="supabaseProbeBtn" type="button">Tester lecture fichier bucket</button>
                         <p id="supabaseStatus" class="status"></p>
                         <p id="supabaseUploadedLink" class="muted"></p>
+                        <p id="supabaseProbeStatus" class="muted"></p>
                     </div>
                 </article>
                 <article class="card">

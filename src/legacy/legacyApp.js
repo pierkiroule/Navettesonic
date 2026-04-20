@@ -66,8 +66,11 @@ export function initLegacyApp() {
           const supabaseTestBtn = document.getElementById('supabaseTestBtn');
           const supabaseFileInput = document.getElementById('supabaseFileInput');
           const supabaseUploadBtn = document.getElementById('supabaseUploadBtn');
+          const supabaseProbeUrlInput = document.getElementById('supabaseProbeUrlInput');
+          const supabaseProbeBtn = document.getElementById('supabaseProbeBtn');
           const supabaseStatus = document.getElementById('supabaseStatus');
           const supabaseUploadedLink = document.getElementById('supabaseUploadedLink');
+          const supabaseProbeStatus = document.getElementById('supabaseProbeStatus');
           const authEmailInput = document.getElementById('authEmailInput');
           const authPasswordInput = document.getElementById('authPasswordInput');
           const authSignInBtn = document.getElementById('authSignInBtn');
@@ -401,6 +404,12 @@ export function initLegacyApp() {
               supabaseStatus.style.color = isError ? 'rgba(255, 148, 148, 0.95)' : 'rgba(146, 247, 210, 0.95)';
           }
 
+          function setSupabaseProbeStatus(message, isError = false) {
+              if (!supabaseProbeStatus) return;
+              supabaseProbeStatus.textContent = message;
+              supabaseProbeStatus.style.color = isError ? 'rgba(255, 172, 172, 0.95)' : 'rgba(197, 223, 255, 0.95)';
+          }
+
           function setAuthStatus(message, isError = false) {
               if (!authStatus) return;
               authStatus.textContent = message;
@@ -486,6 +495,80 @@ export function initLegacyApp() {
               } else {
                   supabaseUploadedLink.textContent = `Uploadé: ${objectPath}`;
               }
+          }
+
+          async function probeAudioFile(url) {
+              if (!url) return { ok: false, reason: 'URL vide.' };
+              try {
+                  const response = await fetch(url, {
+                      method: 'GET',
+                      headers: { Range: 'bytes=0-64' },
+                  });
+                  if (!response.ok) {
+                      return { ok: false, reason: `HTTP ${response.status}` };
+                  }
+                  const contentType = response.headers.get('content-type') || '';
+                  const looksAudio = /^audio\//i.test(contentType) || /\.mp3(\?|$)/i.test(url);
+                  if (!looksAudio) {
+                      return { ok: false, reason: `Type inattendu: ${contentType || 'inconnu'}` };
+                  }
+                  return { ok: true, reason: `OK (${response.status}${contentType ? ` · ${contentType}` : ''})` };
+              } catch (error) {
+                  return { ok: false, reason: error?.message || 'Erreur réseau/CORS' };
+              }
+          }
+
+          async function testSooncutFilesReadability() {
+              const directUrl = supabaseProbeUrlInput?.value?.trim() || '';
+              setSupabaseProbeStatus('Test lecture bucket en cours…');
+
+              const directProbe = await probeAudioFile(directUrl);
+              const directLine = directProbe.ok
+                  ? `URL directe: lisible ✅ (${directProbe.reason})`
+                  : `URL directe: échec ❌ (${directProbe.reason})`;
+
+              const url = supabaseUrlInput?.value?.trim() || '';
+              const key = supabaseKeyInput?.value?.trim() || '';
+              if (!url || !key) {
+                  setSupabaseProbeStatus(
+                      `${directLine} · Test multi-fichiers ignoré (URL + clé Supabase non renseignées).`,
+                      !directProbe.ok
+                  );
+                  return;
+              }
+              const client = buildSupabaseClient();
+              if (!client) {
+                  setSupabaseProbeStatus(`${directLine} · Client Supabase indisponible pour le test multi-fichiers.`, true);
+                  return;
+              }
+
+              const { data, error } = await client.storage.from(SUPABASE_BUCKET).list(SOONCUT_BUCKET_FOLDER, {
+                  limit: 5,
+                  offset: 0,
+                  sortBy: { column: 'name', order: 'asc' },
+              });
+              if (error) {
+                  setSupabaseProbeStatus(`${directLine} · Listing Sooncut refusé: ${error.message}`, true);
+                  return;
+              }
+
+              const audioFiles = (data || []).filter((item) => item?.name && isAudioObject(item.name));
+              if (!audioFiles.length) {
+                  setSupabaseProbeStatus(`${directLine} · Aucun .mp3 trouvé dans ${SUPABASE_BUCKET}/${SOONCUT_BUCKET_FOLDER}.`, true);
+                  return;
+              }
+
+              let readableCount = 0;
+              for (const file of audioFiles) {
+                  const objectPath = `${SOONCUT_BUCKET_FOLDER}/${file.name}`;
+                  const { data: signedData } = await client.storage.from(SUPABASE_BUCKET).createSignedUrl(objectPath, 60 * 5);
+                  const candidateUrl = signedData?.signedUrl || buildPublicSoonbucketUrl(objectPath);
+                  const probe = await probeAudioFile(candidateUrl);
+                  if (probe.ok) readableCount += 1;
+              }
+
+              const allReadable = readableCount === audioFiles.length;
+              setSupabaseProbeStatus(`${directLine} · Fichiers testés: ${audioFiles.length}, lisibles: ${readableCount}.`, !allReadable);
           }
 
           function getCollectionStorageKey() {
@@ -683,6 +766,9 @@ export function initLegacyApp() {
               supabaseUploadBtn.addEventListener('click', () => {
                   uploadToSoonbucket();
               });
+              supabaseProbeBtn.addEventListener('click', () => {
+                  testSooncutFilesReadability();
+              });
           }
           initSupabaseProfileCard();
           authSignInBtn.addEventListener('click', signInWithEmail);
@@ -815,25 +901,70 @@ export function initLegacyApp() {
               return sooncutBucketVocals;
           }
 
-          async function playSooncutBucketVocal(index) {
-              const track = sooncutBucketVocals[index % sooncutBucketVocals.length];
-              if (!track?.url) return false;
+          function pickRandomSooncutTrack() {
+              if (!sooncutBucketVocals.length) return null;
+              const randomIndex = Math.floor(Math.random() * sooncutBucketVocals.length);
+              return sooncutBucketVocals[randomIndex] || null;
+          }
 
-              try {
-                  if (activeArenaAudio) {
-                      activeArenaAudio.pause();
-                      activeArenaAudio.currentTime = 0;
-                  }
-                  activeArenaAudio = new Audio(track.url);
-                  activeArenaAudio.preload = 'auto';
-                  activeArenaAudio.volume = 0.98;
-                  await activeArenaAudio.play();
-                  setArenaTriangleStatus(`Lecture bucket: ${track.name}`);
-                  return true;
-              } catch (_) {
-                  setArenaTriangleStatus(`Lecture impossible pour ${track.name}`, true);
-                  return false;
+          async function resolveSooncutTrackUrls(track) {
+              if (!track?.objectPath) return [];
+              const urls = [];
+              const client = buildSupabaseClient();
+
+              if (track.url) urls.push(track.url);
+
+              if (client) {
+                  const { data: publicData } = client.storage.from(SUPABASE_BUCKET).getPublicUrl(track.objectPath);
+                  if (publicData?.publicUrl) urls.push(publicData.publicUrl);
+
+                  const { data: signedData, error: signedError } = await client
+                      .storage
+                      .from(SUPABASE_BUCKET)
+                      .createSignedUrl(track.objectPath, 60 * 10);
+                  if (!signedError && signedData?.signedUrl) urls.push(signedData.signedUrl);
               }
+
+              const fallbackUrl = buildPublicSoonbucketUrl(track.objectPath);
+              if (fallbackUrl) urls.push(fallbackUrl);
+
+              return Array.from(new Set(urls.filter(Boolean)));
+          }
+
+          function tryPlayArenaUrl(url, trackName) {
+              return new Promise((resolve) => {
+                  try {
+                      if (activeArenaAudio) {
+                          activeArenaAudio.pause();
+                          activeArenaAudio.currentTime = 0;
+                      }
+                      const audio = new Audio(url);
+                      audio.preload = 'auto';
+                      audio.volume = 0.98;
+                      activeArenaAudio = audio;
+                      audio.play().then(() => {
+                          setArenaTriangleStatus(`Lecture bucket aléatoire: ${trackName}`);
+                          resolve(true);
+                      }).catch(() => resolve(false));
+                  } catch (_) {
+                      resolve(false);
+                  }
+              });
+          }
+
+          async function playSooncutBucketVocal() {
+              const track = pickRandomSooncutTrack();
+              if (!track?.name) return false;
+              const candidateUrls = await resolveSooncutTrackUrls(track);
+              if (!candidateUrls.length) return false;
+
+              for (const url of candidateUrls) {
+                  const played = await tryPlayArenaUrl(url, track.name);
+                  if (played) return true;
+              }
+
+              setArenaTriangleStatus(`Lecture impossible pour ${track.name}`, true);
+              return false;
           }
 
           function triggerArenaSample(sampleId) {
@@ -894,12 +1025,15 @@ export function initLegacyApp() {
 
                   btn.addEventListener('click', async () => {
                       ensureAllAudioRunning();
+                      if (!sooncutBucketVocals.length) {
+                          await fetchSooncutVocalsFromBucket();
+                      }
                       if (sooncutBucketVocals.length) {
-                          const played = await playSooncutBucketVocal(index);
+                          const played = await playSooncutBucketVocal();
                           if (played) return;
                       }
                       triggerArenaSample(sampleId);
-                      setArenaTriangleStatus(`Mode synth local: ${sampleId}`);
+                      setArenaTriangleStatus(`Mode synth local (${sampleId}) · Configure Profil > Supabase pour lire Soonbucket/sooncut.`);
                   });
                   arenaTrianglePad.appendChild(btn);
               });
