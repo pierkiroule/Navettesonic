@@ -704,15 +704,8 @@
             bubble.sound = createBinauralSound(sample);
             bubble.label = sample.name;
             bubble._sampleId = sample.id;
-            bubble.resotagQueue = createResotagList(sample);
             bubble.lastImpactAt = 0;
             bubble.fishTouching = false;
-            for (let i = RESOTAGS.length - 1; i >= 0; i--) {
-                if (RESOTAGS[i].bubbleId === bubble.id) {
-                    unlinkResotag(RESOTAGS[i].id);
-                    RESOTAGS.splice(i, 1);
-                }
-            }
             propsBubbleName.textContent = sample.name;
             bubble.currentVolume = 0;
             bubble.zoneMix = 0;
@@ -738,12 +731,6 @@
         propsDeleteBtn.addEventListener('click', () => {
             if (!selectedBubble) return;
             try { selectedBubble.sound?.source?.stop(); } catch (_) {}
-            for (let i = RESOTAGS.length - 1; i >= 0; i--) {
-                if (RESOTAGS[i].bubbleId === selectedBubble.id) {
-                    unlinkResotag(RESOTAGS[i].id);
-                    RESOTAGS.splice(i, 1);
-                }
-            }
             const idx = BUBBLES.indexOf(selectedBubble);
             if (idx !== -1) BUBBLES.splice(idx, 1);
             closeBubblePropsPanel();
@@ -771,7 +758,7 @@
             'Pour ouvrir la collection, fais un double tap (ou double clic) directement sur le poisson.',
             'Dans la collection, choisis un sample puis une position (face, dessus, dessous).',
             'Valide avec « Ajouter à la collection » pour déposer une bulle sonore dans la scène.',
-            'Resotags : chaque choc libère une luciole ; touche-la pour révéler son mot 3 secondes.'
+            'Astuce : personnalise tes bulles depuis le panneau de propriétés.'
         ];
 
         const ARENA_RADIUS = 2000;
@@ -790,17 +777,6 @@
         const MAX_BREATH_WAVES = 9;
         const DRIFT_MOTES = [];
         const MAX_DRIFT_MOTES = 22;
-        const RESOTAGS = [];
-        const RESOTAG_LINKS = [];
-        const MAX_RESOTAG_LINKS = 120;
-        const HAIKU_TRIANGLES = [];
-        let haikuTrailWords = [];
-        const RESOTAG_POOL = [
-            'écume', 'abysses', 'lueur', 'frisson', 'pollen', 'sillage',
-            'corail', 'souffle', 'nacre', 'aurore', 'vertige', 'marée',
-            'brume', 'murmure', 'ivresse', 'algue', 'reflet', 'dérive',
-            'pulsation', 'source', 'plume', 'halo', 'onde', 'silence'
-        ];
         const STARTING_BUBBLES = [
             { sampleId: 'forêt-zen', layer: 'front', hue: 188, x: -240, y: -120, r: 72 },
             { sampleId: 'ocean-deep', layer: 'below', hue: 235, x: 220, y: 170, r: 78 },
@@ -808,7 +784,6 @@
         ];
         let shipBreathEmitter = 0;
         let bubbleIdSeed = 1;
-        let resotagIdSeed = 1;
         let supabaseClient = null;
         let currentSession = null;
         const SUPABASE_BUCKET = 'Soonbucket';
@@ -1433,60 +1408,15 @@
         }
 
         function createResotagList(sample) {
-            const seed = `${sample.name} ${sample.texture}`.toLowerCase()
-                .replace(/[^a-zàâçéèêëîïôûùüÿñæœ\s-]/gi, ' ')
-                .split(/\s+/)
-                .filter(Boolean);
-            const tags = [];
-            const taken = new Set();
-
-            seed.forEach(word => {
-                if (word.length < 4) return;
-                if (taken.has(word)) return;
-                taken.add(word);
-                tags.push(word);
-            });
-
-            const shuffledPool = [...RESOTAG_POOL].sort(() => Math.random() - 0.5);
-            shuffledPool.forEach(word => {
-                if (tags.length >= 12) return;
-                if (taken.has(word)) return;
-                taken.add(word);
-                tags.push(word);
-            });
-            while (tags.length < 12) tags.push(`réso-${tags.length + 1}`);
-            return tags.slice(0, 12);
+            return [];
         }
 
         function unlinkResotag(tagId) {
-            for (let i = RESOTAG_LINKS.length - 1; i >= 0; i--) {
-                const l = RESOTAG_LINKS[i];
-                if (l.a === tagId || l.b === tagId) RESOTAG_LINKS.splice(i, 1);
-            }
+            return;
         }
 
         function releaseResotagFromBubble(bubble) {
-            if (!bubble.resotagQueue?.length) return;
-            const text = bubble.resotagQueue.shift();
-            const angle = Math.random() * Math.PI * 2;
-            const spawnRadius = bubble.r + 14 + Math.random() * 20;
-            RESOTAGS.push({
-                id: `rt-${resotagIdSeed++}`,
-                bubbleId: bubble.id,
-                bubbleRef: bubble,
-                text,
-                x: bubble.x + Math.cos(angle) * spawnRadius,
-                y: bubble.y + Math.sin(angle) * spawnRadius,
-                vx: Math.cos(angle) * (0.03 + Math.random() * 0.03),
-                vy: Math.sin(angle) * (0.03 + Math.random() * 0.03),
-                orbitRadius: bubble.r + 24 + Math.random() * 34,
-                orbitAngle: angle,
-                orbitSpeed: (Math.random() * 0.00065 + 0.00022) * (Math.random() < 0.5 ? -1 : 1),
-                drift: 0.0025 + Math.random() * 0.0035,
-                motherHue: bubble.hue ?? 195,
-                revealedUntil: 0,
-                bornAt: performance.now(),
-            });
+            return;
         }
 
         function buildSoundBubble(sample, layer = 'front') {
@@ -1511,7 +1441,6 @@
                 x, y, r: 64, layer, depthOffset: spatial.depthOffset, isActive: false,
                 sound, label: sample.name, _sampleId: sample.id,
                 currentVolume: 0, zoneMix: 0, resonance: 0, wasInZone: false, hue: 195,
-                resotagQueue: createResotagList(sample),
                 lastImpactAt: 0,
                 fishTouching: false
             };
@@ -1743,9 +1672,6 @@
             updateSurfaceEffects(speed);
             updateResonanceWaves();
             updatePoetryEffects(speed);
-            updateResotags(speed);
-            updateHaikuAttachment(speed);
-            updateHaikuTriangles();
         }
 
         function updateWakeParticles(speed) {
@@ -1964,274 +1890,35 @@
         }
 
         function updateResotags(speed) {
-            const now = performance.now();
-            const fishRadius = 24;
-            const fishForce = Math.hypot(ship.vx, ship.vy);
-
-            BUBBLES.forEach((bubble) => {
-                const dist = Math.hypot(ship.x - bubble.x, ship.y - bubble.y);
-                const isTouching = dist <= bubble.r + fishRadius;
-                if (isTouching && !bubble.fishTouching && now - bubble.lastImpactAt > 10000) {
-                    bubble.lastImpactAt = now;
-                    releaseResotagFromBubble(bubble);
-                }
-                bubble.fishTouching = isTouching;
-            });
-
-            RESOTAGS.forEach((tag) => {
-                const mother = tag.bubbleRef;
-                const currents = Math.sin((now + tag.bornAt) * 0.00018 + tag.id.length) * 0.02;
-                const targetX = mother.x + Math.cos(tag.orbitAngle) * tag.orbitRadius;
-                const targetY = mother.y + Math.sin(tag.orbitAngle) * tag.orbitRadius;
-                tag.orbitAngle += tag.orbitSpeed;
-
-                tag.vx += (targetX - tag.x) * 0.0012 + currents * tag.drift;
-                tag.vy += (targetY - tag.y) * 0.0012 + currents * tag.drift * 0.7;
-
-                const dx = tag.x - ship.x;
-                const dy = tag.y - ship.y;
-                const d = Math.hypot(dx, dy);
-                const fishGlide = Math.min(1, fishForce / ship.maxSpeed);
-                if (d < 110 && d > 0.001) {
-                    if (fishGlide < 0.52) {
-                        const pull = (1 - d / 110) * 0.024;
-                        tag.vx -= (dx / d) * pull;
-                        tag.vy -= (dy / d) * pull;
-                    } else if (d < 60) {
-                        const push = (1 - d / 60) * (0.010 + fishForce * 0.016);
-                        tag.vx += (dx / d) * push;
-                        tag.vy += (dy / d) * push;
-                    }
-                }
-
-                if (tag.nextWordPulse === undefined) {
-                    tag.nextWordPulse = now + 1500 + Math.random() * 5000;
-                    tag.wordPulseUntil = 0;
-                }
-                if (now > tag.nextWordPulse) {
-                    tag.wordPulseUntil = now + 2400;
-                    tag.nextWordPulse = now + 5000 + Math.random() * 9000;
-                }
-
-                tag.vx *= 0.968;
-                tag.vy *= 0.968;
-                tag.x += tag.vx;
-                tag.y += tag.vy;
-            });
-
-            for (let i = 0; i < RESOTAGS.length; i++) {
-                for (let j = i + 1; j < RESOTAGS.length; j++) {
-                    const a = RESOTAGS[i];
-                    const b = RESOTAGS[j];
-                    if (a.bubbleId === b.bubbleId) continue;
-                    const dist = Math.hypot(a.x - b.x, a.y - b.y);
-                    if (dist < 240 && dist > 0.001) {
-                        const attraction = (1 - dist / 240) * 0.0022;
-                        const ax = (b.x - a.x) / dist;
-                        const ay = (b.y - a.y) / dist;
-                        a.vx += ax * attraction;
-                        a.vy += ay * attraction;
-                        b.vx -= ax * attraction;
-                        b.vy -= ay * attraction;
-                    }
-                    if (dist > 30) continue;
-                    const exists = RESOTAG_LINKS.some(l => (l.a === a.id && l.b === b.id) || (l.a === b.id && l.b === a.id));
-                    if (exists) continue;
-                    if (RESOTAG_LINKS.length >= MAX_RESOTAG_LINKS) RESOTAG_LINKS.shift();
-                    RESOTAG_LINKS.push({ a: a.id, b: b.id, bornAt: now });
-                }
-            }
-
-            for (let i = RESOTAG_LINKS.length - 1; i >= 0; i--) {
-                const link = RESOTAG_LINKS[i];
-                const a = RESOTAGS.find(t => t.id === link.a);
-                const b = RESOTAGS.find(t => t.id === link.b);
-                if (!a || !b) {
-                    RESOTAG_LINKS.splice(i, 1);
-                    continue;
-                }
-                if (Math.hypot(a.x - b.x, a.y - b.y) > 105) RESOTAG_LINKS.splice(i, 1);
-            }
+            return;
         }
 
         function updateHaikuAttachment(speed) {
-            const now = performance.now();
-            const glide = Math.min(1, speed / ship.maxSpeed);
-            if (haikuTrailWords.length < 3 && glide < 0.60) {
-                for (let i = RESOTAGS.length - 1; i >= 0; i--) {
-                    const tag = RESOTAGS[i];
-                    const inWordState = tag.wordPulseUntil && now < tag.wordPulseUntil;
-                    if (!inWordState) continue;
-                    const d = Math.hypot(ship.x - tag.x, ship.y - tag.y);
-                    if (d < 80) {
-                        if (!haikuTrailWords.includes(tag.text)) {
-                            haikuTrailWords.push(tag.text);
-                            tag.wordPulseUntil = 0;
-                            tag.nextWordPulse = now + 15000;
-                        }
-                        break;
-                    }
-                }
-            }
-            if (haikuTrailWords.length === 3) {
-                spawnHaikuTriangle(haikuTrailWords);
-                haikuTrailWords = [];
-            }
+            return;
         }
 
         function spawnHaikuTriangle(words) {
-            const hue = 185 + Math.random() * 50;
-            HAIKU_TRIANGLES.push({
-                x: ship.x + (Math.random() - 0.5) * 60,
-                y: ship.y + (Math.random() - 0.5) * 60,
-                words: words,
-                haiku: composeHaiku(words),
-                notes: wordsToNotes(words),
-                size: 58,
-                angle: Math.random() * Math.PI * 2,
-                rotSpeed: 0.0038 + Math.random() * 0.003,
-                vx: (Math.random() - 0.5) * 0.18,
-                vy: (Math.random() - 0.5) * 0.18,
-                phase: Math.random() * Math.PI * 2,
-                hue: hue,
-                open: false,
-                openedAt: null,
-                openDuration: 5200,
-                cooldownUntil: 0,
-            });
+            return;
         }
 
         function composeHaiku(words) {
-            const [w1, w2, w3] = words;
-            const templates = [
-                [w1, `${w2} s'efface`, `reste ${w3}`],
-                [`encore ${w1}`, `${w2} et ${w3}`, `l'eau se souvient`],
-                [`${w1} fragile`, `sans ${w2}`, `juste ${w3}`],
-                [`sous ${w1}`, `${w2} — ${w3}`, `rien ne répond`],
-                [`${w1} seul`, `${w2} se tait`, `${w3} demeure`],
-                [`${w1}`, `entre ${w2} et ${w3}`, `l'abîme attend`],
-                [`${w1} toujours`, `${w2} se dissout`, `vers ${w3}`],
-                [`${w1} — silence`, `${w2}`, `${w3} perdure`],
-                [`${w1}`, `${w2} et ${w3}`, `puis l'oubli`],
-                [`${w1} encore`, `sans ${w2}`, `${w3} dans l'ombre`],
-                [`vers ${w1}`, `${w2} — dérive`, `${w3}`],
-                [`${w1}`, `${w2} s'endort`, `${w3} veille`],
-            ];
-            return templates[Math.floor(Math.random() * templates.length)];
+            return [];
         }
 
         function wordsToNotes(words) {
-            const penta = [261.6, 293.7, 329.6, 392.0, 440.0, 523.3, 587.3, 659.3];
-            return words.map(w => {
-                let h = 7;
-                for (const c of w) h = (h * 31 + c.charCodeAt(0)) & 0x7fffffff;
-                return penta[Math.abs(h) % penta.length];
-            });
+            return [];
         }
 
         function playHaikuMelody(notes) {
-            const actx = ensureAudioContext();
-            if (!actx) return;
-            notes.forEach((freq, i) => {
-                const t0 = actx.currentTime + i * 1.55;
-                [[1, 0.22], [2.005, 0.07]].forEach(([harmonic, peak]) => {
-                    const osc = actx.createOscillator();
-                    const gain = actx.createGain();
-                    osc.type = 'sine';
-                    osc.frequency.value = freq * harmonic;
-                    gain.gain.setValueAtTime(0, t0);
-                    gain.gain.linearRampToValueAtTime(peak, t0 + 0.018);
-                    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.45);
-                    osc.connect(gain);
-                    gain.connect(masterGainNode);
-                    osc.start(t0);
-                    osc.stop(t0 + 1.5);
-                });
-            });
+            return;
         }
 
         function updateHaikuTriangles() {
-            const now = performance.now();
-            HAIKU_TRIANGLES.forEach(tri => {
-                tri.angle += tri.rotSpeed;
-                tri.vx += (Math.random() - 0.5) * 0.007;
-                tri.vy += (Math.random() - 0.5) * 0.007;
-                tri.vx *= 0.993;
-                tri.vy *= 0.993;
-                tri.x += tri.vx;
-                tri.y += tri.vy;
-                if (tri.open && tri.openedAt && now - tri.openedAt > tri.openDuration) {
-                    tri.open = false;
-                    tri.openedAt = null;
-                    tri.cooldownUntil = now + 3000;
-                }
-                if (!tri.open && now > tri.cooldownUntil) {
-                    const d = Math.hypot(ship.x - tri.x, ship.y - tri.y);
-                    if (d < tri.size + 24) {
-                        tri.open = true;
-                        tri.openedAt = now;
-                        playHaikuMelody(tri.notes);
-                    }
-                }
-            });
+            return;
         }
 
         function drawHaikuTriangles() {
-            const now = performance.now();
-            HAIKU_TRIANGLES.forEach(tri => {
-                const elapsed = tri.open && tri.openedAt ? now - tri.openedAt : 0;
-                const openFrac = tri.open && tri.openedAt
-                    ? Math.min(1, elapsed / 600)
-                    : 0;
-                let textAlpha = 0;
-                if (tri.open && tri.openedAt) {
-                    const fadeIn  = Math.min(1, elapsed / 800);
-                    const fadeOut = elapsed > tri.openDuration - 900
-                        ? 1 - Math.min(1, (elapsed - (tri.openDuration - 900)) / 900)
-                        : 1;
-                    textAlpha = fadeIn * fadeOut;
-                }
-                const pulse = (Math.sin(now * 0.0026 + tri.phase) + 1) * 0.5;
-                const size  = tri.size * (1 + openFrac * 0.40 + pulse * 0.04);
-
-                ctx.save();
-                ctx.translate(tri.x, tri.y);
-
-                ctx.save();
-                ctx.rotate(tri.angle);
-                ctx.shadowBlur = 18 + openFrac * 30;
-                ctx.shadowColor = `hsla(${tri.hue}, 92%, 82%, ${0.3 + pulse * 0.2 + openFrac * 0.3})`;
-                ctx.strokeStyle = `hsla(${tri.hue}, 88%, 86%, ${0.55 + openFrac * 0.40})`;
-                ctx.lineWidth = 1.6 + openFrac * 2;
-                ctx.beginPath();
-                for (let v = 0; v < 3; v++) {
-                    const a = (v / 3) * Math.PI * 2 - Math.PI / 2;
-                    const px = Math.cos(a) * size;
-                    const py = Math.sin(a) * size;
-                    v === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
-                }
-                ctx.closePath();
-                if (openFrac > 0) {
-                    ctx.fillStyle = `hsla(${tri.hue}, 45%, 8%, ${openFrac * 0.92})`;
-                    ctx.fill();
-                }
-                ctx.stroke();
-                ctx.shadowBlur = 0;
-                ctx.restore();
-
-                if (textAlpha > 0.04 && tri.haiku) {
-                    ctx.font = '500 13px Georgia, serif';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillStyle = `hsla(${tri.hue}, 60%, 95%, ${textAlpha})`;
-                    ctx.shadowBlur = 14;
-                    ctx.shadowColor = `hsla(${tri.hue}, 90%, 80%, ${textAlpha * 0.55})`;
-                    const lh = 19;
-                    tri.haiku.forEach((line, i) => ctx.fillText(line, 0, (i - 1) * lh));
-                    ctx.shadowBlur = 0;
-                }
-                ctx.restore();
-            });
+            return;
         }
 
         function drawBreathWaves() {
@@ -2390,25 +2077,6 @@
             drawWakeParticles();
             drawRipples();
             drawLuminousTrail();
-            drawResotagLinks();
-            drawResotags();
-            drawHaikuTriangles();
-
-            if (haikuTrailWords.length > 0) {
-                const now = performance.now();
-                const pulse = (Math.sin(now * 0.004) + 1) * 0.5;
-                ctx.save();
-                ctx.translate(ship.x, ship.y - 52);
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.font = '600 11px Georgia, serif';
-                ctx.fillStyle = `rgba(200, 240, 255, ${0.55 + pulse * 0.25})`;
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = 'rgba(120, 210, 255, 0.4)';
-                ctx.fillText(haikuTrailWords.map((w, i) => i < haikuTrailWords.length - 1 ? w + ' ·' : w).join(' '), 0, 0);
-                ctx.shadowBlur = 0;
-                ctx.restore();
-            }
 
             ctx.save();
             ctx.translate(ship.x, ship.y);
@@ -2683,61 +2351,11 @@
         }
 
         function drawResotagLinks() {
-            RESOTAG_LINKS.forEach((link) => {
-                const a = RESOTAGS.find(t => t.id === link.a);
-                const b = RESOTAGS.find(t => t.id === link.b);
-                if (!a || !b) return;
-                const life = Math.min(1, (performance.now() - link.bornAt) / 900);
-                const alpha = 0.06 + life * 0.10;
-                const hue = (((a.motherHue ?? 195) + (b.motherHue ?? 195)) / 2);
-                ctx.strokeStyle = `hsla(${hue}, 86%, 78%, ${alpha})`;
-                ctx.lineWidth = 0.8;
-                ctx.beginPath();
-                ctx.moveTo(a.x, a.y);
-                ctx.lineTo(b.x, b.y);
-                ctx.stroke();
-            });
+            return;
         }
 
         function drawResotags() {
-            const now = performance.now();
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            RESOTAGS.forEach((tag) => {
-                const driftPulse = (Math.sin(now * 0.003 + tag.orbitAngle * 9) + 1) * 0.5;
-                const tagHue = tag.motherHue ?? 195;
-                const inWordState = tag.wordPulseUntil && now < tag.wordPulseUntil;
-
-                if (inWordState) {
-                    const timeLeft = tag.wordPulseUntil - now;
-                    const wordFrac = Math.min(1, Math.min(timeLeft, tag.wordPulseUntil - (tag.wordPulseUntil - 2400)) / 350);
-                    const fadeFrac = timeLeft < 350 ? timeLeft / 350 : 1;
-                    const alpha = wordFrac * fadeFrac;
-                    const sz = 13 + driftPulse * 2;
-                    ctx.font = `600 ${sz.toFixed(1)}px Georgia, serif`;
-                    ctx.fillStyle = `hsla(${tagHue}, 90%, 92%, ${alpha * 0.88})`;
-                    ctx.shadowBlur = 14;
-                    ctx.shadowColor = `hsla(${tagHue}, 92%, 76%, ${alpha * 0.45})`;
-                    ctx.fillText(tag.text, tag.x, tag.y);
-                    ctx.shadowBlur = 0;
-                    const dotR = 2.2 + driftPulse * 0.8;
-                    ctx.fillStyle = `hsla(${tagHue}, 92%, 88%, ${alpha * 0.6})`;
-                    ctx.beginPath();
-                    ctx.arc(tag.x, tag.y + sz * 0.8, dotR, 0, Math.PI * 2);
-                    ctx.fill();
-                    return;
-                }
-
-                const dotR = 2.3 + driftPulse * 1.2;
-                const dotAlpha = 0.32 + driftPulse * 0.40;
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = `hsla(${tagHue}, 92%, 70%, ${dotAlpha * 0.85})`;
-                ctx.fillStyle = `hsla(${tagHue}, 94%, 84%, ${dotAlpha})`;
-                ctx.beginPath();
-                ctx.arc(tag.x, tag.y, dotR, 0, Math.PI * 2);
-                ctx.fill();
-            });
-            ctx.shadowBlur = 0;
+            return;
         }
 
         function drawWaterSurface() {
