@@ -184,6 +184,19 @@
             gap: 8px;
             pointer-events: auto;
         }
+        #arenaTriangleStatus {
+            position: absolute;
+            left: 50%;
+            bottom: calc(56px + env(safe-area-inset-bottom));
+            transform: translateX(-50%);
+            z-index: 151;
+            width: min(92vw, 560px);
+            text-align: center;
+            font-size: 0.74rem;
+            color: rgba(255, 220, 220, 0.88);
+            text-shadow: 0 1px 8px rgba(0, 0, 0, 0.42);
+            pointer-events: none;
+        }
         .arena-triangle-btn {
             border: 1px solid rgba(255, 82, 82, 0.68);
             border-radius: 12px;
@@ -489,6 +502,7 @@
         <div id="ui">Double tap sur le poisson pour ouvrir la collection sonore</div>
         <div id="helperTips">Garde le doigt (ou clic) appuyé dans l'océan : le poisson-plume suit ton mouvement.</div>
         <div id="arenaTrianglePad" aria-label="Triggers Sooncut"></div>
+        <div id="arenaTriangleStatus">Triangles Sooncut: mode synth local.</div>
         <div id="bubblePanel" class="hidden">
             <div class="panel-card">
                 <h2>Collection Soon•° (demo)</h2>
@@ -652,6 +666,7 @@
         const sampleSelect = document.getElementById('sampleSelect');
         const sampleHint = document.getElementById('sampleHint');
         const arenaTrianglePad = document.getElementById('arenaTrianglePad');
+        const arenaTriangleStatus = document.getElementById('arenaTriangleStatus');
         const bubblePropsPanel = document.getElementById('bubblePropsPanel');
         const propsBubbleName = document.getElementById('propsBubbleName');
         const propsSampleSelect = document.getElementById('propsSampleSelect');
@@ -792,6 +807,8 @@
         let heroHaloRAF = null;
         let heroHaloEnergy = 0;
         let helperTipIndex = 0;
+        let sooncutBucketVocals = [];
+        let activeArenaAudio = null;
         const helperTipsPlaylist = [
             'Garde le doigt (ou clic) appuyé dans l’océan : le poisson-plume suit ton mouvement.',
             'Pour ouvrir la collection, fais un double tap (ou double clic) directement sur le poisson.',
@@ -803,6 +820,7 @@
         const ARENA_RADIUS = 2000;
         const SOUND_HEAR_RADIUS = 460;
         const ARENA_TRIANGLE_COUNT = 10;
+        const SOONCUT_BUCKET_FOLDER = 'sooncut';
         const SOONCUT_TRIANGLE_SAMPLE_IDS = SAMPLE_LIBRARY.slice(0, ARENA_TRIANGLE_COUNT).map(sample => sample.id);
         const DEPTH_Z = 140;
         const BUBBLES = [];
@@ -1046,6 +1064,7 @@
                 return;
             }
             setSupabaseStatus(`Connecté à ${SUPABASE_BUCKET} avec ${maskApiKey(supabaseKeyInput.value.trim())}.`);
+            await fetchSooncutVocalsFromBucket();
         }
 
         function sanitizeFileName(name) {
@@ -1250,6 +1269,7 @@
             refreshAuthUi(currentSession ? 'Session restaurée.' : 'Pas de session active.');
             renderStoreCatalog();
             await renderOwnedCollection();
+            await fetchSooncutVocalsFromBucket();
         }
 
         function initSupabaseProfileCard() {
@@ -1327,6 +1347,73 @@
                    homeView.contains(target) || profileView.contains(target);
         }
 
+        function setArenaTriangleStatus(message, isError = false) {
+            if (!arenaTriangleStatus) return;
+            arenaTriangleStatus.textContent = message;
+            arenaTriangleStatus.style.color = isError ? 'rgba(255, 172, 172, 0.95)' : 'rgba(255, 220, 220, 0.88)';
+        }
+
+        function isAudioObject(fileName = '') {
+            return /\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(fileName);
+        }
+
+        async function fetchSooncutVocalsFromBucket() {
+            const client = buildSupabaseClient();
+            if (!client) {
+                setArenaTriangleStatus('Triangles Sooncut: configure Supabase pour charger les vocaux.', true);
+                return [];
+            }
+
+            const { data, error } = await client.storage.from(SUPABASE_BUCKET).list(SOONCUT_BUCKET_FOLDER, {
+                limit: 100,
+                offset: 0,
+                sortBy: { column: 'name', order: 'asc' },
+            });
+
+            if (error) {
+                setArenaTriangleStatus(`Sooncut bucket: ${error.message}`, true);
+                return [];
+            }
+
+            const audioFiles = (data || []).filter((item) => item?.name && isAudioObject(item.name));
+            if (!audioFiles.length) {
+                setArenaTriangleStatus(`Aucun vocal trouvé dans ${SUPABASE_BUCKET}/${SOONCUT_BUCKET_FOLDER}.`, true);
+                return [];
+            }
+
+            const resolved = await Promise.all(audioFiles.map(async (item) => {
+                const objectPath = `${SOONCUT_BUCKET_FOLDER}/${item.name}`;
+                const url = await resolveSampleUrl(objectPath);
+                return url ? { name: item.name, objectPath, url } : null;
+            }));
+
+            sooncutBucketVocals = resolved.filter(Boolean);
+            setArenaTriangleStatus(`Vocaux chargés: ${sooncutBucketVocals.length} depuis ${SUPABASE_BUCKET}/${SOONCUT_BUCKET_FOLDER}.`);
+            renderArenaTriangles();
+            return sooncutBucketVocals;
+        }
+
+        async function playSooncutBucketVocal(index) {
+            const track = sooncutBucketVocals[index % sooncutBucketVocals.length];
+            if (!track?.url) return false;
+
+            try {
+                if (activeArenaAudio) {
+                    activeArenaAudio.pause();
+                    activeArenaAudio.currentTime = 0;
+                }
+                activeArenaAudio = new Audio(track.url);
+                activeArenaAudio.preload = 'auto';
+                activeArenaAudio.volume = 0.98;
+                await activeArenaAudio.play();
+                setArenaTriangleStatus(`Lecture bucket: ${track.name}`);
+                return true;
+            } catch (_) {
+                setArenaTriangleStatus(`Lecture impossible pour ${track.name}`, true);
+                return false;
+            }
+        }
+
         function triggerArenaSample(sampleId) {
             const sample = SAMPLE_LIBRARY.find(s => s.id === sampleId);
             const context = ensureAudioContext();
@@ -1375,15 +1462,22 @@
                 const btn = document.createElement('button');
                 btn.type = 'button';
                 btn.className = 'arena-triangle-btn';
-                btn.setAttribute('aria-label', `Triangle rouge ${index + 1} · ${sampleId}`);
+                const bucketTrack = sooncutBucketVocals[index % Math.max(1, sooncutBucketVocals.length)];
+                const displayName = bucketTrack?.name || sampleId;
+                btn.setAttribute('aria-label', `Triangle rouge ${index + 1} · ${displayName}`);
                 btn.innerHTML = `
                     <span class="arena-triangle-shape" aria-hidden="true"></span>
                     <span class="arena-triangle-label">T${index + 1}</span>
                 `;
 
-                btn.addEventListener('click', () => {
+                btn.addEventListener('click', async () => {
                     ensureAllAudioRunning();
+                    if (sooncutBucketVocals.length) {
+                        const played = await playSooncutBucketVocal(index);
+                        if (played) return;
+                    }
                     triggerArenaSample(sampleId);
+                    setArenaTriangleStatus(`Mode synth local: ${sampleId}`);
                 });
                 arenaTrianglePad.appendChild(btn);
             });
