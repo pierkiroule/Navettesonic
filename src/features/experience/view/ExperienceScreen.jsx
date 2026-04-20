@@ -1,7 +1,14 @@
 import { SAMPLE_LIBRARY } from '../../../core/config/audioConfig';
+import { SOONCUT_SAMPLE_IDS } from '../../../core/config/experienceConfig';
 import { EXPERIENCE_COPY } from '../model/experienceModel';
 
-function ExperienceScreen({ experienceRef, state, onBubbleChange }) {
+const ARENA_TRIANGLE_COUNT = 10;
+const ARENA_TRIANGLES = Array.from({ length: ARENA_TRIANGLE_COUNT }, (_, index) => ({
+  id: `arena-triangle-${index + 1}`,
+  sampleId: SOONCUT_SAMPLE_IDS[index % SOONCUT_SAMPLE_IDS.length],
+}));
+
+function ExperienceScreen({ experienceRef, state, onBubbleChange, onArenaTriangleTap }) {
   const triangleSequence = state.sceneSnapshot.activeTriangle?.sampleSequence ?? null;
 
   return (
@@ -29,8 +36,24 @@ function ExperienceScreen({ experienceRef, state, onBubbleChange }) {
         </div>
       </div>
       <div className="canvas-placeholder">
-        Canvas Soon•° ({state.canvasSize.width}x{state.canvasSize.height}) — Tethered: {String(state.isTethered)} — Pause:{' '}
-        {String(state.isInteractionPaused)}
+        <div className="arena-status">
+          Arène Soon•° ({state.canvasSize.width}x{state.canvasSize.height}) — Tethered: {String(state.isTethered)} — Pause:{' '}
+          {String(state.isInteractionPaused)}
+        </div>
+        <div className="arena-triangle-grid">
+          {ARENA_TRIANGLES.map((triangle, index) => (
+            <button
+              key={triangle.id}
+              type="button"
+              className="arena-triangle-btn"
+              onClick={() => onArenaTriangleTap(triangle.sampleId)}
+              aria-label={`Triangle rouge ${index + 1}, déclenche ${triangle.sampleId}`}
+            >
+              <span className="arena-triangle-shape" />
+              <span className="arena-triangle-label">T{index + 1}</span>
+            </button>
+          ))}
+        </div>
       </div>
       <div className="panel-card">
         <h3>{EXPERIENCE_COPY.samplesTitle}</h3>
