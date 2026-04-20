@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { SAMPLE_LIBRARY } from '../../core/audio/sampleLibrary';
 import { usePointerControls } from './hooks/usePointerControls';
 import { useResizeCanvas } from './hooks/useResizeCanvas';
-import { useExperienceState } from './state/experienceState';
+import { useExperienceState } from './state/experienceState.jsx';
 
 function ExperienceView() {
   const experienceRef = useRef(null);

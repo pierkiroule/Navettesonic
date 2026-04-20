@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useExperienceState } from '../state/experienceState';
+import { useExperienceState } from '../state/experienceState.jsx';
 
 export function useResizeCanvas() {
   const { dispatch } = useExperienceState();
