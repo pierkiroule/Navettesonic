@@ -206,12 +206,13 @@ export function initLegacyApp() {
 
           const ARENA_RADIUS = 2000;
           const SOUND_HEAR_RADIUS = 460;
-          const ARENA_TRIANGLE_COUNT = 18;
+          const ARENA_TRIANGLE_COUNT = 36;
           const FIREFLY_COLLISION_RADIUS = 26;
           const FIREFLY_LINK_DISTANCE = 58;
           const FIREFLY_LINK_BREAK_DISTANCE = 102;
           const FIREFLY_LINK_TTL = 7800;
           const TRIANGLE_DISPERSE_DURATION = 1700;
+          const TRIANGLE_SAMPLE_STEP_MS = 1200;
           const DEFAULT_SUPABASE_URL = 'https://qyffktrggapfzlmmlerq.supabase.co';
           const SOONCUT_BUCKET_FOLDER = 'sooncut';
           const SOONCUT_TRIANGLE_SAMPLE_IDS = SAMPLE_LIBRARY.slice(0, ARENA_TRIANGLE_COUNT).map(sample => sample.id);
@@ -1035,8 +1036,8 @@ export function initLegacyApp() {
                       vx: 0,
                       vy: 0,
                       driftPhase: Math.random() * Math.PI * 2,
-                      driftSpeed: 0.00035 + Math.random() * 0.00055,
-                      driftRadius: 38 + Math.random() * 42,
+                      driftSpeed: 0.00016 + Math.random() * 0.00028,
+                      driftRadius: 30 + Math.random() * 34,
                       size: 6 + Math.random() * 3,
                       glow: 0.45 + Math.random() * 0.5,
                       lastTriggerAt: 0,
@@ -1065,6 +1066,10 @@ export function initLegacyApp() {
 
           function getArenaFireflyById(id) {
               return ARENA_FIREFLIES.find((firefly) => firefly.id === id);
+          }
+
+          function getArenaTriangleById(id) {
+              return ARENA_FIREFLY_TRIANGLES.find((triangle) => triangle.id === id);
           }
 
           function hasArenaLink(aId, bId) {
@@ -1121,10 +1126,12 @@ export function initLegacyApp() {
                           ARENA_FIREFLY_TRIANGLES.push({
                               id: triangleId,
                               fireflyIds: members.map((member) => member.id),
+                              fixedVertices: members.map((member) => ({ id: member.id, x: member.x, y: member.y })),
                               state: 'stable',
                               formedAt: now,
                               triggerStep: 0,
                               nextTriggerAt: 0,
+                              samplePlaybackUntil: 0,
                               dispersingUntil: 0
                           });
                           setArenaTriangleStatus('Trois lucioles se sont reliées : triangle vivant prêt à résonner.');
@@ -1151,6 +1158,16 @@ export function initLegacyApp() {
                   firefly.linkedCooldownUntil = now + 1200;
               });
               setArenaTriangleStatus('Le triangle se dissipe, les lucioles se dispersent dans le courant.');
+          }
+
+          function isPointInTriangle(px, py, a, b, c) {
+              const area = (p1, p2, p3) => (p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y));
+              const point = { x: px, y: py };
+              const total = Math.abs(area(a, b, c));
+              const a1 = Math.abs(area(point, b, c));
+              const a2 = Math.abs(area(a, point, c));
+              const a3 = Math.abs(area(a, b, point));
+              return Math.abs(total - (a1 + a2 + a3)) <= 0.8;
           }
 
           async function triggerArenaFirefly(firefly) {
@@ -1198,30 +1215,41 @@ export function initLegacyApp() {
                   const radius = firefly.driftRadius * (0.7 + Math.sin(timeSeconds * 0.7 + idx) * 0.3);
                   const driftTargetX = firefly.baseX + Math.cos(orbitAngle) * radius;
                   const driftTargetY = firefly.baseY + Math.sin(orbitAngle * 0.8) * radius;
+                  const owningTriangle = firefly.lockedTriangleId ? getArenaTriangleById(firefly.lockedTriangleId) : null;
+                  const fixedVertex = owningTriangle?.fixedVertices?.find((vertex) => vertex.id === firefly.id);
 
                   const toShipX = firefly.x - ship.x;
                   const toShipY = firefly.y - ship.y;
                   const distToShip = Math.max(120, Math.hypot(toShipX, toShipY));
-                  const shipCurrent = (0.22 + flowStrength * 0.95) / (distToShip * 0.01);
+                  const shipCurrent = (0.09 + flowStrength * 0.34) / (distToShip * 0.011);
                   const tangentialX = -toShipY / distToShip;
                   const tangentialY = toShipX / distToShip;
 
-                  firefly.vx += (driftTargetX - firefly.x) * 0.0018;
-                  firefly.vy += (driftTargetY - firefly.y) * 0.0018;
-                  firefly.vx += tangentialX * shipCurrent + ship.vx * (0.015 + flowStrength * 0.02);
-                  firefly.vy += tangentialY * shipCurrent + ship.vy * (0.015 + flowStrength * 0.02);
+                  if (fixedVertex && (owningTriangle.state === 'stable' || owningTriangle.state === 'triggered')) {
+                      firefly.vx *= 0.82;
+                      firefly.vy *= 0.82;
+                      firefly.x += (fixedVertex.x - firefly.x) * 0.24;
+                      firefly.y += (fixedVertex.y - firefly.y) * 0.24;
+                  } else {
+                      firefly.vx += (driftTargetX - firefly.x) * 0.00095;
+                      firefly.vy += (driftTargetY - firefly.y) * 0.00095;
+                      firefly.vx += tangentialX * shipCurrent + ship.vx * (0.007 + flowStrength * 0.012);
+                      firefly.vy += tangentialY * shipCurrent + ship.vy * (0.007 + flowStrength * 0.012);
 
-                  firefly.vx *= firefly.lockedTriangleId ? 0.92 : 0.965;
-                  firefly.vy *= firefly.lockedTriangleId ? 0.92 : 0.965;
-                  firefly.x += firefly.vx;
-                  firefly.y += firefly.vy;
+                      firefly.vx *= firefly.lockedTriangleId ? 0.9 : 0.982;
+                      firefly.vy *= firefly.lockedTriangleId ? 0.9 : 0.982;
+                      firefly.x += firefly.vx;
+                      firefly.y += firefly.vy;
+                  }
                   firefly.glow = 0.42 + ((Math.sin(timeSeconds * 4.3 + idx * 1.3) + 1) * 0.5) * 0.56;
 
-                  const touchDistance = Math.hypot(ship.x - firefly.x, ship.y - firefly.y);
-                  const minDistance = FIREFLY_COLLISION_RADIUS + firefly.size;
-                  if (touchDistance <= minDistance && now - firefly.lastTriggerAt > 450) {
-                      firefly.lastTriggerAt = now;
-                      triggerArenaFirefly(firefly);
+                  if (!firefly.lockedTriangleId) {
+                      const touchDistance = Math.hypot(ship.x - firefly.x, ship.y - firefly.y);
+                      const minDistance = FIREFLY_COLLISION_RADIUS + firefly.size;
+                      if (touchDistance <= minDistance && now - firefly.lastTriggerAt > 450) {
+                          firefly.lastTriggerAt = now;
+                          triggerArenaFirefly(firefly);
+                      }
                   }
               });
 
@@ -1257,18 +1285,22 @@ export function initLegacyApp() {
                   const touchRadius = Math.max(34, perimeter / 8);
 
                   if (triangle.state === 'stable') {
-                      const fishToCenter = Math.hypot(ship.x - cx, ship.y - cy);
-                      if (fishToCenter <= touchRadius + 18) {
+                      const fishInsideTriangle = isPointInTriangle(ship.x, ship.y, vertices[0], vertices[1], vertices[2]);
+                      const fishNearTriangle = Math.hypot(ship.x - cx, ship.y - cy) <= touchRadius * 0.7;
+                      if (fishInsideTriangle || fishNearTriangle) {
                           triangle.state = 'triggered';
                           triangle.triggerStep = 0;
                           triangle.nextTriggerAt = now;
+                          triangle.samplePlaybackUntil = now;
+                          setArenaTriangleStatus('Le poisson traverse le triangle : lecture des 3 samples.');
                       }
                   } else if (triangle.state === 'triggered') {
-                      if (now >= triangle.nextTriggerAt) {
+                      if (now >= triangle.nextTriggerAt && now >= triangle.samplePlaybackUntil) {
                           if (triangle.triggerStep < vertices.length) {
                               triggerArenaFirefly(vertices[triangle.triggerStep]);
                               triangle.triggerStep += 1;
-                              triangle.nextTriggerAt = now + 260;
+                              triangle.nextTriggerAt = now + TRIANGLE_SAMPLE_STEP_MS;
+                              triangle.samplePlaybackUntil = now + TRIANGLE_SAMPLE_STEP_MS;
                           } else {
                               triangle.state = 'dispersing';
                               triangle.dispersingUntil = now + TRIANGLE_DISPERSE_DURATION;
