@@ -527,9 +527,18 @@ export function initLegacyApp() {
                   ? `URL directe: lisible ✅ (${directProbe.reason})`
                   : `URL directe: échec ❌ (${directProbe.reason})`;
 
+              const url = supabaseUrlInput?.value?.trim() || '';
+              const key = supabaseKeyInput?.value?.trim() || '';
+              if (!url || !key) {
+                  setSupabaseProbeStatus(
+                      `${directLine} · Test multi-fichiers ignoré (URL + clé Supabase non renseignées).`,
+                      !directProbe.ok
+                  );
+                  return;
+              }
               const client = buildSupabaseClient();
               if (!client) {
-                  setSupabaseProbeStatus(`${directLine} · Ajoute URL + clé pour tester plusieurs fichiers.`, !directProbe.ok);
+                  setSupabaseProbeStatus(`${directLine} · Client Supabase indisponible pour le test multi-fichiers.`, true);
                   return;
               }
 
