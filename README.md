@@ -49,7 +49,15 @@ Le profil inclut maintenant une carte “Supabase Storage · Soonbucket” qui p
 
 > La config est stockée en local dans le navigateur (localStorage), pas dans le repo.
 
-### 5) Sécurité
+### 5) Auth + Session + Store (simulation)
+
+La vue Profil contient aussi :
+
+- un bloc **Auth Supabase** (email/password) avec restauration de session ;
+- un **store audio** avec paiement simulé (*activation gratuite temporaire*) ;
+- une **collection utilisateur** qui tente de charger les previews audio depuis `Soonbucket`.
+
+### 6) Sécurité
 
 - Ne jamais commiter `.env` / `.env.local`.
 - La clé *publishable* peut être publique côté front, mais les secrets DB restent côté serveur.
