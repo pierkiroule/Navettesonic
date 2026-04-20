@@ -2,6 +2,8 @@ import { SAMPLE_LIBRARY } from '../../../core/config/audioConfig';
 import { EXPERIENCE_COPY } from '../model/experienceModel';
 
 function ExperienceScreen({ experienceRef, state, onBubbleChange }) {
+  const triangleSequence = state.sceneSnapshot.activeTriangle?.sampleSequence ?? null;
+
   return (
     <section ref={experienceRef} className="view experience-view">
       <div className="ui-caption">{EXPERIENCE_COPY.caption}</div>
@@ -17,7 +19,14 @@ function ExperienceScreen({ experienceRef, state, onBubbleChange }) {
             </option>
           ))}
         </select>
-        <div className="helper-tips">Tags réseau: {state.RESOTAGS.join(' · ')}</div>
+        <div className="helper-tips">
+          Lucioles échappées: {state.sceneSnapshot.escapedCount} · Triangle(s): {state.sceneSnapshot.formedTriangleCount} ·
+          Lucioles actives: {state.sceneSnapshot.fireflyCount}
+        </div>
+        <div className="helper-tips">
+          Triangle actif:{' '}
+          {triangleSequence ? `oui (${triangleSequence.join(' → ')})` : 'non (les lucioles dérivent encore...)'}
+        </div>
       </div>
       <div className="canvas-placeholder">
         Canvas Soon•° ({state.canvasSize.width}x{state.canvasSize.height}) — Tethered: {String(state.isTethered)} — Pause:{' '}
