@@ -207,6 +207,7 @@ export function initLegacyApp() {
           const ARENA_RADIUS = 2000;
           const SOUND_HEAR_RADIUS = 460;
           const ARENA_TRIANGLE_COUNT = 10;
+          const FIREFLY_COLLISION_RADIUS = 26;
           const DEFAULT_SUPABASE_URL = 'https://qyffktrggapfzlmmlerq.supabase.co';
           const SOONCUT_BUCKET_FOLDER = 'sooncut';
           const SOONCUT_TRIANGLE_SAMPLE_IDS = SAMPLE_LIBRARY.slice(0, ARENA_TRIANGLE_COUNT).map(sample => sample.id);
@@ -224,6 +225,7 @@ export function initLegacyApp() {
           const MAX_BREATH_WAVES = 9;
           const DRIFT_MOTES = [];
           const MAX_DRIFT_MOTES = 22;
+          const ARENA_FIREFLIES = [];
           const STARTING_BUBBLES = [
               { sampleId: 'forêt-zen', layer: 'front', hue: 188, x: -240, y: -120, r: 72 },
               { sampleId: 'ocean-deep', layer: 'below', hue: 235, x: 220, y: 170, r: 78 },
@@ -856,7 +858,7 @@ export function initLegacyApp() {
                       renderArenaTriangles();
                       return sooncutBucketVocals;
                   }
-                  setArenaTriangleStatus('Triangles Sooncut: configure Supabase pour charger les vocaux.', true);
+                  setArenaTriangleStatus('Lucioles Sooncut: configure Supabase pour charger les vocaux.', true);
                   return [];
               }
 
@@ -952,8 +954,7 @@ export function initLegacyApp() {
               });
           }
 
-          async function playSooncutBucketVocal() {
-              const track = pickRandomSooncutTrack();
+          async function playSooncutBucketTrack(track) {
               if (!track?.name) return false;
               const candidateUrls = await resolveSooncutTrackUrls(track);
               if (!candidateUrls.length) return false;
@@ -1008,34 +1009,74 @@ export function initLegacyApp() {
               source.stop(now + attack + hold + release + 0.08);
           }
 
-          function renderArenaTriangles() {
-              arenaTrianglePad.innerHTML = '';
-
-              SOONCUT_TRIANGLE_SAMPLE_IDS.forEach((sampleId, index) => {
-                  const btn = document.createElement('button');
-                  btn.type = 'button';
-                  btn.className = 'arena-triangle-btn';
-                  const bucketTrack = sooncutBucketVocals[index % Math.max(1, sooncutBucketVocals.length)];
-                  const displayName = bucketTrack?.name || sampleId;
-                  btn.setAttribute('aria-label', `Triangle rouge ${index + 1} · ${displayName}`);
-                  btn.innerHTML = `
-                      <span class="arena-triangle-shape" aria-hidden="true"></span>
-                      <span class="arena-triangle-label">T${index + 1}</span>
-                  `;
-
-                  btn.addEventListener('click', async () => {
-                      ensureAllAudioRunning();
-                      if (!sooncutBucketVocals.length) {
-                          await fetchSooncutVocalsFromBucket();
-                      }
-                      if (sooncutBucketVocals.length) {
-                          const played = await playSooncutBucketVocal();
-                          if (played) return;
-                      }
-                      triggerArenaSample(sampleId);
-                      setArenaTriangleStatus(`Mode synth local (${sampleId}) · Configure Profil > Supabase pour lire Soonbucket/sooncut.`);
+          function ensureArenaFireflies() {
+              if (ARENA_FIREFLIES.length) return;
+              const baseDistance = ARENA_RADIUS * 0.52;
+              for (let index = 0; index < ARENA_TRIANGLE_COUNT; index++) {
+                  const angle = (index / ARENA_TRIANGLE_COUNT) * Math.PI * 2 + Math.random() * 0.55;
+                  const radialJitter = (Math.random() - 0.5) * 260;
+                  const baseRadius = Math.max(220, baseDistance + radialJitter);
+                  ARENA_FIREFLIES.push({
+                      id: `firefly-${index + 1}`,
+                      index,
+                      sampleId: SOONCUT_TRIANGLE_SAMPLE_IDS[index % SOONCUT_TRIANGLE_SAMPLE_IDS.length],
+                      bucketTrack: null,
+                      x: Math.cos(angle) * baseRadius,
+                      y: Math.sin(angle) * baseRadius,
+                      baseX: Math.cos(angle) * baseRadius,
+                      baseY: Math.sin(angle) * baseRadius,
+                      driftPhase: Math.random() * Math.PI * 2,
+                      driftSpeed: 0.00035 + Math.random() * 0.00055,
+                      driftRadius: 38 + Math.random() * 42,
+                      size: 6 + Math.random() * 3,
+                      glow: 0.45 + Math.random() * 0.5,
+                      lastTriggerAt: 0
                   });
-                  arenaTrianglePad.appendChild(btn);
+              }
+          }
+
+          function renderArenaTriangles() {
+              ensureArenaFireflies();
+              if (arenaTrianglePad) {
+                  arenaTrianglePad.innerHTML = '';
+                  arenaTrianglePad.setAttribute('aria-hidden', 'true');
+              }
+
+              ARENA_FIREFLIES.forEach((firefly, index) => {
+                  firefly.sampleId = SOONCUT_TRIANGLE_SAMPLE_IDS[index % SOONCUT_TRIANGLE_SAMPLE_IDS.length];
+                  firefly.bucketTrack = sooncutBucketVocals.length
+                      ? sooncutBucketVocals[index % sooncutBucketVocals.length]
+                      : null;
+              });
+          }
+
+          async function triggerArenaFirefly(firefly) {
+              if (!firefly) return;
+              ensureAllAudioRunning();
+              const played = await playSooncutBucketTrack(firefly.bucketTrack);
+              if (played) return;
+              triggerArenaSample(firefly.sampleId);
+              setArenaTriangleStatus(`Mode synth local (${firefly.sampleId}) · Configure Profil > Supabase pour lire Soonbucket/sooncut.`);
+          }
+
+          function updateArenaFireflies() {
+              if (!ARENA_FIREFLIES.length) return;
+              const now = performance.now();
+              const timeSeconds = now * 0.001;
+              ARENA_FIREFLIES.forEach((firefly, idx) => {
+                  firefly.driftPhase += firefly.driftSpeed * 16.67;
+                  const orbitAngle = firefly.driftPhase + idx * 0.47;
+                  const radius = firefly.driftRadius * (0.7 + Math.sin(timeSeconds * 0.7 + idx) * 0.3);
+                  firefly.x = firefly.baseX + Math.cos(orbitAngle) * radius;
+                  firefly.y = firefly.baseY + Math.sin(orbitAngle * 0.8) * radius;
+                  firefly.glow = 0.42 + ((Math.sin(timeSeconds * 4.3 + idx * 1.3) + 1) * 0.5) * 0.56;
+
+                  const touchDistance = Math.hypot(ship.x - firefly.x, ship.y - firefly.y);
+                  const minDistance = FIREFLY_COLLISION_RADIUS + firefly.size;
+                  if (touchDistance <= minDistance && now - firefly.lastTriggerAt > 450) {
+                      firefly.lastTriggerAt = now;
+                      triggerArenaFirefly(firefly);
+                  }
               });
           }
 
@@ -1427,6 +1468,7 @@ export function initLegacyApp() {
               updateSurfaceEffects(speed);
               updateResonanceWaves();
               updatePoetryEffects(speed);
+              updateArenaFireflies();
           }
 
           function updateWakeParticles(speed) {
@@ -1712,6 +1754,42 @@ export function initLegacyApp() {
               });
           }
 
+          function drawArenaFireflies() {
+              if (!ARENA_FIREFLIES.length) return;
+              const now = performance.now() * 0.001;
+              ARENA_FIREFLIES.forEach((firefly, idx) => {
+                  const pulse = (Math.sin(now * 5.4 + idx * 1.8) + 1) * 0.5;
+                  const coreRadius = firefly.size * (0.68 + pulse * 0.26);
+                  const glowRadius = firefly.size * (2.9 + pulse * 1.4);
+                  const wingDrift = Math.sin(now * 12 + idx * 2.2) * (firefly.size * 0.44);
+
+                  const halo = ctx.createRadialGradient(firefly.x, firefly.y, 0, firefly.x, firefly.y, glowRadius);
+                  halo.addColorStop(0, `rgba(255, 120, 120, ${0.26 + firefly.glow * 0.42})`);
+                  halo.addColorStop(0.45, `rgba(255, 82, 82, ${0.12 + firefly.glow * 0.28})`);
+                  halo.addColorStop(1, 'rgba(255, 70, 70, 0)');
+                  ctx.fillStyle = halo;
+                  ctx.beginPath();
+                  ctx.arc(firefly.x, firefly.y, glowRadius, 0, Math.PI * 2);
+                  ctx.fill();
+
+                  ctx.fillStyle = `rgba(255, 236, 236, ${0.24 + firefly.glow * 0.34})`;
+                  ctx.beginPath();
+                  ctx.ellipse(firefly.x - firefly.size * 0.8, firefly.y + wingDrift, firefly.size * 0.85, firefly.size * 0.42, -0.45, 0, Math.PI * 2);
+                  ctx.ellipse(firefly.x + firefly.size * 0.8, firefly.y - wingDrift, firefly.size * 0.85, firefly.size * 0.42, 0.45, 0, Math.PI * 2);
+                  ctx.fill();
+
+                  ctx.fillStyle = `rgba(255, 92, 92, ${0.78 + firefly.glow * 0.22})`;
+                  ctx.beginPath();
+                  ctx.arc(firefly.x, firefly.y, coreRadius, 0, Math.PI * 2);
+                  ctx.fill();
+
+                  ctx.fillStyle = `rgba(255, 248, 248, ${0.5 + pulse * 0.4})`;
+                  ctx.beginPath();
+                  ctx.arc(firefly.x - firefly.size * 0.22, firefly.y - firefly.size * 0.28, Math.max(0.7, coreRadius * 0.34), 0, Math.PI * 2);
+                  ctx.fill();
+              });
+          }
+
           function drawLuminousTrail() {
               const trail = ship.trail;
               if (trail.length < 3) return;
@@ -1827,6 +1905,7 @@ export function initLegacyApp() {
               BUBBLES.filter((b) => b.layer === 'below').forEach(drawBubble);
               drawBreathWaves();
               drawDriftMotes();
+              drawArenaFireflies();
               drawSurfaceSparkles();
               drawResonanceWaves();
               drawWakeParticles();
