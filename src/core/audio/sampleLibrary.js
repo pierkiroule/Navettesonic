@@ -1,3 +1,1 @@
-import { SAMPLES } from '../config/samples';
-
-export const SAMPLE_LIBRARY = SAMPLES;
+export { SAMPLE_LIBRARY } from '../config/audioConfig';

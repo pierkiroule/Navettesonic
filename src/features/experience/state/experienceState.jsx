@@ -1,10 +1,6 @@
 import { createContext, useContext, useMemo, useReducer } from 'react';
 import { APP_VIEWS } from '../../../core/utils/views';
-import { DEFAULT_BUBBLES } from '../../../core/config/defaultBubbles';
-
-export const BUBBLES = DEFAULT_BUBBLES;
-
-export const RESOTAGS = ['ambient', 'texture', 'field-recording'];
+import { BUBBLES, RESOTAGS } from '../../../core/config/experienceConfig';
 
 const ExperienceStateContext = createContext(null);
 
