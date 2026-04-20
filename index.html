@@ -64,6 +64,63 @@
         }
         .home-media { display: flex; flex-direction: column; align-items: center; gap: 18px; }
         .home-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+        .hero-video-shell {
+            --halo-intensity: 0.18;
+            --halo-scale: 1;
+            position: relative;
+            width: min(440px, 80vw);
+            aspect-ratio: 1 / 1;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            isolation: isolate;
+            filter: saturate(calc(1.05 + (var(--halo-intensity) * 0.95)));
+        }
+        .hero-video-shell::before,
+        .hero-video-shell::after {
+            content: '';
+            position: absolute;
+            inset: -8%;
+            border-radius: 50%;
+            pointer-events: none;
+            transform: scale(calc(var(--halo-scale) * 1.015));
+            transition: transform 120ms linear, opacity 120ms linear, filter 160ms linear;
+        }
+        .hero-video-shell::before {
+            z-index: -2;
+            opacity: calc(0.45 + (var(--halo-intensity) * 0.55));
+            background:
+                conic-gradient(
+                    from calc(var(--halo-intensity) * 310deg),
+                    rgba(92, 254, 255, 0.66),
+                    rgba(122, 147, 255, 0.58),
+                    rgba(207, 122, 255, 0.48),
+                    rgba(95, 255, 227, 0.64),
+                    rgba(92, 254, 255, 0.66)
+                );
+            filter:
+                blur(calc(18px + (var(--halo-intensity) * 28px)))
+                hue-rotate(calc(8deg + (var(--halo-intensity) * 72deg)));
+            animation: borealHaloOrbit 8s linear infinite;
+        }
+        .hero-video-shell::after {
+            z-index: -1;
+            inset: -14%;
+            opacity: calc(0.30 + (var(--halo-intensity) * 0.48));
+            background:
+                radial-gradient(circle at 28% 24%, rgba(120, 255, 242, 0.62), transparent 43%),
+                radial-gradient(circle at 73% 73%, rgba(101, 154, 255, 0.52), transparent 47%),
+                radial-gradient(circle at 56% 8%, rgba(220, 132, 255, 0.38), transparent 36%);
+            filter:
+                blur(calc(20px + (var(--halo-intensity) * 30px)))
+                saturate(calc(1.05 + (var(--halo-intensity) * 1.8)));
+            animation: borealHaloDrift 5.8s ease-in-out infinite;
+        }
+        .hero-video-shell.audio-reactive {
+            box-shadow:
+                0 0 calc(18px + (var(--halo-intensity) * 36px)) rgba(86, 218, 255, 0.36),
+                0 0 calc(40px + (var(--halo-intensity) * 76px)) rgba(130, 108, 255, 0.28);
+        }
         .hero-video {
             width: min(420px, 75vw);
             aspect-ratio: 1 / 1;
@@ -73,6 +130,16 @@
             object-fit: cover;
             overflow: hidden;
             background: rgba(8, 19, 35, 0.9);
+            position: relative;
+            z-index: 2;
+        }
+        @keyframes borealHaloOrbit {
+            from { transform: scale(calc(var(--halo-scale) * 1.01)) rotate(0deg); }
+            to { transform: scale(calc(var(--halo-scale) * 1.01)) rotate(360deg); }
+        }
+        @keyframes borealHaloDrift {
+            0%, 100% { transform: scale(calc(var(--halo-scale) * 1.02)) translate3d(0, 0, 0); }
+            50% { transform: scale(calc(var(--halo-scale) * 1.05)) translate3d(0, -0.8%, 0); }
         }
 
         #experienceView, #profileView { background: #030308; }
@@ -366,10 +433,12 @@
         <div class="home-layout">
             <h1 class="home-title">Soon•°</h1>
             <div class="home-media">
-                <video id="heroVideo" class="hero-video" autoplay muted loop playsinline controls>
-                    <source src="./video/soon.mp4" type="video/mp4">
-                    Votre navigateur ne supporte pas la lecture vidéo.
-                </video>
+                <div id="heroVideoShell" class="hero-video-shell">
+                    <video id="heroVideo" class="hero-video" autoplay muted loop playsinline controls>
+                        <source src="./video/soon.mp4" type="video/mp4">
+                        Votre navigateur ne supporte pas la lecture vidéo.
+                    </video>
+                </div>
                 <p class="home-poem">L'Odyssée hypnosonore d'un petit poisson-plume...</p>
                 <div class="home-actions">
                     <button id="toggleHeroSoundBtn" class="immersion-btn" type="button">Activer le son</button>
@@ -531,6 +600,7 @@
         const navProfile = document.getElementById('navProfile');
         const enterExperienceBtn = document.getElementById('enterExperienceBtn');
         const heroVideo = document.getElementById('heroVideo');
+        const heroVideoShell = document.getElementById('heroVideoShell');
         const toggleHeroSoundBtn = document.getElementById('toggleHeroSoundBtn');
 
         const canvas = document.getElementById('canvas');
@@ -689,6 +759,12 @@
         let selectedSampleId = SAMPLE_LIBRARY[0].id;
         let audioCtx = null;
         let masterGainNode = null;
+        let heroVideoAudioCtx = null;
+        let heroVideoSourceNode = null;
+        let heroVideoAnalyserNode = null;
+        let heroHaloData = null;
+        let heroHaloRAF = null;
+        let heroHaloEnergy = 0;
         let helperTipIndex = 0;
         const helperTipsPlaylist = [
             'Garde le doigt (ou clic) appuyé dans l’océan : le poisson-plume suit ton mouvement.',
@@ -810,11 +886,68 @@
             toggleHeroSoundBtn.textContent = isMuted ? 'Activer le son' : 'Couper le son';
         }
 
+        function ensureHeroHaloAudio() {
+            if (!heroVideo || !heroVideoShell) return;
+            if (!heroVideoAudioCtx) {
+                const HeroAudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (!HeroAudioContextClass) return;
+                heroVideoAudioCtx = new HeroAudioContextClass();
+            }
+            if (!heroVideoSourceNode) {
+                heroVideoSourceNode = heroVideoAudioCtx.createMediaElementSource(heroVideo);
+                heroVideoAnalyserNode = heroVideoAudioCtx.createAnalyser();
+                heroVideoAnalyserNode.fftSize = 512;
+                heroVideoAnalyserNode.smoothingTimeConstant = 0.84;
+                heroHaloData = new Uint8Array(heroVideoAnalyserNode.frequencyBinCount);
+                heroVideoSourceNode.connect(heroVideoAnalyserNode);
+                heroVideoSourceNode.connect(heroVideoAudioCtx.destination);
+            }
+            if (heroVideoAudioCtx.state === 'suspended') {
+                heroVideoAudioCtx.resume().catch(() => {});
+            }
+            heroVideoShell.classList.add('audio-reactive');
+            startHeroHaloLoop();
+        }
+
+        function startHeroHaloLoop() {
+            if (heroHaloRAF || !heroVideoShell) return;
+            const animateHalo = () => {
+                let targetEnergy = 0.12;
+                if (heroVideoAnalyserNode && heroHaloData) {
+                    heroVideoAnalyserNode.getByteFrequencyData(heroHaloData);
+                    let weighted = 0;
+                    let sumWeights = 0;
+                    const length = heroHaloData.length;
+                    for (let i = 0; i < length; i += 1) {
+                        const ratio = i / length;
+                        const weight = ratio < 0.07 ? 0.15 : ratio < 0.34 ? 0.75 : 1.25;
+                        weighted += (heroHaloData[i] / 255) * weight;
+                        sumWeights += weight;
+                    }
+                    const spectralEnergy = sumWeights ? weighted / sumWeights : 0;
+                    targetEnergy = spectralEnergy * 1.12;
+                }
+                if (heroVideo.muted || heroVideo.paused) {
+                    targetEnergy *= 0.45;
+                }
+                heroHaloEnergy += (targetEnergy - heroHaloEnergy) * 0.22;
+                const clampedEnergy = Math.max(0.08, Math.min(1, heroHaloEnergy));
+                const haloScale = 1 + clampedEnergy * 0.12;
+                heroVideoShell.style.setProperty('--halo-intensity', clampedEnergy.toFixed(3));
+                heroVideoShell.style.setProperty('--halo-scale', haloScale.toFixed(3));
+                heroHaloRAF = window.requestAnimationFrame(animateHalo);
+            };
+            heroHaloRAF = window.requestAnimationFrame(animateHalo);
+        }
+
         function toggleHeroSound() {
             if (!heroVideo) return;
             heroVideo.muted = !heroVideo.muted;
             if (!heroVideo.muted && heroVideo.volume === 0) heroVideo.volume = 1;
             heroVideo.play().catch(() => {});
+            if (!heroVideo.muted) {
+                ensureHeroHaloAudio();
+            }
             syncHeroSoundButton();
         }
 
@@ -823,7 +956,15 @@
         }
         if (heroVideo) {
             heroVideo.addEventListener('volumechange', syncHeroSoundButton);
+            heroVideo.addEventListener('play', ensureHeroHaloAudio);
+            heroVideo.addEventListener('loadeddata', startHeroHaloLoop);
+            heroVideo.addEventListener('canplay', startHeroHaloLoop);
             syncHeroSoundButton();
+        }
+        if (heroVideoShell) {
+            heroVideoShell.style.setProperty('--halo-intensity', '0.18');
+            heroVideoShell.style.setProperty('--halo-scale', '1');
+            startHeroHaloLoop();
         }
 
         navHome.addEventListener('click', () => showView('home'));
