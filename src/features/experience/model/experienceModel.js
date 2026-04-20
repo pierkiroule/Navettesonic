@@ -1,12 +1,13 @@
-import { SAMPLE_LIBRARY } from '../../../core/config/audioConfig';
+import { BUBBLES, SOONCUT_SAMPLE_IDS } from '../../../core/config/experienceConfig';
 
 export const EXPERIENCE_COPY = {
-  caption: 'Double tap sur le poisson pour ouvrir la collection sonore',
-  helperTips: "Garde le doigt (ou clic) appuyé dans l'océan : le poisson-plume suit ton mouvement.",
-  panelTitle: 'Collection Soon•° (demo)',
-  panelDescription: 'Choisissez un sample, placez-le autour du poisson, puis validez pour déposer une bulle sonore.',
-  selectPlaceholder: 'Sélectionnez une bulle',
-  samplesTitle: 'Samples disponibles',
+  caption: 'Le poisson libère des lucioles audio quand il heurte les bulles mères Sooncut.',
+  helperTips: 'Fais dériver les lucioles : elles peuvent se tisser en triangle pour jouer un poème vocal en 3 segments.',
+  panelTitle: 'Réseau lucioles · Sooncut',
+  panelDescription:
+    'Chaque bulle mère contient un sample. Quand un triangle apparaît et que le poisson le traverse, la séquence de 3 samples se déclenche.',
+  selectPlaceholder: 'Déclencher un segment Sooncut',
+  samplesTitle: 'Segments Sooncut actifs',
 };
 
 export function resolveSampleId(selectedBubbleId) {
@@ -14,12 +15,14 @@ export function resolveSampleId(selectedBubbleId) {
     return null;
   }
 
-  const preferredSample = SAMPLE_LIBRARY.find((entry) => entry.id === selectedBubbleId.replace('bubble-', ''));
+  const selectedBubble = BUBBLES.find((bubble) => bubble.id === selectedBubbleId);
+  return selectedBubble?.sampleId ?? null;
+}
 
-  if (preferredSample) {
-    return preferredSample.id;
+export function resolveSooncutSequence(sequence) {
+  if (!Array.isArray(sequence) || sequence.length !== 3) {
+    return SOONCUT_SAMPLE_IDS;
   }
 
-  const fallbackSample = SAMPLE_LIBRARY[Math.floor(Math.random() * SAMPLE_LIBRARY.length)];
-  return fallbackSample?.id ?? null;
+  return sequence;
 }

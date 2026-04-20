@@ -6,6 +6,7 @@ export class AudioEngine {
     this.masterGain = null;
     this.panner = null;
     this.sampleNodes = new Map();
+    this.sequenceTimeouts = [];
     this.isRunning = false;
   }
 
@@ -62,6 +63,7 @@ export class AudioEngine {
     }
 
     this.isRunning = false;
+    this.clearSequence();
     this.sampleNodes.forEach(({ gain }) => {
       gain.gain.setTargetAtTime(0, this.audioContext.currentTime, 0.05);
     });
@@ -102,10 +104,29 @@ export class AudioEngine {
     node.gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.3);
   }
 
+  triggerSequence(sampleIds, gapMs = 680) {
+    this.clearSequence();
+
+    sampleIds.forEach((sampleId, index) => {
+      const timeoutId = window.setTimeout(() => {
+        this.triggerSample(sampleId);
+      }, index * gapMs);
+
+      this.sequenceTimeouts.push(timeoutId);
+    });
+  }
+
+  clearSequence() {
+    this.sequenceTimeouts.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    this.sequenceTimeouts = [];
+  }
+
   destroy() {
     if (!this.audioContext) {
       return;
     }
+
+    this.clearSequence();
 
     this.sampleNodes.forEach(({ oscillator, gain }) => {
       try {

@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, useReducer } from 'react';
 import { APP_VIEWS } from '../../../core/utils/views';
-import { BUBBLES, RESOTAGS } from '../../../core/config/experienceConfig';
+import { BUBBLES } from '../../../core/config/experienceConfig';
 
 const ExperienceStateContext = createContext(null);
 
@@ -21,8 +21,13 @@ const initialState = {
   isInteractionPaused: false,
   selectedBubble: BUBBLES[0]?.id ?? null,
   BUBBLES,
-  RESOTAGS,
   canvasSize: getInitialCanvasSize(),
+  sceneSnapshot: {
+    escapedCount: 0,
+    formedTriangleCount: 0,
+    activeTriangle: null,
+    fireflyCount: 0,
+  },
 };
 
 function experienceReducer(state, action) {
@@ -37,6 +42,8 @@ function experienceReducer(state, action) {
       return { ...state, selectedBubble: action.payload };
     case 'SET_CANVAS_SIZE':
       return { ...state, canvasSize: action.payload };
+    case 'SET_SCENE_SNAPSHOT':
+      return { ...state, sceneSnapshot: action.payload };
     default:
       return state;
   }

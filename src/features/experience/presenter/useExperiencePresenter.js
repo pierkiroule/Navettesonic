@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { AudioEngine } from '../../../core/audio/audioEngine';
 import { SceneEngine } from '../../../core/canvas/sceneEngine';
+import { BUBBLES } from '../../../core/config/experienceConfig';
 import { APP_VIEWS } from '../../../core/utils/views';
 import { usePointerControls } from '../hooks/usePointerControls';
 import { useResizeCanvas } from '../hooks/useResizeCanvas';
-import { resolveSampleId } from '../model/experienceModel';
+import { resolveSampleId, resolveSooncutSequence } from '../model/experienceModel';
 
 export function useExperiencePresenter({ state, dispatch }) {
   const experienceRef = useRef(null);
@@ -23,10 +24,24 @@ export function useExperiencePresenter({ state, dispatch }) {
 
     const audioEngine = new AudioEngine();
     const sceneEngine = new SceneEngine({
+      bubbles: BUBBLES,
+      onTriangleHit: (sequence) => {
+        audioEngine.triggerSequence(resolveSooncutSequence(sequence));
+      },
       onUpdate: (worldState) => {
         const arenaDiameter = window.innerWidth || 1;
         const xInViewport = worldState.fish.x + arenaDiameter / 2;
         audioEngine.setSpatialPosition(xInViewport, arenaDiameter);
+
+        dispatch({
+          type: 'SET_SCENE_SNAPSHOT',
+          payload: {
+            escapedCount: worldState.stats.escapedCount,
+            formedTriangleCount: worldState.stats.formedTriangleCount,
+            activeTriangle: worldState.activeTriangle,
+            fireflyCount: worldState.fireflies.length,
+          },
+        });
       },
     });
 
@@ -64,7 +79,7 @@ export function useExperiencePresenter({ state, dispatch }) {
       sceneEngineRef.current = null;
       audioEngineRef.current = null;
     };
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     const sceneEngine = sceneEngineRef.current;
