@@ -6,7 +6,7 @@ An interactive web-based "sonic odyssey" experience where users control a fish-f
 
 - **Type**: Pure static HTML/CSS/JavaScript site — no build system or package manager
 - **Main file**: `index.html` — contains all HTML, CSS, and JavaScript
-- **Assets**: `logo.png`, `video/soono.mp4`, `video/soono2.mp4`, `video/soono3.mp4`
+- **Assets**: `logo.png`, `video/soono3.mp4`
 
 ## Technologies
 
