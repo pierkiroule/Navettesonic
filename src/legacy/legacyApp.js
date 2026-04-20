@@ -815,20 +815,40 @@ export function initLegacyApp() {
               return sooncutBucketVocals;
           }
 
-          async function playSooncutBucketVocal(index) {
-              const track = sooncutBucketVocals[index % sooncutBucketVocals.length];
-              if (!track?.url) return false;
+          function pickRandomSooncutTrack() {
+              if (!sooncutBucketVocals.length) return null;
+              const randomIndex = Math.floor(Math.random() * sooncutBucketVocals.length);
+              return sooncutBucketVocals[randomIndex] || null;
+          }
+
+          function resolveSooncutTrackUrl(track) {
+              if (!track) return null;
+              if (track.url) return track.url;
+
+              const client = buildSupabaseClient();
+              if (client && track.objectPath) {
+                  const { data } = client.storage.from(SUPABASE_BUCKET).getPublicUrl(track.objectPath);
+                  if (data?.publicUrl) return data.publicUrl;
+              }
+
+              return buildPublicSoonbucketUrl(track.objectPath);
+          }
+
+          async function playSooncutBucketVocal() {
+              const track = pickRandomSooncutTrack();
+              const trackUrl = resolveSooncutTrackUrl(track);
+              if (!track?.name || !trackUrl) return false;
 
               try {
                   if (activeArenaAudio) {
                       activeArenaAudio.pause();
                       activeArenaAudio.currentTime = 0;
                   }
-                  activeArenaAudio = new Audio(track.url);
+                  activeArenaAudio = new Audio(trackUrl);
                   activeArenaAudio.preload = 'auto';
                   activeArenaAudio.volume = 0.98;
                   await activeArenaAudio.play();
-                  setArenaTriangleStatus(`Lecture bucket: ${track.name}`);
+                  setArenaTriangleStatus(`Lecture bucket aléatoire: ${track.name}`);
                   return true;
               } catch (_) {
                   setArenaTriangleStatus(`Lecture impossible pour ${track.name}`, true);
@@ -895,7 +915,7 @@ export function initLegacyApp() {
                   btn.addEventListener('click', async () => {
                       ensureAllAudioRunning();
                       if (sooncutBucketVocals.length) {
-                          const played = await playSooncutBucketVocal(index);
+                          const played = await playSooncutBucketVocal();
                           if (played) return;
                       }
                       triggerArenaSample(sampleId);
