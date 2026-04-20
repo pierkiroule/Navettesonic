@@ -172,6 +172,43 @@
             font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
             text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
         }
+        #arenaTrianglePad {
+            position: absolute;
+            left: 50%;
+            bottom: calc(90px + env(safe-area-inset-bottom));
+            transform: translateX(-50%);
+            z-index: 150;
+            width: min(92vw, 560px);
+            display: grid;
+            grid-template-columns: repeat(5, minmax(60px, 1fr));
+            gap: 8px;
+            pointer-events: auto;
+        }
+        .arena-triangle-btn {
+            border: 1px solid rgba(255, 82, 82, 0.68);
+            border-radius: 12px;
+            background: rgba(62, 16, 16, 0.48);
+            color: #ffd8d8;
+            padding: 8px 6px;
+            display: grid;
+            justify-items: center;
+            gap: 4px;
+            cursor: pointer;
+            box-shadow: inset 0 0 0 1px rgba(255, 120, 120, 0.08);
+        }
+        .arena-triangle-btn:active { transform: scale(0.98); }
+        .arena-triangle-shape {
+            width: 24px;
+            height: 21px;
+            background: linear-gradient(180deg, #ff6464 0%, #ff2d2d 100%);
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+            filter: drop-shadow(0 0 8px rgba(255, 60, 60, 0.65));
+        }
+        .arena-triangle-label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
         #bubblePanel {
             position: absolute;
             inset: 0;
@@ -451,6 +488,7 @@
     <section id="experienceView" class="view hidden-view">
         <div id="ui">Double tap sur le poisson pour ouvrir la collection sonore</div>
         <div id="helperTips">Garde le doigt (ou clic) appuyé dans l'océan : le poisson-plume suit ton mouvement.</div>
+        <div id="arenaTrianglePad" aria-label="Triggers Sooncut"></div>
         <div id="bubblePanel" class="hidden">
             <div class="panel-card">
                 <h2>Collection Soon•° (demo)</h2>
@@ -613,6 +651,7 @@
         const bubbleLayer = document.getElementById('bubbleLayer');
         const sampleSelect = document.getElementById('sampleSelect');
         const sampleHint = document.getElementById('sampleHint');
+        const arenaTrianglePad = document.getElementById('arenaTrianglePad');
         const bubblePropsPanel = document.getElementById('bubblePropsPanel');
         const propsBubbleName = document.getElementById('propsBubbleName');
         const propsSampleSelect = document.getElementById('propsSampleSelect');
@@ -763,6 +802,8 @@
 
         const ARENA_RADIUS = 2000;
         const SOUND_HEAR_RADIUS = 460;
+        const ARENA_TRIANGLE_COUNT = 10;
+        const SOONCUT_TRIANGLE_SAMPLE_IDS = SAMPLE_LIBRARY.slice(0, ARENA_TRIANGLE_COUNT).map(sample => sample.id);
         const DEPTH_Z = 140;
         const BUBBLES = [];
         const WAKE_PARTICLES = [];
@@ -1252,6 +1293,7 @@
             option.textContent = sample.name;
             sampleSelect.appendChild(option);
         });
+        renderArenaTriangles();
 
         function updateSampleHint() {
             const sample = SAMPLE_LIBRARY.find(s => s.id === selectedSampleId) || SAMPLE_LIBRARY[0];
@@ -1281,7 +1323,70 @@
 
         function isInteractiveTarget(target) {
             return bubblePanel.contains(target) || bubblePropsPanel.contains(target) ||
-                   bottomNav.contains(target) || homeView.contains(target) || profileView.contains(target);
+                   arenaTrianglePad.contains(target) || bottomNav.contains(target) ||
+                   homeView.contains(target) || profileView.contains(target);
+        }
+
+        function triggerArenaSample(sampleId) {
+            const sample = SAMPLE_LIBRARY.find(s => s.id === sampleId);
+            const context = ensureAudioContext();
+            if (!sample || !context || !masterGainNode) return;
+
+            const gain = context.createGain();
+            const filter = context.createBiquadFilter();
+            const now = context.currentTime;
+            const attack = 0.02;
+            const hold = 0.32;
+            const release = 0.65;
+            const peak = Math.max(0.05, Math.min(0.48, (sample.gain ?? 0.2) * 1.4));
+
+            filter.type = 'lowpass';
+            filter.frequency.value = sample.baseCutoff ?? 4200;
+            filter.Q.value = 0.6;
+
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(peak, now + attack);
+            gain.gain.setValueAtTime(peak, now + attack + hold);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + attack + hold + release);
+            gain.connect(filter);
+            filter.connect(masterGainNode);
+
+            if (sample.type === 'noise') {
+                const source = context.createBufferSource();
+                source.buffer = buildSyntheticBuffer(context, 1.1);
+                source.connect(gain);
+                source.start(now);
+                source.stop(now + attack + hold + release + 0.08);
+                return;
+            }
+
+            const source = context.createOscillator();
+            source.type = sample.type || 'sine';
+            source.frequency.setValueAtTime(sample.freq || 220, now);
+            source.connect(gain);
+            source.start(now);
+            source.stop(now + attack + hold + release + 0.08);
+        }
+
+        function renderArenaTriangles() {
+            arenaTrianglePad.innerHTML = '';
+
+            SOONCUT_TRIANGLE_SAMPLE_IDS.forEach((sampleId, index) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'arena-triangle-btn';
+                btn.setAttribute('aria-label', `Triangle rouge ${index + 1} · ${sampleId}`);
+                btn.innerHTML = `
+                    <span class="arena-triangle-shape" aria-hidden="true"></span>
+                    <span class="arena-triangle-label">T${index + 1}</span>
+                `;
+
+                btn.addEventListener('click', () => {
+                    ensureAllAudioRunning();
+                    triggerArenaSample(sampleId);
+                });
+                arenaTrianglePad.appendChild(btn);
+            });
         }
 
         function onStart(e) {
