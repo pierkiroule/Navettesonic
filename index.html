@@ -202,6 +202,49 @@
         }
         .card h3 { margin: 0 0 8px; font-size: 1rem; }
         .card p { margin: 0; color: rgba(230,244,255,0.74); font-size: 0.9rem; }
+        .card .stack { display: grid; gap: 8px; margin-top: 10px; }
+        .card input[type="text"], .card input[type="file"] {
+            width: 100%;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(5, 12, 20, 0.86);
+            color: #e8f5ff;
+            padding: 9px 10px;
+            box-sizing: border-box;
+        }
+        .card button {
+            border: 0;
+            border-radius: 10px;
+            padding: 9px 12px;
+            cursor: pointer;
+            background: rgba(87, 176, 255, 0.26);
+            color: #eef8ff;
+            font-weight: 650;
+        }
+        .card .muted { font-size: 0.82rem; color: rgba(230,244,255,0.62); }
+        .card .status { font-size: 0.82rem; color: rgba(146, 247, 210, 0.95); min-height: 1.3em; }
+        .card a { color: #7ed8ff; }
+        .store-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+        .store-item {
+            border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 12px;
+            padding: 10px;
+            background: rgba(6, 14, 26, 0.75);
+            display: grid;
+            gap: 8px;
+        }
+        .store-item h4 { margin: 0; font-size: 0.92rem; }
+        .store-item p { margin: 0; font-size: 0.8rem; color: rgba(220,240,255,0.75); }
+        .pill {
+            display: inline-block;
+            font-size: 0.72rem;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: rgba(134, 255, 218, 0.16);
+            color: rgba(160, 255, 226, 0.95);
+        }
+        .auth-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .collection-empty { font-size: 0.84rem; color: rgba(230,244,255,0.62); }
         #canvas { display: block; }
 
         #bubblePropsPanel {
@@ -399,24 +442,49 @@
 
     <section id="profileView" class="view hidden-view">
         <div class="profile-wrap">
-            <h1>Profil Soon•°</h1>
-            <p class="profile-sub">Mode démo : cette page accueillera bientôt les infos user, l'historique de sessions et la collection de bulles sonores achetées.</p>
+            <h1>Profil Soono•°</h1>
+            <p class="profile-sub">Connecte Supabase Auth, teste le store audio et active gratuitement tes premiers samples.</p>
             <div class="profile-grid">
                 <article class="card">
-                    <h3>Compte utilisateur</h3>
-                    <p>Authentification et préférences personnelles (prévu via Supabase).</p>
+                    <h3>Connexion Supabase (Auth + Session)</h3>
+                    <p>Compte local via Supabase Auth (email + mot de passe).</p>
+                    <div class="stack">
+                        <input id="authEmailInput" type="text" placeholder="email@soono.app">
+                        <input id="authPasswordInput" type="text" placeholder="mot de passe">
+                        <div class="auth-row">
+                            <button id="authSignInBtn" type="button">Se connecter</button>
+                            <button id="authSignUpBtn" type="button">Créer un compte</button>
+                        </div>
+                        <button id="authSignOutBtn" type="button">Se déconnecter</button>
+                        <p id="authStatus" class="status"></p>
+                        <p id="authSessionInfo" class="muted"></p>
+                    </div>
                 </article>
                 <article class="card">
-                    <h3>Historique d'exploration</h3>
-                    <p>Timeline des immersions, lieux audio visités et intensité des sessions.</p>
+                    <h3>Supabase Storage · Soonbucket</h3>
+                    <p>Connexion rapide au bucket <strong>Soonbucket</strong> pour tester un upload depuis l'interface.</p>
+                    <div class="stack">
+                        <input id="supabaseUrlInput" type="text" placeholder="https://<project-ref>.supabase.co">
+                        <input id="supabaseKeyInput" type="text" placeholder="sb_publishable_xxx">
+                        <div class="stack" style="grid-template-columns: 1fr 1fr;">
+                            <button id="supabaseSaveConfigBtn" type="button">Sauver config</button>
+                            <button id="supabaseTestBtn" type="button">Tester connexion</button>
+                        </div>
+                        <input id="supabaseFileInput" type="file" accept="audio/*,image/*">
+                        <button id="supabaseUploadBtn" type="button">Uploader vers Soonbucket</button>
+                        <p id="supabaseStatus" class="status"></p>
+                        <p id="supabaseUploadedLink" class="muted"></p>
+                    </div>
                 </article>
                 <article class="card">
-                    <h3>Collection de bulles</h3>
-                    <p>Inventaire des samples acquis, niveaux de profondeur et variations favorites.</p>
+                    <h3>Store sonore (paiement simulé)</h3>
+                    <p>Le paiement est simulé: activation gratuite pour le moment, puis ajout à la collection.</p>
+                    <div id="storeCatalog" class="store-grid"></div>
                 </article>
                 <article class="card">
-                    <h3>Store sonore</h3>
-                    <p>Prochainement : catalogue, achats et récupération d'URL sonores dynamiques.</p>
+                    <h3>Ma collection activée</h3>
+                    <p>Samples débloqués pour ce compte/session.</p>
+                    <div id="ownedCollection" class="stack"></div>
                 </article>
             </div>
         </div>
@@ -430,6 +498,7 @@
         </div>
     </nav>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         const SAMPLE_LIBRARY = [
             { id: 'zen-gong', name: 'Zen Gong', texture: 'Gong profond et respirant', type: 'triangle', freq: 132, lfo: 0.06, lfoDepth: 0.018, gain: 0.28, baseCutoff: 3400, resonanceFreq: 420, resonanceQ: 1.5 },
@@ -484,6 +553,23 @@
         const propsLayerSelect = document.getElementById('propsLayerSelect');
         const propsDeleteBtn = document.getElementById('propsDeleteBtn');
         const propsCloseBtn = document.getElementById('propsCloseBtn');
+        const supabaseUrlInput = document.getElementById('supabaseUrlInput');
+        const supabaseKeyInput = document.getElementById('supabaseKeyInput');
+        const supabaseSaveConfigBtn = document.getElementById('supabaseSaveConfigBtn');
+        const supabaseTestBtn = document.getElementById('supabaseTestBtn');
+        const supabaseFileInput = document.getElementById('supabaseFileInput');
+        const supabaseUploadBtn = document.getElementById('supabaseUploadBtn');
+        const supabaseStatus = document.getElementById('supabaseStatus');
+        const supabaseUploadedLink = document.getElementById('supabaseUploadedLink');
+        const authEmailInput = document.getElementById('authEmailInput');
+        const authPasswordInput = document.getElementById('authPasswordInput');
+        const authSignInBtn = document.getElementById('authSignInBtn');
+        const authSignUpBtn = document.getElementById('authSignUpBtn');
+        const authSignOutBtn = document.getElementById('authSignOutBtn');
+        const authStatus = document.getElementById('authStatus');
+        const authSessionInfo = document.getElementById('authSessionInfo');
+        const storeCatalog = document.getElementById('storeCatalog');
+        const ownedCollection = document.getElementById('ownedCollection');
 
         let selectedBubble = null;
         let isDraggingBubble = false;
@@ -648,6 +734,18 @@
         let shipBreathEmitter = 0;
         let bubbleIdSeed = 1;
         let resotagIdSeed = 1;
+        let supabaseClient = null;
+        let currentSession = null;
+        const SUPABASE_BUCKET = 'Soonbucket';
+        const SUPABASE_LOCAL_KEYS = {
+            url: 'soono.supabase.url',
+            key: 'soono.supabase.key',
+        };
+        const SAMPLE_STORE = [
+            { id: 'zen-gong-pack', title: 'Zen Gong Pack', description: 'Gong profond, ample et méditatif.', priceLabel: '4,90 €', objectPath: 'samples/zen-gong.mp3' },
+            { id: 'ocean-deep-pack', title: 'Ocean Deep Pack', description: 'Textures aquatiques immersives.', priceLabel: '5,90 €', objectPath: 'samples/ocean-deep.mp3' },
+            { id: 'aurore-pack', title: 'Aurore Pack', description: 'Drone lumineux pour sessions lentes.', priceLabel: '3,90 €', objectPath: 'samples/aurore.mp3' },
+        ];
 
         const arenaResonance = { level: 0, hue: 198 };
 
@@ -732,6 +830,306 @@
         navHome.addEventListener('click', () => showView('home'));
         navSoon.addEventListener('click', () => showView('experience'));
         navProfile.addEventListener('click', () => showView('profile'));
+
+        function maskApiKey(key) {
+            if (!key || key.length < 12) return key;
+            return `${key.slice(0, 10)}…${key.slice(-4)}`;
+        }
+
+        function setSupabaseStatus(message, isError = false) {
+            if (!supabaseStatus) return;
+            supabaseStatus.textContent = message;
+            supabaseStatus.style.color = isError ? 'rgba(255, 148, 148, 0.95)' : 'rgba(146, 247, 210, 0.95)';
+        }
+
+        function setAuthStatus(message, isError = false) {
+            if (!authStatus) return;
+            authStatus.textContent = message;
+            authStatus.style.color = isError ? 'rgba(255, 148, 148, 0.95)' : 'rgba(146, 247, 210, 0.95)';
+        }
+
+        function getSupabaseConfig() {
+            const bootConfig = window.__SOONO_CONFIG__ || {};
+            const urlFromStorage = localStorage.getItem(SUPABASE_LOCAL_KEYS.url);
+            const keyFromStorage = localStorage.getItem(SUPABASE_LOCAL_KEYS.key);
+            return {
+                url: urlFromStorage || bootConfig.supabaseUrl || '',
+                key: keyFromStorage || bootConfig.supabasePublishableKey || '',
+            };
+        }
+
+        function buildSupabaseClient() {
+            const url = supabaseUrlInput.value.trim();
+            const key = supabaseKeyInput.value.trim();
+            if (!url || !key) {
+                setSupabaseStatus('Ajoute URL + clé publishable Supabase.', true);
+                return null;
+            }
+            if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+                setSupabaseStatus('SDK Supabase introuvable dans la page.', true);
+                return null;
+            }
+            if (supabaseClient) return supabaseClient;
+            supabaseClient = window.supabase.createClient(url, key);
+            supabaseClient.auth.onAuthStateChange((event, session) => {
+                currentSession = session;
+                refreshAuthUi(event === 'SIGNED_OUT' ? 'Session fermée.' : 'Session active.');
+                renderStoreCatalog();
+                renderOwnedCollection();
+            });
+            return supabaseClient;
+        }
+
+        async function testSupabaseConnection() {
+            const client = buildSupabaseClient();
+            if (!client) return;
+            setSupabaseStatus('Connexion en cours…');
+            const { error } = await client.storage.from(SUPABASE_BUCKET).list('', { limit: 1 });
+            if (error) {
+                setSupabaseStatus(`Connexion OK mais accès bucket refusé: ${error.message}`, true);
+                return;
+            }
+            setSupabaseStatus(`Connecté à ${SUPABASE_BUCKET} avec ${maskApiKey(supabaseKeyInput.value.trim())}.`);
+        }
+
+        function sanitizeFileName(name) {
+            return name.toLowerCase()
+                .replace(/[^a-z0-9._-]/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '');
+        }
+
+        async function uploadToSoonbucket() {
+            const file = supabaseFileInput.files?.[0];
+            if (!file) {
+                setSupabaseStatus('Choisis un fichier avant upload.', true);
+                return;
+            }
+            const client = buildSupabaseClient();
+            if (!client) return;
+            setSupabaseStatus('Upload en cours…');
+
+            const objectPath = `uploads/${Date.now()}-${sanitizeFileName(file.name)}`;
+            const { error: uploadError } = await client.storage.from(SUPABASE_BUCKET).upload(objectPath, file, {
+                cacheControl: '3600',
+                upsert: false,
+            });
+            if (uploadError) {
+                setSupabaseStatus(`Échec upload: ${uploadError.message}`, true);
+                return;
+            }
+            const { data } = client.storage.from(SUPABASE_BUCKET).getPublicUrl(objectPath);
+            const url = data?.publicUrl;
+            setSupabaseStatus('Upload terminé ✅');
+            if (url) {
+                supabaseUploadedLink.innerHTML = `Fichier disponible: <a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+            } else {
+                supabaseUploadedLink.textContent = `Uploadé: ${objectPath}`;
+            }
+        }
+
+        function getCollectionStorageKey() {
+            const userId = currentSession?.user?.id || 'guest';
+            return `soono.collection.${userId}`;
+        }
+
+        function getOwnedItems() {
+            const raw = localStorage.getItem(getCollectionStorageKey());
+            if (!raw) return [];
+            try {
+                const parsed = JSON.parse(raw);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (_) {
+                return [];
+            }
+        }
+
+        function setOwnedItems(items) {
+            localStorage.setItem(getCollectionStorageKey(), JSON.stringify(items));
+        }
+
+        async function resolveSampleUrl(objectPath) {
+            const client = buildSupabaseClient();
+            if (!client) return null;
+            const signed = await client.storage.from(SUPABASE_BUCKET).createSignedUrl(objectPath, 60 * 60);
+            if (!signed.error && signed.data?.signedUrl) return signed.data.signedUrl;
+            const { data } = client.storage.from(SUPABASE_BUCKET).getPublicUrl(objectPath);
+            return data?.publicUrl || null;
+        }
+
+        async function simulatePaymentAndActivate(item) {
+            setAuthStatus(`Paiement simulé pour ${item.title}…`);
+            await new Promise(resolve => setTimeout(resolve, 650));
+            const owned = new Set(getOwnedItems());
+            owned.add(item.id);
+            setOwnedItems([...owned]);
+            setAuthStatus(`${item.title} activé gratuitement ✅`);
+            renderStoreCatalog();
+            renderOwnedCollection();
+        }
+
+        function refreshAuthUi(message = '') {
+            if (message) setAuthStatus(message, false);
+            if (currentSession?.user) {
+                authSessionInfo.textContent = `Connecté: ${currentSession.user.email || currentSession.user.id}`;
+                authSignOutBtn.disabled = false;
+            } else {
+                authSessionInfo.textContent = 'Aucune session active.';
+                authSignOutBtn.disabled = true;
+            }
+        }
+
+        function renderStoreCatalog() {
+            if (!storeCatalog) return;
+            const owned = new Set(getOwnedItems());
+            storeCatalog.innerHTML = '';
+            SAMPLE_STORE.forEach(item => {
+                const card = document.createElement('article');
+                card.className = 'store-item';
+                const isOwned = owned.has(item.id);
+                card.innerHTML = `
+                    <h4>${item.title}</h4>
+                    <p>${item.description}</p>
+                    <span class="pill">${isOwned ? 'Activé' : `Paiement simulé · ${item.priceLabel}`}</span>
+                `;
+                const actionBtn = document.createElement('button');
+                actionBtn.type = 'button';
+                actionBtn.textContent = isOwned ? 'Déjà activé' : 'Activer gratuitement';
+                actionBtn.disabled = isOwned;
+                actionBtn.addEventListener('click', () => {
+                    simulatePaymentAndActivate(item);
+                });
+                card.appendChild(actionBtn);
+                storeCatalog.appendChild(card);
+            });
+        }
+
+        async function renderOwnedCollection() {
+            if (!ownedCollection) return;
+            const owned = getOwnedItems();
+            ownedCollection.innerHTML = '';
+            if (!owned.length) {
+                ownedCollection.innerHTML = '<p class="collection-empty">Aucun sample activé pour le moment.</p>';
+                return;
+            }
+            for (const itemId of owned) {
+                const item = SAMPLE_STORE.find(s => s.id === itemId);
+                if (!item) continue;
+                const row = document.createElement('article');
+                row.className = 'store-item';
+                row.innerHTML = `<h4>${item.title}</h4><p>${item.description}</p>`;
+                const preview = document.createElement('audio');
+                preview.controls = true;
+                preview.preload = 'none';
+                const src = await resolveSampleUrl(item.objectPath);
+                if (src) {
+                    preview.src = src;
+                    row.appendChild(preview);
+                } else {
+                    const hint = document.createElement('p');
+                    hint.className = 'muted';
+                    hint.textContent = `Fichier introuvable dans ${SUPABASE_BUCKET}: ${item.objectPath}`;
+                    row.appendChild(hint);
+                }
+                ownedCollection.appendChild(row);
+            }
+        }
+
+        async function signInWithEmail() {
+            const client = buildSupabaseClient();
+            if (!client) return;
+            const email = authEmailInput.value.trim();
+            const password = authPasswordInput.value.trim();
+            if (!email || !password) {
+                setAuthStatus('Email et mot de passe requis.', true);
+                return;
+            }
+            const { data, error } = await client.auth.signInWithPassword({ email, password });
+            if (error) {
+                setAuthStatus(`Connexion refusée: ${error.message}`, true);
+                return;
+            }
+            currentSession = data.session;
+            refreshAuthUi('Connexion réussie ✅');
+            renderStoreCatalog();
+            renderOwnedCollection();
+        }
+
+        async function signUpWithEmail() {
+            const client = buildSupabaseClient();
+            if (!client) return;
+            const email = authEmailInput.value.trim();
+            const password = authPasswordInput.value.trim();
+            if (!email || !password) {
+                setAuthStatus('Email et mot de passe requis.', true);
+                return;
+            }
+            const { error } = await client.auth.signUp({ email, password });
+            if (error) {
+                setAuthStatus(`Inscription refusée: ${error.message}`, true);
+                return;
+            }
+            setAuthStatus('Compte créé. Vérifie ton email si la confirmation est active.');
+        }
+
+        async function signOutSession() {
+            const client = buildSupabaseClient();
+            if (!client) return;
+            const { error } = await client.auth.signOut();
+            if (error) {
+                setAuthStatus(`Déconnexion impossible: ${error.message}`, true);
+                return;
+            }
+            currentSession = null;
+            refreshAuthUi('Déconnecté.');
+            renderStoreCatalog();
+            renderOwnedCollection();
+        }
+
+        async function restoreSession() {
+            const client = buildSupabaseClient();
+            if (!client) return;
+            const { data } = await client.auth.getSession();
+            currentSession = data?.session || null;
+            refreshAuthUi(currentSession ? 'Session restaurée.' : 'Pas de session active.');
+            renderStoreCatalog();
+            await renderOwnedCollection();
+        }
+
+        function initSupabaseProfileCard() {
+            const cfg = getSupabaseConfig();
+            supabaseUrlInput.value = cfg.url;
+            supabaseKeyInput.value = cfg.key;
+            if (cfg.url && cfg.key) {
+                setSupabaseStatus(`Configuration chargée (${maskApiKey(cfg.key)}).`);
+            } else {
+                setSupabaseStatus('Renseigne URL + clé publishable pour activer Soonbucket.');
+            }
+
+            supabaseSaveConfigBtn.addEventListener('click', () => {
+                const url = supabaseUrlInput.value.trim();
+                const key = supabaseKeyInput.value.trim();
+                localStorage.setItem(SUPABASE_LOCAL_KEYS.url, url);
+                localStorage.setItem(SUPABASE_LOCAL_KEYS.key, key);
+                setSupabaseStatus(`Configuration sauvegardée localement (${maskApiKey(key)}).`);
+                supabaseClient = null;
+                restoreSession();
+            });
+
+            supabaseTestBtn.addEventListener('click', () => {
+                testSupabaseConnection();
+            });
+            supabaseUploadBtn.addEventListener('click', () => {
+                uploadToSoonbucket();
+            });
+        }
+        initSupabaseProfileCard();
+        authSignInBtn.addEventListener('click', signInWithEmail);
+        authSignUpBtn.addEventListener('click', signUpWithEmail);
+        authSignOutBtn.addEventListener('click', signOutSession);
+        renderStoreCatalog();
+        renderOwnedCollection();
+        restoreSession();
 
         SAMPLE_LIBRARY.forEach(sample => {
             const option = document.createElement('option');
