@@ -821,39 +821,64 @@ export function initLegacyApp() {
               return sooncutBucketVocals[randomIndex] || null;
           }
 
-          function resolveSooncutTrackUrl(track) {
-              if (!track) return null;
-              if (track.url) return track.url;
-
+          async function resolveSooncutTrackUrls(track) {
+              if (!track?.objectPath) return [];
+              const urls = [];
               const client = buildSupabaseClient();
-              if (client && track.objectPath) {
-                  const { data } = client.storage.from(SUPABASE_BUCKET).getPublicUrl(track.objectPath);
-                  if (data?.publicUrl) return data.publicUrl;
+
+              if (track.url) urls.push(track.url);
+
+              if (client) {
+                  const { data: publicData } = client.storage.from(SUPABASE_BUCKET).getPublicUrl(track.objectPath);
+                  if (publicData?.publicUrl) urls.push(publicData.publicUrl);
+
+                  const { data: signedData, error: signedError } = await client
+                      .storage
+                      .from(SUPABASE_BUCKET)
+                      .createSignedUrl(track.objectPath, 60 * 10);
+                  if (!signedError && signedData?.signedUrl) urls.push(signedData.signedUrl);
               }
 
-              return buildPublicSoonbucketUrl(track.objectPath);
+              const fallbackUrl = buildPublicSoonbucketUrl(track.objectPath);
+              if (fallbackUrl) urls.push(fallbackUrl);
+
+              return Array.from(new Set(urls.filter(Boolean)));
+          }
+
+          function tryPlayArenaUrl(url, trackName) {
+              return new Promise((resolve) => {
+                  try {
+                      if (activeArenaAudio) {
+                          activeArenaAudio.pause();
+                          activeArenaAudio.currentTime = 0;
+                      }
+                      const audio = new Audio(url);
+                      audio.preload = 'auto';
+                      audio.volume = 0.98;
+                      activeArenaAudio = audio;
+                      audio.play().then(() => {
+                          setArenaTriangleStatus(`Lecture bucket aléatoire: ${trackName}`);
+                          resolve(true);
+                      }).catch(() => resolve(false));
+                  } catch (_) {
+                      resolve(false);
+                  }
+              });
           }
 
           async function playSooncutBucketVocal() {
               const track = pickRandomSooncutTrack();
-              const trackUrl = resolveSooncutTrackUrl(track);
-              if (!track?.name || !trackUrl) return false;
+              if (!track?.name) return false;
+              const candidateUrls = await resolveSooncutTrackUrls(track);
+              if (!candidateUrls.length) return false;
 
-              try {
-                  if (activeArenaAudio) {
-                      activeArenaAudio.pause();
-                      activeArenaAudio.currentTime = 0;
-                  }
-                  activeArenaAudio = new Audio(trackUrl);
-                  activeArenaAudio.preload = 'auto';
-                  activeArenaAudio.volume = 0.98;
-                  await activeArenaAudio.play();
-                  setArenaTriangleStatus(`Lecture bucket aléatoire: ${track.name}`);
-                  return true;
-              } catch (_) {
-                  setArenaTriangleStatus(`Lecture impossible pour ${track.name}`, true);
-                  return false;
+              for (const url of candidateUrls) {
+                  const played = await tryPlayArenaUrl(url, track.name);
+                  if (played) return true;
               }
+
+              setArenaTriangleStatus(`Lecture impossible pour ${track.name}`, true);
+              return false;
           }
 
           function triggerArenaSample(sampleId) {
