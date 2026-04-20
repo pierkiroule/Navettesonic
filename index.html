@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Soono•° — Odyssée sonore</title>
+    <title>Soon•° — Odyssée sonore</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root {
@@ -366,6 +366,7 @@
         <div class="home-layout">
             <h1 class="home-title">Soon•°</h1>
             <div class="home-media">
+                <img class="home-brand" src="logo.svg" alt="Logo animé Soon•°" />
                 <video id="heroVideo" class="hero-video" autoplay muted loop playsinline controls>
                     <source src="./video/soon.mp4" type="video/mp4">
                     Votre navigateur ne supporte pas la lecture vidéo.
@@ -373,7 +374,7 @@
                 <p class="home-poem">L'Odyssée sonore d'un petit poisson plume...</p>
                 <div class="home-actions">
                     <button id="toggleHeroSoundBtn" class="immersion-btn" type="button">Activer le son</button>
-                    <button id="enterExperienceBtn" class="immersion-btn" type="button">Immersion Soono•°</button>
+                    <button id="enterExperienceBtn" class="immersion-btn" type="button">Immersion Soon•°</button>
                 </div>
             </div>
         </div>
@@ -384,7 +385,7 @@
         <div id="helperTips">Garde le doigt (ou clic) appuyé dans l'océan : le poisson-plume suit ton mouvement.</div>
         <div id="bubblePanel" class="hidden">
             <div class="panel-card">
-                <h2>Collection Soono•° (demo)</h2>
+                <h2>Collection Soon•° (demo)</h2>
                 <p>Choisissez un sample, placez-le autour du poisson, puis validez pour déposer une bulle sonore.</p>
                 <div class="panel-row">
                     <label for="sampleSelect">Sample</label>
@@ -492,7 +493,7 @@
     <nav id="bottomNav" class="bottom-nav hidden-view" aria-label="Navigation principale">
         <div class="nav-shell">
             <button id="navHome" class="nav-btn" type="button">Accueil</button>
-            <button id="navSoono" class="nav-btn active" type="button">Soono•°</button>
+            <button id="navSoon" class="nav-btn active" type="button">Soon•°</button>
             <button id="navProfile" class="nav-btn" type="button">Profil</button>
         </div>
     </nav>
@@ -527,7 +528,7 @@
         const profileView = document.getElementById('profileView');
         const bottomNav = document.getElementById('bottomNav');
         const navHome = document.getElementById('navHome');
-        const navSoono = document.getElementById('navSoono');
+        const navSoon = document.getElementById('navSoon');
         const navProfile = document.getElementById('navProfile');
         const enterExperienceBtn = document.getElementById('enterExperienceBtn');
         const heroVideo = document.getElementById('heroVideo');
@@ -756,9 +757,9 @@
         const camera = { x: 0, y: 0, targetX: 0, targetY: 0, ease: 0.05 };
 
         function setActiveNav(target) {
-            [navHome, navSoono, navProfile].forEach(btn => btn.classList.remove('active'));
+            [navHome, navSoon, navProfile].forEach(btn => btn.classList.remove('active'));
             if (target === 'home') navHome.classList.add('active');
-            if (target === 'soono') navSoono.classList.add('active');
+            if (target === 'soon') navSoon.classList.add('active');
             if (target === 'profile') navProfile.classList.add('active');
         }
 
@@ -768,7 +769,7 @@
             experienceView.classList.toggle('hidden-view', target !== 'experience');
             profileView.classList.toggle('hidden-view', target !== 'profile');
             bottomNav.classList.remove('hidden-view');
-            setActiveNav(target === 'experience' ? 'soono' : target);
+            setActiveNav(target === 'experience' ? 'soon' : target);
             if (target !== 'experience') {
                 isTethered = false;
                 closeBubblePanel();
@@ -827,7 +828,7 @@
         }
 
         navHome.addEventListener('click', () => showView('home'));
-        navSoono.addEventListener('click', () => showView('experience'));
+        navSoon.addEventListener('click', () => showView('experience'));
         navProfile.addEventListener('click', () => showView('profile'));
 
         function maskApiKey(key) {

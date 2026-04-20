@@ -1,5 +1,5 @@
 # Prevent adding new unsupported binary assets by default.
-# Existing tracked binaries (logo.png, video/soono3.mp4) remain untouched.
+# Existing tracked binaries (logo.png, video/soon3.mp4) remain untouched.
 *.mp4
 *.mov
 *.avi
