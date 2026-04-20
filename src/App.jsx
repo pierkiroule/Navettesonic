@@ -1,34 +1,12 @@
-import { useMemo } from 'react';
-import HomeView from './features/home/HomeView';
-import ExperienceView from './features/experience/ExperienceView';
-import ProfileView from './features/profile/ProfileView';
-import BottomNav from './components/navigation/BottomNav';
-import { APP_VIEWS } from './core/utils/views';
 import { ExperienceStateProvider, useExperienceState } from './features/experience/state/experienceState.jsx';
+import { useAppPresenter } from './app/presenter/useAppPresenter';
+import AppView from './app/view/AppView';
 
 function AppContent() {
   const { state, dispatch } = useExperienceState();
+  const { onViewChange, onEnterExperience } = useAppPresenter({ dispatch });
 
-  const viewById = useMemo(
-    () => ({
-      [APP_VIEWS.HOME]: (
-        <HomeView onEnterExperience={() => dispatch({ type: 'SET_CURRENT_VIEW', payload: APP_VIEWS.EXPERIENCE })} />
-      ),
-      [APP_VIEWS.EXPERIENCE]: <ExperienceView />,
-      [APP_VIEWS.PROFILE]: <ProfileView />,
-    }),
-    [dispatch],
-  );
-
-  return (
-    <>
-      {viewById[state.currentView]}
-      <BottomNav
-        activeView={state.currentView}
-        onChange={(view) => dispatch({ type: 'SET_CURRENT_VIEW', payload: view })}
-      />
-    </>
-  );
+  return <AppView currentView={state.currentView} onEnterExperience={onEnterExperience} onViewChange={onViewChange} />;
 }
 
 function App() {

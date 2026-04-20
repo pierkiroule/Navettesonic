@@ -1,11 +1,7 @@
-import { APP_VIEWS } from '../../core/utils/views';
+import { getNavigationItems } from './model/navigationModel';
 
 function BottomNav({ activeView, onChange }) {
-  const items = [
-    { id: APP_VIEWS.HOME, label: 'Accueil' },
-    { id: APP_VIEWS.EXPERIENCE, label: 'Soon•°' },
-    { id: APP_VIEWS.PROFILE, label: 'Profil' },
-  ];
+  const items = getNavigationItems();
 
   return (
     <nav className="bottom-nav" aria-label="Navigation principale">
