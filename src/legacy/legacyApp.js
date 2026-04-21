@@ -81,6 +81,9 @@ export function initLegacyApp() {
           const authSignOutBtn = document.getElementById('authSignOutBtn');
           const authStatus = document.getElementById('authStatus');
           const authSessionInfo = document.getElementById('authSessionInfo');
+          const authConfigBlock = document.getElementById('authConfigBlock');
+          const authSupabaseKeyInput = document.getElementById('authSupabaseKeyInput');
+          const authSaveSupabaseKeyBtn = document.getElementById('authSaveSupabaseKeyBtn');
           const storeCatalog = document.getElementById('storeCatalog');
           const sessionHistoryList = document.getElementById('sessionHistoryList');
 
@@ -223,6 +226,8 @@ export function initLegacyApp() {
           const FIREFLY_TAIL_MAX_ATTACHED = 3;
           const FIREFLY_REPULSE_COOLDOWN_MS = 1800;
           const DEFAULT_SUPABASE_URL = 'https://qyffktrggapfzlmmlerq.supabase.co';
+          const ENV_SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || '';
+          const ENV_SUPABASE_KEY = import.meta.env?.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
           const SOONCUT_BUCKET_FOLDER = 'sooncut';
           const SOONCUT_TRIANGLE_SAMPLE_IDS = SAMPLE_LIBRARY.slice(0, ARENA_TRIANGLE_COUNT).map(sample => sample.id);
           const DEPTH_Z = 140;
@@ -533,16 +538,30 @@ export function initLegacyApp() {
               const urlFromStorage = localStorage.getItem(SUPABASE_LOCAL_KEYS.url);
               const keyFromStorage = localStorage.getItem(SUPABASE_LOCAL_KEYS.key);
               return {
-                  url: urlFromStorage || bootConfig.supabaseUrl || '',
-                  key: keyFromStorage || bootConfig.supabasePublishableKey || '',
+                  url: urlFromStorage || bootConfig.supabaseUrl || ENV_SUPABASE_URL || '',
+                  key: keyFromStorage || bootConfig.supabasePublishableKey || ENV_SUPABASE_KEY || '',
               };
           }
 
+          function syncAuthConfigUi() {
+              if (!authConfigBlock) return;
+              const cfg = getSupabaseConfig();
+              const key = supabaseKeyInput?.value?.trim() || cfg.key || '';
+              authConfigBlock.hidden = !!key;
+              if (authSupabaseKeyInput && !authSupabaseKeyInput.value) {
+                  authSupabaseKeyInput.value = key;
+              }
+          }
+
           function buildSupabaseClient() {
-              const url = supabaseUrlInput.value.trim();
-              const key = supabaseKeyInput.value.trim();
+              const cfg = getSupabaseConfig();
+              const url = supabaseUrlInput?.value?.trim() || cfg.url || DEFAULT_SUPABASE_URL;
+              const key = supabaseKeyInput?.value?.trim() || cfg.key;
               if (!url || !key) {
+                  syncAuthConfigUi();
                   setSupabaseStatus('Ajoute URL + clé publishable Supabase.', true);
+                  setAuthStatus('Inscription indisponible: clé Supabase manquante (VITE_SUPABASE_PUBLISHABLE_KEY).', true);
+                  authSupabaseKeyInput?.focus();
                   return null;
               }
               if (!window.supabase || typeof window.supabase.createClient !== 'function') {
@@ -1061,13 +1080,28 @@ export function initLegacyApp() {
 
           function initSupabaseProfileCard() {
               const cfg = getSupabaseConfig();
-              supabaseUrlInput.value = cfg.url;
+              supabaseUrlInput.value = cfg.url || DEFAULT_SUPABASE_URL;
               supabaseKeyInput.value = cfg.key;
-              if (cfg.url && cfg.key) {
+              if (supabaseUrlInput.value && cfg.key) {
                   setSupabaseStatus(`Configuration chargée (${maskApiKey(cfg.key)}).`);
               } else {
                   setSupabaseStatus('Renseigne URL + clé publishable pour activer Soonbucket.');
+                  setAuthStatus('Ajoute une clé Supabase publishable (VITE_SUPABASE_PUBLISHABLE_KEY) pour activer l’inscription.', true);
               }
+              syncAuthConfigUi();
+
+              authSaveSupabaseKeyBtn?.addEventListener('click', () => {
+                  const key = authSupabaseKeyInput?.value?.trim() || '';
+                  if (!key) {
+                      setAuthStatus('Ajoute une clé publishable valide.', true);
+                      return;
+                  }
+                  supabaseKeyInput.value = key;
+                  localStorage.setItem(SUPABASE_LOCAL_KEYS.key, key);
+                  supabaseClient = null;
+                  syncAuthConfigUi();
+                  setAuthStatus('Configuration Supabase enregistrée. Tu peux t’inscrire.', false);
+              });
 
               supabaseSaveConfigBtn.addEventListener('click', () => {
                   const url = supabaseUrlInput.value.trim();
