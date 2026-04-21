@@ -441,10 +441,13 @@ export function initLegacyApp() {
           }
 
           if (echoHypnoseLinkBtn) {
-              echoHypnoseLinkBtn.addEventListener('click', openEchoHypnoseModal);
+              bindTap(echoHypnoseLinkBtn, openEchoHypnoseModal);
           }
           if (closeEchoHypnoseModalBtn) {
-              closeEchoHypnoseModalBtn.addEventListener('click', closeEchoHypnoseModal);
+              bindTap(closeEchoHypnoseModalBtn, (event) => {
+                  event.stopPropagation();
+                  closeEchoHypnoseModal();
+              });
           }
           if (echoHypnoseModal) {
               echoHypnoseModal.addEventListener('click', (event) => {
