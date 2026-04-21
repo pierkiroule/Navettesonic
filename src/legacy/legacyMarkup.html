@@ -115,10 +115,11 @@
             <div class="profile-grid">
                 <article class="card">
                     <h3>Connexion Supabase (Auth + Session)</h3>
-                    <p>Compte local via Supabase Auth (email + mot de passe).</p>
+                    <p>Connexion / inscription pour gérer ton profil Échohypnose.</p>
+                    <p class="muted">Accès à l’expérience Soon•° réservé aux personnes inscrites.</p>
                     <div class="stack">
                         <input id="authEmailInput" type="text" placeholder="email@soono.app">
-                        <input id="authPasswordInput" type="text" placeholder="mot de passe">
+                        <input id="authPasswordInput" type="password" placeholder="mot de passe">
                         <div class="auth-row">
                             <button id="authSignInBtn" type="button">Se connecter</button>
                             <button id="authSignUpBtn" type="button">Créer un compte</button>
@@ -129,34 +130,36 @@
                     </div>
                 </article>
                 <article class="card">
-                    <h3>Supabase Storage · Soonbucket</h3>
-                    <p>Connexion rapide au bucket <strong>Soonbucket</strong> pour tester un upload depuis l'interface.</p>
-                    <p class="muted">Lucioles rouges: renseigne URL + clé publishable, clique « Tester connexion », puis retourne dans Soon•°.</p>
-                    <div class="stack">
-                        <input id="supabaseUrlInput" type="text" placeholder="https://<project-ref>.supabase.co">
-                        <input id="supabaseKeyInput" type="text" placeholder="sb_publishable_xxx">
-                        <div class="stack" style="grid-template-columns: 1fr 1fr;">
-                            <button id="supabaseSaveConfigBtn" type="button">Sauver config</button>
-                            <button id="supabaseTestBtn" type="button">Tester connexion</button>
-                        </div>
-                        <input id="supabaseFileInput" type="file" accept="audio/*,image/*">
-                        <button id="supabaseUploadBtn" type="button">Uploader vers Soonbucket</button>
-                        <input id="supabaseProbeUrlInput" type="text" value="https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/sooncut/extrait_001.mp3">
-                        <button id="supabaseProbeBtn" type="button">Tester lecture fichier bucket</button>
-                        <p id="supabaseStatus" class="status"></p>
-                        <p id="supabaseUploadedLink" class="muted"></p>
-                        <p id="supabaseProbeStatus" class="muted"></p>
-                    </div>
-                </article>
-                <article class="card">
-                    <h3>Store sonore (paiement simulé)</h3>
-                    <p>Le paiement est simulé: activation gratuite pour le moment, puis ajout à la collection.</p>
+                    <h3>Expériences Échohypnose</h3>
+                    <p>Achat simulé depuis le profil. Les achats sont synchronisés si tu es connecté.</p>
                     <div id="storeCatalog" class="store-grid"></div>
                 </article>
                 <article class="card">
-                    <h3>Ma collection activée</h3>
-                    <p>Samples débloqués pour ce compte/session.</p>
-                    <div id="ownedCollection" class="stack"></div>
+                    <h3>Historique des sessions</h3>
+                    <p>Historique horodaté de tes sessions Échohypnose.</p>
+                    <div id="sessionHistoryList" class="stack"></div>
+                </article>
+                <article class="card">
+                    <h3>Configuration avancée Supabase</h3>
+                    <p class="muted">Optionnel: utile pour le bucket audio Soonbucket.</p>
+                    <details>
+                        <summary>Afficher les options techniques</summary>
+                        <div class="stack" style="margin-top: 10px;">
+                            <input id="supabaseUrlInput" type="text" placeholder="https://<project-ref>.supabase.co">
+                            <input id="supabaseKeyInput" type="text" placeholder="sb_publishable_xxx">
+                            <div class="stack" style="grid-template-columns: 1fr 1fr;">
+                                <button id="supabaseSaveConfigBtn" type="button">Sauver config</button>
+                                <button id="supabaseTestBtn" type="button">Tester connexion</button>
+                            </div>
+                            <input id="supabaseFileInput" type="file" accept="audio/*,image/*">
+                            <button id="supabaseUploadBtn" type="button">Uploader vers Soonbucket</button>
+                            <input id="supabaseProbeUrlInput" type="text" value="https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/sooncut/extrait_001.mp3">
+                            <button id="supabaseProbeBtn" type="button">Tester lecture fichier bucket</button>
+                            <p id="supabaseStatus" class="status"></p>
+                            <p id="supabaseUploadedLink" class="muted"></p>
+                            <p id="supabaseProbeStatus" class="muted"></p>
+                        </div>
+                    </details>
                 </article>
             </div>
         </div>
