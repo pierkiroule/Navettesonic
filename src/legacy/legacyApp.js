@@ -257,6 +257,7 @@ export function initLegacyApp() {
           let currentSession = null;
           let isAuthActionPending = false;
           let syncInFlightPromise = null;
+          let isSessionHistorySyncDisabled = false;
           const SUPABASE_BUCKET = 'Soonbucket';
           const SUPABASE_LOCAL_KEYS = {
               url: 'soono.supabase.url',
@@ -832,6 +833,7 @@ export function initLegacyApp() {
 
           async function syncSessionHistoryFromSupabase() {
               if (!currentSession?.user?.id) return;
+              if (isSessionHistorySyncDisabled) return;
               const client = buildSupabaseClient();
               if (!client) return;
 
@@ -843,6 +845,14 @@ export function initLegacyApp() {
                   .limit(100);
 
               if (error) {
+                  const missingTable = error.code === '42P01'
+                      || /schema cache/i.test(error.message || '')
+                      || /echohypnose_session_history/i.test(error.message || '');
+                  if (missingTable) {
+                      isSessionHistorySyncDisabled = true;
+                      setAuthStatus('Historique Supabase indisponible: table non déployée (migration requise).', true);
+                      return;
+                  }
                   setAuthStatus(`Historique non synchronisé: ${error.message}`, true);
                   return;
               }
@@ -868,16 +878,29 @@ export function initLegacyApp() {
 
           async function pushSessionHistoryToSupabase(entry) {
               if (!currentSession?.user?.id) return false;
+              if (isSessionHistorySyncDisabled) return false;
               const client = buildSupabaseClient();
               if (!client) return false;
-              const { error } = await client.from('echohypnose_session_history').insert({
-                  user_id: currentSession.user.id,
-                  experience_id: entry.experience_id,
-                  experience_title: entry.experience_title,
-                  purchased_at: entry.purchased_at,
-              });
+              const { error } = await client
+                  .from('echohypnose_session_history')
+                  .upsert({
+                      user_id: currentSession.user.id,
+                      experience_id: entry.experience_id,
+                      experience_title: entry.experience_title,
+                      purchased_at: entry.purchased_at,
+                  }, {
+                      onConflict: 'user_id,experience_id,purchased_at',
+                      ignoreDuplicates: true,
+                  });
               if (error) {
-                  if (error.code === '23505') return true;
+                  const missingTable = error.code === '42P01'
+                      || /schema cache/i.test(error.message || '')
+                      || /echohypnose_session_history/i.test(error.message || '');
+                  if (missingTable) {
+                      isSessionHistorySyncDisabled = true;
+                      setAuthStatus('Écriture historique désactivée: table Supabase absente (migration requise).', true);
+                      return false;
+                  }
                   setAuthStatus(`Écriture historique échouée: ${error.message}`, true);
                   return false;
               }
