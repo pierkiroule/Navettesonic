@@ -539,10 +539,12 @@ export function initLegacyApp() {
           }
 
           function buildSupabaseClient() {
-              const url = supabaseUrlInput.value.trim();
-              const key = supabaseKeyInput.value.trim();
+              const cfg = getSupabaseConfig();
+              const url = supabaseUrlInput?.value?.trim() || cfg.url || DEFAULT_SUPABASE_URL;
+              const key = supabaseKeyInput?.value?.trim() || cfg.key;
               if (!url || !key) {
                   setSupabaseStatus('Ajoute URL + clé publishable Supabase.', true);
+                  setAuthStatus('Inscription indisponible: configuration Supabase incomplète.', true);
                   return null;
               }
               if (!window.supabase || typeof window.supabase.createClient !== 'function') {
@@ -1061,12 +1063,13 @@ export function initLegacyApp() {
 
           function initSupabaseProfileCard() {
               const cfg = getSupabaseConfig();
-              supabaseUrlInput.value = cfg.url;
+              supabaseUrlInput.value = cfg.url || DEFAULT_SUPABASE_URL;
               supabaseKeyInput.value = cfg.key;
-              if (cfg.url && cfg.key) {
+              if (supabaseUrlInput.value && cfg.key) {
                   setSupabaseStatus(`Configuration chargée (${maskApiKey(cfg.key)}).`);
               } else {
                   setSupabaseStatus('Renseigne URL + clé publishable pour activer Soonbucket.');
+                  setAuthStatus('Ajoute une clé Supabase publishable pour activer l’inscription.', true);
               }
 
               supabaseSaveConfigBtn.addEventListener('click', () => {
