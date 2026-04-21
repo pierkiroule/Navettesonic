@@ -217,12 +217,12 @@ export function initLegacyApp() {
           const FIREFLY_LINK_BREAK_DISTANCE = 102;
           const FIREFLY_LINK_TTL = 7800;
           const FIREFLY_TAIL_ATTACH_RADIUS = 38;
-          const FIREFLY_TAIL_WAKE_RADIUS = 170;
           const FIREFLY_AUDIO_MIN_MS = 1500;
           const FIREFLY_AUDIO_MAX_MS = 3200;
           const FIREFLY_TIMELINE_STEP_MS = 2600;
           const FIREFLY_TAIL_MAX_ATTACHED = 3;
-          const FIREFLY_REPULSE_COOLDOWN_MS = 1800;
+          const FIREFLY_REPULSE_COOLDOWN_MS = 900;
+          const MEDUSA_COUNT = 3;
           const DEFAULT_SUPABASE_URL = 'https://qyffktrggapfzlmmlerq.supabase.co';
           const ENV_SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || '';
           const ENV_SUPABASE_KEY = import.meta.env?.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
@@ -244,6 +244,7 @@ export function initLegacyApp() {
           const MAX_DRIFT_MOTES = 22;
           const ARENA_FIREFLIES = [];
           const ARENA_FIREFLY_LINKS = [];
+          const ARENA_MEDUSAE = [];
           const STARTING_BUBBLES = [
               { sampleId: 'forêt-zen', layer: 'front', hue: 188, x: -240, y: -120, r: 72 },
               { sampleId: 'ocean-deep', layer: 'below', hue: 235, x: 220, y: 170, r: 78 },
@@ -1513,13 +1514,37 @@ export function initLegacyApp() {
                       attachedOrder: -1,
                       attachedAt: 0,
                       playbackEndsAt: 0,
-                      attachmentClusterId: null
+                      attachmentClusterId: null,
+                      bubbleOrbitIndex: index % 3,
+                      nextBubbleSwitchAt: performance.now() + 2500 + Math.random() * 2600
+                  });
+              }
+          }
+
+          function ensureArenaMedusae() {
+              if (ARENA_MEDUSAE.length) return;
+              const baseRadius = ARENA_RADIUS * 0.34;
+              for (let index = 0; index < MEDUSA_COUNT; index++) {
+                  const angle = (index / MEDUSA_COUNT) * Math.PI * 2 + Math.random() * 0.45;
+                  const medusaBaseRadius = baseRadius + (Math.random() - 0.5) * 220;
+                  ARENA_MEDUSAE.push({
+                      id: `medusa-${index + 1}`,
+                      x: Math.cos(angle) * medusaBaseRadius,
+                      y: Math.sin(angle) * medusaBaseRadius,
+                      baseX: Math.cos(angle) * medusaBaseRadius,
+                      baseY: Math.sin(angle) * medusaBaseRadius,
+                      phase: Math.random() * Math.PI * 2,
+                      speed: 0.00018 + Math.random() * 0.00012,
+                      radius: 24 + Math.random() * 8,
+                      pulse: 0.5,
+                      cooldownUntil: 0
                   });
               }
           }
 
           function renderArenaTriangles() {
               ensureArenaFireflies();
+              ensureArenaMedusae();
               ARENA_FIREFLY_LINKS.length = 0;
               if (arenaTrianglePad) {
                   arenaTrianglePad.innerHTML = '';
@@ -1598,6 +1623,28 @@ export function initLegacyApp() {
               firefly.playbackEndsAt = now + FIREFLY_AUDIO_MIN_MS + Math.random() * (FIREFLY_AUDIO_MAX_MS - FIREFLY_AUDIO_MIN_MS);
           }
 
+          function getAttachedFirefliesSorted() {
+              return ARENA_FIREFLIES
+                  .filter((firefly) => firefly.attachedToTail)
+                  .sort((a, b) => a.attachedOrder - b.attachedOrder);
+          }
+
+          function segmentDistanceToPointSquared(ax, ay, bx, by, px, py) {
+              const abx = bx - ax;
+              const aby = by - ay;
+              const apx = px - ax;
+              const apy = py - ay;
+              const abLenSq = (abx * abx) + (aby * aby);
+              if (abLenSq <= 0.0001) return (apx * apx) + (apy * apy);
+              let t = ((apx * abx) + (apy * aby)) / abLenSq;
+              t = Math.max(0, Math.min(1, t));
+              const cx = ax + abx * t;
+              const cy = ay + aby * t;
+              const dx = px - cx;
+              const dy = py - cy;
+              return (dx * dx) + (dy * dy);
+          }
+
           function playTimelineUrl(url, trackName) {
               return new Promise((resolve) => {
                   try {
@@ -1674,19 +1721,6 @@ export function initLegacyApp() {
               setArenaTriangleStatus('Timeline vocale terminée, les perles se redispersent.');
           }
 
-          function repelFireflyFromTail(firefly, tail, now, boost = 1) {
-              if (!firefly) return;
-              const dx = firefly.x - tail.x;
-              const dy = firefly.y - tail.y;
-              const dist = Math.max(0.001, Math.hypot(dx, dy));
-              const nx = dx / dist;
-              const ny = dy / dist;
-              const repulseForce = (2.1 + Math.random() * 1.2) * boost;
-              firefly.vx += nx * repulseForce;
-              firefly.vy += ny * repulseForce;
-              firefly.linkedCooldownUntil = now + FIREFLY_REPULSE_COOLDOWN_MS;
-          }
-
           function attachFireflyClusterToTail(sourceFirefly, now) {
               const cluster = getLinkedFireflyCluster(sourceFirefly);
               if (!cluster.length) return;
@@ -1705,13 +1739,13 @@ export function initLegacyApp() {
                   firefly.linkedCooldownUntil = now + 900;
                   firefly.vx *= 0.25;
                   firefly.vy *= 0.25;
-                  firefly.playbackEndsAt = now + (FIREFLY_TIMELINE_STEP_MS * 4);
+                  firefly.playbackEndsAt = 0;
               });
               rejectedCluster.forEach((firefly) => {
                   firefly.attachedToTail = false;
                   firefly.attachedOrder = -1;
                   firefly.attachmentClusterId = null;
-                  repelFireflyFromTail(firefly, tail, now, 1.25);
+                  firefly.linkedCooldownUntil = now + 520;
               });
 
               const clusterIds = new Set(orderedByTailDistance.map((firefly) => firefly.id));
@@ -1723,10 +1757,39 @@ export function initLegacyApp() {
               }
               setArenaTriangleStatus(`${selectedCluster.length} luciole(s) accrochée(s) au fil de la queue (max 3).`);
               if (selectedCluster.length >= FIREFLY_TAIL_MAX_ATTACHED) {
-                  const timelineId = ++activeAttachedTimelineId;
-                  playAttachedClusterTimeline(selectedCluster, timelineId, clusterId);
-              } else {
-                  selectedCluster.forEach((firefly, index) => triggerAttachedFireflyPlayback(firefly, now + index * 220));
+                  setArenaTriangleStatus('3 lucioles collectées. Traverse une méduse-fleur avec le fil pour lire les 3 vocaux.');
+              }
+          }
+
+          function updateArenaMedusae(now) {
+              ensureArenaMedusae();
+              const t = now * 0.001;
+              ARENA_MEDUSAE.forEach((medusa, idx) => {
+                  medusa.phase += medusa.speed * 16.67;
+                  const angle = medusa.phase + idx * 1.8;
+                  const driftRadius = 48 + idx * 12;
+                  medusa.x = medusa.baseX + Math.cos(angle * 0.82) * driftRadius;
+                  medusa.y = medusa.baseY + Math.sin(angle) * (driftRadius * 0.65);
+                  medusa.pulse = (Math.sin(t * (1.2 + idx * 0.18) + medusa.phase) + 1) * 0.5;
+              });
+          }
+
+          function maybeTriggerMedusaPlayback(now) {
+              const attached = getAttachedFirefliesSorted();
+              if (attached.length < FIREFLY_TAIL_MAX_ATTACHED || !ship.trail.length) return;
+              const tail = getShipTailPosition();
+              const trailStart = ship.trail[Math.max(0, ship.trail.length - 18)] || tail;
+              for (const medusa of ARENA_MEDUSAE) {
+                  if (now < medusa.cooldownUntil) continue;
+                  const threshold = medusa.radius + 11;
+                  const distSq = segmentDistanceToPointSquared(trailStart.x, trailStart.y, tail.x, tail.y, medusa.x, medusa.y);
+                  if (distSq <= threshold * threshold) {
+                      medusa.cooldownUntil = now + 4600;
+                      const timelineId = ++activeAttachedTimelineId;
+                      playAttachedClusterTimeline(attached, timelineId, attached[0].attachmentClusterId);
+                      setArenaTriangleStatus('Méduse-fleur traversée : lecture des 3 vocaux de la queue.');
+                      break;
+                  }
               }
           }
 
@@ -1776,47 +1839,34 @@ export function initLegacyApp() {
                           firefly.attachedOrder = -1;
                           firefly.attachmentClusterId = null;
                           firefly.playbackEndsAt = 0;
-                          firefly.linkedCooldownUntil = now + 1400 + Math.random() * 900;
+                          firefly.linkedCooldownUntil = now + 1600 + Math.random() * 1200;
+                          firefly.bubbleOrbitIndex = Math.floor(Math.random() * Math.max(1, BUBBLES.length || 1));
+                          firefly.nextBubbleSwitchAt = now + 1800 + Math.random() * 2600;
                           const releaseAngle = Math.random() * Math.PI * 2;
-                          const releaseForce = 2.4 + Math.random() * 1.8;
-                          firefly.vx += Math.cos(releaseAngle) * releaseForce + ship.vx * 0.2;
-                          firefly.vy += Math.sin(releaseAngle) * releaseForce + ship.vy * 0.2;
+                          const releaseForce = 0.8 + Math.random() * 0.7;
+                          firefly.vx += Math.cos(releaseAngle) * releaseForce + ship.vx * 0.08;
+                          firefly.vy += Math.sin(releaseAngle) * releaseForce + ship.vy * 0.08;
                       }
                       return;
                   }
                   firefly.driftPhase += firefly.driftSpeed * 16.67;
-                  const orbitAngle = firefly.driftPhase + idx * 0.47;
-                  const radius = firefly.driftRadius * (0.7 + Math.sin(timeSeconds * 0.7 + idx) * 0.3);
-                  const driftTargetX = firefly.baseX + Math.cos(orbitAngle) * radius;
-                  const driftTargetY = firefly.baseY + Math.sin(orbitAngle * 0.8) * radius;
-
-                  const toShipX = firefly.x - ship.x;
-                  const toShipY = firefly.y - ship.y;
-                  const distToShip = Math.max(120, Math.hypot(toShipX, toShipY));
-                  const shipCurrent = (0.09 + flowStrength * 0.34) / (distToShip * 0.011);
-                  const tangentialX = -toShipY / distToShip;
-                  const tangentialY = toShipX / distToShip;
-                  const toTailX = tail.x - firefly.x;
-                  const toTailY = tail.y - firefly.y;
-                  const distToTail = Math.max(0.001, Math.hypot(toTailX, toTailY));
-                  const tailPull = Math.max(0, 1 - (distToTail / FIREFLY_TAIL_WAKE_RADIUS));
-                  const tailTangentX = -toTailY / distToTail;
-                  const tailTangentY = toTailX / distToTail;
-
-                  firefly.vx += (driftTargetX - firefly.x) * 0.00095;
-                  firefly.vy += (driftTargetY - firefly.y) * 0.00095;
-                  const shipInfluence = 1 - tailPull * 0.86;
-                  firefly.vx += tangentialX * shipCurrent * shipInfluence + ship.vx * (0.007 + flowStrength * 0.012) * shipInfluence;
-                  firefly.vy += tangentialY * shipCurrent * shipInfluence + ship.vy * (0.007 + flowStrength * 0.012) * shipInfluence;
-                  if (tailPull > 0) {
-                      const tailSeek = 0.0022 + tailPull * 0.007;
-                      const tailOrbit = 0.016 + tailPull * 0.09;
-                      firefly.vx += toTailX * tailSeek + tailTangentX * tailOrbit + ship.vx * 0.025;
-                      firefly.vy += toTailY * tailSeek + tailTangentY * tailOrbit + ship.vy * 0.025;
+                  if (now >= firefly.nextBubbleSwitchAt) {
+                      firefly.bubbleOrbitIndex = Math.floor(Math.random() * Math.max(1, BUBBLES.length || 1));
+                      firefly.nextBubbleSwitchAt = now + 3200 + Math.random() * 3400;
                   }
+                  const anchorBubble = BUBBLES.length ? BUBBLES[firefly.bubbleOrbitIndex % BUBBLES.length] : null;
+                  const anchorX = anchorBubble ? anchorBubble.x : firefly.baseX;
+                  const anchorY = anchorBubble ? anchorBubble.y : firefly.baseY;
+                  const orbitAngle = firefly.driftPhase + idx * 0.47;
+                  const radius = firefly.driftRadius * (0.9 + Math.sin(timeSeconds * 0.7 + idx) * 0.25);
+                  const driftTargetX = anchorX + Math.cos(orbitAngle) * radius;
+                  const driftTargetY = anchorY + Math.sin(orbitAngle * 0.8) * radius;
 
-                  firefly.vx *= 0.982;
-                  firefly.vy *= 0.982;
+                  firefly.vx += (driftTargetX - firefly.x) * 0.0011 + ship.vx * 0.0015 * flowStrength;
+                  firefly.vy += (driftTargetY - firefly.y) * 0.0011 + ship.vy * 0.0015 * flowStrength;
+
+                  firefly.vx *= 0.987;
+                  firefly.vy *= 0.987;
                   firefly.x += firefly.vx;
                   firefly.y += firefly.vy;
               });
@@ -1862,11 +1912,14 @@ export function initLegacyApp() {
               if (attachCandidate) {
                   const attachedCount = ARENA_FIREFLIES.filter((firefly) => firefly.attachedToTail).length;
                   if (attachedCount >= FIREFLY_TAIL_MAX_ATTACHED) {
-                      repelFireflyFromTail(attachCandidate, tail, now, 1.4);
+                      attachCandidate.linkedCooldownUntil = now + FIREFLY_REPULSE_COOLDOWN_MS;
                   } else {
                       attachFireflyClusterToTail(attachCandidate, now);
                   }
               }
+
+              updateArenaMedusae(now);
+              maybeTriggerMedusaPlayback(now);
           }
 
           function onStart(e) {
@@ -2587,6 +2640,79 @@ export function initLegacyApp() {
               });
           }
 
+          function drawMedusaFlowers() {
+              if (!ARENA_MEDUSAE.length) return;
+              const t = performance.now() * 0.001;
+              ARENA_MEDUSAE.forEach((medusa, idx) => {
+                  const pulse = medusa.pulse;
+                  const r = medusa.radius * (0.92 + pulse * 0.14);
+                  const hue = 318 + idx * 14;
+
+                  const halo = ctx.createRadialGradient(medusa.x, medusa.y, 0, medusa.x, medusa.y, r * 2.8);
+                  halo.addColorStop(0, `hsla(${hue}, 90%, 78%, ${0.20 + pulse * 0.16})`);
+                  halo.addColorStop(1, 'rgba(0,0,0,0)');
+                  ctx.fillStyle = halo;
+                  ctx.beginPath();
+                  ctx.arc(medusa.x, medusa.y, r * 2.8, 0, Math.PI * 2);
+                  ctx.fill();
+
+                  for (let petal = 0; petal < 6; petal++) {
+                      const a = ((Math.PI * 2) / 6) * petal + t * 0.25 + idx * 0.4;
+                      const px = medusa.x + Math.cos(a) * (r * 0.8);
+                      const py = medusa.y + Math.sin(a) * (r * 0.8);
+                      ctx.fillStyle = `hsla(${hue + petal * 4}, 88%, 78%, ${0.36 + pulse * 0.18})`;
+                      ctx.beginPath();
+                      ctx.ellipse(px, py, r * 0.34, r * 0.2, a, 0, Math.PI * 2);
+                      ctx.fill();
+                  }
+
+                  ctx.fillStyle = `hsla(${hue + 6}, 85%, 90%, ${0.82 + pulse * 0.14})`;
+                  ctx.beginPath();
+                  ctx.arc(medusa.x, medusa.y, r * 0.48, 0, Math.PI * 2);
+                  ctx.fill();
+
+                  ctx.strokeStyle = `hsla(${hue + 20}, 88%, 84%, ${0.32 + pulse * 0.2})`;
+                  ctx.lineWidth = 1.2;
+                  for (let tent = 0; tent < 4; tent++) {
+                      const ax = medusa.x + (tent - 1.5) * (r * 0.23);
+                      const wave = Math.sin(t * 2.1 + tent + idx) * 5;
+                      ctx.beginPath();
+                      ctx.moveTo(ax, medusa.y + r * 0.18);
+                      ctx.quadraticCurveTo(ax + wave * 0.5, medusa.y + r * 1.0, ax + wave, medusa.y + r * 1.9);
+                      ctx.stroke();
+                  }
+              });
+          }
+
+          function drawTailFilament() {
+              const attached = getAttachedFirefliesSorted();
+              if (!attached.length) return;
+              const tail = getShipTailPosition();
+              const anchor = ship.trail[Math.max(0, ship.trail.length - 22)] || tail;
+              const extension = 26 + attached.length * 18;
+              const tipX = tail.x + (tail.x - anchor.x) * (extension / Math.max(12, Math.hypot(tail.x - anchor.x, tail.y - anchor.y)));
+              const tipY = tail.y + (tail.y - anchor.y) * (extension / Math.max(12, Math.hypot(tail.x - anchor.x, tail.y - anchor.y)));
+
+              ctx.strokeStyle = 'rgba(223, 244, 255, 0.7)';
+              ctx.lineWidth = 1.3 + attached.length * 0.25;
+              ctx.beginPath();
+              ctx.moveTo(tail.x, tail.y);
+              ctx.quadraticCurveTo((tail.x + tipX) * 0.5, (tail.y + tipY) * 0.5 - 4, tipX, tipY);
+              ctx.stroke();
+
+              attached.forEach((firefly, idx) => {
+                  const t = (idx + 1) / (attached.length + 1);
+                  const beadX = tail.x + (tipX - tail.x) * t;
+                  const beadY = tail.y + (tipY - tail.y) * t;
+                  ctx.strokeStyle = 'rgba(236, 246, 255, 0.55)';
+                  ctx.lineWidth = 0.8;
+                  ctx.beginPath();
+                  ctx.moveTo(beadX, beadY);
+                  ctx.lineTo(firefly.x, firefly.y);
+                  ctx.stroke();
+              });
+          }
+
           function drawLuminousTrail() {
               const trail = ship.trail;
               if (trail.length < 3) return;
@@ -2702,12 +2828,14 @@ export function initLegacyApp() {
               BUBBLES.filter((b) => b.layer === 'below').forEach(drawBubble);
               drawBreathWaves();
               drawDriftMotes();
+              drawMedusaFlowers();
               drawArenaFireflies();
               drawSurfaceSparkles();
               drawResonanceWaves();
               drawWakeParticles();
               drawRipples();
               drawLuminousTrail();
+              drawTailFilament();
 
               ctx.save();
               ctx.translate(ship.x, ship.y);
