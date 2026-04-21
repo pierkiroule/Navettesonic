@@ -830,6 +830,13 @@ export function initLegacyApp() {
               }).format(date);
           }
 
+          function isSupabaseMissingRelationError(error) {
+              if (!error) return false;
+              if (error.code === 'PGRST204' || error.code === '42P01') return true;
+              const message = `${error.message || ''} ${error.details || ''}`.toLowerCase();
+              return message.includes('could not find the table') || message.includes('relation') && message.includes('does not exist');
+          }
+
           async function syncSessionHistoryFromSupabase() {
               if (!currentSession?.user?.id) return;
               const client = buildSupabaseClient();
@@ -843,6 +850,10 @@ export function initLegacyApp() {
                   .limit(100);
 
               if (error) {
+                  if (isSupabaseMissingRelationError(error)) {
+                      setAuthStatus('Historique distant indisponible (table Supabase manquante). Historique local conservé.', true);
+                      return;
+                  }
                   setAuthStatus(`Historique non synchronisé: ${error.message}`, true);
                   return;
               }
@@ -877,6 +888,9 @@ export function initLegacyApp() {
                   purchased_at: entry.purchased_at,
               });
               if (error) {
+                  if (isSupabaseMissingRelationError(error)) {
+                      return true;
+                  }
                   if (error.code === '23505') return true;
                   setAuthStatus(`Écriture historique échouée: ${error.message}`, true);
                   return false;
