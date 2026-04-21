@@ -637,6 +637,75 @@ export function initLegacyApp() {
               localStorage.setItem(getCollectionStorageKey(), JSON.stringify(items));
           }
 
+          function sanitizeOwnedItems(items) {
+              if (!Array.isArray(items)) return [];
+              const allowedIds = new Set(SAMPLE_STORE.map((item) => item.id));
+              const unique = [];
+              const seen = new Set();
+              items.forEach((itemId) => {
+                  if (!allowedIds.has(itemId) || seen.has(itemId)) return;
+                  seen.add(itemId);
+                  unique.push(itemId);
+              });
+              return unique;
+          }
+
+          async function syncCollectionFromSupabase() {
+              if (!currentSession?.user?.id) return;
+              const client = buildSupabaseClient();
+              if (!client) return;
+
+              const { data, error } = await client
+                  .from('user_profile_collections')
+                  .select('owned_item_ids')
+                  .eq('user_id', currentSession.user.id)
+                  .maybeSingle();
+
+              if (error) {
+                  setAuthStatus(`Sync profil échouée (lecture): ${error.message}`, true);
+                  return;
+              }
+
+              if (!data) {
+                  const localOwned = sanitizeOwnedItems(getOwnedItems());
+                  if (localOwned.length) {
+                      await syncCollectionToSupabase(localOwned, { silentSuccess: true });
+                  }
+                  return;
+              }
+
+              const remoteOwned = sanitizeOwnedItems(data.owned_item_ids || []);
+              setOwnedItems(remoteOwned);
+              setAuthStatus(`Collection synchronisée (${remoteOwned.length} sample${remoteOwned.length > 1 ? 's' : ''}).`);
+          }
+
+          async function syncCollectionToSupabase(items, options = {}) {
+              if (!currentSession?.user?.id) return false;
+              const client = buildSupabaseClient();
+              if (!client) return false;
+              const safeItems = sanitizeOwnedItems(items);
+
+              const { error } = await client
+                  .from('user_profile_collections')
+                  .upsert({
+                      user_id: currentSession.user.id,
+                      owned_item_ids: safeItems,
+                      updated_at: new Date().toISOString(),
+                  }, {
+                      onConflict: 'user_id',
+                  });
+
+              if (error) {
+                  setAuthStatus(`Sync profil échouée (écriture): ${error.message}`, true);
+                  return false;
+              }
+
+              if (!options.silentSuccess) {
+                  setAuthStatus(`Profil Supabase synchronisé (${safeItems.length} sample${safeItems.length > 1 ? 's' : ''}).`);
+              }
+              return true;
+          }
+
           async function resolveSampleUrl(objectPath) {
               const client = buildSupabaseClient();
               if (!client) return null;
@@ -651,8 +720,12 @@ export function initLegacyApp() {
               await new Promise(resolve => setTimeout(resolve, 650));
               const owned = new Set(getOwnedItems());
               owned.add(item.id);
-              setOwnedItems([...owned]);
-              setAuthStatus(`${item.title} activé gratuitement ✅`);
+              const nextOwned = sanitizeOwnedItems([...owned]);
+              setOwnedItems(nextOwned);
+              if (currentSession?.user?.id) {
+                  await syncCollectionToSupabase(nextOwned, { silentSuccess: true });
+              }
+              setAuthStatus(`${item.title} activé gratuitement ✅${currentSession?.user?.id ? ' · Sync profil OK' : ''}`);
               renderStoreCatalog();
               renderOwnedCollection();
           }
@@ -740,6 +813,7 @@ export function initLegacyApp() {
               }
               currentSession = data.session;
               refreshAuthUi('Connexion réussie ✅');
+              await syncCollectionFromSupabase();
               renderStoreCatalog();
               renderOwnedCollection();
           }
@@ -781,6 +855,9 @@ export function initLegacyApp() {
               const { data } = await client.auth.getSession();
               currentSession = data?.session || null;
               refreshAuthUi(currentSession ? 'Session restaurée.' : 'Pas de session active.');
+              if (currentSession) {
+                  await syncCollectionFromSupabase();
+              }
               renderStoreCatalog();
               await renderOwnedCollection();
               await fetchSooncutVocalsFromBucket();
