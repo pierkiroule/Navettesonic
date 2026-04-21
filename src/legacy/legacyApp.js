@@ -883,14 +883,11 @@ export function initLegacyApp() {
               if (!client) return false;
               const { error } = await client
                   .from('echohypnose_session_history')
-                  .upsert({
+                  .insert({
                       user_id: currentSession.user.id,
                       experience_id: entry.experience_id,
                       experience_title: entry.experience_title,
                       purchased_at: entry.purchased_at,
-                  }, {
-                      onConflict: 'user_id,experience_id,purchased_at',
-                      ignoreDuplicates: true,
                   });
               if (error) {
                   const missingTable = error.code === '42P01'
@@ -901,6 +898,7 @@ export function initLegacyApp() {
                       setAuthStatus('Écriture historique désactivée: table Supabase absente (migration requise).', true);
                       return false;
                   }
+                  if (error.code === '23505') return true;
                   setAuthStatus(`Écriture historique échouée: ${error.message}`, true);
                   return false;
               }
