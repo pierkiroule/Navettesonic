@@ -316,12 +316,12 @@ export function initLegacyApp() {
 
           function openEchoHypnoseModal() {
               if (!echoHypnoseModal) return;
-              echoHypnoseModal.classList.remove('hidden');
+              echoHypnoseModal.hidden = false;
           }
 
           function closeEchoHypnoseModal() {
               if (!echoHypnoseModal) return;
-              echoHypnoseModal.classList.add('hidden');
+              echoHypnoseModal.hidden = true;
           }
 
           function syncHeroPlayButton() {
@@ -408,7 +408,7 @@ export function initLegacyApp() {
               });
           }
           window.addEventListener('keydown', (event) => {
-              if (event.key === 'Escape') {
+              if (event.key === 'Escape' && echoHypnoseModal && !echoHypnoseModal.hidden) {
                   closeEchoHypnoseModal();
               }
           });
