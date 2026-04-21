@@ -1512,7 +1512,10 @@ export function initLegacyApp() {
                       playbackEndsAt: 0,
                       attachmentClusterId: null,
                       bubbleOrbitIndex: index % 3,
-                      nextBubbleSwitchAt: performance.now() + 2500 + Math.random() * 2600
+                      nextBubbleSwitchAt: performance.now() + 4200 + Math.random() * 3600,
+                      destinyX: Math.cos(angle) * baseRadius,
+                      destinyY: Math.sin(angle) * baseRadius,
+                      nextDestinyAt: performance.now() + 3600 + Math.random() * 4200
                   });
               }
           }
@@ -1733,7 +1736,6 @@ export function initLegacyApp() {
               if (!ARENA_FIREFLIES.length) return;
               const now = performance.now();
               const timeSeconds = now * 0.001;
-              const flowStrength = Math.min(1, Math.hypot(ship.vx, ship.vy) / ship.maxSpeed);
               const tail = getShipTailPosition();
               const shipSpeed = Math.hypot(ship.vx, ship.vy);
               const invShipSpeed = 1 / Math.max(0.0001, shipSpeed);
@@ -1755,11 +1757,11 @@ export function initLegacyApp() {
                       const targetX = baseX + sideX * waggle * waggleAmp;
                       const targetY = baseY + sideY * waggle * waggleAmp;
 
-                      const spring = 0.2;
-                      firefly.vx += (targetX - firefly.x) * spring + ship.vx * 0.01;
-                      firefly.vy += (targetY - firefly.y) * spring + ship.vy * 0.01;
-                      firefly.vx *= 0.62;
-                      firefly.vy *= 0.62;
+                      const spring = 0.085;
+                      firefly.vx += (targetX - firefly.x) * spring + ship.vx * 0.005;
+                      firefly.vy += (targetY - firefly.y) * spring + ship.vy * 0.005;
+                      firefly.vx *= 0.82;
+                      firefly.vy *= 0.82;
                       firefly.x += firefly.vx;
                       firefly.y += firefly.vy;
                       if (now >= firefly.playbackEndsAt && firefly.playbackEndsAt > 0) {
@@ -1778,24 +1780,34 @@ export function initLegacyApp() {
                       }
                       return;
                   }
-                  firefly.driftPhase += firefly.driftSpeed * 16.67;
+                  firefly.driftPhase += firefly.driftSpeed * 10.2;
                   if (now >= firefly.nextBubbleSwitchAt) {
                       firefly.bubbleOrbitIndex = Math.floor(Math.random() * Math.max(1, BUBBLES.length || 1));
-                      firefly.nextBubbleSwitchAt = now + 3200 + Math.random() * 3400;
+                      firefly.nextBubbleSwitchAt = now + 5400 + Math.random() * 4200;
                   }
                   const anchorBubble = BUBBLES.length ? BUBBLES[firefly.bubbleOrbitIndex % BUBBLES.length] : null;
                   const anchorX = anchorBubble ? anchorBubble.x : firefly.baseX;
                   const anchorY = anchorBubble ? anchorBubble.y : firefly.baseY;
-                  const orbitAngle = firefly.driftPhase + idx * 0.47;
-                  const radius = firefly.driftRadius * (0.9 + Math.sin(timeSeconds * 0.7 + idx) * 0.25);
-                  const driftTargetX = anchorX + Math.cos(orbitAngle) * radius;
-                  const driftTargetY = anchorY + Math.sin(orbitAngle * 0.8) * radius;
+                  if (now >= firefly.nextDestinyAt) {
+                      const orbitAngle = firefly.driftPhase + idx * 0.37;
+                      const radius = firefly.driftRadius * (0.75 + Math.sin(timeSeconds * 0.22 + idx) * 0.15);
+                      firefly.destinyX = anchorX + Math.cos(orbitAngle) * radius;
+                      firefly.destinyY = anchorY + Math.sin(orbitAngle * 0.7) * radius;
+                      firefly.nextDestinyAt = now + 3200 + Math.random() * 3800;
+                  }
 
-                  firefly.vx += (driftTargetX - firefly.x) * 0.0011 + ship.vx * 0.0015 * flowStrength;
-                  firefly.vy += (driftTargetY - firefly.y) * 0.0011 + ship.vy * 0.0015 * flowStrength;
-
-                  firefly.vx *= 0.987;
-                  firefly.vy *= 0.987;
+                  const microCurrentX = Math.sin(timeSeconds * (0.28 + idx * 0.004) + firefly.pulsePhase) * 0.009;
+                  const microCurrentY = Math.cos(timeSeconds * (0.24 + idx * 0.005) + firefly.pulsePhase * 1.3) * 0.009;
+                  firefly.vx += (firefly.destinyX - firefly.x) * 0.00036 + microCurrentX;
+                  firefly.vy += (firefly.destinyY - firefly.y) * 0.00036 + microCurrentY;
+                  firefly.vx *= 0.9935;
+                  firefly.vy *= 0.9935;
+                  const driftSpeed = Math.hypot(firefly.vx, firefly.vy);
+                  if (driftSpeed > 0.22) {
+                      const limiter = 0.22 / driftSpeed;
+                      firefly.vx *= limiter;
+                      firefly.vy *= limiter;
+                  }
                   firefly.x += firefly.vx;
                   firefly.y += firefly.vy;
               });
@@ -2577,26 +2589,44 @@ export function initLegacyApp() {
                   backX = -ship.vx * invSpeed;
                   backY = -ship.vy * invSpeed;
               }
+              const sideX = -backY;
+              const sideY = backX;
               const extension = 26 + attached.length * 18;
-              const tipX = tail.x + backX * extension;
-              const tipY = tail.y + backY * extension;
+              const now = performance.now() * 0.001;
+              const segmentCount = 12;
+              const filament = [];
+              for (let i = 0; i <= segmentCount; i++) {
+                  const t = i / segmentCount;
+                  const swayAmp = (1 - t) * (5.4 + attached.length * 0.7);
+                  const sway = Math.sin(now * 2.2 + t * 4.2 + ship.angle) * swayAmp;
+                  const trailRef = ship.trail[Math.max(0, ship.trail.length - 1 - Math.floor(4 + t * 18))] || tail;
+                  const trailNudgeX = (trailRef.x - tail.x) * 0.08 * (1 - t);
+                  const trailNudgeY = (trailRef.y - tail.y) * 0.08 * (1 - t);
+                  filament.push({
+                      x: tail.x + backX * extension * t + sideX * sway + trailNudgeX,
+                      y: tail.y + backY * extension * t + sideY * sway + trailNudgeY
+                  });
+              }
+              const tip = filament[filament.length - 1];
 
-              ctx.strokeStyle = 'rgba(223, 244, 255, 0.7)';
-              ctx.lineWidth = 1.3 + attached.length * 0.25;
+              ctx.strokeStyle = 'rgba(223, 244, 255, 0.62)';
+              ctx.lineWidth = 1.1 + attached.length * 0.24;
+              ctx.lineCap = 'round';
+              ctx.lineJoin = 'round';
               ctx.beginPath();
-              ctx.moveTo(tail.x, tail.y);
-              ctx.quadraticCurveTo(
-                  (tail.x + tipX) * 0.5 + (-backY * 4),
-                  (tail.y + tipY) * 0.5 + (backX * 4),
-                  tipX,
-                  tipY
-              );
+              ctx.moveTo(filament[0].x, filament[0].y);
+              for (let i = 1; i < filament.length - 1; i++) {
+                  const midX = (filament[i].x + filament[i + 1].x) * 0.5;
+                  const midY = (filament[i].y + filament[i + 1].y) * 0.5;
+                  ctx.quadraticCurveTo(filament[i].x, filament[i].y, midX, midY);
+              }
               ctx.stroke();
 
               attached.forEach((firefly, idx) => {
                   const t = (idx + 1) / (attached.length + 1);
-                  const beadX = tail.x + (tipX - tail.x) * t;
-                  const beadY = tail.y + (tipY - tail.y) * t;
+                  const pointIndex = Math.min(filament.length - 1, Math.max(0, Math.round(t * (filament.length - 1))));
+                  const beadX = filament[pointIndex].x;
+                  const beadY = filament[pointIndex].y;
                   ctx.strokeStyle = 'rgba(236, 246, 255, 0.55)';
                   ctx.lineWidth = 0.8;
                   ctx.beginPath();
@@ -2604,6 +2634,11 @@ export function initLegacyApp() {
                   ctx.lineTo(firefly.x, firefly.y);
                   ctx.stroke();
               });
+
+              ctx.fillStyle = 'rgba(235, 248, 255, 0.55)';
+              ctx.beginPath();
+              ctx.arc(tip.x, tip.y, 1.2 + attached.length * 0.15, 0, Math.PI * 2);
+              ctx.fill();
           }
 
           function drawLuminousTrail() {
