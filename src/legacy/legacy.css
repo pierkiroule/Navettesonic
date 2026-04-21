@@ -56,6 +56,17 @@
         }
         .home-media { display: flex; flex-direction: column; align-items: center; gap: 18px; }
         .home-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+        .echo-link-btn {
+            border: 1px solid rgba(171, 227, 255, 0.55);
+            border-radius: 999px;
+            padding: 13px 24px;
+            background: rgba(3, 17, 33, 0.66);
+            color: rgba(219, 245, 255, 0.94);
+            font-weight: 650;
+            font-size: 0.98rem;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+        }
         .hero-video-shell {
             --halo-intensity: 0.18;
             --halo-scale: 1;
@@ -146,6 +157,58 @@
         .hero-play-btn.hidden {
             opacity: 0;
             pointer-events: none;
+        }
+        .echo-modal.hidden { display: none; }
+        .echo-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 999;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+            background: rgba(2, 6, 16, 0.72);
+            backdrop-filter: blur(4px);
+        }
+        .echo-modal-card {
+            width: min(760px, 92vw);
+            max-height: min(82vh, 820px);
+            overflow: auto;
+            border-radius: 22px;
+            padding: 24px 22px;
+            background: linear-gradient(170deg, rgba(5, 16, 30, 0.97), rgba(6, 23, 42, 0.94));
+            color: rgba(226, 242, 255, 0.97);
+            box-shadow: 0 22px 72px rgba(0, 0, 0, 0.48);
+            position: relative;
+            line-height: 1.55;
+        }
+        .echo-modal-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            border: 0;
+            border-radius: 999px;
+            width: 34px;
+            height: 34px;
+            cursor: pointer;
+            background: rgba(185, 224, 255, 0.2);
+            color: rgba(233, 247, 255, 0.95);
+            font-size: 1rem;
+            font-weight: 700;
+        }
+        .echo-modal-card h2 { margin: 0 0 12px; }
+        .echo-modal-card p,
+        .echo-modal-card li,
+        .echo-modal-card blockquote { margin: 0 0 10px; }
+        .echo-modal-card ul { margin: 0 0 10px 0; padding-left: 18px; }
+        .echo-modal-card hr {
+            border: 0;
+            border-top: 1px solid rgba(152, 214, 255, 0.24);
+            margin: 12px 0;
+        }
+        .echo-modal-card blockquote {
+            border-left: 3px solid rgba(132, 216, 255, 0.6);
+            padding-left: 12px;
+            color: rgba(219, 240, 255, 0.94);
         }
         @keyframes borealHaloOrbit {
             from { transform: scale(calc(var(--halo-scale) * 1.01)) rotate(0deg); }

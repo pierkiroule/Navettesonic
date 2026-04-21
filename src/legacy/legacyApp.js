@@ -35,6 +35,9 @@ export function initLegacyApp() {
           const navSoon = document.getElementById('navSoon');
           const navProfile = document.getElementById('navProfile');
           const enterExperienceBtn = document.getElementById('enterExperienceBtn');
+          const echoHypnoseLinkBtn = document.getElementById('echoHypnoseLinkBtn');
+          const echoHypnoseModal = document.getElementById('echoHypnoseModal');
+          const closeEchoHypnoseModalBtn = document.getElementById('closeEchoHypnoseModalBtn');
           const heroVideo = document.getElementById('heroVideo');
           const heroVideoShell = document.getElementById('heroVideoShell');
           const heroPlayBtn = document.getElementById('heroPlayBtn');
@@ -311,6 +314,16 @@ export function initLegacyApp() {
               ensureAllAudioRunning();
           });
 
+          function openEchoHypnoseModal() {
+              if (!echoHypnoseModal) return;
+              echoHypnoseModal.classList.remove('hidden');
+          }
+
+          function closeEchoHypnoseModal() {
+              if (!echoHypnoseModal) return;
+              echoHypnoseModal.classList.add('hidden');
+          }
+
           function syncHeroPlayButton() {
               if (!heroVideo || !heroPlayBtn) return;
               const shouldHidePlayButton = !heroVideo.paused && !heroVideo.muted && heroVideo.volume > 0;
@@ -373,12 +386,32 @@ export function initLegacyApp() {
 
           function playHeroWithSound() {
               if (!heroVideo) return;
+              heroVideo.currentTime = 0;
               heroVideo.muted = false;
               if (heroVideo.volume === 0) heroVideo.volume = 1;
               heroVideo.play().catch(() => {});
               ensureHeroHaloAudio();
               syncHeroPlayButton();
           }
+
+          if (echoHypnoseLinkBtn) {
+              echoHypnoseLinkBtn.addEventListener('click', openEchoHypnoseModal);
+          }
+          if (closeEchoHypnoseModalBtn) {
+              closeEchoHypnoseModalBtn.addEventListener('click', closeEchoHypnoseModal);
+          }
+          if (echoHypnoseModal) {
+              echoHypnoseModal.addEventListener('click', (event) => {
+                  if (event.target === echoHypnoseModal) {
+                      closeEchoHypnoseModal();
+                  }
+              });
+          }
+          window.addEventListener('keydown', (event) => {
+              if (event.key === 'Escape') {
+                  closeEchoHypnoseModal();
+              }
+          });
 
           if (heroPlayBtn) {
               heroPlayBtn.addEventListener('click', playHeroWithSound);
