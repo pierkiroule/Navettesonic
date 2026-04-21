@@ -7,15 +7,44 @@
                         <source src="/video/soon.mp4" type="video/mp4">
                         Votre navigateur ne supporte pas la lecture vidéo.
                     </video>
+                    <button id="heroPlayBtn" class="hero-play-btn" type="button" aria-label="Lancer la vidéo avec le son">
+                        ▶ Play
+                    </button>
                 </div>
-                <p class="home-poem">L'Odyssée hypnosonore d'un petit poisson-plume...</p>
+                <p class="home-poem">Découvrez l'Échohypnose d'un poisson-plume...</p>
                 <div class="home-actions">
-                    <button id="toggleHeroSoundBtn" class="immersion-btn" type="button">Activer le son</button>
-                    <button id="enterExperienceBtn" class="immersion-btn" type="button">Immersion Soon•°</button>
+                    <button id="echoHypnoseLinkBtn" class="echo-link-btn" type="button">Échohypnose</button>
+                    <button id="enterExperienceBtn" class="immersion-btn" type="button">immerSoon</button>
                 </div>
             </div>
         </div>
     </section>
+
+    <div id="echoHypnoseModal" class="echo-modal" role="dialog" aria-modal="true" aria-labelledby="echoHypnoseModalTitle" hidden>
+        <div class="echo-modal-card">
+            <button id="closeEchoHypnoseModalBtn" class="echo-modal-close" type="button" aria-label="Fermer la fenêtre Échohypnose">✕</button>
+            <h2 id="echoHypnoseModalTitle">🌊 Échohypnose</h2>
+            <p>Soon propose une expérience d’échohypnose.</p>
+            <p>Ici, tu n’as rien à contrôler.<br>Pas de technique. Pas d’effort. ❌</p>
+            <hr>
+            <p>Tu entres simplement en contact avec un milieu :<br>des fragments, des voix, des sensations… 🌫️</p>
+            <p>Et dans ce contact :</p>
+            <ul>
+                <li>ton corps se détend 🫧</li>
+                <li>ton attention s’ouvre 🌙</li>
+                <li>quelque chose émerge ✨</li>
+            </ul>
+            <hr>
+            <p>👉 ce n’est pas toi qui produis l’expérience<br>👉 c’est ce qui te traverse qui agit</p>
+            <hr>
+            <p>C’est une traversée réciproque :<br>tu explores… et quelque chose te répond 🔁</p>
+            <hr>
+            <p>💡 Soon n’est pas une appli de développement personnel de type autohypnose.<br>C’est une expérience de résonance poétique avec son milieu sonore.</p>
+            <hr>
+            <p>🌀 En une phrase</p>
+            <blockquote>Tu écoutes…<br>et dans l’écho, quelque chose prend forme. Le monde te répond.</blockquote>
+        </div>
+    </div>
 
     <section id="experienceView" class="view hidden-view">
         <div id="ui">Double tap sur le poisson pour ouvrir la collection sonore</div>

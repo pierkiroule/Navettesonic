@@ -35,9 +35,12 @@ export function initLegacyApp() {
           const navSoon = document.getElementById('navSoon');
           const navProfile = document.getElementById('navProfile');
           const enterExperienceBtn = document.getElementById('enterExperienceBtn');
+          const echoHypnoseLinkBtn = document.getElementById('echoHypnoseLinkBtn');
+          const echoHypnoseModal = document.getElementById('echoHypnoseModal');
+          const closeEchoHypnoseModalBtn = document.getElementById('closeEchoHypnoseModalBtn');
           const heroVideo = document.getElementById('heroVideo');
           const heroVideoShell = document.getElementById('heroVideoShell');
-          const toggleHeroSoundBtn = document.getElementById('toggleHeroSoundBtn');
+          const heroPlayBtn = document.getElementById('heroPlayBtn');
 
           const canvas = document.getElementById('canvas');
           const ctx = canvas.getContext('2d');
@@ -291,7 +294,7 @@ export function initLegacyApp() {
                   } else {
                       heroVideo.pause();
                       heroVideo.muted = true;
-                      syncHeroSoundButton();
+                      syncHeroPlayButton();
                   }
               }
               if (target === 'experience') {
@@ -316,10 +319,20 @@ export function initLegacyApp() {
               ensureAllAudioRunning();
           });
 
-          function syncHeroSoundButton() {
-              if (!heroVideo || !toggleHeroSoundBtn) return;
-              const isMuted = heroVideo.muted || heroVideo.volume === 0;
-              toggleHeroSoundBtn.textContent = isMuted ? 'Activer le son' : 'Couper le son';
+          function openEchoHypnoseModal() {
+              if (!echoHypnoseModal) return;
+              echoHypnoseModal.hidden = false;
+          }
+
+          function closeEchoHypnoseModal() {
+              if (!echoHypnoseModal) return;
+              echoHypnoseModal.hidden = true;
+          }
+
+          function syncHeroPlayButton() {
+              if (!heroVideo || !heroPlayBtn) return;
+              const shouldHidePlayButton = !heroVideo.paused && !heroVideo.muted && heroVideo.volume > 0;
+              heroPlayBtn.classList.toggle('hidden', shouldHidePlayButton);
           }
 
           function ensureHeroHaloAudio() {
@@ -376,26 +389,45 @@ export function initLegacyApp() {
               heroHaloRAF = window.requestAnimationFrame(animateHalo);
           }
 
-          function toggleHeroSound() {
+          function playHeroWithSound() {
               if (!heroVideo) return;
-              heroVideo.muted = !heroVideo.muted;
-              if (!heroVideo.muted && heroVideo.volume === 0) heroVideo.volume = 1;
+              heroVideo.currentTime = 0;
+              heroVideo.muted = false;
+              if (heroVideo.volume === 0) heroVideo.volume = 1;
               heroVideo.play().catch(() => {});
-              if (!heroVideo.muted) {
-                  ensureHeroHaloAudio();
-              }
-              syncHeroSoundButton();
+              ensureHeroHaloAudio();
+              syncHeroPlayButton();
           }
 
-          if (toggleHeroSoundBtn) {
-              toggleHeroSoundBtn.addEventListener('click', toggleHeroSound);
+          if (echoHypnoseLinkBtn) {
+              echoHypnoseLinkBtn.addEventListener('click', openEchoHypnoseModal);
+          }
+          if (closeEchoHypnoseModalBtn) {
+              closeEchoHypnoseModalBtn.addEventListener('click', closeEchoHypnoseModal);
+          }
+          if (echoHypnoseModal) {
+              echoHypnoseModal.addEventListener('click', (event) => {
+                  if (event.target === echoHypnoseModal) {
+                      closeEchoHypnoseModal();
+                  }
+              });
+          }
+          window.addEventListener('keydown', (event) => {
+              if (event.key === 'Escape' && echoHypnoseModal && !echoHypnoseModal.hidden) {
+                  closeEchoHypnoseModal();
+              }
+          });
+
+          if (heroPlayBtn) {
+              heroPlayBtn.addEventListener('click', playHeroWithSound);
           }
           if (heroVideo) {
-              heroVideo.addEventListener('volumechange', syncHeroSoundButton);
+              heroVideo.addEventListener('volumechange', syncHeroPlayButton);
+              heroVideo.addEventListener('pause', syncHeroPlayButton);
               heroVideo.addEventListener('play', ensureHeroHaloAudio);
               heroVideo.addEventListener('loadeddata', startHeroHaloLoop);
               heroVideo.addEventListener('canplay', startHeroHaloLoop);
-              syncHeroSoundButton();
+              syncHeroPlayButton();
           }
           if (heroVideoShell) {
               heroVideoShell.style.setProperty('--halo-intensity', '0.18');
