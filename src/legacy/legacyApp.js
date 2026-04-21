@@ -312,14 +312,15 @@ export function initLegacyApp() {
               helperTipIndex = (helperTipIndex + 1) % helperTipsPlaylist.length;
           }
 
-          function bindTap(button, handler) {
+          function bindTap(button, handler, options = {}) {
               if (!button || typeof handler !== 'function') return;
+              const preventTouchDefault = options.preventTouchDefault !== false;
               let lastTouchAt = 0;
               button.addEventListener('touchend', (event) => {
-                  event.preventDefault();
+                  if (preventTouchDefault) event.preventDefault();
                   lastTouchAt = Date.now();
                   handler();
-              }, { passive: false });
+              }, { passive: !preventTouchDefault });
               button.addEventListener('click', () => {
                   if (Date.now() - lastTouchAt < 450) return;
                   handler();
@@ -1070,9 +1071,9 @@ export function initLegacyApp() {
               });
           }
           initSupabaseProfileCard();
-          bindTap(authSignInBtn, signInWithEmail);
-          bindTap(authSignUpBtn, signUpWithEmail);
-          bindTap(authSignOutBtn, signOutSession);
+          bindTap(authSignInBtn, signInWithEmail, { preventTouchDefault: false });
+          bindTap(authSignUpBtn, signUpWithEmail, { preventTouchDefault: false });
+          bindTap(authSignOutBtn, signOutSession, { preventTouchDefault: false });
           renderStoreCatalog();
           renderSessionHistory();
           restoreSession();
