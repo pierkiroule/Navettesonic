@@ -226,6 +226,8 @@ export function initLegacyApp() {
           const FIREFLY_TAIL_MAX_ATTACHED = 3;
           const FIREFLY_REPULSE_COOLDOWN_MS = 1800;
           const DEFAULT_SUPABASE_URL = 'https://qyffktrggapfzlmmlerq.supabase.co';
+          const ENV_SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || '';
+          const ENV_SUPABASE_KEY = import.meta.env?.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
           const SOONCUT_BUCKET_FOLDER = 'sooncut';
           const SOONCUT_TRIANGLE_SAMPLE_IDS = SAMPLE_LIBRARY.slice(0, ARENA_TRIANGLE_COUNT).map(sample => sample.id);
           const DEPTH_Z = 140;
@@ -536,8 +538,8 @@ export function initLegacyApp() {
               const urlFromStorage = localStorage.getItem(SUPABASE_LOCAL_KEYS.url);
               const keyFromStorage = localStorage.getItem(SUPABASE_LOCAL_KEYS.key);
               return {
-                  url: urlFromStorage || bootConfig.supabaseUrl || '',
-                  key: keyFromStorage || bootConfig.supabasePublishableKey || '',
+                  url: urlFromStorage || bootConfig.supabaseUrl || ENV_SUPABASE_URL || '',
+                  key: keyFromStorage || bootConfig.supabasePublishableKey || ENV_SUPABASE_KEY || '',
               };
           }
 
@@ -558,7 +560,7 @@ export function initLegacyApp() {
               if (!url || !key) {
                   syncAuthConfigUi();
                   setSupabaseStatus('Ajoute URL + clé publishable Supabase.', true);
-                  setAuthStatus('Inscription indisponible: configuration Supabase incomplète.', true);
+                  setAuthStatus('Inscription indisponible: clé Supabase manquante (VITE_SUPABASE_PUBLISHABLE_KEY).', true);
                   authSupabaseKeyInput?.focus();
                   return null;
               }
@@ -1084,7 +1086,7 @@ export function initLegacyApp() {
                   setSupabaseStatus(`Configuration chargée (${maskApiKey(cfg.key)}).`);
               } else {
                   setSupabaseStatus('Renseigne URL + clé publishable pour activer Soonbucket.');
-                  setAuthStatus('Ajoute une clé Supabase publishable pour activer l’inscription.', true);
+                  setAuthStatus('Ajoute une clé Supabase publishable (VITE_SUPABASE_PUBLISHABLE_KEY) pour activer l’inscription.', true);
               }
               syncAuthConfigUi();
 
