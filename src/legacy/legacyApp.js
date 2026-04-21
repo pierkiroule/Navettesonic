@@ -81,6 +81,9 @@ export function initLegacyApp() {
           const authSignOutBtn = document.getElementById('authSignOutBtn');
           const authStatus = document.getElementById('authStatus');
           const authSessionInfo = document.getElementById('authSessionInfo');
+          const authConfigBlock = document.getElementById('authConfigBlock');
+          const authSupabaseKeyInput = document.getElementById('authSupabaseKeyInput');
+          const authSaveSupabaseKeyBtn = document.getElementById('authSaveSupabaseKeyBtn');
           const storeCatalog = document.getElementById('storeCatalog');
           const sessionHistoryList = document.getElementById('sessionHistoryList');
 
@@ -538,13 +541,25 @@ export function initLegacyApp() {
               };
           }
 
+          function syncAuthConfigUi() {
+              if (!authConfigBlock) return;
+              const cfg = getSupabaseConfig();
+              const key = supabaseKeyInput?.value?.trim() || cfg.key || '';
+              authConfigBlock.hidden = !!key;
+              if (authSupabaseKeyInput && !authSupabaseKeyInput.value) {
+                  authSupabaseKeyInput.value = key;
+              }
+          }
+
           function buildSupabaseClient() {
               const cfg = getSupabaseConfig();
               const url = supabaseUrlInput?.value?.trim() || cfg.url || DEFAULT_SUPABASE_URL;
               const key = supabaseKeyInput?.value?.trim() || cfg.key;
               if (!url || !key) {
+                  syncAuthConfigUi();
                   setSupabaseStatus('Ajoute URL + clé publishable Supabase.', true);
                   setAuthStatus('Inscription indisponible: configuration Supabase incomplète.', true);
+                  authSupabaseKeyInput?.focus();
                   return null;
               }
               if (!window.supabase || typeof window.supabase.createClient !== 'function') {
@@ -1071,6 +1086,20 @@ export function initLegacyApp() {
                   setSupabaseStatus('Renseigne URL + clé publishable pour activer Soonbucket.');
                   setAuthStatus('Ajoute une clé Supabase publishable pour activer l’inscription.', true);
               }
+              syncAuthConfigUi();
+
+              authSaveSupabaseKeyBtn?.addEventListener('click', () => {
+                  const key = authSupabaseKeyInput?.value?.trim() || '';
+                  if (!key) {
+                      setAuthStatus('Ajoute une clé publishable valide.', true);
+                      return;
+                  }
+                  supabaseKeyInput.value = key;
+                  localStorage.setItem(SUPABASE_LOCAL_KEYS.key, key);
+                  supabaseClient = null;
+                  syncAuthConfigUi();
+                  setAuthStatus('Configuration Supabase enregistrée. Tu peux t’inscrire.', false);
+              });
 
               supabaseSaveConfigBtn.addEventListener('click', () => {
                   const url = supabaseUrlInput.value.trim();
