@@ -197,6 +197,7 @@ export function initLegacyApp() {
           let sooncutBucketVocals = [];
           let activeArenaAudio = null;
           let activeAttachedTimelineId = 0;
+          let attachedClusterSeed = 1;
           const helperTipsPlaylist = [
               'Garde le doigt (ou clic) appuyé dans l’océan : le poisson-plume suit ton mouvement.',
               'Pour ouvrir la collection, fais un double tap (ou double clic) directement sur le poisson.',
@@ -1054,7 +1055,8 @@ export function initLegacyApp() {
                       attachedToTail: false,
                       attachedOrder: -1,
                       attachedAt: 0,
-                      playbackEndsAt: 0
+                      playbackEndsAt: 0,
+                      attachmentClusterId: null
                   });
               }
           }
@@ -1163,34 +1165,36 @@ export function initLegacyApp() {
                       activeArenaAudio = audio;
                       let settled = false;
                       const fallbackMs = FIREFLY_TIMELINE_STEP_MS;
-                      const finish = (durationMs) => {
+                      const finish = (durationMs, ok = true) => {
                           if (settled) return;
                           settled = true;
-                          resolve(durationMs || fallbackMs);
+                          resolve({ ok, durationMs: durationMs || fallbackMs });
                       };
                       audio.addEventListener('ended', () => {
                           const durationMs = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration * 1000 : fallbackMs;
-                          finish(durationMs);
+                          finish(durationMs, true);
                       }, { once: true });
-                      audio.addEventListener('error', () => finish(fallbackMs), { once: true });
-                      setTimeout(() => finish(fallbackMs), 9000);
+                      audio.addEventListener('error', () => finish(fallbackMs, false), { once: true });
+                      setTimeout(() => finish(fallbackMs, false), 9000);
                       audio.play().then(() => {
                           setArenaTriangleStatus(`Timeline vocale: ${trackName}`);
-                      }).catch(() => finish(fallbackMs));
+                      }).catch(() => finish(fallbackMs, false));
                   } catch (_) {
-                      resolve(FIREFLY_TIMELINE_STEP_MS);
+                      resolve({ ok: false, durationMs: FIREFLY_TIMELINE_STEP_MS });
                   }
               });
           }
 
-          async function playAttachedClusterTimeline(fireflies, timelineId) {
+          async function playAttachedClusterTimeline(fireflies, timelineId, clusterId) {
               if (!fireflies.length) return;
               ensureAllAudioRunning();
               let cursor = performance.now();
+              const releasePlan = [];
               for (let i = 0; i < fireflies.length; i++) {
                   if (timelineId !== activeAttachedTimelineId) return;
                   const firefly = fireflies[i];
                   if (!firefly?.attachedToTail) continue;
+                  if (firefly.attachmentClusterId !== clusterId) continue;
                   if (!firefly.bucketTrack && sooncutBucketVocals.length) {
                       firefly.bucketTrack = pickRandomSooncutTrack();
                   }
@@ -1202,32 +1206,45 @@ export function initLegacyApp() {
                   let durationMs = FIREFLY_TIMELINE_STEP_MS;
                   if (firefly.bucketTrack) {
                       const candidateUrls = await resolveSooncutTrackUrls(firefly.bucketTrack);
-                      if (candidateUrls.length) {
-                          durationMs = await playTimelineUrl(candidateUrls[0], firefly.bucketTrack.name);
-                      } else {
+                      let played = false;
+                      for (const candidateUrl of candidateUrls) {
+                          const result = await playTimelineUrl(candidateUrl, firefly.bucketTrack.name);
+                          durationMs = result.durationMs;
+                          if (result.ok) {
+                              played = true;
+                              break;
+                          }
+                      }
+                      if (!played) {
                           triggerArenaSample(firefly.sampleId);
                       }
                   } else {
                       triggerArenaSample(firefly.sampleId);
                   }
-                  firefly.playbackEndsAt = cursor + durationMs;
+                  releasePlan.push(firefly);
                   cursor += durationMs;
               }
+              releasePlan.forEach((firefly, idx) => {
+                  if (!firefly.attachedToTail || firefly.attachmentClusterId !== clusterId) return;
+                  firefly.playbackEndsAt = cursor + idx * 220;
+              });
               setArenaTriangleStatus('Timeline vocale terminée, les perles se redispersent.');
           }
 
           function attachFireflyClusterToTail(sourceFirefly, now) {
               const cluster = getLinkedFireflyCluster(sourceFirefly);
               if (!cluster.length) return;
+              const clusterId = `cluster-${attachedClusterSeed++}`;
               cluster.forEach((firefly, index) => {
                   firefly.attachedToTail = true;
                   firefly.attachedOrder = index;
                   firefly.attachedAt = now;
+                  firefly.attachmentClusterId = clusterId;
                   firefly.lockedTriangleId = null;
                   firefly.linkedCooldownUntil = now + 900;
                   firefly.vx *= 0.25;
                   firefly.vy *= 0.25;
-                  firefly.playbackEndsAt = now + FIREFLY_TIMELINE_STEP_MS * 0.9;
+                  firefly.playbackEndsAt = now + (FIREFLY_TIMELINE_STEP_MS * 4);
               });
               const clusterIds = new Set(cluster.map((firefly) => firefly.id));
               for (let i = ARENA_FIREFLY_LINKS.length - 1; i >= 0; i--) {
@@ -1239,7 +1256,7 @@ export function initLegacyApp() {
               setArenaTriangleStatus(`${cluster.length} luciole(s) accrochée(s) au fil de la queue.`);
               if (cluster.length >= 3) {
                   const timelineId = ++activeAttachedTimelineId;
-                  playAttachedClusterTimeline(cluster.slice(0, 3), timelineId);
+                  playAttachedClusterTimeline(cluster.slice(0, 3), timelineId, clusterId);
               } else {
                   cluster.forEach((firefly, index) => triggerAttachedFireflyPlayback(firefly, now + index * 220));
               }
@@ -1339,10 +1356,6 @@ export function initLegacyApp() {
               const timeSeconds = now * 0.001;
               const flowStrength = Math.min(1, Math.hypot(ship.vx, ship.vy) / ship.maxSpeed);
               const tail = getShipTailPosition();
-              const attachedTrain = ARENA_FIREFLIES
-                  .filter((firefly) => firefly.attachedToTail)
-                  .sort((a, b) => a.attachedOrder - b.attachedOrder);
-              const attachedByOrder = new Map(attachedTrain.map((firefly) => [firefly.attachedOrder, firefly]));
               const shipSpeed = Math.hypot(ship.vx, ship.vy);
               const invShipSpeed = 1 / Math.max(0.0001, shipSpeed);
               const backX = shipSpeed > 0.03 ? -ship.vx * invShipSpeed : Math.sin(ship.angle);
@@ -1362,27 +1375,26 @@ export function initLegacyApp() {
                   const pulse = (Math.sin(timeSeconds * firefly.pulseFreq * 2 * Math.PI + firefly.pulsePhase) + 1) * 0.5;
                   firefly.glow = firefly.attachedToTail ? (0.48 + pulse * 0.52) : (0.34 + pulse * 0.66);
                   if (firefly.attachedToTail) {
-                      const leader = attachedByOrder.get(firefly.attachedOrder - 1);
-                      const trailIndex = Math.max(0, ship.trail.length - 1 - (8 + firefly.attachedOrder * 6));
+                      const trailIndex = Math.max(0, ship.trail.length - 1 - (10 + firefly.attachedOrder * 8));
                       const trailAnchor = ship.trail[trailIndex] || tail;
-                      const segment = 10 + firefly.size * 0.8;
-                      const baseX = leader ? (leader.x - backX * segment) : trailAnchor.x;
-                      const baseY = leader ? (leader.y - backY * segment) : trailAnchor.y;
-                      const waggleAmp = 1.4 + firefly.size * 0.16;
+                      const baseX = trailAnchor.x;
+                      const baseY = trailAnchor.y;
+                      const waggleAmp = 0.75 + firefly.size * 0.08;
                       const waggle = Math.sin((timeSeconds * (1.2 + firefly.pulseFreq * 0.5)) + firefly.pulsePhase + firefly.attachedOrder * 0.6);
                       const targetX = baseX + sideX * waggle * waggleAmp;
                       const targetY = baseY + sideY * waggle * waggleAmp;
 
-                      const spring = leader ? 0.1 : 0.12;
-                      firefly.vx += (targetX - firefly.x) * spring + ship.vx * 0.016;
-                      firefly.vy += (targetY - firefly.y) * spring + ship.vy * 0.016;
-                      firefly.vx *= 0.68;
-                      firefly.vy *= 0.68;
+                      const spring = 0.2;
+                      firefly.vx += (targetX - firefly.x) * spring + ship.vx * 0.01;
+                      firefly.vy += (targetY - firefly.y) * spring + ship.vy * 0.01;
+                      firefly.vx *= 0.62;
+                      firefly.vy *= 0.62;
                       firefly.x += firefly.vx;
                       firefly.y += firefly.vy;
                       if (now >= firefly.playbackEndsAt && firefly.playbackEndsAt > 0) {
                           firefly.attachedToTail = false;
                           firefly.attachedOrder = -1;
+                          firefly.attachmentClusterId = null;
                           firefly.playbackEndsAt = 0;
                           firefly.linkedCooldownUntil = now + 1400 + Math.random() * 900;
                           const releaseAngle = Math.random() * Math.PI * 2;
