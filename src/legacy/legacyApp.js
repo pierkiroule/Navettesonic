@@ -196,6 +196,8 @@ export function initLegacyApp() {
           let helperTipIndex = 0;
           let sooncutBucketVocals = [];
           let activeArenaAudio = null;
+          let activeAttachedTimelineId = 0;
+          let attachedClusterSeed = 1;
           const helperTipsPlaylist = [
               'Garde le doigt (ou clic) appuyé dans l’océan : le poisson-plume suit ton mouvement.',
               'Pour ouvrir la collection, fais un double tap (ou double clic) directement sur le poisson.',
@@ -207,12 +209,16 @@ export function initLegacyApp() {
           const ARENA_RADIUS = 2000;
           const SOUND_HEAR_RADIUS = 460;
           const ARENA_TRIANGLE_COUNT = 36;
-          const FIREFLY_COLLISION_RADIUS = 26;
           const FIREFLY_LINK_DISTANCE = 58;
           const FIREFLY_LINK_BREAK_DISTANCE = 102;
           const FIREFLY_LINK_TTL = 7800;
-          const TRIANGLE_DISPERSE_DURATION = 1700;
-          const TRIANGLE_SAMPLE_STEP_MS = 1200;
+          const FIREFLY_TAIL_ATTACH_RADIUS = 38;
+          const FIREFLY_TAIL_WAKE_RADIUS = 170;
+          const FIREFLY_AUDIO_MIN_MS = 1500;
+          const FIREFLY_AUDIO_MAX_MS = 3200;
+          const FIREFLY_TIMELINE_STEP_MS = 2600;
+          const FIREFLY_TAIL_MAX_ATTACHED = 3;
+          const FIREFLY_REPULSE_COOLDOWN_MS = 1800;
           const DEFAULT_SUPABASE_URL = 'https://qyffktrggapfzlmmlerq.supabase.co';
           const SOONCUT_BUCKET_FOLDER = 'sooncut';
           const SOONCUT_TRIANGLE_SAMPLE_IDS = SAMPLE_LIBRARY.slice(0, ARENA_TRIANGLE_COUNT).map(sample => sample.id);
@@ -232,7 +238,6 @@ export function initLegacyApp() {
           const MAX_DRIFT_MOTES = 22;
           const ARENA_FIREFLIES = [];
           const ARENA_FIREFLY_LINKS = [];
-          const ARENA_FIREFLY_TRIANGLES = [];
           const STARTING_BUBBLES = [
               { sampleId: 'forêt-zen', layer: 'front', hue: 188, x: -240, y: -120, r: 72 },
               { sampleId: 'ocean-deep', layer: 'below', hue: 235, x: 220, y: 170, r: 78 },
@@ -1040,9 +1045,15 @@ export function initLegacyApp() {
                       driftRadius: 30 + Math.random() * 34,
                       size: 6 + Math.random() * 3,
                       glow: 0.45 + Math.random() * 0.5,
+                      pulseFreq: 0.42 + Math.random() * 0.72,
+                      pulsePhase: Math.random() * Math.PI * 2,
                       lastTriggerAt: 0,
                       linkedCooldownUntil: 0,
-                      lockedTriangleId: null
+                      attachedToTail: false,
+                      attachedOrder: -1,
+                      attachedAt: 0,
+                      playbackEndsAt: 0,
+                      attachmentClusterId: null
                   });
               }
           }
@@ -1050,7 +1061,6 @@ export function initLegacyApp() {
           function renderArenaTriangles() {
               ensureArenaFireflies();
               ARENA_FIREFLY_LINKS.length = 0;
-              ARENA_FIREFLY_TRIANGLES.length = 0;
               if (arenaTrianglePad) {
                   arenaTrianglePad.innerHTML = '';
                   arenaTrianglePad.setAttribute('aria-hidden', 'true');
@@ -1068,27 +1078,14 @@ export function initLegacyApp() {
               return ARENA_FIREFLIES.find((firefly) => firefly.id === id);
           }
 
-          function getArenaTriangleById(id) {
-              return ARENA_FIREFLY_TRIANGLES.find((triangle) => triangle.id === id);
-          }
-
           function hasArenaLink(aId, bId) {
               return ARENA_FIREFLY_LINKS.some((link) =>
                   (link.aId === aId && link.bId === bId) || (link.aId === bId && link.bId === aId)
               );
           }
 
-          function getConnectedFireflyIds(fireflyId) {
-              const connected = [];
-              ARENA_FIREFLY_LINKS.forEach((link) => {
-                  if (link.aId === fireflyId) connected.push(link.bId);
-                  if (link.bId === fireflyId) connected.push(link.aId);
-              });
-              return connected;
-          }
-
           function registerArenaFireflyLink(a, b, now) {
-              if (!a || !b || a.lockedTriangleId || b.lockedTriangleId) return;
+              if (!a || !b || a.attachedToTail || b.attachedToTail) return;
               if (hasArenaLink(a.id, b.id)) return;
               ARENA_FIREFLY_LINKS.push({
                   aId: a.id,
@@ -1097,92 +1094,180 @@ export function initLegacyApp() {
               });
           }
 
-          function tryCreateArenaTriangle(now) {
-              for (const anchor of ARENA_FIREFLIES) {
-                  if (anchor.lockedTriangleId) continue;
-                  const connected = getConnectedFireflyIds(anchor.id).filter((id) => {
-                      const candidate = getArenaFireflyById(id);
-                      return candidate && !candidate.lockedTriangleId;
+          function hasAnyLinkForFirefly(fireflyId) {
+              return ARENA_FIREFLY_LINKS.some((link) => link.aId === fireflyId || link.bId === fireflyId);
+          }
+
+          function getLinkedFireflyCluster(startFirefly) {
+              if (!startFirefly) return [];
+              const queue = [startFirefly.id];
+              const visited = new Set();
+              const cluster = [];
+              while (queue.length) {
+                  const currentId = queue.shift();
+                  if (visited.has(currentId)) continue;
+                  visited.add(currentId);
+                  const current = getArenaFireflyById(currentId);
+                  if (!current || current.attachedToTail) continue;
+                  cluster.push(current);
+                  ARENA_FIREFLY_LINKS.forEach((link) => {
+                      if (link.aId === currentId && !visited.has(link.bId)) queue.push(link.bId);
+                      if (link.bId === currentId && !visited.has(link.aId)) queue.push(link.aId);
                   });
-                  if (connected.length < 2) continue;
+              }
+              return cluster;
+          }
 
-                  for (let i = 0; i < connected.length - 1; i++) {
-                      for (let j = i + 1; j < connected.length; j++) {
-                          const aId = connected[i];
-                          const bId = connected[j];
-                          if (!hasArenaLink(aId, bId)) continue;
-                          const first = getArenaFireflyById(aId);
-                          const second = getArenaFireflyById(bId);
-                          if (!first || !second) continue;
-                          if (first.lockedTriangleId || second.lockedTriangleId) continue;
+          function getShipTailPosition() {
+              const speed = Math.hypot(ship.vx, ship.vy);
+              let backX = Math.sin(ship.angle);
+              let backY = -Math.cos(ship.angle);
+              if (speed > 0.04) {
+                  const invSpeed = 1 / Math.max(0.0001, speed);
+                  backX = -ship.vx * invSpeed;
+                  backY = -ship.vy * invSpeed;
+              }
+              return {
+                  x: ship.x + backX * 16,
+                  y: ship.y + backY * 16
+              };
+          }
 
-                          const triangleId = `triangle-${now}-${Math.round(Math.random() * 1000)}`;
-                          const members = [anchor, first, second];
-                          members.forEach((member) => {
-                              member.lockedTriangleId = triangleId;
-                              member.linkedCooldownUntil = now + 420;
-                          });
-                          ARENA_FIREFLY_TRIANGLES.push({
-                              id: triangleId,
-                              fireflyIds: members.map((member) => member.id),
-                              fixedVertices: members.map((member) => ({ id: member.id, x: member.x, y: member.y })),
-                              state: 'stable',
-                              formedAt: now,
-                              triggerStep: 0,
-                              nextTriggerAt: 0,
-                              samplePlaybackUntil: 0,
-                              dispersingUntil: 0
-                          });
-                          setArenaTriangleStatus('Trois lucioles se sont reliées : triangle vivant prêt à résonner.');
-                          return;
+          function triggerAttachedFireflyPlayback(firefly, now) {
+              triggerArenaSample(firefly.sampleId);
+              firefly.playbackEndsAt = now + FIREFLY_AUDIO_MIN_MS + Math.random() * (FIREFLY_AUDIO_MAX_MS - FIREFLY_AUDIO_MIN_MS);
+          }
+
+          function playTimelineUrl(url, trackName) {
+              return new Promise((resolve) => {
+                  try {
+                      const audio = new Audio();
+                      audio.preload = 'auto';
+                      audio.volume = 0.98;
+                      audio.src = url;
+                      activeArenaAudio = audio;
+                      let settled = false;
+                      const fallbackMs = FIREFLY_TIMELINE_STEP_MS;
+                      const finish = (durationMs, ok = true) => {
+                          if (settled) return;
+                          settled = true;
+                          resolve({ ok, durationMs: durationMs || fallbackMs });
+                      };
+                      audio.addEventListener('ended', () => {
+                          const durationMs = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration * 1000 : fallbackMs;
+                          finish(durationMs, true);
+                      }, { once: true });
+                      audio.addEventListener('error', () => finish(fallbackMs, false), { once: true });
+                      setTimeout(() => finish(fallbackMs, false), 9000);
+                      audio.play().then(() => {
+                          setArenaTriangleStatus(`Timeline vocale: ${trackName}`);
+                      }).catch(() => finish(fallbackMs, false));
+                  } catch (_) {
+                      resolve({ ok: false, durationMs: FIREFLY_TIMELINE_STEP_MS });
+                  }
+              });
+          }
+
+          async function playAttachedClusterTimeline(fireflies, timelineId, clusterId) {
+              if (!fireflies.length) return;
+              ensureAllAudioRunning();
+              let cursor = performance.now();
+              const releasePlan = [];
+              for (let i = 0; i < fireflies.length; i++) {
+                  if (timelineId !== activeAttachedTimelineId) return;
+                  const firefly = fireflies[i];
+                  if (!firefly?.attachedToTail) continue;
+                  if (firefly.attachmentClusterId !== clusterId) continue;
+                  if (!firefly.bucketTrack && sooncutBucketVocals.length) {
+                      firefly.bucketTrack = pickRandomSooncutTrack();
+                  }
+                  if (!firefly.bucketTrack) {
+                      await fetchSooncutVocalsFromBucket();
+                      firefly.bucketTrack = pickRandomSooncutTrack();
+                  }
+
+                  let durationMs = FIREFLY_TIMELINE_STEP_MS;
+                  if (firefly.bucketTrack) {
+                      const candidateUrls = await resolveSooncutTrackUrls(firefly.bucketTrack);
+                      let played = false;
+                      for (const candidateUrl of candidateUrls) {
+                          const result = await playTimelineUrl(candidateUrl, firefly.bucketTrack.name);
+                          durationMs = result.durationMs;
+                          if (result.ok) {
+                              played = true;
+                              break;
+                          }
                       }
+                      if (!played) {
+                          triggerArenaSample(firefly.sampleId);
+                      }
+                  } else {
+                      triggerArenaSample(firefly.sampleId);
+                  }
+                  releasePlan.push(firefly);
+                  cursor += durationMs;
+              }
+              releasePlan.forEach((firefly, idx) => {
+                  if (!firefly.attachedToTail || firefly.attachmentClusterId !== clusterId) return;
+                  firefly.playbackEndsAt = cursor + idx * 220;
+              });
+              setArenaTriangleStatus('Timeline vocale terminée, les perles se redispersent.');
+          }
+
+          function repelFireflyFromTail(firefly, tail, now, boost = 1) {
+              if (!firefly) return;
+              const dx = firefly.x - tail.x;
+              const dy = firefly.y - tail.y;
+              const dist = Math.max(0.001, Math.hypot(dx, dy));
+              const nx = dx / dist;
+              const ny = dy / dist;
+              const repulseForce = (2.1 + Math.random() * 1.2) * boost;
+              firefly.vx += nx * repulseForce;
+              firefly.vy += ny * repulseForce;
+              firefly.linkedCooldownUntil = now + FIREFLY_REPULSE_COOLDOWN_MS;
+          }
+
+          function attachFireflyClusterToTail(sourceFirefly, now) {
+              const cluster = getLinkedFireflyCluster(sourceFirefly);
+              if (!cluster.length) return;
+              const tail = getShipTailPosition();
+              const orderedByTailDistance = [...cluster].sort((a, b) =>
+                  Math.hypot(a.x - tail.x, a.y - tail.y) - Math.hypot(b.x - tail.x, b.y - tail.y)
+              );
+              const selectedCluster = orderedByTailDistance.slice(0, FIREFLY_TAIL_MAX_ATTACHED);
+              const rejectedCluster = orderedByTailDistance.slice(FIREFLY_TAIL_MAX_ATTACHED);
+              const clusterId = `cluster-${attachedClusterSeed++}`;
+              selectedCluster.forEach((firefly, index) => {
+                  firefly.attachedToTail = true;
+                  firefly.attachedOrder = index;
+                  firefly.attachedAt = now;
+                  firefly.attachmentClusterId = clusterId;
+                  firefly.linkedCooldownUntil = now + 900;
+                  firefly.vx *= 0.25;
+                  firefly.vy *= 0.25;
+                  firefly.playbackEndsAt = now + (FIREFLY_TIMELINE_STEP_MS * 4);
+              });
+              rejectedCluster.forEach((firefly) => {
+                  firefly.attachedToTail = false;
+                  firefly.attachedOrder = -1;
+                  firefly.attachmentClusterId = null;
+                  repelFireflyFromTail(firefly, tail, now, 1.25);
+              });
+
+              const clusterIds = new Set(orderedByTailDistance.map((firefly) => firefly.id));
+              for (let i = ARENA_FIREFLY_LINKS.length - 1; i >= 0; i--) {
+                  const link = ARENA_FIREFLY_LINKS[i];
+                  if (clusterIds.has(link.aId) || clusterIds.has(link.bId)) {
+                      ARENA_FIREFLY_LINKS.splice(i, 1);
                   }
               }
-          }
-
-          function disperseArenaTriangle(triangle, now) {
-              if (!triangle) return;
-              const points = triangle.fireflyIds
-                  .map((id) => getArenaFireflyById(id))
-                  .filter(Boolean);
-              if (points.length !== 3) return;
-              const cx = (points[0].x + points[1].x + points[2].x) / 3;
-              const cy = (points[0].y + points[1].y + points[2].y) / 3;
-              points.forEach((firefly, idx) => {
-                  const angle = Math.atan2(firefly.y - cy, firefly.x - cx) + idx * 0.2;
-                  const force = 1.8 + idx * 0.3;
-                  firefly.vx += Math.cos(angle) * force;
-                  firefly.vy += Math.sin(angle) * force;
-                  firefly.lockedTriangleId = null;
-                  firefly.linkedCooldownUntil = now + 1200;
-              });
-              setArenaTriangleStatus('Le triangle se dissipe, les lucioles se dispersent dans le courant.');
-          }
-
-          function isPointInTriangle(px, py, a, b, c) {
-              const area = (p1, p2, p3) => (p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y));
-              const point = { x: px, y: py };
-              const total = Math.abs(area(a, b, c));
-              const a1 = Math.abs(area(point, b, c));
-              const a2 = Math.abs(area(a, point, c));
-              const a3 = Math.abs(area(a, b, point));
-              return Math.abs(total - (a1 + a2 + a3)) <= 0.8;
-          }
-
-          async function triggerArenaFirefly(firefly) {
-              if (!firefly) return;
-              ensureAllAudioRunning();
-              if (!firefly.bucketTrack && sooncutBucketVocals.length) {
-                  firefly.bucketTrack = pickRandomSooncutTrack();
+              setArenaTriangleStatus(`${selectedCluster.length} luciole(s) accrochée(s) au fil de la queue (max 3).`);
+              if (selectedCluster.length >= FIREFLY_TAIL_MAX_ATTACHED) {
+                  const timelineId = ++activeAttachedTimelineId;
+                  playAttachedClusterTimeline(selectedCluster, timelineId, clusterId);
+              } else {
+                  selectedCluster.forEach((firefly, index) => triggerAttachedFireflyPlayback(firefly, now + index * 220));
               }
-              if (!firefly.bucketTrack) {
-                  await fetchSooncutVocalsFromBucket();
-                  firefly.bucketTrack = pickRandomSooncutTrack();
-              }
-              const played = await playSooncutBucketTrack(firefly.bucketTrack);
-              if (played) return;
-              triggerArenaSample(firefly.sampleId);
-              setArenaTriangleStatus(`Mode synth local (${firefly.sampleId}) · Bucket inaccessible (fichier privé/policy Storage) ou autoplay bloqué.`);
           }
 
           function updateArenaFireflies() {
@@ -1190,6 +1275,13 @@ export function initLegacyApp() {
               const now = performance.now();
               const timeSeconds = now * 0.001;
               const flowStrength = Math.min(1, Math.hypot(ship.vx, ship.vy) / ship.maxSpeed);
+              const tail = getShipTailPosition();
+              const shipSpeed = Math.hypot(ship.vx, ship.vy);
+              const invShipSpeed = 1 / Math.max(0.0001, shipSpeed);
+              const backX = shipSpeed > 0.03 ? -ship.vx * invShipSpeed : Math.sin(ship.angle);
+              const backY = shipSpeed > 0.03 ? -ship.vy * invShipSpeed : -Math.cos(ship.angle);
+              const sideX = -backY;
+              const sideY = backX;
               for (let i = ARENA_FIREFLY_LINKS.length - 1; i >= 0; i--) {
                   const link = ARENA_FIREFLY_LINKS[i];
                   const a = getArenaFireflyById(link.aId);
@@ -1200,13 +1292,43 @@ export function initLegacyApp() {
               }
 
               ARENA_FIREFLIES.forEach((firefly, idx) => {
+                  const pulse = (Math.sin(timeSeconds * firefly.pulseFreq * 2 * Math.PI + firefly.pulsePhase) + 1) * 0.5;
+                  firefly.glow = firefly.attachedToTail ? (0.48 + pulse * 0.52) : (0.34 + pulse * 0.66);
+                  if (firefly.attachedToTail) {
+                      const trailIndex = Math.max(0, ship.trail.length - 1 - (10 + firefly.attachedOrder * 8));
+                      const trailAnchor = ship.trail[trailIndex] || tail;
+                      const baseX = trailAnchor.x;
+                      const baseY = trailAnchor.y;
+                      const waggleAmp = 0.75 + firefly.size * 0.08;
+                      const waggle = Math.sin((timeSeconds * (1.2 + firefly.pulseFreq * 0.5)) + firefly.pulsePhase + firefly.attachedOrder * 0.6);
+                      const targetX = baseX + sideX * waggle * waggleAmp;
+                      const targetY = baseY + sideY * waggle * waggleAmp;
+
+                      const spring = 0.2;
+                      firefly.vx += (targetX - firefly.x) * spring + ship.vx * 0.01;
+                      firefly.vy += (targetY - firefly.y) * spring + ship.vy * 0.01;
+                      firefly.vx *= 0.62;
+                      firefly.vy *= 0.62;
+                      firefly.x += firefly.vx;
+                      firefly.y += firefly.vy;
+                      if (now >= firefly.playbackEndsAt && firefly.playbackEndsAt > 0) {
+                          firefly.attachedToTail = false;
+                          firefly.attachedOrder = -1;
+                          firefly.attachmentClusterId = null;
+                          firefly.playbackEndsAt = 0;
+                          firefly.linkedCooldownUntil = now + 1400 + Math.random() * 900;
+                          const releaseAngle = Math.random() * Math.PI * 2;
+                          const releaseForce = 2.4 + Math.random() * 1.8;
+                          firefly.vx += Math.cos(releaseAngle) * releaseForce + ship.vx * 0.2;
+                          firefly.vy += Math.sin(releaseAngle) * releaseForce + ship.vy * 0.2;
+                      }
+                      return;
+                  }
                   firefly.driftPhase += firefly.driftSpeed * 16.67;
                   const orbitAngle = firefly.driftPhase + idx * 0.47;
                   const radius = firefly.driftRadius * (0.7 + Math.sin(timeSeconds * 0.7 + idx) * 0.3);
                   const driftTargetX = firefly.baseX + Math.cos(orbitAngle) * radius;
                   const driftTargetY = firefly.baseY + Math.sin(orbitAngle * 0.8) * radius;
-                  const owningTriangle = firefly.lockedTriangleId ? getArenaTriangleById(firefly.lockedTriangleId) : null;
-                  const fixedVertex = owningTriangle?.fixedVertices?.find((vertex) => vertex.id === firefly.id);
 
                   const toShipX = firefly.x - ship.x;
                   const toShipY = firefly.y - ship.y;
@@ -1214,31 +1336,35 @@ export function initLegacyApp() {
                   const shipCurrent = (0.09 + flowStrength * 0.34) / (distToShip * 0.011);
                   const tangentialX = -toShipY / distToShip;
                   const tangentialY = toShipX / distToShip;
+                  const toTailX = tail.x - firefly.x;
+                  const toTailY = tail.y - firefly.y;
+                  const distToTail = Math.max(0.001, Math.hypot(toTailX, toTailY));
+                  const tailPull = Math.max(0, 1 - (distToTail / FIREFLY_TAIL_WAKE_RADIUS));
+                  const tailTangentX = -toTailY / distToTail;
+                  const tailTangentY = toTailX / distToTail;
 
-                  if (fixedVertex && (owningTriangle.state === 'stable' || owningTriangle.state === 'triggered')) {
-                      firefly.vx *= 0.82;
-                      firefly.vy *= 0.82;
-                      firefly.x += (fixedVertex.x - firefly.x) * 0.24;
-                      firefly.y += (fixedVertex.y - firefly.y) * 0.24;
-                  } else {
-                      firefly.vx += (driftTargetX - firefly.x) * 0.00095;
-                      firefly.vy += (driftTargetY - firefly.y) * 0.00095;
-                      firefly.vx += tangentialX * shipCurrent + ship.vx * (0.007 + flowStrength * 0.012);
-                      firefly.vy += tangentialY * shipCurrent + ship.vy * (0.007 + flowStrength * 0.012);
-
-                      firefly.vx *= firefly.lockedTriangleId ? 0.9 : 0.982;
-                      firefly.vy *= firefly.lockedTriangleId ? 0.9 : 0.982;
-                      firefly.x += firefly.vx;
-                      firefly.y += firefly.vy;
+                  firefly.vx += (driftTargetX - firefly.x) * 0.00095;
+                  firefly.vy += (driftTargetY - firefly.y) * 0.00095;
+                  const shipInfluence = 1 - tailPull * 0.86;
+                  firefly.vx += tangentialX * shipCurrent * shipInfluence + ship.vx * (0.007 + flowStrength * 0.012) * shipInfluence;
+                  firefly.vy += tangentialY * shipCurrent * shipInfluence + ship.vy * (0.007 + flowStrength * 0.012) * shipInfluence;
+                  if (tailPull > 0) {
+                      const tailSeek = 0.0022 + tailPull * 0.007;
+                      const tailOrbit = 0.016 + tailPull * 0.09;
+                      firefly.vx += toTailX * tailSeek + tailTangentX * tailOrbit + ship.vx * 0.025;
+                      firefly.vy += toTailY * tailSeek + tailTangentY * tailOrbit + ship.vy * 0.025;
                   }
-                  firefly.glow = 0.42 + ((Math.sin(timeSeconds * 4.3 + idx * 1.3) + 1) * 0.5) * 0.56;
 
+                  firefly.vx *= 0.982;
+                  firefly.vy *= 0.982;
+                  firefly.x += firefly.vx;
+                  firefly.y += firefly.vy;
               });
 
               ARENA_FIREFLY_LINKS.forEach((link) => {
                   const a = getArenaFireflyById(link.aId);
                   const b = getArenaFireflyById(link.bId);
-                  if (!a || !b || a.lockedTriangleId || b.lockedTriangleId) return;
+                  if (!a || !b) return;
                   const dx = b.x - a.x;
                   const dy = b.y - a.y;
                   const distance = Math.max(0.0001, Math.hypot(dx, dy));
@@ -1257,7 +1383,7 @@ export function initLegacyApp() {
                   for (let j = i + 1; j < ARENA_FIREFLIES.length; j++) {
                       const a = ARENA_FIREFLIES[i];
                       const b = ARENA_FIREFLIES[j];
-                      if (a.lockedTriangleId || b.lockedTriangleId) continue;
+                      if (a.attachedToTail || b.attachedToTail) continue;
                       if (a.linkedCooldownUntil > now || b.linkedCooldownUntil > now) continue;
                       const d = Math.hypot(a.x - b.x, a.y - b.y);
                       if (d <= FIREFLY_LINK_DISTANCE) {
@@ -1268,53 +1394,17 @@ export function initLegacyApp() {
                   }
               }
 
-              tryCreateArenaTriangle(now);
-
-              for (let i = ARENA_FIREFLY_TRIANGLES.length - 1; i >= 0; i--) {
-                  const triangle = ARENA_FIREFLY_TRIANGLES[i];
-                  const vertices = triangle.fireflyIds.map((id) => getArenaFireflyById(id)).filter(Boolean);
-                  if (vertices.length !== 3) {
-                      ARENA_FIREFLY_TRIANGLES.splice(i, 1);
-                      continue;
-                  }
-                  const cx = (vertices[0].x + vertices[1].x + vertices[2].x) / 3;
-                  const cy = (vertices[0].y + vertices[1].y + vertices[2].y) / 3;
-                  const perimeter = Math.hypot(vertices[0].x - vertices[1].x, vertices[0].y - vertices[1].y)
-                      + Math.hypot(vertices[1].x - vertices[2].x, vertices[1].y - vertices[2].y)
-                      + Math.hypot(vertices[2].x - vertices[0].x, vertices[2].y - vertices[0].y);
-                  const touchRadius = Math.max(34, perimeter / 8);
-
-                  if (triangle.state === 'stable') {
-                      const fishInsideTriangle = isPointInTriangle(ship.x, ship.y, vertices[0], vertices[1], vertices[2]);
-                      const fishNearTriangle = Math.hypot(ship.x - cx, ship.y - cy) <= touchRadius * 0.7;
-                      if (fishInsideTriangle || fishNearTriangle) {
-                          triangle.state = 'triggered';
-                          triangle.triggerStep = 0;
-                          triangle.nextTriggerAt = now;
-                          triangle.samplePlaybackUntil = now;
-                          setArenaTriangleStatus('Le poisson traverse le triangle : lecture des 3 samples.');
-                      }
-                  } else if (triangle.state === 'triggered') {
-                      if (now >= triangle.nextTriggerAt && now >= triangle.samplePlaybackUntil) {
-                          if (triangle.triggerStep < vertices.length) {
-                              triggerArenaFirefly(vertices[triangle.triggerStep]);
-                              triangle.triggerStep += 1;
-                              triangle.nextTriggerAt = now + TRIANGLE_SAMPLE_STEP_MS;
-                              triangle.samplePlaybackUntil = now + TRIANGLE_SAMPLE_STEP_MS;
-                          } else {
-                              triangle.state = 'dispersing';
-                              triangle.dispersingUntil = now + TRIANGLE_DISPERSE_DURATION;
-                              disperseArenaTriangle(triangle, now);
-                              for (let linkIdx = ARENA_FIREFLY_LINKS.length - 1; linkIdx >= 0; linkIdx--) {
-                                  const link = ARENA_FIREFLY_LINKS[linkIdx];
-                                  if (triangle.fireflyIds.includes(link.aId) || triangle.fireflyIds.includes(link.bId)) {
-                                      ARENA_FIREFLY_LINKS.splice(linkIdx, 1);
-                                  }
-                              }
-                          }
-                      }
-                  } else if (triangle.state === 'dispersing' && now >= triangle.dispersingUntil) {
-                      ARENA_FIREFLY_TRIANGLES.splice(i, 1);
+              const attachCandidate = ARENA_FIREFLIES.find((firefly) => {
+                  if (firefly.attachedToTail) return false;
+                  if (!hasAnyLinkForFirefly(firefly.id)) return false;
+                  return Math.hypot(firefly.x - tail.x, firefly.y - tail.y) <= FIREFLY_TAIL_ATTACH_RADIUS;
+              });
+              if (attachCandidate) {
+                  const attachedCount = ARENA_FIREFLIES.filter((firefly) => firefly.attachedToTail).length;
+                  if (attachedCount >= FIREFLY_TAIL_MAX_ATTACHED) {
+                      repelFireflyFromTail(attachCandidate, tail, now, 1.4);
+                  } else {
+                      attachFireflyClusterToTail(attachCandidate, now);
                   }
               }
           }
@@ -2003,7 +2093,7 @@ export function initLegacyApp() {
                   if (!a || !b) return;
                   const age = (performance.now() - link.bornAt) * 0.001;
                   const pulse = (Math.sin(age * 2.8) + 1) * 0.5;
-                  ctx.strokeStyle = `rgba(255, 106, 106, ${0.36 + pulse * 0.24})`;
+                  ctx.strokeStyle = `rgba(255, 124, 106, ${0.32 + pulse * 0.22})`;
                   ctx.lineWidth = 1.6 + pulse * 0.9;
                   ctx.beginPath();
                   ctx.moveTo(a.x, a.y);
@@ -2011,49 +2101,21 @@ export function initLegacyApp() {
                   ctx.stroke();
               });
 
-              ARENA_FIREFLY_TRIANGLES.forEach((triangle) => {
-                  const points = triangle.fireflyIds.map((id) => getArenaFireflyById(id)).filter(Boolean);
-                  if (points.length !== 3) return;
-                  const pulse = 0.5 + Math.sin(now * 8.2) * 0.5;
-                  let alpha = 0.36 + pulse * 0.28;
-                  if (triangle.state === 'triggered') alpha = 0.62 + pulse * 0.28;
-                  if (triangle.state === 'dispersing') alpha *= 0.42;
-                  ctx.strokeStyle = `rgba(255, 188, 188, ${alpha})`;
-                  ctx.lineWidth = triangle.state === 'triggered' ? 3 : 2.2;
-                  ctx.setLineDash(triangle.state === 'triggered' ? [6, 4] : []);
-                  ctx.lineDashOffset = -now * 42;
-                  ctx.beginPath();
-                  ctx.moveTo(points[0].x, points[0].y);
-                  ctx.lineTo(points[1].x, points[1].y);
-                  ctx.lineTo(points[2].x, points[2].y);
-                  ctx.closePath();
-                  ctx.stroke();
-                  ctx.setLineDash([]);
-                  ctx.lineDashOffset = 0;
-              });
-
               ARENA_FIREFLIES.forEach((firefly, idx) => {
-                  const pulse = (Math.sin(now * 5.4 + idx * 1.8) + 1) * 0.5;
-                  const coreRadius = firefly.size * (0.68 + pulse * 0.26);
-                  const glowRadius = firefly.size * (2.9 + pulse * 1.4);
-                  const wingDrift = Math.sin(now * 12 + idx * 2.2) * (firefly.size * 0.44);
+                  const pulse = (Math.sin(now * firefly.pulseFreq * 2 * Math.PI + firefly.pulsePhase) + 1) * 0.5;
+                  const coreRadius = firefly.size * (0.72 + pulse * 0.22);
+                  const glowRadius = firefly.size * (2.8 + pulse * 1.8);
 
                   const halo = ctx.createRadialGradient(firefly.x, firefly.y, 0, firefly.x, firefly.y, glowRadius);
-                  halo.addColorStop(0, `rgba(255, 120, 120, ${0.26 + firefly.glow * 0.42})`);
-                  halo.addColorStop(0.45, `rgba(255, 82, 82, ${0.12 + firefly.glow * 0.28})`);
-                  halo.addColorStop(1, 'rgba(255, 70, 70, 0)');
+                  halo.addColorStop(0, `rgba(255, 220, 122, ${0.24 + firefly.glow * 0.34})`);
+                  halo.addColorStop(0.5, `rgba(255, 160, 64, ${0.14 + firefly.glow * 0.26})`);
+                  halo.addColorStop(1, 'rgba(255, 120, 52, 0)');
                   ctx.fillStyle = halo;
                   ctx.beginPath();
                   ctx.arc(firefly.x, firefly.y, glowRadius, 0, Math.PI * 2);
                   ctx.fill();
 
-                  ctx.fillStyle = `rgba(255, 236, 236, ${0.24 + firefly.glow * 0.34})`;
-                  ctx.beginPath();
-                  ctx.ellipse(firefly.x - firefly.size * 0.8, firefly.y + wingDrift, firefly.size * 0.85, firefly.size * 0.42, -0.45, 0, Math.PI * 2);
-                  ctx.ellipse(firefly.x + firefly.size * 0.8, firefly.y - wingDrift, firefly.size * 0.85, firefly.size * 0.42, 0.45, 0, Math.PI * 2);
-                  ctx.fill();
-
-                  ctx.fillStyle = `rgba(255, 92, 92, ${0.78 + firefly.glow * 0.22})`;
+                  ctx.fillStyle = `rgba(245, 62, 48, ${0.82 + firefly.glow * 0.18})`;
                   ctx.beginPath();
                   ctx.arc(firefly.x, firefly.y, coreRadius, 0, Math.PI * 2);
                   ctx.fill();
