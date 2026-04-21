@@ -219,6 +219,7 @@ export function initLegacyApp() {
           const FIREFLY_TIMELINE_STEP_MS = 2600;
           const FIREFLY_TAIL_MAX_ATTACHED = 3;
           const FIREFLY_REPULSE_COOLDOWN_MS = 900;
+          const MEDUSA_RELEASE_DELAY_MS = 30000;
           const MEDUSA_COUNT = 3;
           const DEFAULT_SUPABASE_URL = 'https://qyffktrggapfzlmmlerq.supabase.co';
           const ENV_SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || '';
@@ -1516,6 +1517,8 @@ export function initLegacyApp() {
                       attachedAt: 0,
                       playbackEndsAt: 0,
                       attachmentClusterId: null,
+                      containedInMedusaId: null,
+                      medusaReleasedAt: 0,
                       bubbleOrbitIndex: index % 3,
                       nextBubbleSwitchAt: performance.now() + 4200 + Math.random() * 3600,
                       destinyX: Math.cos(angle) * baseRadius,
@@ -1541,6 +1544,8 @@ export function initLegacyApp() {
                       speed: 0.00018 + Math.random() * 0.00012,
                       radius: 24 + Math.random() * 8,
                       pulse: 0.5,
+                      storedFireflyIds: [],
+                      releaseAt: 0,
                       cooldownUntil: 0
                   });
               }
@@ -1728,13 +1733,53 @@ export function initLegacyApp() {
                   const threshold = medusa.radius + 11;
                   const distSq = segmentDistanceToPointSquared(trailStart.x, trailStart.y, tail.x, tail.y, medusa.x, medusa.y);
                   if (distSq <= threshold * threshold) {
-                      medusa.cooldownUntil = now + 4600;
-                      const timelineId = ++activeAttachedTimelineId;
-                      playAttachedClusterTimeline(attached, timelineId);
-                      setArenaTriangleStatus('Méduse-fleur traversée : lecture des 3 vocaux de la queue.');
+                      medusa.cooldownUntil = now + MEDUSA_RELEASE_DELAY_MS + 1800;
+                      medusa.releaseAt = now + MEDUSA_RELEASE_DELAY_MS;
+                      medusa.storedFireflyIds = attached.map((firefly) => firefly.id);
+                      attached.forEach((firefly) => {
+                          firefly.attachedToTail = false;
+                          firefly.attachedOrder = -1;
+                          firefly.attachmentClusterId = null;
+                          firefly.playbackEndsAt = 0;
+                          firefly.containedInMedusaId = medusa.id;
+                          firefly.vx = 0;
+                          firefly.vy = 0;
+                          firefly.x = medusa.x;
+                          firefly.y = medusa.y;
+                      });
+                      normalizeAttachedOrders();
+                      setArenaTriangleStatus('Méduse-fleur traversée : les 3 lucioles sont déposées. Éclosion dans 30 secondes.');
                       break;
                   }
               }
+          }
+
+          function maybeReleaseMedusaFireflies(now) {
+              ARENA_MEDUSAE.forEach((medusa) => {
+                  if (!medusa.storedFireflyIds.length || now < medusa.releaseAt) return;
+                  const released = medusa.storedFireflyIds
+                      .map((id) => ARENA_FIREFLIES.find((firefly) => firefly.id === id))
+                      .filter(Boolean);
+                  medusa.storedFireflyIds = [];
+                  medusa.releaseAt = 0;
+                  released.forEach((firefly, idx) => {
+                      firefly.containedInMedusaId = null;
+                      firefly.medusaReleasedAt = now;
+                      firefly.linkedCooldownUntil = now + 1800 + idx * 160;
+                      const angle = ((Math.PI * 2) / Math.max(1, released.length)) * idx + Math.random() * 0.35;
+                      const burst = 1.15 + Math.random() * 0.5;
+                      firefly.x = medusa.x + Math.cos(angle) * (medusa.radius * 0.55);
+                      firefly.y = medusa.y + Math.sin(angle) * (medusa.radius * 0.55);
+                      firefly.vx = Math.cos(angle) * burst;
+                      firefly.vy = Math.sin(angle) * burst;
+                      firefly.destinyX = medusa.x + Math.cos(angle) * (medusa.radius * 2.4 + 30);
+                      firefly.destinyY = medusa.y + Math.sin(angle) * (medusa.radius * 2.1 + 20);
+                      firefly.nextDestinyAt = now + 1400 + Math.random() * 900;
+                  });
+                  if (released.length) {
+                      setArenaTriangleStatus('Éclosion méduse-fleur : 3 lucioles dispersées en rose avec halo bleuté.');
+                  }
+              });
           }
 
           function updateArenaFireflies() {
@@ -1752,6 +1797,16 @@ export function initLegacyApp() {
               ARENA_FIREFLIES.forEach((firefly, idx) => {
                   const pulse = (Math.sin(timeSeconds * firefly.pulseFreq * 2 * Math.PI + firefly.pulsePhase) + 1) * 0.5;
                   firefly.glow = firefly.attachedToTail ? (0.48 + pulse * 0.52) : (0.34 + pulse * 0.66);
+                  if (firefly.containedInMedusaId) {
+                      const hostMedusa = ARENA_MEDUSAE.find((medusa) => medusa.id === firefly.containedInMedusaId);
+                      if (hostMedusa) {
+                          firefly.x = hostMedusa.x;
+                          firefly.y = hostMedusa.y;
+                      }
+                      firefly.vx = 0;
+                      firefly.vy = 0;
+                      return;
+                  }
                   if (firefly.attachedToTail) {
                       const trailIndex = Math.max(0, ship.trail.length - 1 - (10 + firefly.attachedOrder * 8));
                       const trailAnchor = ship.trail[trailIndex] || tail;
@@ -1762,11 +1817,11 @@ export function initLegacyApp() {
                       const targetX = baseX + sideX * waggle * waggleAmp;
                       const targetY = baseY + sideY * waggle * waggleAmp;
 
-                      const spring = 0.085;
+                      const spring = 0.052;
                       firefly.vx += (targetX - firefly.x) * spring + ship.vx * 0.005;
                       firefly.vy += (targetY - firefly.y) * spring + ship.vy * 0.005;
-                      firefly.vx *= 0.82;
-                      firefly.vy *= 0.82;
+                      firefly.vx *= 0.9;
+                      firefly.vy *= 0.9;
                       firefly.x += firefly.vx;
                       firefly.y += firefly.vy;
                       if (now >= firefly.playbackEndsAt && firefly.playbackEndsAt > 0) {
@@ -1819,6 +1874,8 @@ export function initLegacyApp() {
 
               const attachCandidate = ARENA_FIREFLIES.find((firefly) => {
                   if (firefly.attachedToTail) return false;
+                  if (firefly.containedInMedusaId) return false;
+                  if (now < firefly.linkedCooldownUntil) return false;
                   return Math.hypot(firefly.x - tail.x, firefly.y - tail.y) <= FIREFLY_TAIL_ATTACH_RADIUS;
               });
               if (attachCandidate) {
@@ -1831,6 +1888,7 @@ export function initLegacyApp() {
               }
 
               updateArenaMedusae(now);
+              maybeReleaseMedusaFireflies(now);
               maybeTriggerMedusaPlayback(now);
           }
 
@@ -2513,20 +2571,26 @@ export function initLegacyApp() {
               const now = performance.now() * 0.001;
 
               ARENA_FIREFLIES.forEach((firefly, idx) => {
+                  if (firefly.containedInMedusaId) return;
                   const pulse = (Math.sin(now * firefly.pulseFreq * 2 * Math.PI + firefly.pulsePhase) + 1) * 0.5;
                   const coreRadius = firefly.size * (0.72 + pulse * 0.22);
                   const glowRadius = firefly.size * (2.8 + pulse * 1.8);
+                  const releasedSince = firefly.medusaReleasedAt > 0 ? (performance.now() - firefly.medusaReleasedAt) : Number.POSITIVE_INFINITY;
+                  const isBlossomTone = releasedSince < 12000;
+                  const coreTint = isBlossomTone ? `rgba(255, 134, 205, ${0.84 + firefly.glow * 0.16})` : `rgba(245, 62, 48, ${0.82 + firefly.glow * 0.18})`;
+                  const haloCenter = isBlossomTone ? `rgba(248, 172, 255, ${0.24 + firefly.glow * 0.34})` : `rgba(255, 220, 122, ${0.24 + firefly.glow * 0.34})`;
+                  const haloMid = isBlossomTone ? `rgba(112, 192, 255, ${0.16 + firefly.glow * 0.24})` : `rgba(255, 160, 64, ${0.14 + firefly.glow * 0.26})`;
 
                   const halo = ctx.createRadialGradient(firefly.x, firefly.y, 0, firefly.x, firefly.y, glowRadius);
-                  halo.addColorStop(0, `rgba(255, 220, 122, ${0.24 + firefly.glow * 0.34})`);
-                  halo.addColorStop(0.5, `rgba(255, 160, 64, ${0.14 + firefly.glow * 0.26})`);
+                  halo.addColorStop(0, haloCenter);
+                  halo.addColorStop(0.5, haloMid);
                   halo.addColorStop(1, 'rgba(255, 120, 52, 0)');
                   ctx.fillStyle = halo;
                   ctx.beginPath();
                   ctx.arc(firefly.x, firefly.y, glowRadius, 0, Math.PI * 2);
                   ctx.fill();
 
-                  ctx.fillStyle = `rgba(245, 62, 48, ${0.82 + firefly.glow * 0.18})`;
+                  ctx.fillStyle = coreTint;
                   ctx.beginPath();
                   ctx.arc(firefly.x, firefly.y, coreRadius, 0, Math.PI * 2);
                   ctx.fill();
@@ -2598,12 +2662,15 @@ export function initLegacyApp() {
               const sideY = backX;
               const extension = 26 + attached.length * 18;
               const now = performance.now() * 0.001;
-              const segmentCount = 12;
+              const segmentCount = 18;
               const filament = [];
+              const speedFactor = Math.min(1.6, speed * 0.55);
               for (let i = 0; i <= segmentCount; i++) {
                   const t = i / segmentCount;
-                  const swayAmp = (1 - t) * (5.4 + attached.length * 0.7);
-                  const sway = Math.sin(now * 2.2 + t * 4.2 + ship.angle) * swayAmp;
+                  const swayAmp = (1 - t) * (4.9 + attached.length * 0.8 + speedFactor * 4.5);
+                  const sway =
+                      Math.sin(now * (2.1 + speedFactor * 0.8) + t * 4.6 + ship.angle) * swayAmp
+                      + Math.sin(now * 3.4 + t * 7.2 + ship.angle * 0.4) * swayAmp * 0.35;
                   const trailRef = ship.trail[Math.max(0, ship.trail.length - 1 - Math.floor(4 + t * 18))] || tail;
                   const trailNudgeX = (trailRef.x - tail.x) * 0.08 * (1 - t);
                   const trailNudgeY = (trailRef.y - tail.y) * 0.08 * (1 - t);
