@@ -309,12 +309,27 @@ export function initLegacyApp() {
               helperTips.textContent = helperTipsPlaylist[helperTipIndex];
               helperTipIndex = (helperTipIndex + 1) % helperTipsPlaylist.length;
           }
+
+          function bindTap(button, handler) {
+              if (!button || typeof handler !== 'function') return;
+              let lastTouchAt = 0;
+              button.addEventListener('touchend', (event) => {
+                  event.preventDefault();
+                  lastTouchAt = Date.now();
+                  handler();
+              }, { passive: false });
+              button.addEventListener('click', () => {
+                  if (Date.now() - lastTouchAt < 450) return;
+                  handler();
+              });
+          }
+
           setInterval(() => {
               if (currentView !== 'experience' || isInteractionPaused) return;
               rotateHelperTip();
           }, 5000);
 
-          enterExperienceBtn.addEventListener('click', () => {
+          bindTap(enterExperienceBtn, () => {
               if (!requireRegisteredUserForExperience('immerSoon')) return;
               showView('experience');
               ensureAllAudioRunning();
@@ -436,12 +451,12 @@ export function initLegacyApp() {
               startHeroHaloLoop();
           }
 
-          navHome.addEventListener('click', () => showView('home'));
-          navSoon.addEventListener('click', () => {
+          bindTap(navHome, () => showView('home'));
+          bindTap(navSoon, () => {
               if (!requireRegisteredUserForExperience('navigation')) return;
               showView('experience');
           });
-          navProfile.addEventListener('click', () => showView('profile'));
+          bindTap(navProfile, () => showView('profile'));
 
           function maskApiKey(key) {
               if (!key || key.length < 12) return key;
@@ -862,7 +877,7 @@ export function initLegacyApp() {
                   actionBtn.type = 'button';
                   actionBtn.textContent = isOwned ? 'Déjà acheté' : 'Acheter (simulé)';
                   actionBtn.disabled = isOwned;
-                  actionBtn.addEventListener('click', () => {
+                  bindTap(actionBtn, () => {
                       simulatePaymentAndActivate(item);
                   });
                   card.appendChild(actionBtn);
@@ -988,9 +1003,9 @@ export function initLegacyApp() {
               });
           }
           initSupabaseProfileCard();
-          authSignInBtn.addEventListener('click', signInWithEmail);
-          authSignUpBtn.addEventListener('click', signUpWithEmail);
-          authSignOutBtn.addEventListener('click', signOutSession);
+          bindTap(authSignInBtn, signInWithEmail);
+          bindTap(authSignUpBtn, signUpWithEmail);
+          bindTap(authSignOutBtn, signOutSession);
           renderStoreCatalog();
           renderSessionHistory();
           restoreSession();
