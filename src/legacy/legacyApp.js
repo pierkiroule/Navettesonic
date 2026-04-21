@@ -176,6 +176,12 @@ export function initLegacyApp() {
           propsDeleteBtn.addEventListener('click', () => {
               if (!selectedBubble) return;
               try { selectedBubble.sound?.source?.stop(); } catch (_) {}
+              ARENA_FIREFLIES.forEach((firefly) => {
+                  if (firefly.containedInBubbleId !== selectedBubble.id) return;
+                  firefly.containedInBubbleId = null;
+                  firefly.linkedCooldownUntil = performance.now() + 1200;
+                  firefly.nextDestinyAt = performance.now() + 900 + Math.random() * 900;
+              });
               const idx = BUBBLES.indexOf(selectedBubble);
               if (idx !== -1) BUBBLES.splice(idx, 1);
               closeBubblePropsPanel();
@@ -217,7 +223,7 @@ export function initLegacyApp() {
           const FIREFLY_AUDIO_MIN_MS = 1500;
           const FIREFLY_AUDIO_MAX_MS = 3200;
           const FIREFLY_TIMELINE_STEP_MS = 2600;
-          const FIREFLY_TAIL_MAX_ATTACHED = 3;
+          const FIREFLY_TAIL_MAX_ATTACHED = 1;
           const FIREFLY_REPULSE_COOLDOWN_MS = 900;
           const MEDUSA_RELEASE_DELAY_MS = 30000;
           const MEDUSA_COUNT = 3;
@@ -1518,6 +1524,7 @@ export function initLegacyApp() {
                       playbackEndsAt: 0,
                       attachmentClusterId: null,
                       containedInMedusaId: null,
+                      containedInBubbleId: null,
                       medusaReleasedAt: 0,
                       bubbleOrbitIndex: index % 3,
                       nextBubbleSwitchAt: performance.now() + 4200 + Math.random() * 3600,
@@ -1591,6 +1598,14 @@ export function initLegacyApp() {
               return ARENA_FIREFLIES
                   .filter((firefly) => firefly.attachedToTail)
                   .sort((a, b) => a.attachedOrder - b.attachedOrder);
+          }
+
+          function getStoredBubbleFireflies(bubble) {
+              if (!bubble) return [];
+              if (!Array.isArray(bubble.storedFireflyIds)) bubble.storedFireflyIds = [];
+              return bubble.storedFireflyIds
+                  .map((id) => ARENA_FIREFLIES.find((firefly) => firefly.id === id))
+                  .filter(Boolean);
           }
 
           function normalizeAttachedOrders() {
@@ -1704,10 +1719,40 @@ export function initLegacyApp() {
               firefly.playbackEndsAt = 0;
               normalizeAttachedOrders();
               const total = attached.length + 1;
-              setArenaTriangleStatus(`${total} luciole(s) accrochée(s) au fil de la queue (max 3).`);
-              if (total >= FIREFLY_TAIL_MAX_ATTACHED) {
-                  setArenaTriangleStatus('3 lucioles collectées. Traverse une méduse-fleur avec le fil pour lire les 3 vocaux.');
-              }
+              setArenaTriangleStatus(`${total} luciole rose accrochée à la queue (max 1). Dépose-la dans une bulle sonore.`);
+          }
+
+          function depositAttachedFireflyIntoBubble(bubble, now) {
+              const attached = getAttachedFirefliesSorted();
+              if (!attached.length) return false;
+              const stored = getStoredBubbleFireflies(bubble);
+              if (stored.length >= 3) return false;
+              const firefly = attached[0];
+              firefly.attachedToTail = false;
+              firefly.attachedOrder = -1;
+              firefly.attachmentClusterId = null;
+              firefly.playbackEndsAt = 0;
+              firefly.containedInBubbleId = bubble.id;
+              firefly.linkedCooldownUntil = now + 600;
+              firefly.vx = 0;
+              firefly.vy = 0;
+              firefly.x = bubble.x;
+              firefly.y = bubble.y;
+              if (!Array.isArray(bubble.storedFireflyIds)) bubble.storedFireflyIds = [];
+              bubble.storedFireflyIds.push(firefly.id);
+              normalizeAttachedOrders();
+              setArenaTriangleStatus(`Luciole déposée dans ${bubble.label || 'la bulle sonore'} (${bubble.storedFireflyIds.length}/3).`);
+              return true;
+          }
+
+          function maybePlayBubbleStoredVocal(bubble) {
+              const stored = getStoredBubbleFireflies(bubble);
+              if (!stored.length) return;
+              const index = bubble.nextStoredFireflyPlaybackIndex || 0;
+              const firefly = stored[index % stored.length];
+              bubble.nextStoredFireflyPlaybackIndex = (index + 1) % stored.length;
+              triggerArenaSample(firefly.sampleId);
+              setArenaTriangleStatus(`Vocal déclenché dans ${bubble.label || 'la bulle sonore'} (${stored.length} luciole(s) rose(s)).`);
           }
 
           function updateArenaMedusae(now) {
@@ -1724,6 +1769,8 @@ export function initLegacyApp() {
           }
 
           function maybeTriggerMedusaPlayback(now) {
+              // Gameplay update: pink fireflies are now deposited into sound bubbles instead of medusae.
+              return;
               const attached = getAttachedFirefliesSorted();
               if (attached.length < FIREFLY_TAIL_MAX_ATTACHED || !ship.trail.length) return;
               const tail = getShipTailPosition();
@@ -1807,6 +1854,16 @@ export function initLegacyApp() {
                       firefly.vy = 0;
                       return;
                   }
+                  if (firefly.containedInBubbleId) {
+                      const hostBubble = BUBBLES.find((bubble) => bubble.id === firefly.containedInBubbleId);
+                      if (hostBubble) {
+                          firefly.x = hostBubble.x;
+                          firefly.y = hostBubble.y;
+                      }
+                      firefly.vx = 0;
+                      firefly.vy = 0;
+                      return;
+                  }
                   if (firefly.attachedToTail) {
                       const trailIndex = Math.max(0, ship.trail.length - 1 - (10 + firefly.attachedOrder * 8));
                       const trailAnchor = ship.trail[trailIndex] || tail;
@@ -1875,6 +1932,7 @@ export function initLegacyApp() {
               const attachCandidate = ARENA_FIREFLIES.find((firefly) => {
                   if (firefly.attachedToTail) return false;
                   if (firefly.containedInMedusaId) return false;
+                  if (firefly.containedInBubbleId) return false;
                   if (now < firefly.linkedCooldownUntil) return false;
                   return Math.hypot(firefly.x - tail.x, firefly.y - tail.y) <= FIREFLY_TAIL_ATTACH_RADIUS;
               });
@@ -1884,6 +1942,15 @@ export function initLegacyApp() {
                       attachCandidate.linkedCooldownUntil = now + FIREFLY_REPULSE_COOLDOWN_MS;
                   } else {
                       attachSingleFireflyToTail(attachCandidate, now);
+                  }
+              }
+
+              const attached = getAttachedFirefliesSorted();
+              if (attached.length) {
+                  for (const bubble of BUBBLES) {
+                      const bubblePickupRadius = (bubble.r || 0) + 12;
+                      const distance = Math.hypot(ship.x - bubble.x, ship.y - bubble.y);
+                      if (distance <= bubblePickupRadius && depositAttachedFireflyIntoBubble(bubble, now)) break;
                   }
               }
 
@@ -2050,7 +2117,9 @@ export function initLegacyApp() {
                   sound, label: sample.name, _sampleId: sample.id,
                   currentVolume: 0, zoneMix: 0, resonance: 0, wasInZone: false, hue: 195,
                   lastImpactAt: 0,
-                  fishTouching: false
+                  fishTouching: false,
+                  storedFireflyIds: [],
+                  nextStoredFireflyPlaybackIndex: 0
               };
           }
 
@@ -2225,7 +2294,10 @@ export function initLegacyApp() {
                       }
                       b.isActive = dist3d < SOUND_HEAR_RADIUS;
 
-                      if (insideZone && !b.wasInZone) spawnResonanceWave(b);
+                      if (insideZone && !b.wasInZone) {
+                          spawnResonanceWave(b);
+                          maybePlayBubbleStoredVocal(b);
+                      }
                       if (b.resonance > strongestResonance) strongestResonance = b.resonance;
                       resonanceHueMix += b.resonance * (b.layer === 'below' ? 228 : 192);
                       resonanceWeight += b.resonance;
