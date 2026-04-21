@@ -81,9 +81,7 @@ export function initLegacyApp() {
           const authSignOutBtn = document.getElementById('authSignOutBtn');
           const authStatus = document.getElementById('authStatus');
           const authSessionInfo = document.getElementById('authSessionInfo');
-          const authConfigBlock = document.getElementById('authConfigBlock');
-          const authSupabaseKeyInput = document.getElementById('authSupabaseKeyInput');
-          const authSaveSupabaseKeyBtn = document.getElementById('authSaveSupabaseKeyBtn');
+          const dbConnectionStatus = document.getElementById('dbConnectionStatus');
           const storeCatalog = document.getElementById('storeCatalog');
           const sessionHistoryList = document.getElementById('sessionHistoryList');
 
@@ -508,6 +506,12 @@ export function initLegacyApp() {
               authStatus.style.color = isError ? 'rgba(255, 148, 148, 0.95)' : 'rgba(146, 247, 210, 0.95)';
           }
 
+          function setDbConnectionStatus(message, isError = false) {
+              if (!dbConnectionStatus) return;
+              dbConnectionStatus.textContent = message;
+              dbConnectionStatus.style.color = isError ? 'rgba(255, 172, 172, 0.95)' : 'rgba(197, 223, 255, 0.95)';
+          }
+
           function setAuthButtonsPending(isPending) {
               isAuthActionPending = isPending;
               if (authSignInBtn) authSignInBtn.disabled = isPending;
@@ -543,33 +547,27 @@ export function initLegacyApp() {
               };
           }
 
-          function syncAuthConfigUi() {
-              if (!authConfigBlock) return;
-              const cfg = getSupabaseConfig();
-              const key = supabaseKeyInput?.value?.trim() || cfg.key || '';
-              authConfigBlock.hidden = !!key;
-              if (authSupabaseKeyInput && !authSupabaseKeyInput.value) {
-                  authSupabaseKeyInput.value = key;
-              }
-          }
-
           function buildSupabaseClient() {
               const cfg = getSupabaseConfig();
               const url = supabaseUrlInput?.value?.trim() || cfg.url || DEFAULT_SUPABASE_URL;
               const key = supabaseKeyInput?.value?.trim() || cfg.key;
               if (!url || !key) {
-                  syncAuthConfigUi();
                   setSupabaseStatus('Ajoute URL + clé publishable Supabase.', true);
-                  setAuthStatus('Inscription indisponible: clé Supabase manquante (VITE_SUPABASE_PUBLISHABLE_KEY).', true);
-                  authSupabaseKeyInput?.focus();
+                  setDbConnectionStatus('Base Supabase non connectée (variables Vercel manquantes).', true);
+                  setAuthStatus('Inscription indisponible: variable VITE_SUPABASE_PUBLISHABLE_KEY manquante.', true);
                   return null;
               }
               if (!window.supabase || typeof window.supabase.createClient !== 'function') {
                   setSupabaseStatus('SDK Supabase introuvable dans la page.', true);
+                  setDbConnectionStatus('Base Supabase non connectée (SDK introuvable).', true);
                   return null;
               }
-              if (supabaseClient) return supabaseClient;
+              if (supabaseClient) {
+                  setDbConnectionStatus('Base Supabase connectée ✅');
+                  return supabaseClient;
+              }
               supabaseClient = window.supabase.createClient(url, key);
+              setDbConnectionStatus('Base Supabase connectée ✅');
               supabaseClient.auth.onAuthStateChange((event, session) => {
                   currentSession = session;
                   const statusByEvent = {
@@ -761,6 +759,82 @@ export function initLegacyApp() {
               return unique;
           }
 
+          async function fetchUserPurchasesRows(client, userId) {
+              const { data, error } = await client
+                  .from('user_purchases')
+                  .select('pack_id, purchased_at, status, echo_packs(slug, title)')
+                  .eq('user_id', userId)
+                  .order('purchased_at', { ascending: false })
+                  .limit(200);
+              if (error) return { rows: [], error };
+              return { rows: Array.isArray(data) ? data : [], error: null };
+          }
+
+          function toOwnedItemsFromPurchases(rows) {
+              const slugs = rows
+                  .map((row) => row?.echo_packs?.slug)
+                  .filter(Boolean);
+              return sanitizeOwnedItems(slugs);
+          }
+
+          function toSessionHistoryFromPurchases(rows) {
+              return rows
+                  .map((row) => {
+                      const slug = row?.echo_packs?.slug;
+                      const title = row?.echo_packs?.title;
+                      const purchasedAt = row?.purchased_at;
+                      if (!slug || !purchasedAt) return null;
+                      return {
+                          experience_id: slug,
+                          experience_title: title || 'Expérience Échohypnose',
+                          purchased_at: purchasedAt,
+                      };
+                  })
+                  .filter(Boolean);
+          }
+
+          async function ensurePurchasesForExperienceIds(client, userId, experienceIds) {
+              const safeIds = sanitizeOwnedItems(experienceIds);
+              if (!safeIds.length) return { ok: true, inserted: 0 };
+
+              const { data: packs, error: packsError } = await client
+                  .from('echo_packs')
+                  .select('id, slug')
+                  .in('slug', safeIds);
+              if (packsError) return { ok: false, error: packsError };
+
+              const packRows = Array.isArray(packs) ? packs : [];
+              if (!packRows.length) return { ok: true, inserted: 0 };
+              const packIds = packRows.map((row) => row.id).filter(Boolean);
+
+              const { data: existingRows, error: existingError } = await client
+                  .from('user_purchases')
+                  .select('pack_id')
+                  .eq('user_id', userId)
+                  .in('pack_id', packIds)
+                  .limit(200);
+              if (existingError) return { ok: false, error: existingError };
+
+              const existingPackIds = new Set((existingRows || []).map((row) => row.pack_id));
+              const missingPurchases = packRows
+                  .filter((row) => !existingPackIds.has(row.id))
+                  .map((row) => ({
+                      user_id: userId,
+                      pack_id: row.id,
+                      status: 'paid',
+                      payment_provider: 'local-sync',
+                  }));
+
+              if (!missingPurchases.length) return { ok: true, inserted: 0 };
+
+              const { error: insertError } = await client
+                  .from('user_purchases')
+                  .insert(missingPurchases);
+              if (insertError) return { ok: false, error: insertError };
+
+              return { ok: true, inserted: missingPurchases.length };
+          }
+
           async function syncCollectionFromSupabase() {
               if (!currentSession?.user?.id) return;
               const client = buildSupabaseClient();
@@ -773,7 +847,20 @@ export function initLegacyApp() {
                   .maybeSingle();
 
               if (error) {
-                  setAuthStatus(`Sync profil échouée (lecture): ${error.message}`, true);
+                  if (!isSupabaseMissingRelationError(error)) {
+                      setAuthStatus(`Sync profil échouée (lecture): ${error.message}`, true);
+                      return;
+                  }
+                  const purchasesResult = await fetchUserPurchasesRows(client, currentSession.user.id);
+                  if (purchasesResult.error) {
+                      setAuthStatus(`Sync profil échouée (fallback user_purchases): ${purchasesResult.error.message}`, true);
+                      return;
+                  }
+                  const remoteOwned = toOwnedItemsFromPurchases(purchasesResult.rows);
+                  const localOwned = sanitizeOwnedItems(getOwnedItems());
+                  const mergedOwned = sanitizeOwnedItems([...remoteOwned, ...localOwned]);
+                  setOwnedItems(mergedOwned);
+                  setAuthStatus(`Achats synchronisés via user_purchases (${mergedOwned.length} expérience${mergedOwned.length > 1 ? 's' : ''}).`);
                   return;
               }
 
@@ -811,8 +898,19 @@ export function initLegacyApp() {
                   });
 
               if (error) {
-                  setAuthStatus(`Sync profil échouée (écriture): ${error.message}`, true);
-                  return false;
+                  if (!isSupabaseMissingRelationError(error)) {
+                      setAuthStatus(`Sync profil échouée (écriture): ${error.message}`, true);
+                      return false;
+                  }
+                  const fallback = await ensurePurchasesForExperienceIds(client, currentSession.user.id, safeItems);
+                  if (!fallback.ok) {
+                      setAuthStatus(`Sync profil échouée (fallback user_purchases): ${fallback.error.message}`, true);
+                      return false;
+                  }
+                  if (!options.silentSuccess) {
+                      setAuthStatus(`Achats synchronisés via user_purchases (${safeItems.length} expérience${safeItems.length > 1 ? 's' : ''}).`);
+                  }
+                  return true;
               }
 
               if (!options.silentSuccess) {
@@ -830,6 +928,13 @@ export function initLegacyApp() {
               }).format(date);
           }
 
+          function isSupabaseMissingRelationError(error) {
+              if (!error) return false;
+              if (error.code === 'PGRST204' || error.code === '42P01') return true;
+              const message = `${error.message || ''} ${error.details || ''}`.toLowerCase();
+              return message.includes('could not find the table') || message.includes('relation') && message.includes('does not exist');
+          }
+
           async function syncSessionHistoryFromSupabase() {
               if (!currentSession?.user?.id) return;
               const client = buildSupabaseClient();
@@ -843,6 +948,29 @@ export function initLegacyApp() {
                   .limit(100);
 
               if (error) {
+                  if (isSupabaseMissingRelationError(error)) {
+                      const purchasesResult = await fetchUserPurchasesRows(client, currentSession.user.id);
+                      if (purchasesResult.error) {
+                          setAuthStatus(`Historique non synchronisé (fallback user_purchases): ${purchasesResult.error.message}`, true);
+                          return;
+                      }
+                      const purchaseHistory = toSessionHistoryFromPurchases(purchasesResult.rows);
+                      const localRows = Array.isArray(getSessionHistory()) ? getSessionHistory() : [];
+                      const mergedMap = new Map();
+                      [...purchaseHistory, ...localRows].forEach((entry) => {
+                          if (!entry?.experience_id || !entry?.purchased_at) return;
+                          const key = `${entry.experience_id}::${entry.purchased_at}`;
+                          if (!mergedMap.has(key)) {
+                              mergedMap.set(key, entry);
+                          }
+                      });
+                      const mergedRows = Array.from(mergedMap.values())
+                          .sort((a, b) => new Date(b.purchased_at).getTime() - new Date(a.purchased_at).getTime())
+                          .slice(0, 100);
+                      setSessionHistory(mergedRows);
+                      setAuthStatus(`Historique synchronisé via user_purchases (${purchaseHistory.length} entrée${purchaseHistory.length > 1 ? 's' : ''}).`);
+                      return;
+                  }
                   setAuthStatus(`Historique non synchronisé: ${error.message}`, true);
                   return;
               }
@@ -877,6 +1005,12 @@ export function initLegacyApp() {
                   purchased_at: entry.purchased_at,
               });
               if (error) {
+                  if (isSupabaseMissingRelationError(error)) {
+                      const fallback = await ensurePurchasesForExperienceIds(client, currentSession.user.id, [entry.experience_id]);
+                      if (fallback.ok) return true;
+                      setAuthStatus(`Écriture historique échouée (fallback user_purchases): ${fallback.error.message}`, true);
+                      return false;
+                  }
                   if (error.code === '23505') return true;
                   setAuthStatus(`Écriture historique échouée: ${error.message}`, true);
                   return false;
@@ -1084,24 +1218,11 @@ export function initLegacyApp() {
               supabaseKeyInput.value = cfg.key;
               if (supabaseUrlInput.value && cfg.key) {
                   setSupabaseStatus(`Configuration chargée (${maskApiKey(cfg.key)}).`);
+                  setDbConnectionStatus('Base Supabase prête ✅');
               } else {
                   setSupabaseStatus('Renseigne URL + clé publishable pour activer Soonbucket.');
-                  setAuthStatus('Ajoute une clé Supabase publishable (VITE_SUPABASE_PUBLISHABLE_KEY) pour activer l’inscription.', true);
+                  setDbConnectionStatus('Base Supabase non connectée (variables Vercel manquantes).', true);
               }
-              syncAuthConfigUi();
-
-              authSaveSupabaseKeyBtn?.addEventListener('click', () => {
-                  const key = authSupabaseKeyInput?.value?.trim() || '';
-                  if (!key) {
-                      setAuthStatus('Ajoute une clé publishable valide.', true);
-                      return;
-                  }
-                  supabaseKeyInput.value = key;
-                  localStorage.setItem(SUPABASE_LOCAL_KEYS.key, key);
-                  supabaseClient = null;
-                  syncAuthConfigUi();
-                  setAuthStatus('Configuration Supabase enregistrée. Tu peux t’inscrire.', false);
-              });
 
               supabaseSaveConfigBtn.addEventListener('click', () => {
                   const url = supabaseUrlInput.value.trim();
