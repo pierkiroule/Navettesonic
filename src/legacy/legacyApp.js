@@ -315,6 +315,7 @@ export function initLegacyApp() {
           }, 5000);
 
           enterExperienceBtn.addEventListener('click', () => {
+              if (!requireRegisteredUserForExperience('immerSoon')) return;
               showView('experience');
               ensureAllAudioRunning();
           });
@@ -436,7 +437,10 @@ export function initLegacyApp() {
           }
 
           navHome.addEventListener('click', () => showView('home'));
-          navSoon.addEventListener('click', () => showView('experience'));
+          navSoon.addEventListener('click', () => {
+              if (!requireRegisteredUserForExperience('navigation')) return;
+              showView('experience');
+          });
           navProfile.addEventListener('click', () => showView('profile'));
 
           function maskApiKey(key) {
@@ -460,6 +464,24 @@ export function initLegacyApp() {
               if (!authStatus) return;
               authStatus.textContent = message;
               authStatus.style.color = isError ? 'rgba(255, 148, 148, 0.95)' : 'rgba(146, 247, 210, 0.95)';
+          }
+
+          function updateExperienceAccessUi() {
+              const hasAccess = !!currentSession?.user;
+              if (enterExperienceBtn) {
+                  enterExperienceBtn.textContent = hasAccess ? 'immerSoon' : 'immerSoon 🔒';
+              }
+              if (navSoon) {
+                  navSoon.textContent = hasAccess ? 'Soon•°' : 'Soon•° 🔒';
+              }
+          }
+
+          function requireRegisteredUserForExperience(triggerLabel = 'immerSoon') {
+              if (currentSession?.user) return true;
+              setAuthStatus(`Inscris-toi ou connecte-toi pour accéder à l'expérience (${triggerLabel}).`, true);
+              showView('profile');
+              authEmailInput?.focus();
+              return false;
           }
 
           function getSupabaseConfig() {
@@ -820,6 +842,7 @@ export function initLegacyApp() {
                   authSessionInfo.textContent = 'Aucune session active.';
                   authSignOutBtn.disabled = true;
               }
+              updateExperienceAccessUi();
           }
 
           function renderStoreCatalog() {
