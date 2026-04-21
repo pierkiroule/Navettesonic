@@ -851,7 +851,7 @@ export function initLegacyApp() {
 
               if (error) {
                   if (isSupabaseMissingRelationError(error)) {
-                      setAuthStatus('Historique distant indisponible (table Supabase manquante). Historique local conservé.', true);
+                      setAuthStatus('Historique distant indisponible (table Supabase manquante). Historique local conservé.');
                       return;
                   }
                   setAuthStatus(`Historique non synchronisé: ${error.message}`, true);
