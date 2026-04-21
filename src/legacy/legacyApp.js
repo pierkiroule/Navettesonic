@@ -1268,6 +1268,16 @@ export function initLegacyApp() {
               const timeSeconds = now * 0.001;
               const flowStrength = Math.min(1, Math.hypot(ship.vx, ship.vy) / ship.maxSpeed);
               const tail = getShipTailPosition();
+              const attachedTrain = ARENA_FIREFLIES
+                  .filter((firefly) => firefly.attachedToTail)
+                  .sort((a, b) => a.attachedOrder - b.attachedOrder);
+              const attachedByOrder = new Map(attachedTrain.map((firefly) => [firefly.attachedOrder, firefly]));
+              const shipSpeed = Math.hypot(ship.vx, ship.vy);
+              const invShipSpeed = 1 / Math.max(0.0001, shipSpeed);
+              const backX = shipSpeed > 0.03 ? -ship.vx * invShipSpeed : Math.sin(ship.angle);
+              const backY = shipSpeed > 0.03 ? -ship.vy * invShipSpeed : -Math.cos(ship.angle);
+              const sideX = -backY;
+              const sideY = backX;
               for (let i = ARENA_FIREFLY_LINKS.length - 1; i >= 0; i--) {
                   const link = ARENA_FIREFLY_LINKS[i];
                   const a = getArenaFireflyById(link.aId);
@@ -1279,14 +1289,24 @@ export function initLegacyApp() {
 
               ARENA_FIREFLIES.forEach((firefly, idx) => {
                   const pulse = (Math.sin(timeSeconds * firefly.pulseFreq * 2 * Math.PI + firefly.pulsePhase) + 1) * 0.5;
-                  firefly.glow = 0.34 + pulse * 0.66;
+                  firefly.glow = firefly.attachedToTail ? (0.48 + pulse * 0.52) : (0.34 + pulse * 0.66);
                   if (firefly.attachedToTail) {
-                      const trailIndex = Math.max(0, ship.trail.length - 1 - (6 + firefly.attachedOrder * 4));
-                      const anchor = ship.trail[trailIndex] || getShipTailPosition();
-                      firefly.vx *= 0.78;
-                      firefly.vy *= 0.78;
-                      firefly.x += (anchor.x - firefly.x) * 0.2 + ship.vx * 0.18;
-                      firefly.y += (anchor.y - firefly.y) * 0.2 + ship.vy * 0.18;
+                      const leader = attachedByOrder.get(firefly.attachedOrder - 1);
+                      const segment = 12 + firefly.size * 0.85;
+                      const baseX = leader ? (leader.x - backX * segment) : (tail.x - backX * (10 + firefly.attachedOrder * segment));
+                      const baseY = leader ? (leader.y - backY * segment) : (tail.y - backY * (10 + firefly.attachedOrder * segment));
+                      const waggleAmp = 2.6 + firefly.size * 0.32;
+                      const waggle = Math.sin((timeSeconds * (1.6 + firefly.pulseFreq)) + firefly.pulsePhase + firefly.attachedOrder * 0.9);
+                      const targetX = baseX + sideX * waggle * waggleAmp;
+                      const targetY = baseY + sideY * waggle * waggleAmp;
+
+                      const spring = leader ? 0.16 : 0.14;
+                      firefly.vx += (targetX - firefly.x) * spring + ship.vx * 0.026;
+                      firefly.vy += (targetY - firefly.y) * spring + ship.vy * 0.026;
+                      firefly.vx *= 0.76;
+                      firefly.vy *= 0.76;
+                      firefly.x += firefly.vx;
+                      firefly.y += firefly.vy;
                       if (now >= firefly.playbackEndsAt && firefly.playbackEndsAt > 0) {
                           firefly.attachedToTail = false;
                           firefly.attachedOrder = -1;
