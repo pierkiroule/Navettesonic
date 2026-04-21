@@ -37,7 +37,7 @@ export function initLegacyApp() {
           const enterExperienceBtn = document.getElementById('enterExperienceBtn');
           const heroVideo = document.getElementById('heroVideo');
           const heroVideoShell = document.getElementById('heroVideoShell');
-          const toggleHeroSoundBtn = document.getElementById('toggleHeroSoundBtn');
+          const heroPlayBtn = document.getElementById('heroPlayBtn');
 
           const canvas = document.getElementById('canvas');
           const ctx = canvas.getContext('2d');
@@ -286,7 +286,7 @@ export function initLegacyApp() {
                   } else {
                       heroVideo.pause();
                       heroVideo.muted = true;
-                      syncHeroSoundButton();
+                      syncHeroPlayButton();
                   }
               }
               if (target === 'experience') {
@@ -311,10 +311,10 @@ export function initLegacyApp() {
               ensureAllAudioRunning();
           });
 
-          function syncHeroSoundButton() {
-              if (!heroVideo || !toggleHeroSoundBtn) return;
-              const isMuted = heroVideo.muted || heroVideo.volume === 0;
-              toggleHeroSoundBtn.textContent = isMuted ? 'Activer le son' : 'Couper le son';
+          function syncHeroPlayButton() {
+              if (!heroVideo || !heroPlayBtn) return;
+              const shouldHidePlayButton = !heroVideo.paused && !heroVideo.muted && heroVideo.volume > 0;
+              heroPlayBtn.classList.toggle('hidden', shouldHidePlayButton);
           }
 
           function ensureHeroHaloAudio() {
@@ -371,26 +371,25 @@ export function initLegacyApp() {
               heroHaloRAF = window.requestAnimationFrame(animateHalo);
           }
 
-          function toggleHeroSound() {
+          function playHeroWithSound() {
               if (!heroVideo) return;
-              heroVideo.muted = !heroVideo.muted;
-              if (!heroVideo.muted && heroVideo.volume === 0) heroVideo.volume = 1;
+              heroVideo.muted = false;
+              if (heroVideo.volume === 0) heroVideo.volume = 1;
               heroVideo.play().catch(() => {});
-              if (!heroVideo.muted) {
-                  ensureHeroHaloAudio();
-              }
-              syncHeroSoundButton();
+              ensureHeroHaloAudio();
+              syncHeroPlayButton();
           }
 
-          if (toggleHeroSoundBtn) {
-              toggleHeroSoundBtn.addEventListener('click', toggleHeroSound);
+          if (heroPlayBtn) {
+              heroPlayBtn.addEventListener('click', playHeroWithSound);
           }
           if (heroVideo) {
-              heroVideo.addEventListener('volumechange', syncHeroSoundButton);
+              heroVideo.addEventListener('volumechange', syncHeroPlayButton);
+              heroVideo.addEventListener('pause', syncHeroPlayButton);
               heroVideo.addEventListener('play', ensureHeroHaloAudio);
               heroVideo.addEventListener('loadeddata', startHeroHaloLoop);
               heroVideo.addEventListener('canplay', startHeroHaloLoop);
-              syncHeroSoundButton();
+              syncHeroPlayButton();
           }
           if (heroVideoShell) {
               heroVideoShell.style.setProperty('--halo-intensity', '0.18');

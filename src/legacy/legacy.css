@@ -125,6 +125,28 @@
             position: relative;
             z-index: 2;
         }
+        .hero-play-btn {
+            position: absolute;
+            z-index: 3;
+            border: 0;
+            border-radius: 999px;
+            padding: 12px 20px;
+            background: rgba(3, 10, 22, 0.72);
+            color: rgba(236, 247, 255, 0.96);
+            font-weight: 700;
+            font-size: 0.95rem;
+            backdrop-filter: blur(6px);
+            box-shadow: 0 10px 32px rgba(0, 0, 0, 0.38);
+            cursor: pointer;
+            transition: transform 140ms ease, opacity 160ms ease;
+        }
+        .hero-play-btn:hover {
+            transform: scale(1.04);
+        }
+        .hero-play-btn.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
         @keyframes borealHaloOrbit {
             from { transform: scale(calc(var(--halo-scale) * 1.01)) rotate(0deg); }
             to { transform: scale(calc(var(--halo-scale) * 1.01)) rotate(360deg); }
