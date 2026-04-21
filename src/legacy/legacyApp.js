@@ -516,6 +516,16 @@ export function initLegacyApp() {
               if (authSignOutBtn) authSignOutBtn.disabled = isPending || !currentSession?.user;
           }
 
+          function humanizeAuthError(error) {
+              const raw = (error?.message || '').trim();
+              const normalized = raw.toLowerCase();
+              const isBrowserVerificationError = /browser verification|vérification de votre navigateur|captcha|challenge/i.test(raw);
+              if (isBrowserVerificationError || /vercel/i.test(normalized)) {
+                  return 'Échec vérification navigateur (Vercel/Supabase). Désactive Bot Protection ou autorise ce domaine, puis réessaie.';
+              }
+              return raw || 'Erreur inconnue.';
+          }
+
           function updateExperienceAccessUi() {
               const hasAccess = !!currentSession?.user;
               if (enterExperienceBtn) {
@@ -1029,7 +1039,7 @@ export function initLegacyApp() {
               try {
                   const { data, error } = await client.auth.signInWithPassword({ email, password });
                   if (error) {
-                      setAuthStatus(`Connexion refusée: ${error.message}`, true);
+                      setAuthStatus(`Connexion refusée: ${humanizeAuthError(error)}`, true);
                       return;
                   }
                   currentSession = data.session;
@@ -1054,7 +1064,7 @@ export function initLegacyApp() {
               try {
                   const { data, error } = await client.auth.signUp({ email, password });
                   if (error) {
-                      setAuthStatus(`Inscription refusée: ${error.message}`, true);
+                      setAuthStatus(`Inscription refusée: ${humanizeAuthError(error)}`, true);
                       return;
                   }
                   if (data?.session) {
