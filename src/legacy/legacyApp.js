@@ -250,6 +250,8 @@ export function initLegacyApp() {
           let bubbleIdSeed = 1;
           let supabaseClient = null;
           let currentSession = null;
+          let isAuthActionPending = false;
+          let syncInFlightPromise = null;
           const SUPABASE_BUCKET = 'Soonbucket';
           const SUPABASE_LOCAL_KEYS = {
               url: 'soono.supabase.url',
@@ -310,18 +312,38 @@ export function initLegacyApp() {
               helperTipIndex = (helperTipIndex + 1) % helperTipsPlaylist.length;
           }
 
-          function bindTap(button, handler) {
+          function bindTap(button, handler, options = {}) {
               if (!button || typeof handler !== 'function') return;
+              const preventTouchDefault = options.preventTouchDefault !== false;
               let lastTouchAt = 0;
               button.addEventListener('touchend', (event) => {
-                  event.preventDefault();
+                  if (preventTouchDefault) event.preventDefault();
                   lastTouchAt = Date.now();
                   handler();
-              }, { passive: false });
+              }, { passive: !preventTouchDefault });
               button.addEventListener('click', () => {
                   if (Date.now() - lastTouchAt < 450) return;
                   handler();
               });
+          }
+
+          function bindPress(button, handler) {
+              if (!button || typeof handler !== 'function') return;
+              let lastPressAt = 0;
+              const trigger = () => {
+                  const now = Date.now();
+                  if (now - lastPressAt < 320) return;
+                  lastPressAt = now;
+                  handler();
+              };
+              button.addEventListener('click', trigger);
+              if ('PointerEvent' in window) {
+                  button.addEventListener('pointerup', (event) => {
+                      if (event.pointerType === 'touch') trigger();
+                  });
+              } else {
+                  button.addEventListener('touchend', trigger, { passive: true });
+              }
           }
 
           setInterval(() => {
@@ -481,6 +503,13 @@ export function initLegacyApp() {
               authStatus.style.color = isError ? 'rgba(255, 148, 148, 0.95)' : 'rgba(146, 247, 210, 0.95)';
           }
 
+          function setAuthButtonsPending(isPending) {
+              isAuthActionPending = isPending;
+              if (authSignInBtn) authSignInBtn.disabled = isPending;
+              if (authSignUpBtn) authSignUpBtn.disabled = isPending;
+              if (authSignOutBtn) authSignOutBtn.disabled = isPending || !currentSession?.user;
+          }
+
           function updateExperienceAccessUi() {
               const hasAccess = !!currentSession?.user;
               if (enterExperienceBtn) {
@@ -524,18 +553,15 @@ export function initLegacyApp() {
               supabaseClient = window.supabase.createClient(url, key);
               supabaseClient.auth.onAuthStateChange((event, session) => {
                   currentSession = session;
-                  refreshAuthUi(event === 'SIGNED_OUT' ? 'Session fermée.' : 'Session active.');
-                  if (currentSession) {
-                      syncCollectionFromSupabase().then(() => {
-                          return syncSessionHistoryFromSupabase();
-                      }).finally(() => {
-                          renderStoreCatalog();
-                          renderSessionHistory();
-                      });
-                      return;
-                  }
-                  renderStoreCatalog();
-                  renderSessionHistory();
+                  const statusByEvent = {
+                      SIGNED_IN: 'Connexion réussie ✅',
+                      SIGNED_OUT: 'Session fermée.',
+                      TOKEN_REFRESHED: 'Session actualisée.',
+                      USER_UPDATED: 'Profil auth mis à jour.',
+                      PASSWORD_RECOVERY: 'Récupération mot de passe en cours.',
+                  };
+                  refreshAuthUi(statusByEvent[event] || 'Session active.');
+                  syncSessionAndProfile({ silent: true });
               });
               return supabaseClient;
           }
@@ -734,15 +760,19 @@ export function initLegacyApp() {
 
               if (!data) {
                   const localOwned = sanitizeOwnedItems(getOwnedItems());
-                  if (localOwned.length) {
-                      await syncCollectionToSupabase(localOwned, { silentSuccess: true });
-                  }
+                  await syncCollectionToSupabase(localOwned, { silentSuccess: true });
                   return;
               }
 
               const remoteOwned = sanitizeOwnedItems(data.owned_item_ids || []);
-              setOwnedItems(remoteOwned);
-              setAuthStatus(`Achats synchronisés (${remoteOwned.length} expérience${remoteOwned.length > 1 ? 's' : ''}).`);
+              const localOwned = sanitizeOwnedItems(getOwnedItems());
+              const mergedOwned = sanitizeOwnedItems([...remoteOwned, ...localOwned]);
+              const changedFromRemote = mergedOwned.length !== remoteOwned.length;
+              setOwnedItems(mergedOwned);
+              if (changedFromRemote) {
+                  await syncCollectionToSupabase(mergedOwned, { silentSuccess: true });
+              }
+              setAuthStatus(`Achats synchronisés (${mergedOwned.length} expérience${mergedOwned.length > 1 ? 's' : ''}).`);
           }
 
           async function syncCollectionToSupabase(items, options = {}) {
@@ -797,7 +827,24 @@ export function initLegacyApp() {
                   setAuthStatus(`Historique non synchronisé: ${error.message}`, true);
                   return;
               }
-              setSessionHistory(data || []);
+              const remoteRows = Array.isArray(data) ? data : [];
+              const localRows = Array.isArray(getSessionHistory()) ? getSessionHistory() : [];
+              const mergedMap = new Map();
+              [...remoteRows, ...localRows].forEach((entry) => {
+                  if (!entry?.experience_id || !entry?.purchased_at) return;
+                  const key = `${entry.experience_id}::${entry.purchased_at}`;
+                  if (!mergedMap.has(key)) {
+                      mergedMap.set(key, {
+                          experience_id: entry.experience_id,
+                          experience_title: entry.experience_title || 'Expérience Échohypnose',
+                          purchased_at: entry.purchased_at,
+                      });
+                  }
+              });
+              const mergedRows = Array.from(mergedMap.values())
+                  .sort((a, b) => new Date(b.purchased_at).getTime() - new Date(a.purchased_at).getTime())
+                  .slice(0, 100);
+              setSessionHistory(mergedRows);
           }
 
           async function pushSessionHistoryToSupabase(entry) {
@@ -811,10 +858,34 @@ export function initLegacyApp() {
                   purchased_at: entry.purchased_at,
               });
               if (error) {
+                  if (error.code === '23505') return true;
                   setAuthStatus(`Écriture historique échouée: ${error.message}`, true);
                   return false;
               }
               return true;
+          }
+
+          async function syncSessionAndProfile(options = {}) {
+              if (syncInFlightPromise) return syncInFlightPromise;
+              syncInFlightPromise = (async () => {
+                  if (!currentSession?.user?.id) {
+                      renderStoreCatalog();
+                      renderSessionHistory();
+                      return;
+                  }
+                  await syncCollectionFromSupabase();
+                  await syncSessionHistoryFromSupabase();
+                  renderStoreCatalog();
+                  renderSessionHistory();
+                  if (!options.silent) {
+                      setAuthStatus('Profil + session synchronisés ✅');
+                  }
+              })();
+              try {
+                  await syncInFlightPromise;
+              } finally {
+                  syncInFlightPromise = null;
+              }
           }
 
           async function simulatePaymentAndActivate(item) {
@@ -905,6 +976,7 @@ export function initLegacyApp() {
           }
 
           async function signInWithEmail() {
+              if (isAuthActionPending) return;
               const client = buildSupabaseClient();
               if (!client) return;
               const email = authEmailInput.value.trim();
@@ -913,20 +985,23 @@ export function initLegacyApp() {
                   setAuthStatus('Email et mot de passe requis.', true);
                   return;
               }
-              const { data, error } = await client.auth.signInWithPassword({ email, password });
-              if (error) {
-                  setAuthStatus(`Connexion refusée: ${error.message}`, true);
-                  return;
+              setAuthButtonsPending(true);
+              try {
+                  const { data, error } = await client.auth.signInWithPassword({ email, password });
+                  if (error) {
+                      setAuthStatus(`Connexion refusée: ${error.message}`, true);
+                      return;
+                  }
+                  currentSession = data.session;
+                  refreshAuthUi('Connexion réussie ✅');
+                  await syncSessionAndProfile({ silent: true });
+              } finally {
+                  setAuthButtonsPending(false);
               }
-              currentSession = data.session;
-              refreshAuthUi('Connexion réussie ✅');
-              await syncCollectionFromSupabase();
-              await syncSessionHistoryFromSupabase();
-              renderStoreCatalog();
-              renderSessionHistory();
           }
 
           async function signUpWithEmail() {
+              if (isAuthActionPending) return;
               const client = buildSupabaseClient();
               if (!client) return;
               const email = authEmailInput.value.trim();
@@ -935,26 +1010,43 @@ export function initLegacyApp() {
                   setAuthStatus('Email et mot de passe requis.', true);
                   return;
               }
-              const { error } = await client.auth.signUp({ email, password });
-              if (error) {
-                  setAuthStatus(`Inscription refusée: ${error.message}`, true);
-                  return;
+              setAuthButtonsPending(true);
+              try {
+                  const { data, error } = await client.auth.signUp({ email, password });
+                  if (error) {
+                      setAuthStatus(`Inscription refusée: ${error.message}`, true);
+                      return;
+                  }
+                  if (data?.session) {
+                      currentSession = data.session;
+                      refreshAuthUi('Compte créé + connecté ✅');
+                      await syncSessionAndProfile({ silent: true });
+                      return;
+                  }
+                  setAuthStatus('Compte créé. Vérifie ton email puis connecte-toi.');
+              } finally {
+                  setAuthButtonsPending(false);
               }
-              setAuthStatus('Compte créé. Vérifie ton email si la confirmation est active.');
           }
 
           async function signOutSession() {
+              if (isAuthActionPending) return;
               const client = buildSupabaseClient();
               if (!client) return;
-              const { error } = await client.auth.signOut();
-              if (error) {
-                  setAuthStatus(`Déconnexion impossible: ${error.message}`, true);
-                  return;
+              setAuthButtonsPending(true);
+              try {
+                  const { error } = await client.auth.signOut();
+                  if (error) {
+                      setAuthStatus(`Déconnexion impossible: ${error.message}`, true);
+                      return;
+                  }
+                  currentSession = null;
+                  refreshAuthUi('Déconnecté.');
+                  renderStoreCatalog();
+                  renderSessionHistory();
+              } finally {
+                  setAuthButtonsPending(false);
               }
-              currentSession = null;
-              refreshAuthUi('Déconnecté.');
-              renderStoreCatalog();
-              renderSessionHistory();
           }
 
           async function restoreSession() {
@@ -963,12 +1055,7 @@ export function initLegacyApp() {
               const { data } = await client.auth.getSession();
               currentSession = data?.session || null;
               refreshAuthUi(currentSession ? 'Session restaurée.' : 'Pas de session active.');
-              if (currentSession) {
-                  await syncCollectionFromSupabase();
-                  await syncSessionHistoryFromSupabase();
-              }
-              renderStoreCatalog();
-              renderSessionHistory();
+              await syncSessionAndProfile({ silent: true });
               await fetchSooncutVocalsFromBucket();
           }
 
@@ -1003,9 +1090,9 @@ export function initLegacyApp() {
               });
           }
           initSupabaseProfileCard();
-          bindTap(authSignInBtn, signInWithEmail);
-          bindTap(authSignUpBtn, signUpWithEmail);
-          bindTap(authSignOutBtn, signOutSession);
+          bindPress(authSignInBtn, signInWithEmail);
+          bindPress(authSignUpBtn, signUpWithEmail);
+          bindPress(authSignOutBtn, signOutSession);
           renderStoreCatalog();
           renderSessionHistory();
           restoreSession();
