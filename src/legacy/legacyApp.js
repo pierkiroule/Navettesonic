@@ -138,7 +138,7 @@ export function initLegacyApp() {
               bubblePropsPanel.classList.remove('visible');
               selectedBubble = null;
               isDraggingBubble = false;
-              ui.textContent = 'Double tap sur le poisson pour ouvrir la collection sonore';
+              ui.textContent = '';
               rotateHelperTip();
           }
 
@@ -1921,7 +1921,7 @@ export function initLegacyApp() {
           function closeBubblePanel() {
               bubblePanel.classList.add('hidden');
               isInteractionPaused = false;
-              ui.textContent = 'Double tap sur le poisson pour ouvrir la collection sonore';
+              ui.textContent = '';
               rotateHelperTip();
           }
 
