@@ -196,6 +196,7 @@ export function initLegacyApp() {
           let helperTipIndex = 0;
           let sooncutBucketVocals = [];
           let activeArenaAudio = null;
+          let activeAttachedTimelineId = 0;
           const helperTipsPlaylist = [
               'Garde le doigt (ou clic) appuyé dans l’océan : le poisson-plume suit ton mouvement.',
               'Pour ouvrir la collection, fais un double tap (ou double clic) directement sur le poisson.',
@@ -215,6 +216,7 @@ export function initLegacyApp() {
           const FIREFLY_TAIL_WAKE_RADIUS = 170;
           const FIREFLY_AUDIO_MIN_MS = 1500;
           const FIREFLY_AUDIO_MAX_MS = 3200;
+          const FIREFLY_TIMELINE_STEP_MS = 2600;
           const TRIANGLE_DISPERSE_DURATION = 1700;
           const TRIANGLE_SAMPLE_STEP_MS = 1200;
           const DEFAULT_SUPABASE_URL = 'https://qyffktrggapfzlmmlerq.supabase.co';
@@ -1151,6 +1153,69 @@ export function initLegacyApp() {
               firefly.playbackEndsAt = now + FIREFLY_AUDIO_MIN_MS + Math.random() * (FIREFLY_AUDIO_MAX_MS - FIREFLY_AUDIO_MIN_MS);
           }
 
+          function playTimelineUrl(url, trackName) {
+              return new Promise((resolve) => {
+                  try {
+                      const audio = new Audio();
+                      audio.preload = 'auto';
+                      audio.volume = 0.98;
+                      audio.src = url;
+                      activeArenaAudio = audio;
+                      let settled = false;
+                      const fallbackMs = FIREFLY_TIMELINE_STEP_MS;
+                      const finish = (durationMs) => {
+                          if (settled) return;
+                          settled = true;
+                          resolve(durationMs || fallbackMs);
+                      };
+                      audio.addEventListener('ended', () => {
+                          const durationMs = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration * 1000 : fallbackMs;
+                          finish(durationMs);
+                      }, { once: true });
+                      audio.addEventListener('error', () => finish(fallbackMs), { once: true });
+                      setTimeout(() => finish(fallbackMs), 9000);
+                      audio.play().then(() => {
+                          setArenaTriangleStatus(`Timeline vocale: ${trackName}`);
+                      }).catch(() => finish(fallbackMs));
+                  } catch (_) {
+                      resolve(FIREFLY_TIMELINE_STEP_MS);
+                  }
+              });
+          }
+
+          async function playAttachedClusterTimeline(fireflies, timelineId) {
+              if (!fireflies.length) return;
+              ensureAllAudioRunning();
+              let cursor = performance.now();
+              for (let i = 0; i < fireflies.length; i++) {
+                  if (timelineId !== activeAttachedTimelineId) return;
+                  const firefly = fireflies[i];
+                  if (!firefly?.attachedToTail) continue;
+                  if (!firefly.bucketTrack && sooncutBucketVocals.length) {
+                      firefly.bucketTrack = pickRandomSooncutTrack();
+                  }
+                  if (!firefly.bucketTrack) {
+                      await fetchSooncutVocalsFromBucket();
+                      firefly.bucketTrack = pickRandomSooncutTrack();
+                  }
+
+                  let durationMs = FIREFLY_TIMELINE_STEP_MS;
+                  if (firefly.bucketTrack) {
+                      const candidateUrls = await resolveSooncutTrackUrls(firefly.bucketTrack);
+                      if (candidateUrls.length) {
+                          durationMs = await playTimelineUrl(candidateUrls[0], firefly.bucketTrack.name);
+                      } else {
+                          triggerArenaSample(firefly.sampleId);
+                      }
+                  } else {
+                      triggerArenaSample(firefly.sampleId);
+                  }
+                  firefly.playbackEndsAt = cursor + durationMs;
+                  cursor += durationMs;
+              }
+              setArenaTriangleStatus('Timeline vocale terminée, les perles se redispersent.');
+          }
+
           function attachFireflyClusterToTail(sourceFirefly, now) {
               const cluster = getLinkedFireflyCluster(sourceFirefly);
               if (!cluster.length) return;
@@ -1162,7 +1227,7 @@ export function initLegacyApp() {
                   firefly.linkedCooldownUntil = now + 900;
                   firefly.vx *= 0.25;
                   firefly.vy *= 0.25;
-                  triggerAttachedFireflyPlayback(firefly, now + index * 180);
+                  firefly.playbackEndsAt = now + FIREFLY_TIMELINE_STEP_MS * 0.9;
               });
               const clusterIds = new Set(cluster.map((firefly) => firefly.id));
               for (let i = ARENA_FIREFLY_LINKS.length - 1; i >= 0; i--) {
@@ -1172,6 +1237,12 @@ export function initLegacyApp() {
                   }
               }
               setArenaTriangleStatus(`${cluster.length} luciole(s) accrochée(s) au fil de la queue.`);
+              if (cluster.length >= 3) {
+                  const timelineId = ++activeAttachedTimelineId;
+                  playAttachedClusterTimeline(cluster.slice(0, 3), timelineId);
+              } else {
+                  cluster.forEach((firefly, index) => triggerAttachedFireflyPlayback(firefly, now + index * 220));
+              }
           }
 
           function tryCreateArenaTriangle(now) {
@@ -1292,19 +1363,21 @@ export function initLegacyApp() {
                   firefly.glow = firefly.attachedToTail ? (0.48 + pulse * 0.52) : (0.34 + pulse * 0.66);
                   if (firefly.attachedToTail) {
                       const leader = attachedByOrder.get(firefly.attachedOrder - 1);
-                      const segment = 12 + firefly.size * 0.85;
-                      const baseX = leader ? (leader.x - backX * segment) : (tail.x - backX * (10 + firefly.attachedOrder * segment));
-                      const baseY = leader ? (leader.y - backY * segment) : (tail.y - backY * (10 + firefly.attachedOrder * segment));
-                      const waggleAmp = 2.6 + firefly.size * 0.32;
-                      const waggle = Math.sin((timeSeconds * (1.6 + firefly.pulseFreq)) + firefly.pulsePhase + firefly.attachedOrder * 0.9);
+                      const trailIndex = Math.max(0, ship.trail.length - 1 - (8 + firefly.attachedOrder * 6));
+                      const trailAnchor = ship.trail[trailIndex] || tail;
+                      const segment = 10 + firefly.size * 0.8;
+                      const baseX = leader ? (leader.x - backX * segment) : trailAnchor.x;
+                      const baseY = leader ? (leader.y - backY * segment) : trailAnchor.y;
+                      const waggleAmp = 1.4 + firefly.size * 0.16;
+                      const waggle = Math.sin((timeSeconds * (1.2 + firefly.pulseFreq * 0.5)) + firefly.pulsePhase + firefly.attachedOrder * 0.6);
                       const targetX = baseX + sideX * waggle * waggleAmp;
                       const targetY = baseY + sideY * waggle * waggleAmp;
 
-                      const spring = leader ? 0.16 : 0.14;
-                      firefly.vx += (targetX - firefly.x) * spring + ship.vx * 0.026;
-                      firefly.vy += (targetY - firefly.y) * spring + ship.vy * 0.026;
-                      firefly.vx *= 0.76;
-                      firefly.vy *= 0.76;
+                      const spring = leader ? 0.1 : 0.12;
+                      firefly.vx += (targetX - firefly.x) * spring + ship.vx * 0.016;
+                      firefly.vy += (targetY - firefly.y) * spring + ship.vy * 0.016;
+                      firefly.vx *= 0.68;
+                      firefly.vy *= 0.68;
                       firefly.x += firefly.vx;
                       firefly.y += firefly.vy;
                       if (now >= firefly.playbackEndsAt && firefly.playbackEndsAt > 0) {
