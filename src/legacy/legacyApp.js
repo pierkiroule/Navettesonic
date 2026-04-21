@@ -81,9 +81,7 @@ export function initLegacyApp() {
           const authSignOutBtn = document.getElementById('authSignOutBtn');
           const authStatus = document.getElementById('authStatus');
           const authSessionInfo = document.getElementById('authSessionInfo');
-          const authConfigBlock = document.getElementById('authConfigBlock');
-          const authSupabaseKeyInput = document.getElementById('authSupabaseKeyInput');
-          const authSaveSupabaseKeyBtn = document.getElementById('authSaveSupabaseKeyBtn');
+          const dbConnectionStatus = document.getElementById('dbConnectionStatus');
           const storeCatalog = document.getElementById('storeCatalog');
           const sessionHistoryList = document.getElementById('sessionHistoryList');
 
@@ -508,6 +506,12 @@ export function initLegacyApp() {
               authStatus.style.color = isError ? 'rgba(255, 148, 148, 0.95)' : 'rgba(146, 247, 210, 0.95)';
           }
 
+          function setDbConnectionStatus(message, isError = false) {
+              if (!dbConnectionStatus) return;
+              dbConnectionStatus.textContent = message;
+              dbConnectionStatus.style.color = isError ? 'rgba(255, 172, 172, 0.95)' : 'rgba(197, 223, 255, 0.95)';
+          }
+
           function setAuthButtonsPending(isPending) {
               isAuthActionPending = isPending;
               if (authSignInBtn) authSignInBtn.disabled = isPending;
@@ -543,33 +547,27 @@ export function initLegacyApp() {
               };
           }
 
-          function syncAuthConfigUi() {
-              if (!authConfigBlock) return;
-              const cfg = getSupabaseConfig();
-              const key = supabaseKeyInput?.value?.trim() || cfg.key || '';
-              authConfigBlock.hidden = !!key;
-              if (authSupabaseKeyInput && !authSupabaseKeyInput.value) {
-                  authSupabaseKeyInput.value = key;
-              }
-          }
-
           function buildSupabaseClient() {
               const cfg = getSupabaseConfig();
               const url = supabaseUrlInput?.value?.trim() || cfg.url || DEFAULT_SUPABASE_URL;
               const key = supabaseKeyInput?.value?.trim() || cfg.key;
               if (!url || !key) {
-                  syncAuthConfigUi();
                   setSupabaseStatus('Ajoute URL + clé publishable Supabase.', true);
-                  setAuthStatus('Inscription indisponible: clé Supabase manquante (VITE_SUPABASE_PUBLISHABLE_KEY).', true);
-                  authSupabaseKeyInput?.focus();
+                  setDbConnectionStatus('Base Supabase non connectée (variables Vercel manquantes).', true);
+                  setAuthStatus('Inscription indisponible: variable VITE_SUPABASE_PUBLISHABLE_KEY manquante.', true);
                   return null;
               }
               if (!window.supabase || typeof window.supabase.createClient !== 'function') {
                   setSupabaseStatus('SDK Supabase introuvable dans la page.', true);
+                  setDbConnectionStatus('Base Supabase non connectée (SDK introuvable).', true);
                   return null;
               }
-              if (supabaseClient) return supabaseClient;
+              if (supabaseClient) {
+                  setDbConnectionStatus('Base Supabase connectée ✅');
+                  return supabaseClient;
+              }
               supabaseClient = window.supabase.createClient(url, key);
+              setDbConnectionStatus('Base Supabase connectée ✅');
               supabaseClient.auth.onAuthStateChange((event, session) => {
                   currentSession = session;
                   const statusByEvent = {
@@ -1098,24 +1096,11 @@ export function initLegacyApp() {
               supabaseKeyInput.value = cfg.key;
               if (supabaseUrlInput.value && cfg.key) {
                   setSupabaseStatus(`Configuration chargée (${maskApiKey(cfg.key)}).`);
+                  setDbConnectionStatus('Base Supabase prête ✅');
               } else {
                   setSupabaseStatus('Renseigne URL + clé publishable pour activer Soonbucket.');
-                  setAuthStatus('Ajoute une clé Supabase publishable (VITE_SUPABASE_PUBLISHABLE_KEY) pour activer l’inscription.', true);
+                  setDbConnectionStatus('Base Supabase non connectée (variables Vercel manquantes).', true);
               }
-              syncAuthConfigUi();
-
-              authSaveSupabaseKeyBtn?.addEventListener('click', () => {
-                  const key = authSupabaseKeyInput?.value?.trim() || '';
-                  if (!key) {
-                      setAuthStatus('Ajoute une clé publishable valide.', true);
-                      return;
-                  }
-                  supabaseKeyInput.value = key;
-                  localStorage.setItem(SUPABASE_LOCAL_KEYS.key, key);
-                  supabaseClient = null;
-                  syncAuthConfigUi();
-                  setAuthStatus('Configuration Supabase enregistrée. Tu peux t’inscrire.', false);
-              });
 
               supabaseSaveConfigBtn.addEventListener('click', () => {
                   const url = supabaseUrlInput.value.trim();
