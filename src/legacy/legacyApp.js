@@ -438,10 +438,13 @@ export function initLegacyApp() {
           }
 
           if (echoHypnoseLinkBtn) {
-              echoHypnoseLinkBtn.addEventListener('click', openEchoHypnoseModal);
+              bindTap(echoHypnoseLinkBtn, openEchoHypnoseModal);
           }
           if (closeEchoHypnoseModalBtn) {
-              closeEchoHypnoseModalBtn.addEventListener('click', closeEchoHypnoseModal);
+              bindTap(closeEchoHypnoseModalBtn, (event) => {
+                  event.stopPropagation();
+                  closeEchoHypnoseModal();
+              });
           }
           if (echoHypnoseModal) {
               echoHypnoseModal.addEventListener('click', (event) => {
@@ -1284,9 +1287,11 @@ export function initLegacyApp() {
           }
 
           function isInteractiveTarget(target) {
+              if (!target) return false;
               return bubblePanel.contains(target) || bubblePropsPanel.contains(target) ||
                      arenaTrianglePad.contains(target) || bottomNav.contains(target) ||
-                     homeView.contains(target) || profileView.contains(target);
+                     homeView.contains(target) || profileView.contains(target) ||
+                     (echoHypnoseModal && echoHypnoseModal.contains(target));
           }
 
           function setArenaTriangleStatus(message, isError = false) {
