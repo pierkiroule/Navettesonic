@@ -212,6 +212,7 @@ export function initLegacyApp() {
           const FIREFLY_LINK_BREAK_DISTANCE = 102;
           const FIREFLY_LINK_TTL = 7800;
           const FIREFLY_TAIL_ATTACH_RADIUS = 38;
+          const FIREFLY_TAIL_WAKE_RADIUS = 170;
           const FIREFLY_AUDIO_MIN_MS = 1500;
           const FIREFLY_AUDIO_MAX_MS = 3200;
           const TRIANGLE_DISPERSE_DURATION = 1700;
@@ -1266,6 +1267,7 @@ export function initLegacyApp() {
               const now = performance.now();
               const timeSeconds = now * 0.001;
               const flowStrength = Math.min(1, Math.hypot(ship.vx, ship.vy) / ship.maxSpeed);
+              const tail = getShipTailPosition();
               for (let i = ARENA_FIREFLY_LINKS.length - 1; i >= 0; i--) {
                   const link = ARENA_FIREFLY_LINKS[i];
                   const a = getArenaFireflyById(link.aId);
@@ -1311,6 +1313,12 @@ export function initLegacyApp() {
                   const shipCurrent = (0.09 + flowStrength * 0.34) / (distToShip * 0.011);
                   const tangentialX = -toShipY / distToShip;
                   const tangentialY = toShipX / distToShip;
+                  const toTailX = tail.x - firefly.x;
+                  const toTailY = tail.y - firefly.y;
+                  const distToTail = Math.max(0.001, Math.hypot(toTailX, toTailY));
+                  const tailPull = Math.max(0, 1 - (distToTail / FIREFLY_TAIL_WAKE_RADIUS));
+                  const tailTangentX = -toTailY / distToTail;
+                  const tailTangentY = toTailX / distToTail;
 
                   if (fixedVertex && (owningTriangle.state === 'stable' || owningTriangle.state === 'triggered')) {
                       firefly.vx *= 0.82;
@@ -1320,8 +1328,15 @@ export function initLegacyApp() {
                   } else {
                       firefly.vx += (driftTargetX - firefly.x) * 0.00095;
                       firefly.vy += (driftTargetY - firefly.y) * 0.00095;
-                      firefly.vx += tangentialX * shipCurrent + ship.vx * (0.007 + flowStrength * 0.012);
-                      firefly.vy += tangentialY * shipCurrent + ship.vy * (0.007 + flowStrength * 0.012);
+                      const shipInfluence = 1 - tailPull * 0.86;
+                      firefly.vx += tangentialX * shipCurrent * shipInfluence + ship.vx * (0.007 + flowStrength * 0.012) * shipInfluence;
+                      firefly.vy += tangentialY * shipCurrent * shipInfluence + ship.vy * (0.007 + flowStrength * 0.012) * shipInfluence;
+                      if (tailPull > 0) {
+                          const tailSeek = 0.0022 + tailPull * 0.007;
+                          const tailOrbit = 0.016 + tailPull * 0.09;
+                          firefly.vx += toTailX * tailSeek + tailTangentX * tailOrbit + ship.vx * 0.025;
+                          firefly.vy += toTailY * tailSeek + tailTangentY * tailOrbit + ship.vy * 0.025;
+                      }
 
                       firefly.vx *= firefly.lockedTriangleId ? 0.9 : 0.982;
                       firefly.vy *= firefly.lockedTriangleId ? 0.9 : 0.982;
@@ -1363,10 +1378,8 @@ export function initLegacyApp() {
                   }
               }
 
-              const tail = getShipTailPosition();
               const attachCandidate = ARENA_FIREFLIES.find((firefly) => {
                   if (firefly.attachedToTail) return false;
-                  if (firefly.linkedCooldownUntil > now) return false;
                   if (!hasAnyLinkForFirefly(firefly.id)) return false;
                   return Math.hypot(firefly.x - tail.x, firefly.y - tail.y) <= FIREFLY_TAIL_ATTACH_RADIUS;
               });
