@@ -352,7 +352,7 @@ export function initLegacyApp() {
           }, 5000);
 
           bindTap(enterExperienceBtn, () => {
-              if (!requireRegisteredUserForExperience('immerSoon')) return;
+              if (!requireRegisteredUserForExperience('Soon experience')) return;
               showView('experience');
               ensureAllAudioRunning();
           });
@@ -522,14 +522,14 @@ export function initLegacyApp() {
           function updateExperienceAccessUi() {
               const hasAccess = !!currentSession?.user;
               if (enterExperienceBtn) {
-                  enterExperienceBtn.textContent = hasAccess ? 'immerSoon' : 'immerSoon 🔒';
+                  enterExperienceBtn.textContent = hasAccess ? 'Soon experience' : 'Soon experience 🔒';
               }
               if (navSoon) {
                   navSoon.textContent = hasAccess ? 'Soon•°' : 'Soon•° 🔒';
               }
           }
 
-          function requireRegisteredUserForExperience(triggerLabel = 'immerSoon') {
+          function requireRegisteredUserForExperience(triggerLabel = 'Soon experience') {
               if (currentSession?.user) return true;
               setAuthStatus(`Inscris-toi ou connecte-toi pour accéder à l'expérience (${triggerLabel}).`, true);
               showView('profile');
