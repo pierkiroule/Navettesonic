@@ -82,7 +82,7 @@ export function initLegacyApp() {
           const authStatus = document.getElementById('authStatus');
           const authSessionInfo = document.getElementById('authSessionInfo');
           const storeCatalog = document.getElementById('storeCatalog');
-          const ownedCollection = document.getElementById('ownedCollection');
+          const sessionHistoryList = document.getElementById('sessionHistoryList');
 
           let selectedBubble = null;
           let isDraggingBubble = false;
@@ -255,10 +255,10 @@ export function initLegacyApp() {
               url: 'soono.supabase.url',
               key: 'soono.supabase.key',
           };
-          const SAMPLE_STORE = [
-              { id: 'zen-gong-pack', title: 'Zen Gong Pack', description: 'Gong profond, ample et méditatif.', priceLabel: '4,90 €', objectPath: 'samples/zen-gong.mp3' },
-              { id: 'ocean-deep-pack', title: 'Ocean Deep Pack', description: 'Textures aquatiques immersives.', priceLabel: '5,90 €', objectPath: 'samples/ocean-deep.mp3' },
-              { id: 'aurore-pack', title: 'Aurore Pack', description: 'Drone lumineux pour sessions lentes.', priceLabel: '3,90 €', objectPath: 'samples/aurore.mp3' },
+          const ECHO_EXPERIENCES = [
+              { id: 'echo-nuit-calmante', title: 'Écho Nuit Calmante', description: 'Session douce pour ralentir le mental.', priceLabel: '12,00 €', durationLabel: '25 min' },
+              { id: 'echo-focus-profond', title: 'Écho Focus Profond', description: 'Immersion sonore pour concentration profonde.', priceLabel: '16,00 €', durationLabel: '35 min' },
+              { id: 'echo-voyage-ocean', title: 'Écho Voyage Océan', description: 'Parcours méditatif inspiré des abysses.', priceLabel: '19,00 €', durationLabel: '45 min' },
           ];
 
           const arenaResonance = { level: 0, hue: 198 };
@@ -488,8 +488,17 @@ export function initLegacyApp() {
               supabaseClient.auth.onAuthStateChange((event, session) => {
                   currentSession = session;
                   refreshAuthUi(event === 'SIGNED_OUT' ? 'Session fermée.' : 'Session active.');
+                  if (currentSession) {
+                      syncCollectionFromSupabase().then(() => {
+                          return syncSessionHistoryFromSupabase();
+                      }).finally(() => {
+                          renderStoreCatalog();
+                          renderSessionHistory();
+                      });
+                      return;
+                  }
                   renderStoreCatalog();
-                  renderOwnedCollection();
+                  renderSessionHistory();
               });
               return supabaseClient;
           }
@@ -619,7 +628,12 @@ export function initLegacyApp() {
 
           function getCollectionStorageKey() {
               const userId = currentSession?.user?.id || 'guest';
-              return `soono.collection.${userId}`;
+              return `soono.echo.purchases.${userId}`;
+          }
+
+          function getSessionHistoryStorageKey() {
+              const userId = currentSession?.user?.id || 'guest';
+              return `soono.echo.sessions.${userId}`;
           }
 
           function getOwnedItems() {
@@ -637,9 +651,24 @@ export function initLegacyApp() {
               localStorage.setItem(getCollectionStorageKey(), JSON.stringify(items));
           }
 
+          function getSessionHistory() {
+              const raw = localStorage.getItem(getSessionHistoryStorageKey());
+              if (!raw) return [];
+              try {
+                  const parsed = JSON.parse(raw);
+                  return Array.isArray(parsed) ? parsed : [];
+              } catch (_) {
+                  return [];
+              }
+          }
+
+          function setSessionHistory(items) {
+              localStorage.setItem(getSessionHistoryStorageKey(), JSON.stringify(items));
+          }
+
           function sanitizeOwnedItems(items) {
               if (!Array.isArray(items)) return [];
-              const allowedIds = new Set(SAMPLE_STORE.map((item) => item.id));
+              const allowedIds = new Set(ECHO_EXPERIENCES.map((item) => item.id));
               const unique = [];
               const seen = new Set();
               items.forEach((itemId) => {
@@ -676,7 +705,7 @@ export function initLegacyApp() {
 
               const remoteOwned = sanitizeOwnedItems(data.owned_item_ids || []);
               setOwnedItems(remoteOwned);
-              setAuthStatus(`Collection synchronisée (${remoteOwned.length} sample${remoteOwned.length > 1 ? 's' : ''}).`);
+              setAuthStatus(`Achats synchronisés (${remoteOwned.length} expérience${remoteOwned.length > 1 ? 's' : ''}).`);
           }
 
           async function syncCollectionToSupabase(items, options = {}) {
@@ -701,33 +730,85 @@ export function initLegacyApp() {
               }
 
               if (!options.silentSuccess) {
-                  setAuthStatus(`Profil Supabase synchronisé (${safeItems.length} sample${safeItems.length > 1 ? 's' : ''}).`);
+                  setAuthStatus(`Profil Supabase synchronisé (${safeItems.length} expérience${safeItems.length > 1 ? 's' : ''}).`);
               }
               return true;
           }
 
-          async function resolveSampleUrl(objectPath) {
+          function formatSessionTimestamp(value) {
+              const date = new Date(value);
+              if (Number.isNaN(date.getTime())) return 'Date inconnue';
+              return new Intl.DateTimeFormat('fr-FR', {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+              }).format(date);
+          }
+
+          async function syncSessionHistoryFromSupabase() {
+              if (!currentSession?.user?.id) return;
               const client = buildSupabaseClient();
-              if (!client) return null;
-              const signed = await client.storage.from(SUPABASE_BUCKET).createSignedUrl(objectPath, 60 * 60);
-              if (!signed.error && signed.data?.signedUrl) return signed.data.signedUrl;
-              const { data } = client.storage.from(SUPABASE_BUCKET).getPublicUrl(objectPath);
-              return data?.publicUrl || null;
+              if (!client) return;
+
+              const { data, error } = await client
+                  .from('echohypnose_session_history')
+                  .select('experience_id, experience_title, purchased_at')
+                  .eq('user_id', currentSession.user.id)
+                  .order('purchased_at', { ascending: false })
+                  .limit(100);
+
+              if (error) {
+                  setAuthStatus(`Historique non synchronisé: ${error.message}`, true);
+                  return;
+              }
+              setSessionHistory(data || []);
+          }
+
+          async function pushSessionHistoryToSupabase(entry) {
+              if (!currentSession?.user?.id) return false;
+              const client = buildSupabaseClient();
+              if (!client) return false;
+              const { error } = await client.from('echohypnose_session_history').insert({
+                  user_id: currentSession.user.id,
+                  experience_id: entry.experience_id,
+                  experience_title: entry.experience_title,
+                  purchased_at: entry.purchased_at,
+              });
+              if (error) {
+                  setAuthStatus(`Écriture historique échouée: ${error.message}`, true);
+                  return false;
+              }
+              return true;
           }
 
           async function simulatePaymentAndActivate(item) {
-              setAuthStatus(`Paiement simulé pour ${item.title}…`);
+              setAuthStatus(`Achat simulé pour ${item.title}…`);
               await new Promise(resolve => setTimeout(resolve, 650));
               const owned = new Set(getOwnedItems());
               owned.add(item.id);
               const nextOwned = sanitizeOwnedItems([...owned]);
               setOwnedItems(nextOwned);
+              const purchasedAt = new Date().toISOString();
+              const localHistory = [
+                  {
+                      experience_id: item.id,
+                      experience_title: item.title,
+                      purchased_at: purchasedAt,
+                  },
+                  ...getSessionHistory(),
+              ].slice(0, 100);
+              setSessionHistory(localHistory);
+
               if (currentSession?.user?.id) {
                   await syncCollectionToSupabase(nextOwned, { silentSuccess: true });
+                  await pushSessionHistoryToSupabase({
+                      experience_id: item.id,
+                      experience_title: item.title,
+                      purchased_at: purchasedAt,
+                  });
               }
-              setAuthStatus(`${item.title} activé gratuitement ✅${currentSession?.user?.id ? ' · Sync profil OK' : ''}`);
+              setAuthStatus(`${item.title} acheté ✅${currentSession?.user?.id ? ' · historique sync OK' : ''}`);
               renderStoreCatalog();
-              renderOwnedCollection();
+              renderSessionHistory();
           }
 
           function refreshAuthUi(message = '') {
@@ -745,18 +826,18 @@ export function initLegacyApp() {
               if (!storeCatalog) return;
               const owned = new Set(getOwnedItems());
               storeCatalog.innerHTML = '';
-              SAMPLE_STORE.forEach(item => {
+              ECHO_EXPERIENCES.forEach(item => {
                   const card = document.createElement('article');
                   card.className = 'store-item';
                   const isOwned = owned.has(item.id);
                   card.innerHTML = `
                       <h4>${item.title}</h4>
                       <p>${item.description}</p>
-                      <span class="pill">${isOwned ? 'Activé' : `Paiement simulé · ${item.priceLabel}`}</span>
+                      <span class="pill">${item.durationLabel} · ${isOwned ? 'Acheté' : item.priceLabel}</span>
                   `;
                   const actionBtn = document.createElement('button');
                   actionBtn.type = 'button';
-                  actionBtn.textContent = isOwned ? 'Déjà activé' : 'Activer gratuitement';
+                  actionBtn.textContent = isOwned ? 'Déjà acheté' : 'Acheter (simulé)';
                   actionBtn.disabled = isOwned;
                   actionBtn.addEventListener('click', () => {
                       simulatePaymentAndActivate(item);
@@ -766,35 +847,23 @@ export function initLegacyApp() {
               });
           }
 
-          async function renderOwnedCollection() {
-              if (!ownedCollection) return;
-              const owned = getOwnedItems();
-              ownedCollection.innerHTML = '';
-              if (!owned.length) {
-                  ownedCollection.innerHTML = '<p class="collection-empty">Aucun sample activé pour le moment.</p>';
+          function renderSessionHistory() {
+              if (!sessionHistoryList) return;
+              const history = getSessionHistory();
+              sessionHistoryList.innerHTML = '';
+              if (!history.length) {
+                  sessionHistoryList.innerHTML = '<p class="collection-empty">Aucune session enregistrée pour le moment.</p>';
                   return;
               }
-              for (const itemId of owned) {
-                  const item = SAMPLE_STORE.find(s => s.id === itemId);
-                  if (!item) continue;
+              history.forEach((entry, index) => {
                   const row = document.createElement('article');
                   row.className = 'store-item';
-                  row.innerHTML = `<h4>${item.title}</h4><p>${item.description}</p>`;
-                  const preview = document.createElement('audio');
-                  preview.controls = true;
-                  preview.preload = 'none';
-                  const src = await resolveSampleUrl(item.objectPath);
-                  if (src) {
-                      preview.src = src;
-                      row.appendChild(preview);
-                  } else {
-                      const hint = document.createElement('p');
-                      hint.className = 'muted';
-                      hint.textContent = `Fichier introuvable dans ${SUPABASE_BUCKET}: ${item.objectPath}`;
-                      row.appendChild(hint);
-                  }
-                  ownedCollection.appendChild(row);
-              }
+                  row.innerHTML = `
+                      <h4>${entry.experience_title || 'Expérience Échohypnose'}</h4>
+                      <p>Session #${history.length - index} · ${formatSessionTimestamp(entry.purchased_at)}</p>
+                  `;
+                  sessionHistoryList.appendChild(row);
+              });
           }
 
           async function signInWithEmail() {
@@ -814,8 +883,9 @@ export function initLegacyApp() {
               currentSession = data.session;
               refreshAuthUi('Connexion réussie ✅');
               await syncCollectionFromSupabase();
+              await syncSessionHistoryFromSupabase();
               renderStoreCatalog();
-              renderOwnedCollection();
+              renderSessionHistory();
           }
 
           async function signUpWithEmail() {
@@ -846,7 +916,7 @@ export function initLegacyApp() {
               currentSession = null;
               refreshAuthUi('Déconnecté.');
               renderStoreCatalog();
-              renderOwnedCollection();
+              renderSessionHistory();
           }
 
           async function restoreSession() {
@@ -857,9 +927,10 @@ export function initLegacyApp() {
               refreshAuthUi(currentSession ? 'Session restaurée.' : 'Pas de session active.');
               if (currentSession) {
                   await syncCollectionFromSupabase();
+                  await syncSessionHistoryFromSupabase();
               }
               renderStoreCatalog();
-              await renderOwnedCollection();
+              renderSessionHistory();
               await fetchSooncutVocalsFromBucket();
           }
 
@@ -898,7 +969,7 @@ export function initLegacyApp() {
           authSignUpBtn.addEventListener('click', signUpWithEmail);
           authSignOutBtn.addEventListener('click', signOutSession);
           renderStoreCatalog();
-          renderOwnedCollection();
+          renderSessionHistory();
           restoreSession();
 
           SAMPLE_LIBRARY.forEach(sample => {

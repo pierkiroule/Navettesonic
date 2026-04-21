@@ -67,4 +67,7 @@ Le job valide d’abord les secrets, puis :
 
 ### Synchronisation profil ↔ Supabase
 
-Une migration SQL est fournie pour créer la table `public.user_profile_collections` (RLS activée), utilisée par la page profil pour synchroniser les samples activés entre session locale et compte Supabase Auth.
+Le profil est simplifié autour de 3 besoins : auth (connexion/inscription/session), achat d’expériences Échohypnose (simulé), et historique horodaté.
+
+- `public.user_profile_collections` (RLS): synchronise les expériences achetées.
+- `public.echohypnose_session_history` (RLS): stocke l’historique horodaté des sessions achetées.
