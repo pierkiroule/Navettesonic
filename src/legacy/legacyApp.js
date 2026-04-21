@@ -206,8 +206,6 @@ export function initLegacyApp() {
           let helperTipIndex = 0;
           let sooncutBucketVocals = [];
           let activeArenaAudio = null;
-          let activeAttachedTimelineId = 0;
-          let attachedClusterSeed = 1;
           const helperTipsPlaylist = [
               'Garde le doigt (ou clic) appuyé dans l’océan : le poisson-plume suit ton mouvement.',
               'Pour ouvrir la collection, fais un double tap (ou double clic) directement sur le poisson.',
@@ -222,11 +220,8 @@ export function initLegacyApp() {
           const FIREFLY_TAIL_ATTACH_RADIUS = 38;
           const FIREFLY_AUDIO_MIN_MS = 1500;
           const FIREFLY_AUDIO_MAX_MS = 3200;
-          const FIREFLY_TIMELINE_STEP_MS = 2600;
           const FIREFLY_TAIL_MAX_ATTACHED = 1;
           const FIREFLY_REPULSE_COOLDOWN_MS = 900;
-          const MEDUSA_RELEASE_DELAY_MS = 30000;
-          const MEDUSA_COUNT = 3;
           const DEFAULT_SUPABASE_URL = 'https://qyffktrggapfzlmmlerq.supabase.co';
           const ENV_SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || '';
           const ENV_SUPABASE_KEY = import.meta.env?.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
@@ -247,7 +242,6 @@ export function initLegacyApp() {
           const DRIFT_MOTES = [];
           const MAX_DRIFT_MOTES = 22;
           const ARENA_FIREFLIES = [];
-          const ARENA_MEDUSAE = [];
           const STARTING_BUBBLES = [
               { sampleId: 'forêt-zen', layer: 'front', hue: 188, x: -240, y: -120, r: 72 },
               { sampleId: 'ocean-deep', layer: 'below', hue: 235, x: 220, y: 170, r: 78 },
@@ -1522,10 +1516,7 @@ export function initLegacyApp() {
                       attachedOrder: -1,
                       attachedAt: 0,
                       playbackEndsAt: 0,
-                      attachmentClusterId: null,
-                      containedInMedusaId: null,
                       containedInBubbleId: null,
-                      medusaReleasedAt: 0,
                       bubbleOrbitIndex: index % 3,
                       nextBubbleSwitchAt: performance.now() + 4200 + Math.random() * 3600,
                       destinyX: Math.cos(angle) * baseRadius,
@@ -1535,32 +1526,8 @@ export function initLegacyApp() {
               }
           }
 
-          function ensureArenaMedusae() {
-              if (ARENA_MEDUSAE.length) return;
-              const baseRadius = ARENA_RADIUS * 0.34;
-              for (let index = 0; index < MEDUSA_COUNT; index++) {
-                  const angle = (index / MEDUSA_COUNT) * Math.PI * 2 + Math.random() * 0.45;
-                  const medusaBaseRadius = baseRadius + (Math.random() - 0.5) * 220;
-                  ARENA_MEDUSAE.push({
-                      id: `medusa-${index + 1}`,
-                      x: Math.cos(angle) * medusaBaseRadius,
-                      y: Math.sin(angle) * medusaBaseRadius,
-                      baseX: Math.cos(angle) * medusaBaseRadius,
-                      baseY: Math.sin(angle) * medusaBaseRadius,
-                      phase: Math.random() * Math.PI * 2,
-                      speed: 0.00018 + Math.random() * 0.00012,
-                      radius: 24 + Math.random() * 8,
-                      pulse: 0.5,
-                      storedFireflyIds: [],
-                      releaseAt: 0,
-                      cooldownUntil: 0
-                  });
-              }
-          }
-
           function renderArenaTriangles() {
               ensureArenaFireflies();
-              ensureArenaMedusae();
               if (arenaTrianglePad) {
                   arenaTrianglePad.innerHTML = '';
                   arenaTrianglePad.setAttribute('aria-hidden', 'true');
@@ -1614,97 +1581,6 @@ export function initLegacyApp() {
               });
           }
 
-          function segmentDistanceToPointSquared(ax, ay, bx, by, px, py) {
-              const abx = bx - ax;
-              const aby = by - ay;
-              const apx = px - ax;
-              const apy = py - ay;
-              const abLenSq = (abx * abx) + (aby * aby);
-              if (abLenSq <= 0.0001) return (apx * apx) + (apy * apy);
-              let t = ((apx * abx) + (apy * aby)) / abLenSq;
-              t = Math.max(0, Math.min(1, t));
-              const cx = ax + abx * t;
-              const cy = ay + aby * t;
-              const dx = px - cx;
-              const dy = py - cy;
-              return (dx * dx) + (dy * dy);
-          }
-
-          function playTimelineUrl(url, trackName) {
-              return new Promise((resolve) => {
-                  try {
-                      const audio = new Audio();
-                      audio.preload = 'auto';
-                      audio.volume = 0.98;
-                      audio.src = url;
-                      activeArenaAudio = audio;
-                      let settled = false;
-                      const fallbackMs = FIREFLY_TIMELINE_STEP_MS;
-                      const finish = (durationMs, ok = true) => {
-                          if (settled) return;
-                          settled = true;
-                          resolve({ ok, durationMs: durationMs || fallbackMs });
-                      };
-                      audio.addEventListener('ended', () => {
-                          const durationMs = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration * 1000 : fallbackMs;
-                          finish(durationMs, true);
-                      }, { once: true });
-                      audio.addEventListener('error', () => finish(fallbackMs, false), { once: true });
-                      setTimeout(() => finish(fallbackMs, false), 9000);
-                      audio.play().then(() => {
-                          setArenaTriangleStatus(`Timeline vocale: ${trackName}`);
-                      }).catch(() => finish(fallbackMs, false));
-                  } catch (_) {
-                      resolve({ ok: false, durationMs: FIREFLY_TIMELINE_STEP_MS });
-                  }
-              });
-          }
-
-          async function playAttachedClusterTimeline(fireflies, timelineId) {
-              if (!fireflies.length) return;
-              ensureAllAudioRunning();
-              let cursor = performance.now();
-              const releasePlan = [];
-              for (let i = 0; i < fireflies.length; i++) {
-                  if (timelineId !== activeAttachedTimelineId) return;
-                  const firefly = fireflies[i];
-                  if (!firefly?.attachedToTail) continue;
-                  if (!firefly.bucketTrack && sooncutBucketVocals.length) {
-                      firefly.bucketTrack = pickRandomSooncutTrack();
-                  }
-                  if (!firefly.bucketTrack) {
-                      await fetchSooncutVocalsFromBucket();
-                      firefly.bucketTrack = pickRandomSooncutTrack();
-                  }
-
-                  let durationMs = FIREFLY_TIMELINE_STEP_MS;
-                  if (firefly.bucketTrack) {
-                      const candidateUrls = await resolveSooncutTrackUrls(firefly.bucketTrack);
-                      let played = false;
-                      for (const candidateUrl of candidateUrls) {
-                          const result = await playTimelineUrl(candidateUrl, firefly.bucketTrack.name);
-                          durationMs = result.durationMs;
-                          if (result.ok) {
-                              played = true;
-                              break;
-                          }
-                      }
-                      if (!played) {
-                          triggerArenaSample(firefly.sampleId);
-                      }
-                  } else {
-                      triggerArenaSample(firefly.sampleId);
-                  }
-                  releasePlan.push(firefly);
-                  cursor += durationMs;
-              }
-              releasePlan.forEach((firefly, idx) => {
-                  if (!firefly.attachedToTail) return;
-                  firefly.playbackEndsAt = cursor + idx * 220;
-              });
-              setArenaTriangleStatus('Timeline vocale terminée, les perles se redispersent.');
-          }
-
           function attachSingleFireflyToTail(firefly, now) {
               if (!firefly || firefly.attachedToTail) return;
               const attached = getAttachedFirefliesSorted();
@@ -1712,25 +1588,20 @@ export function initLegacyApp() {
               firefly.attachedToTail = true;
               firefly.attachedOrder = attached.length;
               firefly.attachedAt = now;
-              firefly.attachmentClusterId = `cluster-${attachedClusterSeed++}`;
               firefly.linkedCooldownUntil = now + 900;
               firefly.vx *= 0.25;
               firefly.vy *= 0.25;
-              firefly.playbackEndsAt = 0;
+              triggerAttachedFireflyPlayback(firefly, now);
               normalizeAttachedOrders();
-              const total = attached.length + 1;
-              setArenaTriangleStatus(`${total} luciole rose accrochée à la queue (max 1). Dépose-la dans une bulle sonore.`);
+              setArenaTriangleStatus('Luciole rouge accrochée au fil. Vocal lu une fois. Dépose-la dans une bulle sonore.');
           }
 
           function depositAttachedFireflyIntoBubble(bubble, now) {
               const attached = getAttachedFirefliesSorted();
               if (!attached.length) return false;
-              const stored = getStoredBubbleFireflies(bubble);
-              if (stored.length >= 3) return false;
               const firefly = attached[0];
               firefly.attachedToTail = false;
               firefly.attachedOrder = -1;
-              firefly.attachmentClusterId = null;
               firefly.playbackEndsAt = 0;
               firefly.containedInBubbleId = bubble.id;
               firefly.linkedCooldownUntil = now + 600;
@@ -1741,7 +1612,7 @@ export function initLegacyApp() {
               if (!Array.isArray(bubble.storedFireflyIds)) bubble.storedFireflyIds = [];
               bubble.storedFireflyIds.push(firefly.id);
               normalizeAttachedOrders();
-              setArenaTriangleStatus(`Luciole déposée dans ${bubble.label || 'la bulle sonore'} (${bubble.storedFireflyIds.length}/3).`);
+              setArenaTriangleStatus(`Luciole déposée dans ${bubble.label || 'la bulle sonore'} (${bubble.storedFireflyIds.length} associée(s)).`);
               return true;
           }
 
@@ -1752,81 +1623,7 @@ export function initLegacyApp() {
               const firefly = stored[index % stored.length];
               bubble.nextStoredFireflyPlaybackIndex = (index + 1) % stored.length;
               triggerArenaSample(firefly.sampleId);
-              setArenaTriangleStatus(`Vocal déclenché dans ${bubble.label || 'la bulle sonore'} (${stored.length} luciole(s) rose(s)).`);
-          }
-
-          function updateArenaMedusae(now) {
-              ensureArenaMedusae();
-              const t = now * 0.001;
-              ARENA_MEDUSAE.forEach((medusa, idx) => {
-                  medusa.phase += medusa.speed * 16.67;
-                  const angle = medusa.phase + idx * 1.8;
-                  const driftRadius = 48 + idx * 12;
-                  medusa.x = medusa.baseX + Math.cos(angle * 0.82) * driftRadius;
-                  medusa.y = medusa.baseY + Math.sin(angle) * (driftRadius * 0.65);
-                  medusa.pulse = (Math.sin(t * (1.2 + idx * 0.18) + medusa.phase) + 1) * 0.5;
-              });
-          }
-
-          function maybeTriggerMedusaPlayback(now) {
-              // Gameplay update: pink fireflies are now deposited into sound bubbles instead of medusae.
-              return;
-              const attached = getAttachedFirefliesSorted();
-              if (attached.length < FIREFLY_TAIL_MAX_ATTACHED || !ship.trail.length) return;
-              const tail = getShipTailPosition();
-              const trailStart = ship.trail[Math.max(0, ship.trail.length - 18)] || tail;
-              for (const medusa of ARENA_MEDUSAE) {
-                  if (now < medusa.cooldownUntil) continue;
-                  const threshold = medusa.radius + 11;
-                  const distSq = segmentDistanceToPointSquared(trailStart.x, trailStart.y, tail.x, tail.y, medusa.x, medusa.y);
-                  if (distSq <= threshold * threshold) {
-                      medusa.cooldownUntil = now + MEDUSA_RELEASE_DELAY_MS + 1800;
-                      medusa.releaseAt = now + MEDUSA_RELEASE_DELAY_MS;
-                      medusa.storedFireflyIds = attached.map((firefly) => firefly.id);
-                      attached.forEach((firefly) => {
-                          firefly.attachedToTail = false;
-                          firefly.attachedOrder = -1;
-                          firefly.attachmentClusterId = null;
-                          firefly.playbackEndsAt = 0;
-                          firefly.containedInMedusaId = medusa.id;
-                          firefly.vx = 0;
-                          firefly.vy = 0;
-                          firefly.x = medusa.x;
-                          firefly.y = medusa.y;
-                      });
-                      normalizeAttachedOrders();
-                      setArenaTriangleStatus('Méduse-fleur traversée : les 3 lucioles sont déposées. Éclosion dans 30 secondes.');
-                      break;
-                  }
-              }
-          }
-
-          function maybeReleaseMedusaFireflies(now) {
-              ARENA_MEDUSAE.forEach((medusa) => {
-                  if (!medusa.storedFireflyIds.length || now < medusa.releaseAt) return;
-                  const released = medusa.storedFireflyIds
-                      .map((id) => ARENA_FIREFLIES.find((firefly) => firefly.id === id))
-                      .filter(Boolean);
-                  medusa.storedFireflyIds = [];
-                  medusa.releaseAt = 0;
-                  released.forEach((firefly, idx) => {
-                      firefly.containedInMedusaId = null;
-                      firefly.medusaReleasedAt = now;
-                      firefly.linkedCooldownUntil = now + 1800 + idx * 160;
-                      const angle = ((Math.PI * 2) / Math.max(1, released.length)) * idx + Math.random() * 0.35;
-                      const burst = 1.15 + Math.random() * 0.5;
-                      firefly.x = medusa.x + Math.cos(angle) * (medusa.radius * 0.55);
-                      firefly.y = medusa.y + Math.sin(angle) * (medusa.radius * 0.55);
-                      firefly.vx = Math.cos(angle) * burst;
-                      firefly.vy = Math.sin(angle) * burst;
-                      firefly.destinyX = medusa.x + Math.cos(angle) * (medusa.radius * 2.4 + 30);
-                      firefly.destinyY = medusa.y + Math.sin(angle) * (medusa.radius * 2.1 + 20);
-                      firefly.nextDestinyAt = now + 1400 + Math.random() * 900;
-                  });
-                  if (released.length) {
-                      setArenaTriangleStatus('Éclosion méduse-fleur : 3 lucioles dispersées en rose avec halo bleuté.');
-                  }
-              });
+              setArenaTriangleStatus(`Vocal rejoué dans ${bubble.label || 'la bulle sonore'} (${stored.length} luciole(s)).`);
           }
 
           function updateArenaFireflies() {
@@ -1844,16 +1641,6 @@ export function initLegacyApp() {
               ARENA_FIREFLIES.forEach((firefly, idx) => {
                   const pulse = (Math.sin(timeSeconds * firefly.pulseFreq * 2 * Math.PI + firefly.pulsePhase) + 1) * 0.5;
                   firefly.glow = firefly.attachedToTail ? (0.48 + pulse * 0.52) : (0.34 + pulse * 0.66);
-                  if (firefly.containedInMedusaId) {
-                      const hostMedusa = ARENA_MEDUSAE.find((medusa) => medusa.id === firefly.containedInMedusaId);
-                      if (hostMedusa) {
-                          firefly.x = hostMedusa.x;
-                          firefly.y = hostMedusa.y;
-                      }
-                      firefly.vx = 0;
-                      firefly.vy = 0;
-                      return;
-                  }
                   if (firefly.containedInBubbleId) {
                       const hostBubble = BUBBLES.find((bubble) => bubble.id === firefly.containedInBubbleId);
                       if (hostBubble) {
@@ -1884,7 +1671,6 @@ export function initLegacyApp() {
                       if (now >= firefly.playbackEndsAt && firefly.playbackEndsAt > 0) {
                           firefly.attachedToTail = false;
                           firefly.attachedOrder = -1;
-                          firefly.attachmentClusterId = null;
                           firefly.playbackEndsAt = 0;
                           firefly.linkedCooldownUntil = now + 1600 + Math.random() * 1200;
                           firefly.bubbleOrbitIndex = Math.floor(Math.random() * Math.max(1, BUBBLES.length || 1));
@@ -1931,7 +1717,6 @@ export function initLegacyApp() {
 
               const attachCandidate = ARENA_FIREFLIES.find((firefly) => {
                   if (firefly.attachedToTail) return false;
-                  if (firefly.containedInMedusaId) return false;
                   if (firefly.containedInBubbleId) return false;
                   if (now < firefly.linkedCooldownUntil) return false;
                   return Math.hypot(firefly.x - tail.x, firefly.y - tail.y) <= FIREFLY_TAIL_ATTACH_RADIUS;
@@ -1954,9 +1739,6 @@ export function initLegacyApp() {
                   }
               }
 
-              updateArenaMedusae(now);
-              maybeReleaseMedusaFireflies(now);
-              maybeTriggerMedusaPlayback(now);
           }
 
           function onStart(e) {
@@ -2642,16 +2424,13 @@ export function initLegacyApp() {
               if (!ARENA_FIREFLIES.length) return;
               const now = performance.now() * 0.001;
 
-              ARENA_FIREFLIES.forEach((firefly, idx) => {
-                  if (firefly.containedInMedusaId) return;
+              ARENA_FIREFLIES.forEach((firefly) => {
                   const pulse = (Math.sin(now * firefly.pulseFreq * 2 * Math.PI + firefly.pulsePhase) + 1) * 0.5;
                   const coreRadius = firefly.size * (0.72 + pulse * 0.22);
                   const glowRadius = firefly.size * (2.8 + pulse * 1.8);
-                  const releasedSince = firefly.medusaReleasedAt > 0 ? (performance.now() - firefly.medusaReleasedAt) : Number.POSITIVE_INFINITY;
-                  const isBlossomTone = releasedSince < 12000;
-                  const coreTint = isBlossomTone ? `rgba(255, 134, 205, ${0.84 + firefly.glow * 0.16})` : `rgba(245, 62, 48, ${0.82 + firefly.glow * 0.18})`;
-                  const haloCenter = isBlossomTone ? `rgba(248, 172, 255, ${0.24 + firefly.glow * 0.34})` : `rgba(255, 220, 122, ${0.24 + firefly.glow * 0.34})`;
-                  const haloMid = isBlossomTone ? `rgba(112, 192, 255, ${0.16 + firefly.glow * 0.24})` : `rgba(255, 160, 64, ${0.14 + firefly.glow * 0.26})`;
+                  const coreTint = `rgba(245, 62, 48, ${0.82 + firefly.glow * 0.18})`;
+                  const haloCenter = `rgba(255, 220, 122, ${0.24 + firefly.glow * 0.34})`;
+                  const haloMid = `rgba(255, 160, 64, ${0.14 + firefly.glow * 0.26})`;
 
                   const halo = ctx.createRadialGradient(firefly.x, firefly.y, 0, firefly.x, firefly.y, glowRadius);
                   halo.addColorStop(0, haloCenter);
@@ -2671,50 +2450,6 @@ export function initLegacyApp() {
                   ctx.beginPath();
                   ctx.arc(firefly.x - firefly.size * 0.22, firefly.y - firefly.size * 0.28, Math.max(0.7, coreRadius * 0.34), 0, Math.PI * 2);
                   ctx.fill();
-              });
-          }
-
-          function drawMedusaFlowers() {
-              if (!ARENA_MEDUSAE.length) return;
-              const t = performance.now() * 0.001;
-              ARENA_MEDUSAE.forEach((medusa, idx) => {
-                  const pulse = medusa.pulse;
-                  const r = medusa.radius * (0.92 + pulse * 0.14);
-                  const hue = 318 + idx * 14;
-
-                  const halo = ctx.createRadialGradient(medusa.x, medusa.y, 0, medusa.x, medusa.y, r * 2.8);
-                  halo.addColorStop(0, `hsla(${hue}, 90%, 78%, ${0.20 + pulse * 0.16})`);
-                  halo.addColorStop(1, 'rgba(0,0,0,0)');
-                  ctx.fillStyle = halo;
-                  ctx.beginPath();
-                  ctx.arc(medusa.x, medusa.y, r * 2.8, 0, Math.PI * 2);
-                  ctx.fill();
-
-                  for (let petal = 0; petal < 6; petal++) {
-                      const a = ((Math.PI * 2) / 6) * petal + t * 0.25 + idx * 0.4;
-                      const px = medusa.x + Math.cos(a) * (r * 0.8);
-                      const py = medusa.y + Math.sin(a) * (r * 0.8);
-                      ctx.fillStyle = `hsla(${hue + petal * 4}, 88%, 78%, ${0.36 + pulse * 0.18})`;
-                      ctx.beginPath();
-                      ctx.ellipse(px, py, r * 0.34, r * 0.2, a, 0, Math.PI * 2);
-                      ctx.fill();
-                  }
-
-                  ctx.fillStyle = `hsla(${hue + 6}, 85%, 90%, ${0.82 + pulse * 0.14})`;
-                  ctx.beginPath();
-                  ctx.arc(medusa.x, medusa.y, r * 0.48, 0, Math.PI * 2);
-                  ctx.fill();
-
-                  ctx.strokeStyle = `hsla(${hue + 20}, 88%, 84%, ${0.32 + pulse * 0.2})`;
-                  ctx.lineWidth = 1.2;
-                  for (let tent = 0; tent < 4; tent++) {
-                      const ax = medusa.x + (tent - 1.5) * (r * 0.23);
-                      const wave = Math.sin(t * 2.1 + tent + idx) * 5;
-                      ctx.beginPath();
-                      ctx.moveTo(ax, medusa.y + r * 0.18);
-                      ctx.quadraticCurveTo(ax + wave * 0.5, medusa.y + r * 1.0, ax + wave, medusa.y + r * 1.9);
-                      ctx.stroke();
-                  }
               });
           }
 
@@ -2900,7 +2635,6 @@ export function initLegacyApp() {
               BUBBLES.filter((b) => b.layer === 'below').forEach(drawBubble);
               drawBreathWaves();
               drawDriftMotes();
-              drawMedusaFlowers();
               drawArenaFireflies();
               drawSurfaceSparkles();
               drawResonanceWaves();
