@@ -217,6 +217,8 @@ export function initLegacyApp() {
           const FIREFLY_AUDIO_MIN_MS = 1500;
           const FIREFLY_AUDIO_MAX_MS = 3200;
           const FIREFLY_TIMELINE_STEP_MS = 2600;
+          const FIREFLY_TAIL_MAX_ATTACHED = 3;
+          const FIREFLY_REPULSE_COOLDOWN_MS = 1800;
           const DEFAULT_SUPABASE_URL = 'https://qyffktrggapfzlmmlerq.supabase.co';
           const SOONCUT_BUCKET_FOLDER = 'sooncut';
           const SOONCUT_TRIANGLE_SAMPLE_IDS = SAMPLE_LIBRARY.slice(0, ARENA_TRIANGLE_COUNT).map(sample => sample.id);
@@ -1212,11 +1214,30 @@ export function initLegacyApp() {
               setArenaTriangleStatus('Timeline vocale terminée, les perles se redispersent.');
           }
 
+          function repelFireflyFromTail(firefly, tail, now, boost = 1) {
+              if (!firefly) return;
+              const dx = firefly.x - tail.x;
+              const dy = firefly.y - tail.y;
+              const dist = Math.max(0.001, Math.hypot(dx, dy));
+              const nx = dx / dist;
+              const ny = dy / dist;
+              const repulseForce = (2.1 + Math.random() * 1.2) * boost;
+              firefly.vx += nx * repulseForce;
+              firefly.vy += ny * repulseForce;
+              firefly.linkedCooldownUntil = now + FIREFLY_REPULSE_COOLDOWN_MS;
+          }
+
           function attachFireflyClusterToTail(sourceFirefly, now) {
               const cluster = getLinkedFireflyCluster(sourceFirefly);
               if (!cluster.length) return;
+              const tail = getShipTailPosition();
+              const orderedByTailDistance = [...cluster].sort((a, b) =>
+                  Math.hypot(a.x - tail.x, a.y - tail.y) - Math.hypot(b.x - tail.x, b.y - tail.y)
+              );
+              const selectedCluster = orderedByTailDistance.slice(0, FIREFLY_TAIL_MAX_ATTACHED);
+              const rejectedCluster = orderedByTailDistance.slice(FIREFLY_TAIL_MAX_ATTACHED);
               const clusterId = `cluster-${attachedClusterSeed++}`;
-              cluster.forEach((firefly, index) => {
+              selectedCluster.forEach((firefly, index) => {
                   firefly.attachedToTail = true;
                   firefly.attachedOrder = index;
                   firefly.attachedAt = now;
@@ -1226,19 +1247,26 @@ export function initLegacyApp() {
                   firefly.vy *= 0.25;
                   firefly.playbackEndsAt = now + (FIREFLY_TIMELINE_STEP_MS * 4);
               });
-              const clusterIds = new Set(cluster.map((firefly) => firefly.id));
+              rejectedCluster.forEach((firefly) => {
+                  firefly.attachedToTail = false;
+                  firefly.attachedOrder = -1;
+                  firefly.attachmentClusterId = null;
+                  repelFireflyFromTail(firefly, tail, now, 1.25);
+              });
+
+              const clusterIds = new Set(orderedByTailDistance.map((firefly) => firefly.id));
               for (let i = ARENA_FIREFLY_LINKS.length - 1; i >= 0; i--) {
                   const link = ARENA_FIREFLY_LINKS[i];
                   if (clusterIds.has(link.aId) || clusterIds.has(link.bId)) {
                       ARENA_FIREFLY_LINKS.splice(i, 1);
                   }
               }
-              setArenaTriangleStatus(`${cluster.length} luciole(s) accrochée(s) au fil de la queue.`);
-              if (cluster.length >= 3) {
+              setArenaTriangleStatus(`${selectedCluster.length} luciole(s) accrochée(s) au fil de la queue (max 3).`);
+              if (selectedCluster.length >= FIREFLY_TAIL_MAX_ATTACHED) {
                   const timelineId = ++activeAttachedTimelineId;
-                  playAttachedClusterTimeline(cluster.slice(0, 3), timelineId, clusterId);
+                  playAttachedClusterTimeline(selectedCluster, timelineId, clusterId);
               } else {
-                  cluster.forEach((firefly, index) => triggerAttachedFireflyPlayback(firefly, now + index * 220));
+                  selectedCluster.forEach((firefly, index) => triggerAttachedFireflyPlayback(firefly, now + index * 220));
               }
           }
 
@@ -1290,7 +1318,7 @@ export function initLegacyApp() {
                           firefly.playbackEndsAt = 0;
                           firefly.linkedCooldownUntil = now + 1400 + Math.random() * 900;
                           const releaseAngle = Math.random() * Math.PI * 2;
-                          const releaseForce = 0.9 + Math.random() * 1.4;
+                          const releaseForce = 2.4 + Math.random() * 1.8;
                           firefly.vx += Math.cos(releaseAngle) * releaseForce + ship.vx * 0.2;
                           firefly.vy += Math.sin(releaseAngle) * releaseForce + ship.vy * 0.2;
                       }
@@ -1372,7 +1400,12 @@ export function initLegacyApp() {
                   return Math.hypot(firefly.x - tail.x, firefly.y - tail.y) <= FIREFLY_TAIL_ATTACH_RADIUS;
               });
               if (attachCandidate) {
-                  attachFireflyClusterToTail(attachCandidate, now);
+                  const attachedCount = ARENA_FIREFLIES.filter((firefly) => firefly.attachedToTail).length;
+                  if (attachedCount >= FIREFLY_TAIL_MAX_ATTACHED) {
+                      repelFireflyFromTail(attachCandidate, tail, now, 1.4);
+                  } else {
+                      attachFireflyClusterToTail(attachCandidate, now);
+                  }
               }
           }
 
