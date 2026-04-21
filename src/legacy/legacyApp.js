@@ -1557,8 +1557,23 @@ export function initLegacyApp() {
           }
 
           function triggerAttachedFireflyPlayback(firefly, now) {
-              triggerArenaSample(firefly.sampleId);
               firefly.playbackEndsAt = now + FIREFLY_AUDIO_MIN_MS + Math.random() * (FIREFLY_AUDIO_MAX_MS - FIREFLY_AUDIO_MIN_MS);
+              void triggerFireflyVocalPlayback(firefly);
+          }
+
+          async function triggerFireflyVocalPlayback(firefly) {
+              if (!firefly) return;
+              if (!firefly.bucketTrack && !sooncutBucketVocals.length) {
+                  await fetchSooncutVocalsFromBucket();
+              }
+              if (!firefly.bucketTrack && sooncutBucketVocals.length) {
+                  firefly.bucketTrack = pickRandomSooncutTrack();
+              }
+              if (firefly.bucketTrack) {
+                  const played = await playSooncutBucketTrack(firefly.bucketTrack);
+                  if (played) return;
+              }
+              triggerArenaSample(firefly.sampleId);
           }
 
           function getAttachedFirefliesSorted() {
@@ -1622,7 +1637,7 @@ export function initLegacyApp() {
               const index = bubble.nextStoredFireflyPlaybackIndex || 0;
               const firefly = stored[index % stored.length];
               bubble.nextStoredFireflyPlaybackIndex = (index + 1) % stored.length;
-              triggerArenaSample(firefly.sampleId);
+              void triggerFireflyVocalPlayback(firefly);
               setArenaTriangleStatus(`Vocal rejoué dans ${bubble.label || 'la bulle sonore'} (${stored.length} luciole(s)).`);
           }
 
@@ -1668,19 +1683,6 @@ export function initLegacyApp() {
                       firefly.vy *= 0.9;
                       firefly.x += firefly.vx;
                       firefly.y += firefly.vy;
-                      if (now >= firefly.playbackEndsAt && firefly.playbackEndsAt > 0) {
-                          firefly.attachedToTail = false;
-                          firefly.attachedOrder = -1;
-                          firefly.playbackEndsAt = 0;
-                          firefly.linkedCooldownUntil = now + 1600 + Math.random() * 1200;
-                          firefly.bubbleOrbitIndex = Math.floor(Math.random() * Math.max(1, BUBBLES.length || 1));
-                          firefly.nextBubbleSwitchAt = now + 1800 + Math.random() * 2600;
-                          const releaseAngle = Math.random() * Math.PI * 2;
-                          const releaseForce = 0.8 + Math.random() * 0.7;
-                          firefly.vx += Math.cos(releaseAngle) * releaseForce + ship.vx * 0.08;
-                          firefly.vy += Math.sin(releaseAngle) * releaseForce + ship.vy * 0.08;
-                          normalizeAttachedOrders();
-                      }
                       return;
                   }
                   firefly.driftPhase += firefly.driftSpeed * 10.2;
