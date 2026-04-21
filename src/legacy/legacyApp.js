@@ -759,6 +759,82 @@ export function initLegacyApp() {
               return unique;
           }
 
+          async function fetchUserPurchasesRows(client, userId) {
+              const { data, error } = await client
+                  .from('user_purchases')
+                  .select('pack_id, purchased_at, status, echo_packs(slug, title)')
+                  .eq('user_id', userId)
+                  .order('purchased_at', { ascending: false })
+                  .limit(200);
+              if (error) return { rows: [], error };
+              return { rows: Array.isArray(data) ? data : [], error: null };
+          }
+
+          function toOwnedItemsFromPurchases(rows) {
+              const slugs = rows
+                  .map((row) => row?.echo_packs?.slug)
+                  .filter(Boolean);
+              return sanitizeOwnedItems(slugs);
+          }
+
+          function toSessionHistoryFromPurchases(rows) {
+              return rows
+                  .map((row) => {
+                      const slug = row?.echo_packs?.slug;
+                      const title = row?.echo_packs?.title;
+                      const purchasedAt = row?.purchased_at;
+                      if (!slug || !purchasedAt) return null;
+                      return {
+                          experience_id: slug,
+                          experience_title: title || 'Expérience Échohypnose',
+                          purchased_at: purchasedAt,
+                      };
+                  })
+                  .filter(Boolean);
+          }
+
+          async function ensurePurchasesForExperienceIds(client, userId, experienceIds) {
+              const safeIds = sanitizeOwnedItems(experienceIds);
+              if (!safeIds.length) return { ok: true, inserted: 0 };
+
+              const { data: packs, error: packsError } = await client
+                  .from('echo_packs')
+                  .select('id, slug')
+                  .in('slug', safeIds);
+              if (packsError) return { ok: false, error: packsError };
+
+              const packRows = Array.isArray(packs) ? packs : [];
+              if (!packRows.length) return { ok: true, inserted: 0 };
+              const packIds = packRows.map((row) => row.id).filter(Boolean);
+
+              const { data: existingRows, error: existingError } = await client
+                  .from('user_purchases')
+                  .select('pack_id')
+                  .eq('user_id', userId)
+                  .in('pack_id', packIds)
+                  .limit(200);
+              if (existingError) return { ok: false, error: existingError };
+
+              const existingPackIds = new Set((existingRows || []).map((row) => row.pack_id));
+              const missingPurchases = packRows
+                  .filter((row) => !existingPackIds.has(row.id))
+                  .map((row) => ({
+                      user_id: userId,
+                      pack_id: row.id,
+                      status: 'paid',
+                      payment_provider: 'local-sync',
+                  }));
+
+              if (!missingPurchases.length) return { ok: true, inserted: 0 };
+
+              const { error: insertError } = await client
+                  .from('user_purchases')
+                  .insert(missingPurchases);
+              if (insertError) return { ok: false, error: insertError };
+
+              return { ok: true, inserted: missingPurchases.length };
+          }
+
           async function syncCollectionFromSupabase() {
               if (!currentSession?.user?.id) return;
               const client = buildSupabaseClient();
@@ -771,7 +847,20 @@ export function initLegacyApp() {
                   .maybeSingle();
 
               if (error) {
-                  setAuthStatus(`Sync profil échouée (lecture): ${error.message}`, true);
+                  if (!isSupabaseMissingRelationError(error)) {
+                      setAuthStatus(`Sync profil échouée (lecture): ${error.message}`, true);
+                      return;
+                  }
+                  const purchasesResult = await fetchUserPurchasesRows(client, currentSession.user.id);
+                  if (purchasesResult.error) {
+                      setAuthStatus(`Sync profil échouée (fallback user_purchases): ${purchasesResult.error.message}`, true);
+                      return;
+                  }
+                  const remoteOwned = toOwnedItemsFromPurchases(purchasesResult.rows);
+                  const localOwned = sanitizeOwnedItems(getOwnedItems());
+                  const mergedOwned = sanitizeOwnedItems([...remoteOwned, ...localOwned]);
+                  setOwnedItems(mergedOwned);
+                  setAuthStatus(`Achats synchronisés via user_purchases (${mergedOwned.length} expérience${mergedOwned.length > 1 ? 's' : ''}).`);
                   return;
               }
 
@@ -809,8 +898,19 @@ export function initLegacyApp() {
                   });
 
               if (error) {
-                  setAuthStatus(`Sync profil échouée (écriture): ${error.message}`, true);
-                  return false;
+                  if (!isSupabaseMissingRelationError(error)) {
+                      setAuthStatus(`Sync profil échouée (écriture): ${error.message}`, true);
+                      return false;
+                  }
+                  const fallback = await ensurePurchasesForExperienceIds(client, currentSession.user.id, safeItems);
+                  if (!fallback.ok) {
+                      setAuthStatus(`Sync profil échouée (fallback user_purchases): ${fallback.error.message}`, true);
+                      return false;
+                  }
+                  if (!options.silentSuccess) {
+                      setAuthStatus(`Achats synchronisés via user_purchases (${safeItems.length} expérience${safeItems.length > 1 ? 's' : ''}).`);
+                  }
+                  return true;
               }
 
               if (!options.silentSuccess) {
@@ -849,7 +949,26 @@ export function initLegacyApp() {
 
               if (error) {
                   if (isSupabaseMissingRelationError(error)) {
-                      setAuthStatus('Historique distant indisponible (table Supabase manquante). Historique local conservé.');
+                      const purchasesResult = await fetchUserPurchasesRows(client, currentSession.user.id);
+                      if (purchasesResult.error) {
+                          setAuthStatus(`Historique non synchronisé (fallback user_purchases): ${purchasesResult.error.message}`, true);
+                          return;
+                      }
+                      const purchaseHistory = toSessionHistoryFromPurchases(purchasesResult.rows);
+                      const localRows = Array.isArray(getSessionHistory()) ? getSessionHistory() : [];
+                      const mergedMap = new Map();
+                      [...purchaseHistory, ...localRows].forEach((entry) => {
+                          if (!entry?.experience_id || !entry?.purchased_at) return;
+                          const key = `${entry.experience_id}::${entry.purchased_at}`;
+                          if (!mergedMap.has(key)) {
+                              mergedMap.set(key, entry);
+                          }
+                      });
+                      const mergedRows = Array.from(mergedMap.values())
+                          .sort((a, b) => new Date(b.purchased_at).getTime() - new Date(a.purchased_at).getTime())
+                          .slice(0, 100);
+                      setSessionHistory(mergedRows);
+                      setAuthStatus(`Historique synchronisé via user_purchases (${purchaseHistory.length} entrée${purchaseHistory.length > 1 ? 's' : ''}).`);
                       return;
                   }
                   setAuthStatus(`Historique non synchronisé: ${error.message}`, true);
@@ -887,7 +1006,10 @@ export function initLegacyApp() {
               });
               if (error) {
                   if (isSupabaseMissingRelationError(error)) {
-                      return true;
+                      const fallback = await ensurePurchasesForExperienceIds(client, currentSession.user.id, [entry.experience_id]);
+                      if (fallback.ok) return true;
+                      setAuthStatus(`Écriture historique échouée (fallback user_purchases): ${fallback.error.message}`, true);
+                      return false;
                   }
                   if (error.code === '23505') return true;
                   setAuthStatus(`Écriture historique échouée: ${error.message}`, true);
