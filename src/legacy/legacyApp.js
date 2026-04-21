@@ -327,6 +327,25 @@ export function initLegacyApp() {
               });
           }
 
+          function bindPress(button, handler) {
+              if (!button || typeof handler !== 'function') return;
+              let lastPressAt = 0;
+              const trigger = () => {
+                  const now = Date.now();
+                  if (now - lastPressAt < 320) return;
+                  lastPressAt = now;
+                  handler();
+              };
+              button.addEventListener('click', trigger);
+              if ('PointerEvent' in window) {
+                  button.addEventListener('pointerup', (event) => {
+                      if (event.pointerType === 'touch') trigger();
+                  });
+              } else {
+                  button.addEventListener('touchend', trigger, { passive: true });
+              }
+          }
+
           setInterval(() => {
               if (currentView !== 'experience' || isInteractionPaused) return;
               rotateHelperTip();
@@ -1071,9 +1090,9 @@ export function initLegacyApp() {
               });
           }
           initSupabaseProfileCard();
-          bindTap(authSignInBtn, signInWithEmail, { preventTouchDefault: false });
-          bindTap(authSignUpBtn, signUpWithEmail, { preventTouchDefault: false });
-          bindTap(authSignOutBtn, signOutSession, { preventTouchDefault: false });
+          bindPress(authSignInBtn, signInWithEmail);
+          bindPress(authSignUpBtn, signUpWithEmail);
+          bindPress(authSignOutBtn, signOutSession);
           renderStoreCatalog();
           renderSessionHistory();
           restoreSession();
