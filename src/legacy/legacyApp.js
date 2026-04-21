@@ -213,9 +213,6 @@ export function initLegacyApp() {
           const ARENA_RADIUS = 2000;
           const SOUND_HEAR_RADIUS = 460;
           const ARENA_TRIANGLE_COUNT = 36;
-          const FIREFLY_LINK_DISTANCE = 58;
-          const FIREFLY_LINK_BREAK_DISTANCE = 102;
-          const FIREFLY_LINK_TTL = 7800;
           const FIREFLY_TAIL_ATTACH_RADIUS = 38;
           const FIREFLY_AUDIO_MIN_MS = 1500;
           const FIREFLY_AUDIO_MAX_MS = 3200;
@@ -243,7 +240,6 @@ export function initLegacyApp() {
           const DRIFT_MOTES = [];
           const MAX_DRIFT_MOTES = 22;
           const ARENA_FIREFLIES = [];
-          const ARENA_FIREFLY_LINKS = [];
           const ARENA_MEDUSAE = [];
           const STARTING_BUBBLES = [
               { sampleId: 'forêt-zen', layer: 'front', hue: 188, x: -240, y: -120, r: 72 },
@@ -1545,7 +1541,6 @@ export function initLegacyApp() {
           function renderArenaTriangles() {
               ensureArenaFireflies();
               ensureArenaMedusae();
-              ARENA_FIREFLY_LINKS.length = 0;
               if (arenaTrianglePad) {
                   arenaTrianglePad.innerHTML = '';
                   arenaTrianglePad.setAttribute('aria-hidden', 'true');
@@ -1557,50 +1552,6 @@ export function initLegacyApp() {
                       ? sooncutBucketVocals[index % sooncutBucketVocals.length]
                       : null;
               });
-          }
-
-          function getArenaFireflyById(id) {
-              return ARENA_FIREFLIES.find((firefly) => firefly.id === id);
-          }
-
-          function hasArenaLink(aId, bId) {
-              return ARENA_FIREFLY_LINKS.some((link) =>
-                  (link.aId === aId && link.bId === bId) || (link.aId === bId && link.bId === aId)
-              );
-          }
-
-          function registerArenaFireflyLink(a, b, now) {
-              if (!a || !b || a.attachedToTail || b.attachedToTail) return;
-              if (hasArenaLink(a.id, b.id)) return;
-              ARENA_FIREFLY_LINKS.push({
-                  aId: a.id,
-                  bId: b.id,
-                  bornAt: now
-              });
-          }
-
-          function hasAnyLinkForFirefly(fireflyId) {
-              return ARENA_FIREFLY_LINKS.some((link) => link.aId === fireflyId || link.bId === fireflyId);
-          }
-
-          function getLinkedFireflyCluster(startFirefly) {
-              if (!startFirefly) return [];
-              const queue = [startFirefly.id];
-              const visited = new Set();
-              const cluster = [];
-              while (queue.length) {
-                  const currentId = queue.shift();
-                  if (visited.has(currentId)) continue;
-                  visited.add(currentId);
-                  const current = getArenaFireflyById(currentId);
-                  if (!current || current.attachedToTail) continue;
-                  cluster.push(current);
-                  ARENA_FIREFLY_LINKS.forEach((link) => {
-                      if (link.aId === currentId && !visited.has(link.bId)) queue.push(link.bId);
-                      if (link.bId === currentId && !visited.has(link.aId)) queue.push(link.aId);
-                  });
-              }
-              return cluster;
           }
 
           function getShipTailPosition() {
@@ -1627,6 +1578,12 @@ export function initLegacyApp() {
               return ARENA_FIREFLIES
                   .filter((firefly) => firefly.attachedToTail)
                   .sort((a, b) => a.attachedOrder - b.attachedOrder);
+          }
+
+          function normalizeAttachedOrders() {
+              getAttachedFirefliesSorted().forEach((firefly, idx) => {
+                  firefly.attachedOrder = idx;
+              });
           }
 
           function segmentDistanceToPointSquared(ax, ay, bx, by, px, py) {
@@ -1675,7 +1632,7 @@ export function initLegacyApp() {
               });
           }
 
-          async function playAttachedClusterTimeline(fireflies, timelineId, clusterId) {
+          async function playAttachedClusterTimeline(fireflies, timelineId) {
               if (!fireflies.length) return;
               ensureAllAudioRunning();
               let cursor = performance.now();
@@ -1684,7 +1641,6 @@ export function initLegacyApp() {
                   if (timelineId !== activeAttachedTimelineId) return;
                   const firefly = fireflies[i];
                   if (!firefly?.attachedToTail) continue;
-                  if (firefly.attachmentClusterId !== clusterId) continue;
                   if (!firefly.bucketTrack && sooncutBucketVocals.length) {
                       firefly.bucketTrack = pickRandomSooncutTrack();
                   }
@@ -1715,48 +1671,28 @@ export function initLegacyApp() {
                   cursor += durationMs;
               }
               releasePlan.forEach((firefly, idx) => {
-                  if (!firefly.attachedToTail || firefly.attachmentClusterId !== clusterId) return;
+                  if (!firefly.attachedToTail) return;
                   firefly.playbackEndsAt = cursor + idx * 220;
               });
               setArenaTriangleStatus('Timeline vocale terminée, les perles se redispersent.');
           }
 
-          function attachFireflyClusterToTail(sourceFirefly, now) {
-              const cluster = getLinkedFireflyCluster(sourceFirefly);
-              if (!cluster.length) return;
-              const tail = getShipTailPosition();
-              const orderedByTailDistance = [...cluster].sort((a, b) =>
-                  Math.hypot(a.x - tail.x, a.y - tail.y) - Math.hypot(b.x - tail.x, b.y - tail.y)
-              );
-              const selectedCluster = orderedByTailDistance.slice(0, FIREFLY_TAIL_MAX_ATTACHED);
-              const rejectedCluster = orderedByTailDistance.slice(FIREFLY_TAIL_MAX_ATTACHED);
-              const clusterId = `cluster-${attachedClusterSeed++}`;
-              selectedCluster.forEach((firefly, index) => {
-                  firefly.attachedToTail = true;
-                  firefly.attachedOrder = index;
-                  firefly.attachedAt = now;
-                  firefly.attachmentClusterId = clusterId;
-                  firefly.linkedCooldownUntil = now + 900;
-                  firefly.vx *= 0.25;
-                  firefly.vy *= 0.25;
-                  firefly.playbackEndsAt = 0;
-              });
-              rejectedCluster.forEach((firefly) => {
-                  firefly.attachedToTail = false;
-                  firefly.attachedOrder = -1;
-                  firefly.attachmentClusterId = null;
-                  firefly.linkedCooldownUntil = now + 520;
-              });
-
-              const clusterIds = new Set(orderedByTailDistance.map((firefly) => firefly.id));
-              for (let i = ARENA_FIREFLY_LINKS.length - 1; i >= 0; i--) {
-                  const link = ARENA_FIREFLY_LINKS[i];
-                  if (clusterIds.has(link.aId) || clusterIds.has(link.bId)) {
-                      ARENA_FIREFLY_LINKS.splice(i, 1);
-                  }
-              }
-              setArenaTriangleStatus(`${selectedCluster.length} luciole(s) accrochée(s) au fil de la queue (max 3).`);
-              if (selectedCluster.length >= FIREFLY_TAIL_MAX_ATTACHED) {
+          function attachSingleFireflyToTail(firefly, now) {
+              if (!firefly || firefly.attachedToTail) return;
+              const attached = getAttachedFirefliesSorted();
+              if (attached.length >= FIREFLY_TAIL_MAX_ATTACHED) return;
+              firefly.attachedToTail = true;
+              firefly.attachedOrder = attached.length;
+              firefly.attachedAt = now;
+              firefly.attachmentClusterId = `cluster-${attachedClusterSeed++}`;
+              firefly.linkedCooldownUntil = now + 900;
+              firefly.vx *= 0.25;
+              firefly.vy *= 0.25;
+              firefly.playbackEndsAt = 0;
+              normalizeAttachedOrders();
+              const total = attached.length + 1;
+              setArenaTriangleStatus(`${total} luciole(s) accrochée(s) au fil de la queue (max 3).`);
+              if (total >= FIREFLY_TAIL_MAX_ATTACHED) {
                   setArenaTriangleStatus('3 lucioles collectées. Traverse une méduse-fleur avec le fil pour lire les 3 vocaux.');
               }
           }
@@ -1786,7 +1722,7 @@ export function initLegacyApp() {
                   if (distSq <= threshold * threshold) {
                       medusa.cooldownUntil = now + 4600;
                       const timelineId = ++activeAttachedTimelineId;
-                      playAttachedClusterTimeline(attached, timelineId, attached[0].attachmentClusterId);
+                      playAttachedClusterTimeline(attached, timelineId);
                       setArenaTriangleStatus('Méduse-fleur traversée : lecture des 3 vocaux de la queue.');
                       break;
                   }
@@ -1805,14 +1741,6 @@ export function initLegacyApp() {
               const backY = shipSpeed > 0.03 ? -ship.vy * invShipSpeed : -Math.cos(ship.angle);
               const sideX = -backY;
               const sideY = backX;
-              for (let i = ARENA_FIREFLY_LINKS.length - 1; i >= 0; i--) {
-                  const link = ARENA_FIREFLY_LINKS[i];
-                  const a = getArenaFireflyById(link.aId);
-                  const b = getArenaFireflyById(link.bId);
-                  if (!a || !b) {
-                      ARENA_FIREFLY_LINKS.splice(i, 1);
-                  }
-              }
 
               ARENA_FIREFLIES.forEach((firefly, idx) => {
                   const pulse = (Math.sin(timeSeconds * firefly.pulseFreq * 2 * Math.PI + firefly.pulsePhase) + 1) * 0.5;
@@ -1846,6 +1774,7 @@ export function initLegacyApp() {
                           const releaseForce = 0.8 + Math.random() * 0.7;
                           firefly.vx += Math.cos(releaseAngle) * releaseForce + ship.vx * 0.08;
                           firefly.vy += Math.sin(releaseAngle) * releaseForce + ship.vy * 0.08;
+                          normalizeAttachedOrders();
                       }
                       return;
                   }
@@ -1871,42 +1800,8 @@ export function initLegacyApp() {
                   firefly.y += firefly.vy;
               });
 
-              ARENA_FIREFLY_LINKS.forEach((link) => {
-                  const a = getArenaFireflyById(link.aId);
-                  const b = getArenaFireflyById(link.bId);
-                  if (!a || !b) return;
-                  const dx = b.x - a.x;
-                  const dy = b.y - a.y;
-                  const distance = Math.max(0.0001, Math.hypot(dx, dy));
-                  const targetDistance = FIREFLY_LINK_DISTANCE * 0.62;
-                  const stretch = distance - targetDistance;
-                  const pull = Math.max(-8, Math.min(8, stretch)) * 0.0065;
-                  const nx = dx / distance;
-                  const ny = dy / distance;
-                  a.vx += nx * pull;
-                  a.vy += ny * pull;
-                  b.vx -= nx * pull;
-                  b.vy -= ny * pull;
-              });
-
-              for (let i = 0; i < ARENA_FIREFLIES.length - 1; i++) {
-                  for (let j = i + 1; j < ARENA_FIREFLIES.length; j++) {
-                      const a = ARENA_FIREFLIES[i];
-                      const b = ARENA_FIREFLIES[j];
-                      if (a.attachedToTail || b.attachedToTail) continue;
-                      if (a.linkedCooldownUntil > now || b.linkedCooldownUntil > now) continue;
-                      const d = Math.hypot(a.x - b.x, a.y - b.y);
-                      if (d <= FIREFLY_LINK_DISTANCE) {
-                          registerArenaFireflyLink(a, b, now);
-                          a.linkedCooldownUntil = now + 260;
-                          b.linkedCooldownUntil = now + 260;
-                      }
-                  }
-              }
-
               const attachCandidate = ARENA_FIREFLIES.find((firefly) => {
                   if (firefly.attachedToTail) return false;
-                  if (!hasAnyLinkForFirefly(firefly.id)) return false;
                   return Math.hypot(firefly.x - tail.x, firefly.y - tail.y) <= FIREFLY_TAIL_ATTACH_RADIUS;
               });
               if (attachCandidate) {
@@ -1914,7 +1809,7 @@ export function initLegacyApp() {
                   if (attachedCount >= FIREFLY_TAIL_MAX_ATTACHED) {
                       attachCandidate.linkedCooldownUntil = now + FIREFLY_REPULSE_COOLDOWN_MS;
                   } else {
-                      attachFireflyClusterToTail(attachCandidate, now);
+                      attachSingleFireflyToTail(attachCandidate, now);
                   }
               }
 
@@ -2600,20 +2495,6 @@ export function initLegacyApp() {
               if (!ARENA_FIREFLIES.length) return;
               const now = performance.now() * 0.001;
 
-              ARENA_FIREFLY_LINKS.forEach((link) => {
-                  const a = getArenaFireflyById(link.aId);
-                  const b = getArenaFireflyById(link.bId);
-                  if (!a || !b) return;
-                  const age = (performance.now() - link.bornAt) * 0.001;
-                  const pulse = (Math.sin(age * 2.8) + 1) * 0.5;
-                  ctx.strokeStyle = `rgba(255, 124, 106, ${0.32 + pulse * 0.22})`;
-                  ctx.lineWidth = 1.6 + pulse * 0.9;
-                  ctx.beginPath();
-                  ctx.moveTo(a.x, a.y);
-                  ctx.lineTo(b.x, b.y);
-                  ctx.stroke();
-              });
-
               ARENA_FIREFLIES.forEach((firefly, idx) => {
                   const pulse = (Math.sin(now * firefly.pulseFreq * 2 * Math.PI + firefly.pulsePhase) + 1) * 0.5;
                   const coreRadius = firefly.size * (0.72 + pulse * 0.22);
@@ -2688,16 +2569,28 @@ export function initLegacyApp() {
               const attached = getAttachedFirefliesSorted();
               if (!attached.length) return;
               const tail = getShipTailPosition();
-              const anchor = ship.trail[Math.max(0, ship.trail.length - 22)] || tail;
+              const speed = Math.hypot(ship.vx, ship.vy);
+              let backX = Math.sin(ship.angle);
+              let backY = -Math.cos(ship.angle);
+              if (speed > 0.04) {
+                  const invSpeed = 1 / Math.max(0.0001, speed);
+                  backX = -ship.vx * invSpeed;
+                  backY = -ship.vy * invSpeed;
+              }
               const extension = 26 + attached.length * 18;
-              const tipX = tail.x + (tail.x - anchor.x) * (extension / Math.max(12, Math.hypot(tail.x - anchor.x, tail.y - anchor.y)));
-              const tipY = tail.y + (tail.y - anchor.y) * (extension / Math.max(12, Math.hypot(tail.x - anchor.x, tail.y - anchor.y)));
+              const tipX = tail.x + backX * extension;
+              const tipY = tail.y + backY * extension;
 
               ctx.strokeStyle = 'rgba(223, 244, 255, 0.7)';
               ctx.lineWidth = 1.3 + attached.length * 0.25;
               ctx.beginPath();
               ctx.moveTo(tail.x, tail.y);
-              ctx.quadraticCurveTo((tail.x + tipX) * 0.5, (tail.y + tipY) * 0.5 - 4, tipX, tipY);
+              ctx.quadraticCurveTo(
+                  (tail.x + tipX) * 0.5 + (-backY * 4),
+                  (tail.y + tipY) * 0.5 + (backX * 4),
+                  tipX,
+                  tipY
+              );
               ctx.stroke();
 
               attached.forEach((firefly, idx) => {
