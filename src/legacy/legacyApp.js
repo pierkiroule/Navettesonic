@@ -2476,13 +2476,13 @@ export function initLegacyApp() {
               const speedFactor = Math.min(1.6, speed * 0.55);
               for (let i = 0; i <= segmentCount; i++) {
                   const t = i / segmentCount;
-                  const swayAmp = (1 - t) * (4.9 + attached.length * 0.8 + speedFactor * 4.5);
+                  const swayAmp = t * (4.9 + attached.length * 0.8 + speedFactor * 4.5);
                   const sway =
                       Math.sin(now * (2.1 + speedFactor * 0.8) + t * 4.6 + ship.angle) * swayAmp
                       + Math.sin(now * 3.4 + t * 7.2 + ship.angle * 0.4) * swayAmp * 0.35;
                   const trailRef = ship.trail[Math.max(0, ship.trail.length - 1 - Math.floor(4 + t * 18))] || tail;
-                  const trailNudgeX = (trailRef.x - tail.x) * 0.08 * (1 - t);
-                  const trailNudgeY = (trailRef.y - tail.y) * 0.08 * (1 - t);
+                  const trailNudgeX = (trailRef.x - tail.x) * 0.08 * t;
+                  const trailNudgeY = (trailRef.y - tail.y) * 0.08 * t;
                   filament.push({
                       x: tail.x + backX * extension * t + sideX * sway + trailNudgeX,
                       y: tail.y + backY * extension * t + sideY * sway + trailNudgeY
