@@ -381,9 +381,44 @@
         }
         .profile-wrap { width: min(980px, 100%); margin: 0 auto; }
         .profile-wrap h1 { margin-top: 6px; margin-bottom: 8px; font-size: clamp(1.5rem, 3vw, 2.2rem); }
-        .profile-wrap--minimal {
-            width: min(420px, 100%);
-            padding-top: 22px;
+        .profile-wrap--pro { display: grid; gap: 14px; }
+        .profile-hero {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 14px;
+            align-items: center;
+            background: linear-gradient(140deg, rgba(19, 34, 56, 0.94), rgba(6, 18, 37, 0.95));
+            border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 18px;
+            padding: 16px;
+        }
+        .profile-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            background: radial-gradient(circle at 30% 25%, #90d8ff, #4e90ff 62%, #4d62d9);
+            color: #03111d;
+        }
+        .profile-kicker {
+            margin: 0 0 4px;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: rgba(212, 234, 255, 0.68);
+        }
+        .profile-hero-copy h1 { margin: 0 0 4px; }
+        .profile-ghost-btn {
+            border-radius: 10px;
+            border: 1px solid rgba(148, 214, 255, 0.35);
+            background: rgba(69, 142, 197, 0.12);
+            color: #cde9ff;
+            font-weight: 600;
+            padding: 10px 12px;
+            cursor: pointer;
         }
         .profile-sub { margin-top: 0; color: rgba(230,244,255,0.75); }
         .profile-grid {
@@ -392,6 +427,7 @@
             gap: 12px;
             margin-top: 18px;
         }
+        .profile-grid--pro { margin-top: 0; }
         .card {
             background: rgba(13, 22, 36, 0.9);
             border: 1px solid rgba(255,255,255,0.15);
@@ -422,6 +458,52 @@
         .card .muted { font-size: 0.82rem; color: rgba(230,244,255,0.62); }
         .card .status { font-size: 0.82rem; color: rgba(146, 247, 210, 0.95); min-height: 1.3em; }
         .card a { color: #7ed8ff; }
+        .profile-card { min-height: 160px; }
+        .profile-meta-list { display: grid; gap: 10px; margin-top: 12px; }
+        .profile-meta-list p {
+            margin: 0;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: center;
+        }
+        .profile-meta-list span {
+            font-size: 0.83rem;
+            color: rgba(225, 242, 255, 0.66);
+        }
+        .profile-meta-list strong { font-size: 0.88rem; color: #f4fbff; }
+        .profile-timeline {
+            list-style: none;
+            padding: 0;
+            margin: 12px 0 0;
+            display: grid;
+            gap: 8px;
+        }
+        .profile-timeline li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px dashed rgba(255,255,255,0.1);
+            padding-bottom: 8px;
+        }
+        .profile-timeline li:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .profile-timeline span {
+            font-size: 0.78rem;
+            color: rgba(203, 234, 255, 0.65);
+            white-space: nowrap;
+        }
+        .profile-timeline strong { font-size: 0.85rem; font-weight: 560; }
+        .profile-auth-card { max-width: 760px; }
+        .field-label {
+            font-size: 0.78rem;
+            color: rgba(211, 238, 255, 0.82);
+            font-weight: 560;
+            margin-top: 4px;
+        }
         .store-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
         .store-item {
             border: 1px solid rgba(255,255,255,0.14);
@@ -442,6 +524,15 @@
             color: rgba(160, 255, 226, 0.95);
         }
         .auth-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        @media (max-width: 760px) {
+            .profile-hero {
+                grid-template-columns: auto 1fr;
+            }
+            .profile-ghost-btn {
+                grid-column: 1 / -1;
+                width: 100%;
+            }
+        }
         .collection-empty { font-size: 0.84rem; color: rgba(230,244,255,0.62); }
         #canvas { display: block; }
 
