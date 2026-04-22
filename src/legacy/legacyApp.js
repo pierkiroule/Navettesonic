@@ -2349,7 +2349,7 @@ export function initLegacyApp() {
               echoRecordToggleBtn.classList.toggle('finalizing', recordingState === 'finalizing');
               echoRecordToggleBtn.classList.toggle('hypnosis', recordingState === 'recording' || silenceTransitionInProgress);
               echoRecordToggleBtn.disabled = recordingState === 'finalizing' || recordingState === 'unsupported' || silenceTransitionInProgress;
-              echoRecordToggleBtn.textContent = recordingState === 'recording' ? 'STOP' : 'Silence';
+              echoRecordToggleBtn.textContent = recordingState === 'recording' ? 'STOP' : '👂Le silence des yeux !';
 
               if (recordingState === 'idle') {
                   if (!silenceTransitionInProgress) {
@@ -3344,6 +3344,52 @@ export function initLegacyApp() {
               return { bubble: nearest, dx, dy, distanceRatio, audioReactive };
           }
 
+          function drawSilenceCompassRing() {
+              const nearestBubbleData = getNearestBubbleForShip();
+              const pulse = (Math.sin(performance.now() * 0.008) + 1) * 0.5;
+              const compassRadius = 34 + pulse * 2.4;
+
+              ctx.save();
+              ctx.translate(ship.x, ship.y);
+
+              ctx.strokeStyle = `rgba(255, 255, 255, ${0.56 + pulse * 0.18})`;
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.arc(0, 0, compassRadius, 0, Math.PI * 2);
+              ctx.stroke();
+
+              if (nearestBubbleData) {
+                  const direction = Math.atan2(nearestBubbleData.dy, nearestBubbleData.dx);
+                  const markerSize = 7 + nearestBubbleData.distanceRatio * 8 + nearestBubbleData.audioReactive * 6;
+                  const markerBaseRadius = compassRadius + 1.6;
+                  const markerX = Math.cos(direction) * markerBaseRadius;
+                  const markerY = Math.sin(direction) * markerBaseRadius;
+
+                  const markerGlow = ctx.createRadialGradient(markerX, markerY, 0, markerX, markerY, markerSize * 2.8);
+                  markerGlow.addColorStop(0, 'rgba(255, 208, 168, 0.88)');
+                  markerGlow.addColorStop(0.48, `rgba(255, 142, 112, ${0.52 + pulse * 0.2})`);
+                  markerGlow.addColorStop(1, 'rgba(255, 102, 130, 0)');
+                  ctx.fillStyle = markerGlow;
+                  ctx.beginPath();
+                  ctx.arc(markerX, markerY, markerSize * 2.8, 0, Math.PI * 2);
+                  ctx.fill();
+
+                  ctx.strokeStyle = 'rgba(255, 120, 152, 0.85)';
+                  ctx.lineWidth = 2;
+                  ctx.beginPath();
+                  ctx.arc(markerX, markerY, markerSize * (0.7 + pulse * 0.25), 0, Math.PI * 2);
+                  ctx.stroke();
+
+                  ctx.strokeStyle = 'rgba(255, 174, 128, 0.72)';
+                  ctx.lineWidth = 1.6;
+                  ctx.beginPath();
+                  ctx.arc(markerX, markerY, markerSize * (1.12 + pulse * 0.35), 0, Math.PI * 2);
+                  ctx.stroke();
+              }
+
+              ctx.restore();
+          }
+
           function draw() {
               ctx.fillStyle = '#030308';
               ctx.fillRect(0, 0, w, h);
@@ -3618,6 +3664,7 @@ export function initLegacyApp() {
               ctx.restore();
 
               drawFishTriangleHaloButton();
+              if (silenceVisualMode) drawSilenceCompassRing();
 
               if (!heavySilenceMode) {
                   BUBBLES.filter((b) => b.layer !== 'below').forEach(drawBubble);
