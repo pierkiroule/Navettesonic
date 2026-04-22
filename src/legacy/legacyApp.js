@@ -217,12 +217,13 @@ export function initLegacyApp() {
 
           const ARENA_RADIUS = 2000;
           const SOUND_HEAR_RADIUS = 460;
-          const ARENA_TRIANGLE_COUNT = 3;
+          const ARENA_TRIANGLE_COUNT = 12;
           const FIREFLY_TAIL_ATTACH_RADIUS = 38;
           const FIREFLY_AUDIO_MIN_MS = 1500;
           const FIREFLY_AUDIO_MAX_MS = 3200;
           const FIREFLY_TAIL_MAX_ATTACHED = 3;
           const FIREFLY_REPULSE_COOLDOWN_MS = 900;
+          const FIREFLY_RELEASE_INTERVAL_MS = 15000;
           const DEFAULT_SUPABASE_URL = 'https://qyffktrggapfzlmmlerq.supabase.co';
           const ENV_SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || '';
           const ENV_SUPABASE_KEY = import.meta.env?.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
@@ -244,6 +245,8 @@ export function initLegacyApp() {
           const MAX_DRIFT_MOTES = 22;
           const ARENA_FIREFLIES = [];
           let hasReleasedInitialFireflies = false;
+          let fireflyReleaseSequenceActive = false;
+          let nextFireflyReleaseAt = 0;
           const STARTING_BUBBLES = [
               { sampleId: 'forêt-zen', layer: 'front', hue: 188, x: -240, y: -120, r: 72 },
               { sampleId: 'ocean-deep', layer: 'below', hue: 235, x: 220, y: 170, r: 78 },
@@ -1615,29 +1618,39 @@ export function initLegacyApp() {
               return new Promise((resolve) => setTimeout(resolve, ms));
           }
 
+          function releaseSingleFireflyFromBubble(sourceBubble, now) {
+              const firefly = ARENA_FIREFLIES.find((candidate) => !candidate.isReleased);
+              if (!firefly) return false;
+              const angle = Math.random() * Math.PI * 2;
+              const startRadius = Math.max(30, (sourceBubble?.r || 64) * (0.35 + Math.random() * 0.2));
+              const startX = (sourceBubble?.x || 0) + Math.cos(angle) * startRadius;
+              const startY = (sourceBubble?.y || 0) + Math.sin(angle) * startRadius;
+              firefly.isReleased = true;
+              firefly.containedInBubbleId = null;
+              firefly.triangleVertexIndex = -1;
+              firefly.attachedToTail = false;
+              firefly.attachedOrder = -1;
+              firefly.x = startX;
+              firefly.y = startY;
+              firefly.destinyX = startX + Math.cos(angle) * (160 + Math.random() * 120);
+              firefly.destinyY = startY + Math.sin(angle) * (120 + Math.random() * 140);
+              firefly.vx = Math.cos(angle) * (0.8 + Math.random() * 0.9);
+              firefly.vy = Math.sin(angle) * (0.5 + Math.random() * 0.8);
+              firefly.linkedCooldownUntil = now + 1200;
+              firefly.nextDestinyAt = now + 1400 + Math.random() * 1200;
+              return true;
+          }
+
           function releaseInitialFirefliesFromBubble(sourceBubble, now) {
               if (hasReleasedInitialFireflies) return;
               hasReleasedInitialFireflies = true;
-              ARENA_FIREFLIES.forEach((firefly, idx) => {
-                  firefly.isReleased = true;
-                  firefly.containedInBubbleId = null;
-                  firefly.triangleVertexIndex = -1;
-                  firefly.attachedToTail = false;
-                  firefly.attachedOrder = -1;
-                  const angle = (idx / Math.max(1, ARENA_FIREFLIES.length)) * Math.PI * 2 + (Math.random() - 0.5) * 0.7;
-                  const startRadius = Math.max(30, (sourceBubble?.r || 64) * 0.42);
-                  const startX = (sourceBubble?.x || 0) + Math.cos(angle) * startRadius;
-                  const startY = (sourceBubble?.y || 0) + Math.sin(angle) * startRadius;
-                  firefly.x = startX;
-                  firefly.y = startY;
-                  firefly.destinyX = startX + Math.cos(angle) * (160 + Math.random() * 120);
-                  firefly.destinyY = startY + Math.sin(angle) * (120 + Math.random() * 140);
-                  firefly.vx = Math.cos(angle) * (0.8 + Math.random() * 0.9);
-                  firefly.vy = Math.sin(angle) * (0.5 + Math.random() * 0.8);
-                  firefly.linkedCooldownUntil = now + 1200 + idx * 180;
-                  firefly.nextDestinyAt = now + 1400 + Math.random() * 1200;
-              });
-              setArenaTriangleStatus('3 lucioles libérées : récupère-les avec la queue du poisson, puis dépose le chapelet dans une bulle sonore.');
+              fireflyReleaseSequenceActive = true;
+              nextFireflyReleaseAt = now + FIREFLY_RELEASE_INTERVAL_MS;
+              const releasedNow = releaseSingleFireflyFromBubble(sourceBubble, now);
+              if (releasedNow) {
+                  const remaining = ARENA_FIREFLIES.filter((firefly) => !firefly.isReleased).length;
+                  setArenaTriangleStatus(`Une nouvelle luciole émerge. Stock restant : ${remaining}.`);
+              }
           }
 
           async function triggerFireflyVocalPlayback(firefly) {
@@ -1766,6 +1779,24 @@ export function initLegacyApp() {
               const invShipSpeed = 1 / Math.max(0.0001, shipSpeed);
               const backX = shipSpeed > 0.03 ? -ship.vx * invShipSpeed : Math.sin(ship.angle);
               const backY = shipSpeed > 0.03 ? -ship.vy * invShipSpeed : -Math.cos(ship.angle);
+
+              if (fireflyReleaseSequenceActive && now >= nextFireflyReleaseAt) {
+                  const spawnAngle = Math.random() * Math.PI * 2;
+                  const spawnRadius = 180 + Math.random() * (ARENA_RADIUS * 0.55);
+                  const pseudoBubble = {
+                      x: Math.cos(spawnAngle) * spawnRadius,
+                      y: Math.sin(spawnAngle) * spawnRadius,
+                      r: 64
+                  };
+                  const released = releaseSingleFireflyFromBubble(pseudoBubble, now);
+                  if (released) {
+                      const remaining = ARENA_FIREFLIES.filter((firefly) => !firefly.isReleased).length;
+                      setArenaTriangleStatus(`Une nouvelle luciole apparaît dans le courant. Stock restant : ${remaining}.`);
+                      nextFireflyReleaseAt = now + FIREFLY_RELEASE_INTERVAL_MS;
+                  } else {
+                      fireflyReleaseSequenceActive = false;
+                  }
+              }
 
               ARENA_FIREFLIES.forEach((firefly, idx) => {
                   if (!firefly.isReleased) return;
