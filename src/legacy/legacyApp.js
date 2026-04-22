@@ -419,6 +419,7 @@ export function initLegacyApp() {
           });
 
           bindTap(echoRecordToggleBtn, () => {
+              fadeOutFirstFishMoveMusic();
               if (recordingState === 'recording') {
                   stopEchoRecording(false);
                   return;
@@ -2223,6 +2224,32 @@ export function initLegacyApp() {
               });
           }
 
+          function fadeOutFirstFishMoveMusic(durationMs = 850) {
+              if (!firstFishMoveMusic) return;
+              const music = firstFishMoveMusic;
+              if (firstFishMoveFadeInterval) {
+                  clearInterval(firstFishMoveFadeInterval);
+                  firstFishMoveFadeInterval = null;
+              }
+              const startVolume = Math.max(0, Math.min(1, music.volume));
+              if (startVolume <= 0.001) {
+                  music.volume = 0;
+                  return;
+              }
+              const startedAt = performance.now();
+              firstFishMoveFadeInterval = setInterval(() => {
+                  const elapsed = performance.now() - startedAt;
+                  const t = Math.max(0, Math.min(1, elapsed / Math.max(120, durationMs)));
+                  const eased = 1 - Math.pow(1 - t, 2);
+                  music.volume = Math.max(0, startVolume * (1 - eased));
+                  if (t >= 1) {
+                      clearInterval(firstFishMoveFadeInterval);
+                      firstFishMoveFadeInterval = null;
+                      music.volume = 0;
+                  }
+              }, 32);
+          }
+
 
           function formatRecordingTime(msElapsed) {
               const clamped = Math.min(RECORDER_MAX_MILLIS, Math.max(0, msElapsed));
@@ -2306,7 +2333,7 @@ export function initLegacyApp() {
               echoRecordToggleBtn.classList.toggle('finalizing', recordingState === 'finalizing');
               echoRecordToggleBtn.classList.toggle('hypnosis', recordingState === 'recording' || silenceTransitionInProgress);
               echoRecordToggleBtn.disabled = recordingState === 'finalizing' || recordingState === 'unsupported' || silenceTransitionInProgress;
-              echoRecordToggleBtn.textContent = recordingState === 'recording' ? 'STOP' : 'Silence des Yeux';
+              echoRecordToggleBtn.textContent = recordingState === 'recording' ? 'STOP' : 'Silence';
 
               if (recordingState === 'idle') {
                   if (!silenceTransitionInProgress) {
@@ -3334,6 +3361,41 @@ export function initLegacyApp() {
               ctx.stroke();
           }
 
+          function traceFishBodyPath(pathCtx, bodyUndulate, bodyBreath) {
+              pathCtx.beginPath();
+              pathCtx.moveTo(0, -18);
+              pathCtx.bezierCurveTo(-8.5 + bodyUndulate * 55, -13, -11 + bodyUndulate * 36, -3 + bodyBreath, -9 + bodyUndulate * 18, 8);
+              pathCtx.bezierCurveTo(-7, 15, -3, 20 + bodyBreath, 0, 22);
+              pathCtx.bezierCurveTo(3, 20 + bodyBreath, 7, 15, 9 - bodyUndulate * 18, 8);
+              pathCtx.bezierCurveTo(11 - bodyUndulate * 36, -3 + bodyBreath, 8.5 - bodyUndulate * 55, -13, 0, -18);
+              pathCtx.closePath();
+          }
+
+          function getNearestBubbleForShip() {
+              if (!BUBBLES.length) return null;
+              let nearest = null;
+              let nearestDist = Infinity;
+              for (const bubble of BUBBLES) {
+                  const dx = bubble.x - ship.x;
+                  const dy = bubble.y - ship.y;
+                  const dist = Math.hypot(dx, dy);
+                  if (dist < nearestDist) {
+                      nearestDist = dist;
+                      nearest = bubble;
+                  }
+              }
+              if (!nearest) return null;
+              const dx = nearest.x - ship.x;
+              const dy = nearest.y - ship.y;
+              const distanceRatio = Math.max(0, Math.min(1, 1 - nearestDist / (SOUND_HEAR_RADIUS * 1.25)));
+              const audioReactive = Math.max(
+                  nearest.zoneMix || 0,
+                  nearest.currentVolume || 0,
+                  sampleBubbleEnergy(nearest) * 0.95
+              );
+              return { bubble: nearest, dx, dy, distanceRatio, audioReactive };
+          }
+
           function draw() {
               ctx.fillStyle = '#030308';
               ctx.fillRect(0, 0, w, h);
@@ -3452,15 +3514,19 @@ export function initLegacyApp() {
               const bodyHueMid = 198 + Math.sin(swimT * 1.3 + 1.4) * 12;
               const bodyHueLow = 210 + Math.sin(swimT * 1.9 + 2.1) * 10;
 
-              // --- AURA GLOW ---
-              const auraR = 34 + shimmerPulse * 9;
+              // --- AURA GLOW (reduced + closer to fish contour) ---
+              const nearestBubbleSignal = getNearestBubbleForShip();
+              const sonarPulse = nearestBubbleSignal
+                  ? Math.max(0.08, Math.min(1, nearestBubbleSignal.audioReactive * 0.95 + nearestBubbleSignal.distanceRatio * 0.6))
+                  : 0.08;
+              const auraR = 22 + shimmerPulse * 4.2;
               const auraGrad = ctx.createRadialGradient(0, 2, 0, 0, 2, auraR);
-              auraGrad.addColorStop(0, `hsla(${bodyHueMid}, 90%, 82%, ${0.22 + shimmerPulse * 0.14})`);
-              auraGrad.addColorStop(0.6, `hsla(${bodyHueLow}, 85%, 75%, ${0.08 + shimmerPulse * 0.06})`);
+              auraGrad.addColorStop(0, `hsla(${bodyHueMid}, 88%, 80%, ${0.12 + shimmerPulse * 0.08})`);
+              auraGrad.addColorStop(0.6, `hsla(${bodyHueLow}, 84%, 72%, ${0.05 + shimmerPulse * 0.05})`);
               auraGrad.addColorStop(1, 'rgba(0,0,0,0)');
               ctx.fillStyle = auraGrad;
               ctx.beginPath();
-              ctx.ellipse(0, 2, auraR, auraR * 1.25, 0, 0, Math.PI * 2);
+              ctx.ellipse(0, 2, auraR * 0.95, auraR * 1.1, 0, 0, Math.PI * 2);
               ctx.fill();
 
               // --- TRAILING PLUMES (finer, graceful and sinuous) ---
@@ -3529,13 +3595,7 @@ export function initLegacyApp() {
               bodyGrad.addColorStop(0.72, `hsla(${bodyHueLow}, 80%, 68%, ${0.76 + shimmerPulse * 0.14})`);
               bodyGrad.addColorStop(1,    `hsla(${bodyHueLow + 14}, 75%, 58%, 0.80)`);
               ctx.fillStyle = bodyGrad;
-              ctx.beginPath();
-              ctx.moveTo(0, -18);
-              ctx.bezierCurveTo(-8.5 + bu * 55, -13, -11 + bu * 36, -3 + bodyBreath, -9 + bu * 18, 8);
-              ctx.bezierCurveTo(-7, 15, -3, 20 + bodyBreath, 0, 22);
-              ctx.bezierCurveTo(3, 20 + bodyBreath, 7, 15, 9 - bu * 18, 8);
-              ctx.bezierCurveTo(11 - bu * 36, -3 + bodyBreath, 8.5 - bu * 55, -13, 0, -18);
-              ctx.closePath();
+              traceFishBodyPath(ctx, bu, bodyBreath);
               ctx.fill();
 
               // --- IRIDESCENT SHEEN ---
@@ -3544,14 +3604,47 @@ export function initLegacyApp() {
               sheenGrad.addColorStop(0.45, `rgba(200, 245, 255, ${0.10 + shimmerPulse * 0.10})`);
               sheenGrad.addColorStop(1, 'rgba(180, 220, 255, 0)');
               ctx.fillStyle = sheenGrad;
-              ctx.beginPath();
-              ctx.moveTo(0, -18);
-              ctx.bezierCurveTo(-8.5 + bu * 55, -13, -11 + bu * 36, -3 + bodyBreath, -9 + bu * 18, 8);
-              ctx.bezierCurveTo(-7, 15, -3, 20 + bodyBreath, 0, 22);
-              ctx.bezierCurveTo(3, 20 + bodyBreath, 7, 15, 9 - bu * 18, 8);
-              ctx.bezierCurveTo(11 - bu * 36, -3 + bodyBreath, 8.5 - bu * 55, -13, 0, -18);
-              ctx.closePath();
+              traceFishBodyPath(ctx, bu, bodyBreath);
               ctx.fill();
+
+              // --- CONTOUR HALO + SONAR PEAK ---
+              ctx.save();
+              ctx.globalCompositeOperation = 'screen';
+              ctx.shadowBlur = 10 + sonarPulse * 12;
+              ctx.shadowColor = `hsla(${bodyHueMid + 4}, 94%, 78%, ${0.28 + sonarPulse * 0.42})`;
+              ctx.strokeStyle = `hsla(${bodyHueMid + 6}, 92%, 84%, ${0.28 + sonarPulse * 0.42})`;
+              ctx.lineWidth = 1.1 + sonarPulse * 1.2;
+              traceFishBodyPath(ctx, bu, bodyBreath);
+              ctx.stroke();
+
+              if (nearestBubbleSignal && nearestBubbleSignal.distanceRatio > 0.02) {
+                  const globalAngle = Math.atan2(nearestBubbleSignal.dy, nearestBubbleSignal.dx);
+                  const localAngle = globalAngle - (ship.angle + Math.PI / 2);
+                  const pointerLen = 9 + nearestBubbleSignal.distanceRatio * 20 + sonarPulse * 16;
+                  const pointerSpread = 0.32 + (1 - nearestBubbleSignal.distanceRatio) * 0.26;
+                  const pointerAlpha = Math.min(0.92, 0.24 + sonarPulse * 0.76);
+
+                  ctx.rotate(localAngle);
+                  const pointerGradient = ctx.createLinearGradient(0, -20, 0, -20 - pointerLen);
+                  pointerGradient.addColorStop(0, `rgba(255, 124, 124, ${pointerAlpha * 0.06})`);
+                  pointerGradient.addColorStop(0.4, `rgba(255, 74, 74, ${pointerAlpha * 0.62})`);
+                  pointerGradient.addColorStop(1, `rgba(255, 26, 26, ${pointerAlpha})`);
+                  ctx.fillStyle = pointerGradient;
+                  ctx.beginPath();
+                  ctx.moveTo(0, -20 - pointerLen);
+                  ctx.lineTo(-pointerSpread * 7, -20);
+                  ctx.lineTo(pointerSpread * 7, -20);
+                  ctx.closePath();
+                  ctx.fill();
+
+                  ctx.strokeStyle = `rgba(255, 50, 50, ${0.42 + sonarPulse * 0.5})`;
+                  ctx.lineWidth = 0.9 + sonarPulse * 0.75;
+                  ctx.beginPath();
+                  ctx.moveTo(0, -19);
+                  ctx.lineTo(0, -20 - pointerLen);
+                  ctx.stroke();
+              }
+              ctx.restore();
 
               // --- PECTORAL FINS ---
               ctx.shadowBlur = 6;

@@ -291,30 +291,30 @@
         }
         #echoRecorderPanel {
             position: absolute;
-            top: 106px;
-            right: clamp(10px, 2vw, 24px);
+            top: calc(12px + env(safe-area-inset-top));
+            left: clamp(10px, 2vw, 18px);
             z-index: 165;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 6px;
             pointer-events: auto;
-            border-radius: 16px;
-            padding: 10px 12px;
-            background: rgba(5, 16, 32, 0.7);
-            border: 1px solid rgba(136, 202, 242, 0.32);
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.34);
-            backdrop-filter: blur(6px);
+            border-radius: 999px;
+            padding: 4px;
+            background: rgba(5, 14, 26, 0.42);
+            border: 1px solid rgba(136, 202, 242, 0.2);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
+            backdrop-filter: blur(4px);
         }
         .echo-rec-btn {
-            border: 1px solid rgba(244, 126, 126, 0.75);
+            border: 1px solid rgba(244, 126, 126, 0.56);
             border-radius: 999px;
-            min-width: 78px;
-            padding: 10px 14px;
-            font-size: 0.88rem;
-            font-weight: 760;
-            letter-spacing: 0.08em;
-            color: #ffdcdc;
-            background: linear-gradient(180deg, rgba(72, 10, 18, 0.92), rgba(46, 6, 12, 0.92));
+            min-width: 56px;
+            padding: 7px 10px;
+            font-size: 0.68rem;
+            font-weight: 680;
+            letter-spacing: 0.04em;
+            color: rgba(255, 225, 225, 0.9);
+            background: linear-gradient(180deg, rgba(72, 10, 18, 0.7), rgba(46, 6, 12, 0.72));
             cursor: pointer;
             transition: transform 100ms ease, filter 120ms ease, opacity 120ms ease;
         }
@@ -340,9 +340,7 @@
             box-shadow: 0 0 0 2px rgba(133, 221, 255, 0.24);
         }
         .echo-rec-meta {
-            min-width: 185px;
-            color: rgba(225, 242, 255, 0.95);
-            font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            display: none;
         }
         .echo-rec-timer {
             margin: 0;
@@ -365,19 +363,14 @@
         }
         @media (max-width: 860px) {
             #echoRecorderPanel {
-                left: 50%;
-                right: auto;
-                top: 112px;
-                transform: translateX(-50%);
-                width: min(92vw, 420px);
-                justify-content: center;
-            }
-            .echo-rec-meta {
-                min-width: 0;
-                flex: 1;
+                top: calc(10px + env(safe-area-inset-top));
+                left: 10px;
+                transform: none;
+                width: auto;
+                justify-content: flex-start;
             }
             .echo-rec-btn {
-                min-width: 74px;
+                min-width: 54px;
             }
         }
 
