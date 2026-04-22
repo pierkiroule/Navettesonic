@@ -3462,10 +3462,7 @@ export function initLegacyApp() {
               const bodyHueLow = 210 + Math.sin(swimT * 1.9 + 2.1) * 10;
 
               // --- AURA GLOW (reduced + closer to fish contour) ---
-              const nearestBubbleSignal = getNearestBubbleForShip();
-              const sonarPulse = nearestBubbleSignal
-                  ? Math.max(0.08, Math.min(1, nearestBubbleSignal.audioReactive * 0.95 + nearestBubbleSignal.distanceRatio * 0.6))
-                  : 0.08;
+              const sonarPulse = 0.08;
               const auraR = 22 + shimmerPulse * 4.2;
               const auraGrad = ctx.createRadialGradient(0, 2, 0, 0, 2, auraR);
               auraGrad.addColorStop(0, `hsla(${bodyHueMid}, 88%, 80%, ${0.12 + shimmerPulse * 0.08})`);
@@ -3508,33 +3505,6 @@ export function initLegacyApp() {
               traceFishBodyPath(ctx, bu, bodyBreath);
               ctx.stroke();
 
-              if (nearestBubbleSignal && nearestBubbleSignal.distanceRatio > 0.02) {
-                  const globalAngle = Math.atan2(nearestBubbleSignal.dy, nearestBubbleSignal.dx);
-                  const localAngle = globalAngle - (ship.angle + Math.PI / 2);
-                  const pointerLen = 9 + nearestBubbleSignal.distanceRatio * 20 + sonarPulse * 16;
-                  const pointerSpread = 0.32 + (1 - nearestBubbleSignal.distanceRatio) * 0.26;
-                  const pointerAlpha = Math.min(0.92, 0.24 + sonarPulse * 0.76);
-
-                  ctx.rotate(localAngle);
-                  const pointerGradient = ctx.createLinearGradient(0, -20, 0, -20 - pointerLen);
-                  pointerGradient.addColorStop(0, `rgba(255, 124, 124, ${pointerAlpha * 0.06})`);
-                  pointerGradient.addColorStop(0.4, `rgba(255, 74, 74, ${pointerAlpha * 0.62})`);
-                  pointerGradient.addColorStop(1, `rgba(255, 26, 26, ${pointerAlpha})`);
-                  ctx.fillStyle = pointerGradient;
-                  ctx.beginPath();
-                  ctx.moveTo(0, -20 - pointerLen);
-                  ctx.lineTo(-pointerSpread * 7, -20);
-                  ctx.lineTo(pointerSpread * 7, -20);
-                  ctx.closePath();
-                  ctx.fill();
-
-                  ctx.strokeStyle = `rgba(255, 50, 50, ${0.42 + sonarPulse * 0.5})`;
-                  ctx.lineWidth = 0.9 + sonarPulse * 0.75;
-                  ctx.beginPath();
-                  ctx.moveTo(0, -19);
-                  ctx.lineTo(0, -20 - pointerLen);
-                  ctx.stroke();
-              }
               ctx.restore();
 
               // --- PECTORAL FINS ---
