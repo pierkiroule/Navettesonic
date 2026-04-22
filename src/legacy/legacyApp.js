@@ -220,6 +220,8 @@ export function initLegacyApp() {
           let helperTipIndex = 0;
           let sooncutBucketVocals = [];
           let activeArenaAudio = null;
+          let routedMediaElementSources = new WeakMap();
+          let routedMediaElementGainNodes = new WeakMap();
           let hasPlayedFirstFishMoveMusic = false;
           let isStartingFirstFishMoveMusic = false;
           let firstFishMoveMusic = null;
@@ -1507,12 +1509,18 @@ export function initLegacyApp() {
               return new Promise((resolve) => {
                   try {
                       const audio = activeArenaAudio || new Audio();
+                      const context = ensureAudioContext();
+                      ensureAllAudioRunning();
                       if (activeArenaAudio) {
                           activeArenaAudio.pause();
                           activeArenaAudio.currentTime = 0;
                       }
                       audio.preload = 'auto';
                       audio.volume = 0.98;
+                      audio.crossOrigin = 'anonymous';
+                      if (context && masterGainNode) {
+                          ensureMediaElementRoutedToMaster(audio, context, 1);
+                      }
                       audio.src = url;
                       activeArenaAudio = audio;
                       const startedAt = performance.now();
@@ -1539,6 +1547,22 @@ export function initLegacyApp() {
                       resolve(0);
                   }
               });
+          }
+
+          function ensureMediaElementRoutedToMaster(audioEl, context, gainValue = 1) {
+              if (!audioEl || !context || !masterGainNode) return;
+              const normalizedGain = Math.max(0, Number.isFinite(gainValue) ? gainValue : 1);
+              let mediaGainNode = routedMediaElementGainNodes.get(audioEl) || null;
+              if (!mediaGainNode) {
+                  mediaGainNode = context.createGain();
+                  mediaGainNode.connect(masterGainNode);
+                  routedMediaElementGainNodes.set(audioEl, mediaGainNode);
+              }
+              mediaGainNode.gain.value = normalizedGain;
+              if (routedMediaElementSources.has(audioEl)) return;
+              const mediaSourceNode = context.createMediaElementSource(audioEl);
+              mediaSourceNode.connect(mediaGainNode);
+              routedMediaElementSources.set(audioEl, mediaSourceNode);
           }
 
           async function playSooncutBucketTrack(track) {
@@ -2228,11 +2252,19 @@ export function initLegacyApp() {
               const music = firstFishMoveMusic || new Audio();
               firstFishMoveMusic = music;
               music.preload = 'auto';
+              music.crossOrigin = 'anonymous';
               if (music.src !== FIRST_FISH_MOVE_MUSIC_URL) {
                   music.src = FIRST_FISH_MOVE_MUSIC_URL;
               }
               music.currentTime = 0;
               music.volume = 1;
+              const context = ensureAudioContext();
+              ensureAllAudioRunning();
+              if (context && masterGainNode) {
+                  try {
+                      ensureMediaElementRoutedToMaster(music, context, 1);
+                  } catch (_) {}
+              }
 
               if (firstFishMoveFadeInterval) {
                   clearInterval(firstFishMoveFadeInterval);
@@ -2353,11 +2385,11 @@ export function initLegacyApp() {
                   : () => true;
 
               const formats = [
-                  { mimeType: 'audio/mpeg', ext: 'mp3', fallbackNotice: '' },
-                  { mimeType: 'audio/mp3', ext: 'mp3', fallbackNotice: '' },
                   { mimeType: 'audio/webm;codecs=opus', ext: 'webm', fallbackNotice: 'MP3 indisponible sur ce navigateur : export en WebM/Opus.' },
                   { mimeType: 'audio/ogg;codecs=opus', ext: 'ogg', fallbackNotice: 'MP3 indisponible sur ce navigateur : export en OGG/Opus.' },
                   { mimeType: 'audio/wav', ext: 'wav', fallbackNotice: 'MP3 indisponible sur ce navigateur : export en WAV.' },
+                  { mimeType: 'audio/mpeg', ext: 'mp3', fallbackNotice: '' },
+                  { mimeType: 'audio/mp3', ext: 'mp3', fallbackNotice: '' },
               ];
 
               for (const format of formats) {
