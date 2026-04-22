@@ -1590,6 +1590,31 @@ export function initLegacyApp() {
               return !(hasNeg && hasPos);
           }
 
+          function distancePointToSegment(point, a, b) {
+              const abX = b.x - a.x;
+              const abY = b.y - a.y;
+              const abLenSq = abX * abX + abY * abY;
+              if (abLenSq <= 0.0001) return Math.hypot(point.x - a.x, point.y - a.y);
+              const tRaw = ((point.x - a.x) * abX + (point.y - a.y) * abY) / abLenSq;
+              const t = Math.max(0, Math.min(1, tRaw));
+              const projX = a.x + abX * t;
+              const projY = a.y + abY * t;
+              return Math.hypot(point.x - projX, point.y - projY);
+          }
+
+          function isPointTouchingTriangleElement(point, vertices, threshold = 16) {
+              if (!point || !vertices || vertices.length < 3) return false;
+              for (const vertex of vertices) {
+                  if (Math.hypot(point.x - vertex.x, point.y - vertex.y) <= threshold) return true;
+              }
+              const edges = [[0, 1], [1, 2], [2, 0]];
+              return edges.some(([aIdx, bIdx]) => distancePointToSegment(point, vertices[aIdx], vertices[bIdx]) <= threshold);
+          }
+
+          function delay(ms) {
+              return new Promise((resolve) => setTimeout(resolve, ms));
+          }
+
           function releaseInitialFirefliesFromBubble(sourceBubble, now) {
               if (hasReleasedInitialFireflies) return;
               hasReleasedInitialFireflies = true;
@@ -1703,6 +1728,8 @@ export function initLegacyApp() {
                   bubble.storedFireflyIds.push(firefly.id);
               });
               bubble.wasShipInsideFireflyTriangle = false;
+              bubble.trianglePlaybackLockUntil = 0;
+              bubble.isTrianglePlaybackActive = false;
               normalizeAttachedOrders();
               setArenaTriangleStatus(`Triangle de 3 lucioles formé dans ${bubble.label || 'la bulle sonore'}. Traverse le triangle avec le poisson pour lire les audios.`);
               return true;
@@ -1711,10 +1738,23 @@ export function initLegacyApp() {
           function maybePlayBubbleStoredVocal(bubble) {
               const stored = getStoredBubbleFireflies(bubble);
               if (stored.length < 3) return;
-              stored.slice(0, 3).forEach((firefly) => {
-                  void triggerFireflyVocalPlayback(firefly);
-              });
-              setArenaTriangleStatus(`Triangle traversé : lecture des 3 vocaux dans ${bubble.label || 'la bulle sonore'}.`);
+              const now = performance.now();
+              if (bubble.trianglePlaybackLockUntil && now < bubble.trianglePlaybackLockUntil) return;
+              if (bubble.isTrianglePlaybackActive) return;
+              bubble.isTrianglePlaybackActive = true;
+              bubble.trianglePlaybackLockUntil = now + 60000;
+              const trio = stored.slice(0, 3);
+              setArenaTriangleStatus(`Triangle touché : lecture séquentielle des 3 vocaux dans ${bubble.label || 'la bulle sonore'}.`);
+              (async () => {
+                  try {
+                      for (let i = 0; i < trio.length; i++) {
+                          await triggerFireflyVocalPlayback(trio[i]);
+                          if (i < trio.length - 1) await delay(1000);
+                      }
+                  } finally {
+                      bubble.isTrianglePlaybackActive = false;
+                  }
+              })();
           }
 
           function updateArenaFireflies() {
@@ -1985,7 +2025,10 @@ export function initLegacyApp() {
                   lastImpactAt: 0,
                   fishTouching: false,
                   storedFireflyIds: [],
-                  nextStoredFireflyPlaybackIndex: 0
+                  nextStoredFireflyPlaybackIndex: 0,
+                  wasShipInsideFireflyTriangle: false,
+                  trianglePlaybackLockUntil: 0,
+                  isTrianglePlaybackActive: false
               };
           }
 
@@ -2167,11 +2210,11 @@ export function initLegacyApp() {
                       const stored = getStoredBubbleFireflies(b);
                       if (stored.length >= 3) {
                           const triangleVertices = getBubbleTriangleVertices(b);
-                          const shipInsideTriangle = pointInsideTriangle({ x: ship.x, y: ship.y }, triangleVertices);
-                          if (shipInsideTriangle && !b.wasShipInsideFireflyTriangle) {
+                          const shipTouchingTriangle = isPointTouchingTriangleElement({ x: ship.x, y: ship.y }, triangleVertices, 18);
+                          if (shipTouchingTriangle && !b.wasShipInsideFireflyTriangle) {
                               maybePlayBubbleStoredVocal(b);
                           }
-                          b.wasShipInsideFireflyTriangle = shipInsideTriangle;
+                          b.wasShipInsideFireflyTriangle = shipTouchingTriangle;
                       } else {
                           b.wasShipInsideFireflyTriangle = false;
                       }
