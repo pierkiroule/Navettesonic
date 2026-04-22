@@ -2009,6 +2009,7 @@ export function initLegacyApp() {
 
           function onStart(e) {
               if (currentView !== 'experience') return;
+              if (isInteractiveTarget(e.target)) return;
               const pos = getMousePos(e);
               mouseWorld = pos;
               ensureAllAudioRunning();
@@ -2069,6 +2070,7 @@ export function initLegacyApp() {
           window.addEventListener('mousedown', onStart);
           window.addEventListener('mousemove', onMove);
           window.addEventListener('mouseup', onEnd);
+          window.addEventListener('blur', onEnd);
 
           window.addEventListener('touchstart', (e) => {
               if (isInteractiveTarget(e.target)) return;
@@ -2082,6 +2084,7 @@ export function initLegacyApp() {
               onMove(e);
           }, { passive: false });
           window.addEventListener('touchend', onEnd);
+          window.addEventListener('touchcancel', onEnd);
 
           cancelBtn.addEventListener('click', closeBubblePanel);
           dropBtn.addEventListener('click', () => {
@@ -3261,38 +3264,59 @@ export function initLegacyApp() {
               ctx.ellipse(0, 2, auraR, auraR * 1.25, 0, 0, Math.PI * 2);
               ctx.fill();
 
-              // --- TRAILING PLUMES (feather wisps behind tail) ---
+              // --- TRAILING PLUMES (finer, graceful and sinuous) ---
               const plumeData = [
-                  { ox: -3.5, phase: 0.0, spread: -14, len: 34, hueOff: 0 },
-                  { ox: -1.5, phase: 0.9, spread: -7, len: 40, hueOff: 8 },
-                  { ox: 0,    phase: 1.7, spread: 0,  len: 44, hueOff: 14 },
-                  { ox: 1.5,  phase: 2.5, spread: 7,  len: 40, hueOff: 8 },
-                  { ox: 3.5,  phase: 3.3, spread: 14, len: 34, hueOff: 0 },
+                  { ox: -2.8, phase: 0.0, sway: -13, len: 42, hueOff: -4, width: 1.4 },
+                  { ox: -1.1, phase: 0.8, sway: -7,  len: 50, hueOff: 4,  width: 1.2 },
+                  { ox: 0,    phase: 1.6, sway: 0,   len: 56, hueOff: 10, width: 1.15 },
+                  { ox: 1.1,  phase: 2.4, sway: 7,   len: 50, hueOff: 4,  width: 1.2 },
+                  { ox: 2.8,  phase: 3.2, sway: 13,  len: 42, hueOff: -4, width: 1.4 },
               ];
               plumeData.forEach((p, i) => {
-                  const pw = Math.sin(swimT * 7.5 + p.phase) * (0.18 + glide * 0.14);
-                  const alpha = (0.28 + shimmerPulse * 0.18) * (1 - Math.abs(i - 2) * 0.12);
+                  const wave = Math.sin(swimT * 6.6 + p.phase) * (0.75 + glide * 1.15);
+                  const curl = Math.cos(swimT * 4.5 + p.phase * 1.7) * (0.5 + glide * 0.95);
+                  const alpha = (0.26 + shimmerPulse * 0.2) * (1 - Math.abs(i - 2) * 0.1);
                   const hue = bodyHueLow + p.hueOff;
+                  const startY = 20.5;
+                  const cp1x = p.sway * 0.24 + wave * 3.2;
+                  const cp1y = startY + p.len * 0.26;
+                  const cp2x = p.sway * 0.62 + wave * 6.5 + curl * 2.2;
+                  const cp2y = startY + p.len * 0.68;
+                  const endX = p.sway * 0.36 + wave * 3.8 + curl * 1.6;
+                  const endY = startY + p.len;
+
                   ctx.save();
-                  ctx.translate(p.ox, 21);
-                  const pGrad = ctx.createLinearGradient(0, 0, p.spread * 0.4, p.len);
-                  pGrad.addColorStop(0, `hsla(${hue}, 82%, 78%, ${alpha})`);
-                  pGrad.addColorStop(0.5, `hsla(${hue + 6}, 85%, 86%, ${alpha * 0.5})`);
-                  pGrad.addColorStop(1, `hsla(${hue + 12}, 90%, 90%, 0)`);
-                  ctx.fillStyle = pGrad;
+                  ctx.translate(p.ox, 0);
+                  ctx.lineCap = 'round';
+                  ctx.lineJoin = 'round';
+                  ctx.shadowBlur = 7;
+                  ctx.shadowColor = `hsla(${hue + 8}, 95%, 86%, ${alpha * 0.45})`;
+
+                  const plumeGrad = ctx.createLinearGradient(0, startY, endX, endY);
+                  plumeGrad.addColorStop(0, `hsla(${hue}, 92%, 90%, ${alpha})`);
+                  plumeGrad.addColorStop(0.55, `hsla(${hue + 10}, 88%, 86%, ${alpha * 0.55})`);
+                  plumeGrad.addColorStop(1, `hsla(${hue + 18}, 88%, 92%, 0)`);
+                  ctx.strokeStyle = plumeGrad;
+
+                  ctx.lineWidth = p.width + glide * 0.35;
                   ctx.beginPath();
-                  ctx.moveTo(0, 0);
+                  ctx.moveTo(0, startY);
+                  ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endX, endY);
+                  ctx.stroke();
+
+                  // ultra-fine highlight filament for a voluptuous silky look
+                  ctx.shadowBlur = 0;
+                  ctx.lineWidth = Math.max(0.45, p.width * 0.42);
+                  ctx.strokeStyle = `hsla(${hue + 20}, 95%, 95%, ${alpha * 0.5})`;
+                  ctx.beginPath();
+                  ctx.moveTo(0, startY + 0.3);
                   ctx.bezierCurveTo(
-                      p.spread * 0.3 + pw * 12, p.len * 0.28,
-                      p.spread * 0.6 + pw * 20, p.len * 0.62,
-                      p.spread * 0.35 + pw * 8, p.len
+                      cp1x * 0.85 + 0.35, cp1y - 0.6,
+                      cp2x * 0.88 + 0.5, cp2y - 0.4,
+                      endX * 0.9 + 0.25, endY - 0.8
                   );
-                  ctx.bezierCurveTo(
-                      p.spread * 0.1 + pw * 4, p.len * 0.65,
-                      -p.spread * 0.1 + pw * 6, p.len * 0.3,
-                      0, 0
-                  );
-                  ctx.fill();
+                  ctx.stroke();
+
                   ctx.restore();
               });
 
