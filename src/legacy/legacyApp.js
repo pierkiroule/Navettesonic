@@ -46,11 +46,18 @@ export function initLegacyApp() {
           const ctx = canvas.getContext('2d');
           const ui = document.getElementById('ui');
           const helperTips = document.getElementById('helperTips');
+          const silenceDesYeuxOverlay = document.getElementById('silenceDesYeuxOverlay');
+          const silenceDesYeuxTitle = document.getElementById('silenceDesYeuxTitle');
+          const silenceDesYeuxCountdown = document.getElementById('silenceDesYeuxCountdown');
+          const silenceDesYeuxPoem = document.getElementById('silenceDesYeuxPoem');
           const echoRecorderPanel = document.getElementById('echoRecorderPanel');
           const echoRecordToggleBtn = document.getElementById('echoRecordToggleBtn');
           const echoRecordTimer = document.getElementById('echoRecordTimer');
           const echoRecordStatus = document.getElementById('echoRecordStatus');
           const echoRecordDownloadLink = document.getElementById('echoRecordDownloadLink');
+          const silenceDesYeuxPrompt = document.getElementById('silenceDesYeuxPrompt');
+          const silenceSaveNoBtn = document.getElementById('silenceSaveNoBtn');
+          const silenceSaveYesBtn = document.getElementById('silenceSaveYesBtn');
           const bubblePanel = document.getElementById('bubblePanel');
           const cancelBtn = document.getElementById('cancelBtn');
           const dropBtn = document.getElementById('dropBtn');
@@ -217,8 +224,18 @@ export function initLegacyApp() {
           let firstFishMoveMusic = null;
           let firstFishMoveFadeInterval = null;
           const FIRST_FISH_MOVE_MUSIC_URL = 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/music/musicsoon.mp3';
-          const RECORDER_MAX_SECONDS = 180;
+          const RECORDER_MAX_SECONDS = 60;
           const RECORDER_MAX_MILLIS = RECORDER_MAX_SECONDS * 1000;
+          const SILENCE_COUNTDOWN_VALUES = ['5', '4', '3', '2', '1', '0•°'];
+          const SILENCE_COUNTDOWN_DURATIONS_MS = [2000, 4000, 6000, 8000, 10000];
+          const SILENCE_POETIC_LINES = [
+              'Respire… l’océan te regarde en silence.',
+              'Laisse tes yeux se reposer au bord de la vague intérieure.',
+              'Chaque battement de ton corps devient une écoute sensible.',
+              'Le poisson s’illumine, l’arène s’efface, ton souffle s’ouvre.',
+              'Tu entres dans le Silence des Yeux, en profondeur O•°.',
+              '0•° … traverse maintenant.'
+          ];
           const helperTipsPlaylist = [
               'Garde le doigt (ou clic) appuyé dans l’océan : le poisson-plume suit ton mouvement.',
               'Une nouvelle luciole émerge toutes les 15 secondes dans le courant.',
@@ -285,6 +302,9 @@ export function initLegacyApp() {
           let recordingFileExt = 'webm';
           let recordingDownloadUrl = null;
           let recordingFallbackNotice = '';
+          let silenceTransitionInProgress = false;
+          let silenceImmersionLevel = 0;
+          let silenceSessionSaved = false;
           const SUPABASE_BUCKET = 'Soonbucket';
           const SUPABASE_LOCAL_KEYS = {
               url: 'soono.supabase.url',
@@ -322,6 +342,9 @@ export function initLegacyApp() {
               if (target !== 'experience') {
                   isTethered = false;
                   closeBubblePanel();
+                  hideSilenceOverlay();
+                  if (silenceDesYeuxPrompt) silenceDesYeuxPrompt.hidden = true;
+                  setSilenceImmersion(0);
               }
               if (heroVideo) {
                   if (target === 'home') {
@@ -396,8 +419,19 @@ export function initLegacyApp() {
                   stopEchoRecording(false);
                   return;
               }
-              if (recordingState === 'finalizing') return;
-              startEchoRecording();
+              if (recordingState === 'finalizing' || silenceTransitionInProgress) return;
+              startSilenceDesYeuxSequence();
+          });
+
+          bindTap(silenceSaveNoBtn, () => {
+              if (silenceDesYeuxPrompt) silenceDesYeuxPrompt.hidden = true;
+              echoRecordStatus.textContent = 'Traversée non conservée.';
+          });
+
+          bindTap(silenceSaveYesBtn, () => {
+              silenceSessionSaved = true;
+              if (silenceDesYeuxPrompt) silenceDesYeuxPrompt.hidden = true;
+              echoRecordStatus.textContent = 'Traversée conservée dans ton profil.';
           });
 
           function openEchoHypnoseModal() {
@@ -2178,6 +2212,12 @@ export function initLegacyApp() {
               return `${minutes}:${seconds}`;
           }
 
+          function wait(ms) {
+              return new Promise((resolve) => {
+                  setTimeout(resolve, ms);
+              });
+          }
+
           function buildBalladeFilename(ext) {
               const now = new Date();
               const year = now.getFullYear();
@@ -2214,19 +2254,22 @@ export function initLegacyApp() {
               if (!echoRecorderPanel || !echoRecordToggleBtn || !echoRecordStatus || !echoRecordTimer) return;
               echoRecordToggleBtn.classList.toggle('recording', recordingState === 'recording');
               echoRecordToggleBtn.classList.toggle('finalizing', recordingState === 'finalizing');
-              echoRecordToggleBtn.disabled = recordingState === 'finalizing' || recordingState === 'unsupported';
-              echoRecordToggleBtn.textContent = recordingState === 'recording' ? 'STOP' : 'REC';
+              echoRecordToggleBtn.classList.toggle('hypnosis', recordingState === 'recording' || silenceTransitionInProgress);
+              echoRecordToggleBtn.disabled = recordingState === 'finalizing' || recordingState === 'unsupported' || silenceTransitionInProgress;
+              echoRecordToggleBtn.textContent = recordingState === 'recording' ? 'STOP' : 'Silence des Yeux';
 
               if (recordingState === 'idle') {
-                  echoRecordStatus.textContent = 'Prêt';
+                  if (!silenceTransitionInProgress) {
+                      echoRecordStatus.textContent = 'Prêt pour une traversée.';
+                  }
               } else if (recordingState === 'recording') {
                   const formatLabel = recordingFileExt.toUpperCase();
-                  echoRecordStatus.textContent = `Enregistrement… (${formatLabel})`;
+                  echoRecordStatus.textContent = `Silence des Yeux en cours… (${formatLabel})`;
               } else if (recordingState === 'finalizing') {
                   echoRecordStatus.textContent = 'Finalisation…';
               } else if (recordingState === 'ready') {
                   const fallbackMsg = recordingFallbackNotice ? ` ${recordingFallbackNotice}` : '';
-                  echoRecordStatus.textContent = `Prêt à télécharger (${recordingFileExt.toUpperCase()}).${fallbackMsg}`;
+                  echoRecordStatus.textContent = `Traversée prête à télécharger (${recordingFileExt.toUpperCase()}).${fallbackMsg}`;
               } else if (recordingState === 'unsupported') {
                   echoRecordStatus.textContent = 'Enregistrement indisponible sur ce navigateur.';
               }
@@ -2246,7 +2289,66 @@ export function initLegacyApp() {
           function refreshRecordingTimer() {
               if (!echoRecordTimer) return;
               const elapsed = recordingState === 'recording' ? (Date.now() - recordingStartedAt) : 0;
-              echoRecordTimer.textContent = `${formatRecordingTime(elapsed)} / 03:00`;
+              echoRecordTimer.textContent = `${formatRecordingTime(elapsed)} / 01:00`;
+          }
+
+          function setSilenceImmersion(level) {
+              silenceImmersionLevel = Math.max(0, Math.min(1, level));
+              if (experienceView) {
+                  experienceView.classList.toggle('silence-mode', silenceImmersionLevel > 0.02);
+                  experienceView.style.setProperty('--silence-immersion', silenceImmersionLevel.toFixed(3));
+              }
+          }
+
+          function revealSilenceOverlay(title, countdown, poem) {
+              if (!silenceDesYeuxOverlay) return;
+              if (silenceDesYeuxTitle && title) silenceDesYeuxTitle.textContent = title;
+              if (silenceDesYeuxCountdown && countdown) silenceDesYeuxCountdown.textContent = countdown;
+              if (silenceDesYeuxPoem && poem) silenceDesYeuxPoem.textContent = poem;
+              silenceDesYeuxOverlay.hidden = false;
+          }
+
+          function hideSilenceOverlay() {
+              if (silenceDesYeuxOverlay) silenceDesYeuxOverlay.hidden = true;
+          }
+
+          async function startSilenceDesYeuxSequence() {
+              if (recordingState === 'recording' || recordingState === 'finalizing' || silenceTransitionInProgress) return;
+              silenceTransitionInProgress = true;
+              silenceSessionSaved = false;
+              if (silenceDesYeuxPrompt) silenceDesYeuxPrompt.hidden = true;
+              revealSilenceOverlay('Le Silence des Yeux approche…', SILENCE_COUNTDOWN_VALUES[0], SILENCE_POETIC_LINES[0]);
+              echoRecordStatus.textContent = 'Préparation hypnotique…';
+              updateEchoRecorderUi();
+
+              for (let i = 0; i < SILENCE_COUNTDOWN_VALUES.length; i++) {
+                  const progress = i / (SILENCE_COUNTDOWN_VALUES.length - 1);
+                  setSilenceImmersion(progress);
+                  revealSilenceOverlay('Le Silence des Yeux approche…', SILENCE_COUNTDOWN_VALUES[i], SILENCE_POETIC_LINES[i] || SILENCE_POETIC_LINES[SILENCE_POETIC_LINES.length - 1]);
+                  if (i < SILENCE_COUNTDOWN_DURATIONS_MS.length) {
+                      await wait(SILENCE_COUNTDOWN_DURATIONS_MS[i]);
+                      if (recordingState === 'unsupported') {
+                          hideSilenceOverlay();
+                          setSilenceImmersion(0);
+                          silenceTransitionInProgress = false;
+                          updateEchoRecorderUi();
+                          return;
+                      }
+                  }
+              }
+
+              revealSilenceOverlay('Le Silence des Yeux est là…', '0•°', 'Traverse 60 secondes d’écoute sensible.');
+              startEchoRecording();
+              if (recordingState !== 'recording') {
+                  hideSilenceOverlay();
+                  setSilenceImmersion(0);
+                  silenceTransitionInProgress = false;
+                  return;
+              }
+              await wait(1200);
+              hideSilenceOverlay();
+              silenceTransitionInProgress = false;
+              updateEchoRecorderUi();
           }
 
           function setRecordingDownload(blob) {
@@ -2279,7 +2381,7 @@ export function initLegacyApp() {
               clearRecordingTimers();
               recordingState = 'finalizing';
               if (echoRecordTimer && triggeredByAutoStop) {
-                  echoRecordTimer.textContent = '03:00 / 03:00';
+                  echoRecordTimer.textContent = '01:00 / 01:00';
               }
               updateEchoRecorderUi();
               try {
@@ -2349,11 +2451,16 @@ export function initLegacyApp() {
                   recordingChunks = [];
                   if (!blob || blob.size === 0) {
                       recordingState = 'idle';
+                      setSilenceImmersion(0);
                       updateEchoRecorderUi();
                       return;
                   }
                   setRecordingDownload(blob);
                   recordingState = 'ready';
+                  setSilenceImmersion(0);
+                  if (silenceDesYeuxPrompt && !silenceSessionSaved) {
+                      silenceDesYeuxPrompt.hidden = false;
+                  }
                   updateEchoRecorderUi();
               };
 
@@ -2366,7 +2473,7 @@ export function initLegacyApp() {
               recordingTimerInterval = setInterval(() => {
                   const elapsed = Date.now() - recordingStartedAt;
                   if (elapsed >= RECORDER_MAX_MILLIS) {
-                      echoRecordTimer.textContent = '03:00 / 03:00';
+                      echoRecordTimer.textContent = '01:00 / 01:00';
                       stopEchoRecording(true);
                       return;
                   }
@@ -3150,15 +3257,26 @@ export function initLegacyApp() {
               ctx.fillStyle = '#030308';
               ctx.fillRect(0, 0, w, h);
               if (currentView !== 'experience') return;
+              const silenceVisualMode = silenceTransitionInProgress || recordingState === 'recording' || silenceImmersionLevel > 0.02;
+              const silenceGlow = silenceVisualMode ? Math.max(0.22, silenceImmersionLevel) : 0;
 
               ctx.save();
               ctx.translate(w / 2 - camera.x, h / 2 - camera.y);
 
               ctx.beginPath();
               ctx.arc(0, 0, ARENA_RADIUS, 0, Math.PI * 2);
-              ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-              ctx.lineWidth = 2;
+              if (silenceVisualMode) {
+                  const rimAlpha = 0.16 + silenceGlow * 0.3 + Math.sin(performance.now() * 0.0025) * 0.08;
+                  ctx.strokeStyle = `rgba(126, 242, 255, ${Math.max(0.1, rimAlpha)})`;
+                  ctx.shadowBlur = 28;
+                  ctx.shadowColor = 'rgba(118, 231, 255, 0.45)';
+                  ctx.lineWidth = 3;
+              } else {
+                  ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+                  ctx.lineWidth = 2;
+              }
               ctx.stroke();
+              ctx.shadowBlur = 0;
 
               const drawBubble = (b) => {
                   const isSurface = b.layer !== 'below';
@@ -3225,16 +3343,18 @@ export function initLegacyApp() {
                   ctx.restore();
               };
 
-              BUBBLES.filter((b) => b.layer === 'below').forEach(drawBubble);
-              drawBreathWaves();
-              drawDriftMotes();
-              drawArenaFireflies();
-              drawSurfaceSparkles();
-              drawResonanceWaves();
-              drawWakeParticles();
-              drawRipples();
-              drawLuminousTrail();
-              drawTailFilament();
+              if (!silenceVisualMode) {
+                  BUBBLES.filter((b) => b.layer === 'below').forEach(drawBubble);
+                  drawBreathWaves();
+                  drawDriftMotes();
+                  drawArenaFireflies();
+                  drawSurfaceSparkles();
+                  drawResonanceWaves();
+                  drawWakeParticles();
+                  drawRipples();
+                  drawLuminousTrail();
+                  drawTailFilament();
+              }
 
               ctx.save();
               ctx.translate(ship.x, ship.y);
@@ -3442,10 +3562,21 @@ export function initLegacyApp() {
 
               drawFishTriangleHaloButton();
 
-              BUBBLES.filter((b) => b.layer !== 'below').forEach(drawBubble);
+              if (!silenceVisualMode) {
+                  BUBBLES.filter((b) => b.layer !== 'below').forEach(drawBubble);
+              }
               ctx.restore();
-              drawWaterSurface();
-              drawArenaResonanceVeil();
+              if (!silenceVisualMode) {
+                  drawWaterSurface();
+                  drawArenaResonanceVeil();
+              } else {
+                  const halo = ctx.createRadialGradient(w * 0.5, h * 0.52, 16, w * 0.5, h * 0.52, Math.max(w, h) * 0.42);
+                  halo.addColorStop(0, `rgba(146, 244, 255, ${0.22 + silenceGlow * 0.25})`);
+                  halo.addColorStop(0.58, `rgba(112, 204, 255, ${0.04 + silenceGlow * 0.12})`);
+                  halo.addColorStop(1, 'rgba(0, 0, 0, 0.86)');
+                  ctx.fillStyle = halo;
+                  ctx.fillRect(0, 0, w, h);
+              }
           }
 
           function drawWakeParticles() {
