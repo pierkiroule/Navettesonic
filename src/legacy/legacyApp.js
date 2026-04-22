@@ -238,23 +238,22 @@ export function initLegacyApp() {
               '0•° … traverse maintenant.'
           ];
           const helperTipsPlaylist = [
-              'Garde le doigt (ou clic) appuyé dans l’océan : le poisson-plume suit ton mouvement.',
+              'Garde le doigt (ou clic) appuyé dans l’océan : le poisson suit ton mouvement.',
               'Une nouvelle luciole émerge toutes les 15 secondes dans le courant.',
               'Chaque luciole collectée lit son vocal : attends la fin pour en accrocher une autre.',
-              'La plume garde 3 lucioles espacées et visibles le long de son axe.',
+              'La traînée de bulles peut accrocher 3 lucioles espacées en mouvement.',
               'Quand 3 lucioles sont accrochées, touche le halo triangulaire autour du poisson pour les poser.'
           ];
 
           const ARENA_RADIUS = 2000;
           const SOUND_HEAR_RADIUS = 460;
           const ARENA_TRIANGLE_COUNT = 12;
-          const FIREFLY_TAIL_ATTACH_RADIUS = 38;
+          const FIREFLY_TRAIL_ATTACH_RADIUS = 34;
           const FIREFLY_AUDIO_MIN_MS = 1500;
           const FIREFLY_AUDIO_MAX_MS = 3200;
           const FIREFLY_TAIL_MAX_ATTACHED = 3;
           const FIREFLY_REPULSE_COOLDOWN_MS = 900;
           const FIREFLY_RELEASE_INTERVAL_MS = 15000;
-          const FIREFLY_PLUME_LENGTH = 170;
           const DEFAULT_SUPABASE_URL = 'https://qyffktrggapfzlmmlerq.supabase.co';
           const ENV_SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || '';
           const ENV_SUPABASE_KEY = import.meta.env?.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
@@ -263,7 +262,7 @@ export function initLegacyApp() {
           const DEPTH_Z = 140;
           const BUBBLES = [];
           const WAKE_PARTICLES = [];
-          const MAX_WAKE_PARTICLES = 5;
+          const MAX_WAKE_PARTICLES = 26;
           const RIPPLE_RINGS = [];
           const MAX_RIPPLES = 18;
           const SURFACE_SPARKLES = [];
@@ -1669,6 +1668,15 @@ export function initLegacyApp() {
               };
           }
 
+          function getShipMouthPosition() {
+              const forwardX = Math.cos(ship.angle - Math.PI / 2);
+              const forwardY = Math.sin(ship.angle - Math.PI / 2);
+              return {
+                  x: ship.x + forwardX * 20,
+                  y: ship.y + forwardY * 20
+              };
+          }
+
           async function triggerAttachedFireflyPlayback(firefly, now) {
               if (!firefly) return;
               isFireflyVocalPlaying = true;
@@ -1790,26 +1798,20 @@ export function initLegacyApp() {
                   .sort((a, b) => a.attachedOrder - b.attachedOrder);
           }
 
-          function buildTailFilamentPath(attachedCount, tail, backX, backY) {
-              const extension = FIREFLY_PLUME_LENGTH;
-              const segmentCount = 30;
-              const points = [];
-              for (let i = 0; i <= segmentCount; i++) {
-                  const t = i / segmentCount;
-                  const trailIndex = Math.max(0, ship.trail.length - 1 - Math.floor(2 + t * 20));
-                  const trailRef = ship.trail[trailIndex] || tail;
-                  const straightX = tail.x + backX * extension * t;
-                  const straightY = tail.y + backY * extension * t;
-                  const followWake = Math.pow(t, 0.68);
-                  points.push({
-                      x: straightX * (1 - followWake) + trailRef.x * followWake,
-                      y: straightY * (1 - followWake) + trailRef.y * followWake
-                  });
+          function buildBubbleTrailPath() {
+              const mouth = getShipMouthPosition();
+              const tail = getShipTailPosition();
+              const points = [mouth, tail];
+              const segmentCount = 16;
+              for (let i = 0; i < segmentCount; i++) {
+                  const trailIndex = Math.max(0, ship.trail.length - 1 - i * 2);
+                  const trailRef = ship.trail[trailIndex];
+                  if (trailRef) points.push({ x: trailRef.x, y: trailRef.y });
               }
               return points;
           }
 
-          function getPlumePointAt(path, normalizedT) {
+          function getPathPointAt(path, normalizedT) {
               if (!path?.length) return null;
               const t = Math.max(0, Math.min(1, normalizedT));
               const idx = t * (path.length - 1);
@@ -1820,6 +1822,25 @@ export function initLegacyApp() {
                   x: path[low].x * (1 - ratio) + path[high].x * ratio,
                   y: path[low].y * (1 - ratio) + path[high].y * ratio
               };
+          }
+
+          function getDistanceToPath(path, point) {
+              if (!path || path.length < 2) return Number.POSITIVE_INFINITY;
+              let best = Number.POSITIVE_INFINITY;
+              for (let i = 0; i < path.length - 1; i++) {
+                  const a = path[i];
+                  const b = path[i + 1];
+                  const abx = b.x - a.x;
+                  const aby = b.y - a.y;
+                  const ab2 = abx * abx + aby * aby || 1;
+                  const apx = point.x - a.x;
+                  const apy = point.y - a.y;
+                  const t = Math.max(0, Math.min(1, (apx * abx + apy * aby) / ab2));
+                  const cx = a.x + abx * t;
+                  const cy = a.y + aby * t;
+                  best = Math.min(best, Math.hypot(point.x - cx, point.y - cy));
+              }
+              return best;
           }
 
           function getHaloTriangleVertices() {
@@ -1882,7 +1903,7 @@ export function initLegacyApp() {
               firefly.vx *= 0.25;
               firefly.vy *= 0.25;
               normalizeAttachedOrders();
-              setArenaTriangleStatus(`Luciole accrochée à la queue (${attached.length + 1}/3).`);
+              setArenaTriangleStatus(`Luciole accrochée à la traînée (${attached.length + 1}/3).`);
               void triggerAttachedFireflyPlayback(firefly, now);
           }
 
@@ -1940,10 +1961,7 @@ export function initLegacyApp() {
               const now = performance.now();
               const timeSeconds = now * 0.001;
               const tail = getShipTailPosition();
-              const shipSpeed = Math.hypot(ship.vx, ship.vy);
-              const invShipSpeed = 1 / Math.max(0.0001, shipSpeed);
-              const backX = shipSpeed > 0.03 ? -ship.vx * invShipSpeed : Math.sin(ship.angle);
-              const backY = shipSpeed > 0.03 ? -ship.vy * invShipSpeed : -Math.cos(ship.angle);
+              const bubbleTrailPath = buildBubbleTrailPath();
 
               if (fireflyReleaseSequenceActive && now >= nextFireflyReleaseAt) {
                   const spawnAngle = Math.random() * Math.PI * 2;
@@ -1991,10 +2009,8 @@ export function initLegacyApp() {
                       return;
                   }
                   if (firefly.attachedToTail) {
-                      const attached = getAttachedFirefliesSorted();
-                      const filament = buildTailFilamentPath(attached.length, tail, backX, backY);
-                      const spacingTargets = [0.38, 0.58, 0.78];
-                      const targetPos = getPlumePointAt(filament, spacingTargets[Math.max(0, Math.min(2, firefly.attachedOrder))] ?? 0.72) || tail;
+                      const spacingTargets = [0.28, 0.5, 0.72];
+                      const targetPos = getPathPointAt(bubbleTrailPath, spacingTargets[Math.max(0, Math.min(2, firefly.attachedOrder))] ?? 0.5) || tail;
                       const targetX = targetPos.x;
                       const targetY = targetPos.y;
 
@@ -2046,7 +2062,7 @@ export function initLegacyApp() {
                   if (firefly.placedTriangleId) return false;
                   if (now < firefly.linkedCooldownUntil) return false;
                   if (isFireflyVocalPlaying || now < fireflyVocalGateUntil) return false;
-                  return Math.hypot(firefly.x - tail.x, firefly.y - tail.y) <= FIREFLY_TAIL_ATTACH_RADIUS;
+                  return getDistanceToPath(bubbleTrailPath, { x: firefly.x, y: firefly.y }) <= FIREFLY_TRAIL_ATTACH_RADIUS;
               });
               if (attachCandidate) {
                   const attachedCount = ARENA_FIREFLIES.filter((firefly) => firefly.attachedToTail).length;
@@ -2913,22 +2929,24 @@ export function initLegacyApp() {
           function updateWakeParticles(speed) {
               const now = performance.now();
               const speedNorm = Math.min(1, speed / ship.maxSpeed);
-              ship.wakeEmitter += 0.06 + speedNorm * 0.24;
+              ship.wakeEmitter += 0.24 + speedNorm * 0.95;
 
-              if (speed > 0.04) {
-                  const invSpeed = 1 / Math.max(0.0001, speed);
-                  const backX = -ship.vx * invSpeed;
-                  const backY = -ship.vy * invSpeed;
-                  const tailX = ship.x + backX * 14;
-                  const tailY = ship.y + backY * 14;
-                  const targetCount = Math.min(MAX_WAKE_PARTICLES, 3 + Math.round(speedNorm * 2));
+              const mouth = getShipMouthPosition();
+              const tail = getShipTailPosition();
+              const flowX = tail.x - mouth.x;
+              const flowY = tail.y - mouth.y;
+              const flowLen = Math.hypot(flowX, flowY) || 1;
+              const dirX = flowX / flowLen;
+              const dirY = flowY / flowLen;
+              const tangentX = -dirY;
+              const tangentY = dirX;
+              const targetCount = Math.min(MAX_WAKE_PARTICLES, 10 + Math.round(speedNorm * 16));
 
-                  while (WAKE_PARTICLES.length < targetCount) spawnWakeParticle(tailX, tailY, backX, backY, now);
-                  while (ship.wakeEmitter >= 1) {
-                      ship.wakeEmitter -= 1;
-                      if (WAKE_PARTICLES.length >= MAX_WAKE_PARTICLES) break;
-                      spawnWakeParticle(tailX, tailY, backX, backY, now);
-                  }
+              while (WAKE_PARTICLES.length < targetCount) spawnWakeParticle(mouth, tail, dirX, dirY, tangentX, tangentY, now, speedNorm);
+              while (ship.wakeEmitter >= 1) {
+                  ship.wakeEmitter -= 1;
+                  if (WAKE_PARTICLES.length >= MAX_WAKE_PARTICLES) break;
+                  spawnWakeParticle(mouth, tail, dirX, dirY, tangentX, tangentY, now, speedNorm);
               }
 
               for (let i = WAKE_PARTICLES.length - 1; i >= 0; i--) {
@@ -2939,25 +2957,24 @@ export function initLegacyApp() {
                       WAKE_PARTICLES.splice(i, 1);
                       continue;
                   }
-                  p.vx *= 0.993;
-                  p.vy = p.vy * 0.992 - 0.01;
+                  p.vx *= 0.989;
+                  p.vy *= 0.989;
                   p.x += p.vx;
                   p.y += p.vy;
               }
               if (WAKE_PARTICLES.length > MAX_WAKE_PARTICLES) WAKE_PARTICLES.splice(0, WAKE_PARTICLES.length - MAX_WAKE_PARTICLES);
           }
 
-          function spawnWakeParticle(tailX, tailY, backX, backY, now) {
-              const jitter = 3 + Math.random() * 3;
-              const tangentX = -backY;
-              const tangentY = backX;
+          function spawnWakeParticle(mouth, tail, dirX, dirY, tangentX, tangentY, now, speedNorm) {
+              const along = Math.random() * 0.2;
+              const jitter = 1.2 + Math.random() * 2.1;
               WAKE_PARTICLES.push({
-                  x: tailX + tangentX * (Math.random() - 0.5) * jitter + backX * (Math.random() * 4),
-                  y: tailY + tangentY * (Math.random() - 0.5) * jitter + backY * (Math.random() * 4),
-                  vx: backX * (0.06 + Math.random() * 0.18) + tangentX * (Math.random() - 0.5) * 0.07,
-                  vy: backY * (0.06 + Math.random() * 0.18) + tangentY * (Math.random() - 0.5) * 0.07,
-                  age: 0, life: 520 + Math.random() * 260, size: 2 + Math.random() * 1.4,
-                  alpha: 0.32 + Math.random() * 0.2, bornAt: now
+                  x: mouth.x + (tail.x - mouth.x) * along + tangentX * (Math.random() - 0.5) * jitter,
+                  y: mouth.y + (tail.y - mouth.y) * along + tangentY * (Math.random() - 0.5) * jitter,
+                  vx: dirX * (0.22 + Math.random() * 0.48 + speedNorm * 0.3) + tangentX * (Math.random() - 0.5) * 0.05,
+                  vy: dirY * (0.22 + Math.random() * 0.48 + speedNorm * 0.3) + tangentY * (Math.random() - 0.5) * 0.05,
+                  age: 0, life: 640 + Math.random() * 360, size: 0.9 + Math.random() * 1.8,
+                  alpha: 0.22 + Math.random() * 0.28, bornAt: now
               });
           }
 
@@ -3242,75 +3259,6 @@ export function initLegacyApp() {
               });
           }
 
-          function drawTailFilament() {
-              const attached = getAttachedFirefliesSorted();
-              const tail = getShipTailPosition();
-              const speed = Math.hypot(ship.vx, ship.vy);
-              let backX = Math.sin(ship.angle);
-              let backY = -Math.cos(ship.angle);
-              if (speed > 0.04) {
-                  const invSpeed = 1 / Math.max(0.0001, speed);
-                  backX = -ship.vx * invSpeed;
-                  backY = -ship.vy * invSpeed;
-              }
-              const now = performance.now() * 0.001;
-              const filament = buildTailFilamentPath(Math.max(attached.length, 1), tail, backX, backY);
-              const tip = filament[filament.length - 1];
-
-              const leftEdge = [];
-              const rightEdge = [];
-              for (let i = 0; i < filament.length; i++) {
-                  const prev = filament[Math.max(0, i - 1)];
-                  const next = filament[Math.min(filament.length - 1, i + 1)];
-                  const dirX = next.x - prev.x;
-                  const dirY = next.y - prev.y;
-                  const dirLen = Math.hypot(dirX, dirY) || 1;
-                  const normX = -dirY / dirLen;
-                  const normY = dirX / dirLen;
-                  const t = i / (filament.length - 1);
-                  const width = 10 * (1 - t * 0.88) + Math.sin(now * 2.4 + t * 10.6) * 0.9;
-                  leftEdge.push({ x: filament[i].x + normX * width, y: filament[i].y + normY * width });
-                  rightEdge.push({ x: filament[i].x - normX * width, y: filament[i].y - normY * width });
-              }
-
-              ctx.fillStyle = 'rgba(210, 238, 255, 0.4)';
-              ctx.beginPath();
-              ctx.moveTo(leftEdge[0].x, leftEdge[0].y);
-              for (let i = 1; i < leftEdge.length; i++) ctx.lineTo(leftEdge[i].x, leftEdge[i].y);
-              for (let i = rightEdge.length - 1; i >= 0; i--) ctx.lineTo(rightEdge[i].x, rightEdge[i].y);
-              ctx.closePath();
-              ctx.fill();
-
-              ctx.strokeStyle = 'rgba(236, 247, 255, 0.3)';
-              ctx.lineWidth = 1.1;
-              ctx.lineCap = 'round';
-              ctx.lineJoin = 'round';
-              ctx.beginPath();
-              ctx.moveTo(filament[0].x, filament[0].y);
-              for (let i = 1; i < filament.length - 1; i++) {
-                  const midX = (filament[i].x + filament[i + 1].x) * 0.5;
-                  const midY = (filament[i].y + filament[i + 1].y) * 0.5;
-                  ctx.quadraticCurveTo(filament[i].x, filament[i].y, midX, midY);
-              }
-              ctx.stroke();
-
-              for (let i = 2; i < filament.length - 1; i += 2) {
-                  const t = i / (filament.length - 1);
-                  const flutter = 0.5 + 0.5 * Math.sin(now * 3.8 + t * 12.4);
-                  const radius = 0.3 + t * 1.4 + flutter * 0.45;
-                  const alpha = (0.02 + t * 0.09) * (0.75 + flutter * 0.45);
-                  ctx.fillStyle = `rgba(230, 247, 255, ${alpha})`;
-                  ctx.beginPath();
-                  ctx.arc(filament[i].x, filament[i].y, radius, 0, Math.PI * 2);
-                  ctx.fill();
-              }
-
-              ctx.fillStyle = 'rgba(235, 248, 255, 0.28)';
-              ctx.beginPath();
-              ctx.arc(tip.x, tip.y, 0.9 + attached.length * 0.12, 0, Math.PI * 2);
-              ctx.fill();
-          }
-
           function drawLuminousTrail() {
               const trail = ship.trail;
               if (trail.length < 3) return;
@@ -3497,7 +3445,6 @@ export function initLegacyApp() {
                   drawWakeParticles();
                   drawRipples();
                   drawLuminousTrail();
-                  drawTailFilament();
               }
 
               ctx.save();
@@ -3528,67 +3475,6 @@ export function initLegacyApp() {
               ctx.beginPath();
               ctx.ellipse(0, 2, auraR * 0.95, auraR * 1.1, 0, 0, Math.PI * 2);
               ctx.fill();
-
-              // --- TRAILING PLUMES (very fine, longer and straight at rest) ---
-              const plumeData = [
-                  { lane: -2, phase: 0.35, spread: 13, len: 58, hueOff: -4, width: 1.0 },
-                  { lane: -1, phase: 0.9,  spread: 7,  len: 66, hueOff: 4,  width: 0.85 },
-                  { lane: 0,  phase: 1.45, spread: 0,  len: 74, hueOff: 10, width: 0.8 },
-                  { lane: 1,  phase: 0.9,  spread: 7,  len: 66, hueOff: 4,  width: 0.85 },
-                  { lane: 2,  phase: 0.35, spread: 13, len: 58, hueOff: -4, width: 1.0 },
-              ];
-              const plumeMotion = Math.max(0, Math.min(1, (glide - 0.14) / 0.86));
-              const plumeMotionSoft = plumeMotion * plumeMotion;
-              const tailTipX = 0;
-              const tailTipY = 22;
-              plumeData.forEach((p, i) => {
-                  const laneSign = Math.sign(p.lane);
-                  const laneShape = laneSign * p.spread * plumeMotionSoft;
-                  const wave = laneSign * Math.sin(swimT * 6.6 + p.phase) * (0.28 + glide * 0.95) * plumeMotionSoft;
-                  const curl = laneSign * Math.cos(swimT * 4.4 + p.phase * 1.55) * (0.18 + glide * 0.75) * plumeMotionSoft;
-                  const alpha = (0.26 + shimmerPulse * 0.2) * (1 - Math.abs(i - 2) * 0.1);
-                  const hue = bodyHueLow + p.hueOff;
-                  const startY = tailTipY;
-                  const cp1x = tailTipX + laneShape * 0.18 + wave * 2.2;
-                  const cp1y = startY + p.len * 0.26;
-                  const cp2x = tailTipX + laneShape * 0.33 + wave * 3.6 + curl * 1.5;
-                  const cp2y = startY + p.len * 0.68;
-                  const endX = tailTipX + laneShape * 0.12 + wave * 0.95 + curl * 0.55;
-                  const endY = startY + p.len;
-
-                  ctx.save();
-                  ctx.lineCap = 'round';
-                  ctx.lineJoin = 'round';
-                  ctx.shadowBlur = 7;
-                  ctx.shadowColor = `hsla(${hue + 8}, 95%, 86%, ${alpha * 0.45})`;
-
-                  const plumeGrad = ctx.createLinearGradient(0, startY, endX, endY);
-                  plumeGrad.addColorStop(0, `hsla(${hue}, 92%, 90%, ${alpha})`);
-                  plumeGrad.addColorStop(0.55, `hsla(${hue + 10}, 88%, 86%, ${alpha * 0.55})`);
-                  plumeGrad.addColorStop(1, `hsla(${hue + 18}, 88%, 92%, 0)`);
-                  ctx.strokeStyle = plumeGrad;
-
-                  ctx.lineWidth = p.width + glide * 0.16;
-                  ctx.beginPath();
-                  ctx.moveTo(tailTipX, startY);
-                  ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endX, endY);
-                  ctx.stroke();
-
-                  // ultra-fine highlight filament for a voluptuous silky look
-                  ctx.shadowBlur = 0;
-                  ctx.lineWidth = Math.max(0.3, p.width * 0.38);
-                  ctx.strokeStyle = `hsla(${hue + 20}, 95%, 95%, ${alpha * 0.5})`;
-                  ctx.beginPath();
-                  ctx.moveTo(tailTipX, startY + 0.3);
-                  ctx.bezierCurveTo(
-                      cp1x * 0.88 + laneSign * 0.15, cp1y - 0.6,
-                      cp2x * 0.9 + laneSign * 0.22, cp2y - 0.4,
-                      endX * 0.92 + laneSign * 0.12, endY - 0.8
-                  );
-                  ctx.stroke();
-
-                  ctx.restore();
-              });
 
               // --- BODY ---
               ctx.shadowBlur = 22;
@@ -3784,10 +3670,16 @@ export function initLegacyApp() {
               WAKE_PARTICLES.forEach((p) => {
                   const t = p.age / p.life;
                   const alpha = Math.max(0, 1 - t) * p.alpha;
-                  ctx.fillStyle = `rgba(205, 240, 255, ${alpha})`;
+                  const hue = 188 + (1 - t) * 24;
+                  ctx.fillStyle = `hsla(${hue}, 95%, 86%, ${alpha})`;
                   ctx.beginPath();
                   ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
                   ctx.fill();
+                  ctx.strokeStyle = `hsla(${hue + 10}, 95%, 98%, ${alpha * 0.55})`;
+                  ctx.lineWidth = 0.7;
+                  ctx.beginPath();
+                  ctx.arc(p.x - p.size * 0.2, p.y - p.size * 0.2, Math.max(0.35, p.size * 0.48), 0, Math.PI * 2);
+                  ctx.stroke();
               });
           }
           function drawRipples() {
