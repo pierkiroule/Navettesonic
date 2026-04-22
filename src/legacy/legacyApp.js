@@ -29,15 +29,14 @@ export function initLegacyApp() {
 
           const homeView = document.getElementById('homeView');
           const experienceView = document.getElementById('experienceView');
+          const echoHypnoseView = document.getElementById('echoHypnoseView');
           const profileView = document.getElementById('profileView');
           const bottomNav = document.getElementById('bottomNav');
           const navHome = document.getElementById('navHome');
           const navSoon = document.getElementById('navSoon');
+          const navEchoHypnose = document.getElementById('navEchoHypnose');
           const navProfile = document.getElementById('navProfile');
           const enterExperienceBtn = document.getElementById('enterExperienceBtn');
-          const echoHypnoseLinkBtn = document.getElementById('echoHypnoseLinkBtn');
-          const echoHypnoseModal = document.getElementById('echoHypnoseModal');
-          const closeEchoHypnoseModalBtn = document.getElementById('closeEchoHypnoseModalBtn');
           const heroVideo = document.getElementById('heroVideo');
           const heroVideoShell = document.getElementById('heroVideoShell');
           const heroPlayBtn = document.getElementById('heroPlayBtn');
@@ -333,9 +332,10 @@ export function initLegacyApp() {
           const camera = { x: 0, y: 0, targetX: 0, targetY: 0, ease: 0.05 };
 
           function setActiveNav(target) {
-              [navHome, navSoon, navProfile].forEach(btn => btn.classList.remove('active'));
+              [navHome, navSoon, navEchoHypnose, navProfile].forEach(btn => btn.classList.remove('active'));
               if (target === 'home') navHome.classList.add('active');
               if (target === 'soon') navSoon.classList.add('active');
+              if (target === 'echohypnose') navEchoHypnose.classList.add('active');
               if (target === 'profile') navProfile.classList.add('active');
           }
 
@@ -343,9 +343,12 @@ export function initLegacyApp() {
               currentView = target;
               homeView.classList.toggle('hidden-view', target !== 'home');
               experienceView.classList.toggle('hidden-view', target !== 'experience');
+              echoHypnoseView.classList.toggle('hidden-view', target !== 'echohypnose');
               profileView.classList.toggle('hidden-view', target !== 'profile');
               bottomNav.classList.remove('hidden-view');
-              setActiveNav(target === 'experience' ? 'soon' : target);
+              if (target === 'experience') setActiveNav('soon');
+              else if (target === 'echohypnose') setActiveNav('echohypnose');
+              else setActiveNav(target);
               if (target !== 'experience') {
                   isTethered = false;
                   closeBubblePanel();
@@ -455,16 +458,6 @@ export function initLegacyApp() {
               echoRecordStatus.textContent = 'Traversée synchronisée dans le profil.';
           });
 
-          function openEchoHypnoseModal() {
-              if (!echoHypnoseModal) return;
-              echoHypnoseModal.hidden = false;
-          }
-
-          function closeEchoHypnoseModal() {
-              if (!echoHypnoseModal) return;
-              echoHypnoseModal.hidden = true;
-          }
-
           function syncHeroPlayButton() {
               if (!heroVideo || !heroPlayBtn) return;
               const shouldHidePlayButton = !heroVideo.paused && !heroVideo.muted && heroVideo.volume > 0;
@@ -535,28 +528,6 @@ export function initLegacyApp() {
               syncHeroPlayButton();
           }
 
-          if (echoHypnoseLinkBtn) {
-              bindTap(echoHypnoseLinkBtn, openEchoHypnoseModal);
-          }
-          if (closeEchoHypnoseModalBtn) {
-              bindTap(closeEchoHypnoseModalBtn, (event) => {
-                  event.stopPropagation();
-                  closeEchoHypnoseModal();
-              });
-          }
-          if (echoHypnoseModal) {
-              echoHypnoseModal.addEventListener('click', (event) => {
-                  if (event.target === echoHypnoseModal) {
-                      closeEchoHypnoseModal();
-                  }
-              });
-          }
-          window.addEventListener('keydown', (event) => {
-              if (event.key === 'Escape' && echoHypnoseModal && !echoHypnoseModal.hidden) {
-                  closeEchoHypnoseModal();
-              }
-          });
-
           if (heroPlayBtn) {
               heroPlayBtn.addEventListener('click', playHeroWithSound);
           }
@@ -579,6 +550,7 @@ export function initLegacyApp() {
               if (!requireRegisteredUserForExperience('navigation')) return;
               showView('experience');
           });
+          bindTap(navEchoHypnose, () => showView('echohypnose'));
           bindTap(navProfile, () => showView('profile'));
 
           function maskApiKey(key) {
@@ -1389,7 +1361,7 @@ export function initLegacyApp() {
               return bubblePanel.contains(target) || bubblePropsPanel.contains(target) ||
                      arenaTrianglePad.contains(target) || bottomNav.contains(target) ||
                      homeView.contains(target) || profileView.contains(target) ||
-                     (echoHypnoseModal && echoHypnoseModal.contains(target));
+                     echoHypnoseView.contains(target);
           }
 
           function setArenaTriangleStatus(message, isError = false) {
