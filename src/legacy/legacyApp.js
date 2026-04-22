@@ -3531,29 +3531,30 @@ export function initLegacyApp() {
 
               // --- TRAILING PLUMES (very fine, longer and straight at rest) ---
               const plumeData = [
-                  { ox: -2.6, phase: 0.0, sway: -13, len: 58, hueOff: -4, width: 1.0 },
-                  { ox: -1.0, phase: 0.8, sway: -7,  len: 66, hueOff: 4,  width: 0.85 },
-                  { ox: 0,    phase: 1.6, sway: 0,   len: 74, hueOff: 10, width: 0.8 },
-                  { ox: 1.0,  phase: 2.4, sway: 7,   len: 66, hueOff: 4,  width: 0.85 },
-                  { ox: 2.6,  phase: 3.2, sway: 13,  len: 58, hueOff: -4, width: 1.0 },
+                  { phase: 0.0, sway: -13, len: 58, hueOff: -4, width: 1.0 },
+                  { phase: 0.8, sway: -7,  len: 66, hueOff: 4,  width: 0.85 },
+                  { phase: 1.6, sway: 0,   len: 74, hueOff: 10, width: 0.8 },
+                  { phase: 2.4, sway: 7,   len: 66, hueOff: 4,  width: 0.85 },
+                  { phase: 3.2, sway: 13,  len: 58, hueOff: -4, width: 1.0 },
               ];
-              const plumeMotion = Math.min(1, glide * 1.2);
+              const plumeMotion = Math.max(0, Math.min(1, (glide - 0.08) / 0.92));
+              const tailTipX = 0;
+              const tailTipY = 22;
               plumeData.forEach((p, i) => {
                   const wave = Math.sin(swimT * 6.6 + p.phase) * (0.4 + glide * 1.1) * plumeMotion;
                   const curl = Math.cos(swimT * 4.5 + p.phase * 1.7) * (0.25 + glide * 0.9) * plumeMotion;
                   const alpha = (0.26 + shimmerPulse * 0.2) * (1 - Math.abs(i - 2) * 0.1);
                   const hue = bodyHueLow + p.hueOff;
-                  const startY = 20.5;
+                  const startY = tailTipY;
                   const baseSway = p.sway * plumeMotion;
-                  const cp1x = baseSway * 0.22 + wave * 2.8;
+                  const cp1x = tailTipX + baseSway * 0.22 + wave * 2.8;
                   const cp1y = startY + p.len * 0.26;
-                  const cp2x = baseSway * 0.42 + wave * 4.8 + curl * 1.8;
+                  const cp2x = tailTipX + baseSway * 0.42 + wave * 4.8 + curl * 1.8;
                   const cp2y = startY + p.len * 0.68;
-                  const endX = baseSway * 0.16 + wave * 1.4 + curl * 0.7;
+                  const endX = tailTipX + baseSway * 0.16 + wave * 1.4 + curl * 0.7;
                   const endY = startY + p.len;
 
                   ctx.save();
-                  ctx.translate(p.ox, 0);
                   ctx.lineCap = 'round';
                   ctx.lineJoin = 'round';
                   ctx.shadowBlur = 7;
@@ -3567,7 +3568,7 @@ export function initLegacyApp() {
 
                   ctx.lineWidth = p.width + glide * 0.2;
                   ctx.beginPath();
-                  ctx.moveTo(0, startY);
+                  ctx.moveTo(tailTipX, startY);
                   ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endX, endY);
                   ctx.stroke();
 
@@ -3576,7 +3577,7 @@ export function initLegacyApp() {
                   ctx.lineWidth = Math.max(0.3, p.width * 0.38);
                   ctx.strokeStyle = `hsla(${hue + 20}, 95%, 95%, ${alpha * 0.5})`;
                   ctx.beginPath();
-                  ctx.moveTo(0, startY + 0.3);
+                  ctx.moveTo(tailTipX, startY + 0.3);
                   ctx.bezierCurveTo(
                       cp1x * 0.85 + 0.35, cp1y - 0.6,
                       cp2x * 0.88 + 0.5, cp2y - 0.4,
