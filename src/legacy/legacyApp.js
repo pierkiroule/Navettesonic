@@ -2290,6 +2290,13 @@ export function initLegacyApp() {
               return defaultFormat;
           }
 
+          async function convertBlobToMp3(sourceBlob) {
+              if (!sourceBlob || !sourceBlob.size) return null;
+              const isAlreadyMp3 = /mpeg|mp3/i.test(sourceBlob.type || '');
+              if (isAlreadyMp3) return sourceBlob;
+              return null;
+          }
+
           function updateEchoRecorderUi() {
               if (!echoRecorderPanel || !echoRecordToggleBtn || !echoRecordStatus || !echoRecordTimer) return;
               echoRecordToggleBtn.classList.toggle('recording', recordingState === 'recording');
@@ -2488,26 +2495,46 @@ export function initLegacyApp() {
 
               recordingMediaRecorder.onstop = () => {
                   const finalType = recordingMediaRecorder?.mimeType || recordingMimeType || undefined;
-                  const finalExt = normalizeExtFromMime(finalType, recordingFileExt);
-                  const blob = recordingChunks.length ? new Blob(recordingChunks, finalType ? { type: finalType } : undefined) : null;
+                  const sourceBlob = recordingChunks.length ? new Blob(recordingChunks, finalType ? { type: finalType } : undefined) : null;
                   recordingMediaRecorder = null;
                   recordingChunks = [];
-                  latestRecordingBlob = blob;
-                  latestRecordingMimeType = finalType || '';
-                  recordingFileExt = finalExt;
-                  if (!blob || blob.size === 0) {
+                  if (!sourceBlob || sourceBlob.size === 0) {
                       recordingState = 'idle';
                       setSilenceImmersion(0);
                       updateEchoRecorderUi();
                       return;
                   }
-                  setRecordingDownload(blob);
-                  recordingState = 'ready';
-                  setSilenceImmersion(0);
-                  if (silenceDesYeuxPrompt && !silenceSessionSaved) {
-                      silenceDesYeuxPrompt.hidden = false;
-                  }
+                  recordingState = 'finalizing';
                   updateEchoRecorderUi();
+                  (async () => {
+                      let deliveredBlob = sourceBlob;
+                      let deliveredMime = finalType || '';
+                      let deliveredExt = normalizeExtFromMime(finalType, recordingFileExt);
+                      try {
+                          const mp3Blob = await convertBlobToMp3(sourceBlob);
+                          if (mp3Blob && mp3Blob.size > 0) {
+                              deliveredBlob = mp3Blob;
+                              deliveredMime = 'audio/mpeg';
+                              deliveredExt = 'mp3';
+                              recordingFallbackNotice = '';
+                          } else {
+                              recordingFallbackNotice = 'Conversion MP3 indisponible : téléchargement au format source.';
+                          }
+                      } catch (_) {
+                          recordingFallbackNotice = 'Conversion MP3 échouée : téléchargement au format source.';
+                      }
+
+                      latestRecordingBlob = deliveredBlob;
+                      latestRecordingMimeType = deliveredMime;
+                      recordingFileExt = deliveredExt;
+                      setRecordingDownload(deliveredBlob);
+                      recordingState = 'ready';
+                      setSilenceImmersion(0);
+                      if (silenceDesYeuxPrompt && !silenceSessionSaved) {
+                          silenceDesYeuxPrompt.hidden = false;
+                      }
+                      updateEchoRecorderUi();
+                  })();
               };
 
               recordingStartedAt = Date.now();
