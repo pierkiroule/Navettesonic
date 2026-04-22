@@ -1582,6 +1582,25 @@ export function initLegacyApp() {
                   .sort((a, b) => a.attachedOrder - b.attachedOrder);
           }
 
+          function buildTailFilamentPath(attachedCount, tail, backX, backY) {
+              const extension = 52 + attachedCount * 30;
+              const segmentCount = 30;
+              const points = [];
+              for (let i = 0; i <= segmentCount; i++) {
+                  const t = i / segmentCount;
+                  const trailIndex = Math.max(0, ship.trail.length - 1 - Math.floor(3 + t * 26));
+                  const trailRef = ship.trail[trailIndex] || tail;
+                  const straightX = tail.x + backX * extension * t;
+                  const straightY = tail.y + backY * extension * t;
+                  const followWake = Math.pow(t, 0.92);
+                  points.push({
+                      x: straightX * (1 - followWake) + trailRef.x * followWake,
+                      y: straightY * (1 - followWake) + trailRef.y * followWake
+                  });
+              }
+              return points;
+          }
+
           function getStoredBubbleFireflies(bubble) {
               if (!bubble) return [];
               if (!Array.isArray(bubble.storedFireflyIds)) bubble.storedFireflyIds = [];
@@ -1650,8 +1669,6 @@ export function initLegacyApp() {
               const invShipSpeed = 1 / Math.max(0.0001, shipSpeed);
               const backX = shipSpeed > 0.03 ? -ship.vx * invShipSpeed : Math.sin(ship.angle);
               const backY = shipSpeed > 0.03 ? -ship.vy * invShipSpeed : -Math.cos(ship.angle);
-              const sideX = -backY;
-              const sideY = backX;
 
               ARENA_FIREFLIES.forEach((firefly, idx) => {
                   const pulse = (Math.sin(timeSeconds * firefly.pulseFreq * 2 * Math.PI + firefly.pulsePhase) + 1) * 0.5;
@@ -1667,14 +1684,18 @@ export function initLegacyApp() {
                       return;
                   }
                   if (firefly.attachedToTail) {
-                      const trailIndex = Math.max(0, ship.trail.length - 1 - (10 + firefly.attachedOrder * 8));
-                      const trailAnchor = ship.trail[trailIndex] || tail;
-                      const baseX = trailAnchor.x;
-                      const baseY = trailAnchor.y;
-                      const waggleAmp = 0.75 + firefly.size * 0.08;
-                      const waggle = Math.sin((timeSeconds * (1.2 + firefly.pulseFreq * 0.5)) + firefly.pulsePhase + firefly.attachedOrder * 0.6);
-                      const targetX = baseX + sideX * waggle * waggleAmp;
-                      const targetY = baseY + sideY * waggle * waggleAmp;
+                      const attached = getAttachedFirefliesSorted();
+                      const filament = buildTailFilamentPath(attached.length, tail, backX, backY);
+                      const tip = filament[filament.length - 1] || tail;
+                      const prev = filament[Math.max(0, filament.length - 2)] || tail;
+                      const dirX = tip.x - prev.x;
+                      const dirY = tip.y - prev.y;
+                      const dirLen = Math.hypot(dirX, dirY) || 1;
+                      const normX = dirX / dirLen;
+                      const normY = dirY / dirLen;
+                      const tipOffset = firefly.attachedOrder * 4.5;
+                      const targetX = tip.x + normX * tipOffset;
+                      const targetY = tip.y + normY * tipOffset;
 
                       const spring = 0.052;
                       firefly.vx += (targetX - firefly.x) * spring + ship.vx * 0.005;
@@ -2467,31 +2488,12 @@ export function initLegacyApp() {
                   backX = -ship.vx * invSpeed;
                   backY = -ship.vy * invSpeed;
               }
-              const sideX = -backY;
-              const sideY = backX;
-              const extension = 26 + attached.length * 18;
               const now = performance.now() * 0.001;
-              const segmentCount = 18;
-              const filament = [];
-              const speedFactor = Math.min(1.6, speed * 0.55);
-              for (let i = 0; i <= segmentCount; i++) {
-                  const t = i / segmentCount;
-                  const swayAmp = (1 - t) * (4.9 + attached.length * 0.8 + speedFactor * 4.5);
-                  const sway =
-                      Math.sin(now * (2.1 + speedFactor * 0.8) + t * 4.6 + ship.angle) * swayAmp
-                      + Math.sin(now * 3.4 + t * 7.2 + ship.angle * 0.4) * swayAmp * 0.35;
-                  const trailRef = ship.trail[Math.max(0, ship.trail.length - 1 - Math.floor(4 + t * 18))] || tail;
-                  const trailNudgeX = (trailRef.x - tail.x) * 0.08 * (1 - t);
-                  const trailNudgeY = (trailRef.y - tail.y) * 0.08 * (1 - t);
-                  filament.push({
-                      x: tail.x + backX * extension * t + sideX * sway + trailNudgeX,
-                      y: tail.y + backY * extension * t + sideY * sway + trailNudgeY
-                  });
-              }
+              const filament = buildTailFilamentPath(attached.length, tail, backX, backY);
               const tip = filament[filament.length - 1];
 
-              ctx.strokeStyle = 'rgba(223, 244, 255, 0.62)';
-              ctx.lineWidth = 1.1 + attached.length * 0.24;
+              ctx.strokeStyle = 'rgba(223, 244, 255, 0.18)';
+              ctx.lineWidth = 0.85 + attached.length * 0.12;
               ctx.lineCap = 'round';
               ctx.lineJoin = 'round';
               ctx.beginPath();
@@ -2503,22 +2505,31 @@ export function initLegacyApp() {
               }
               ctx.stroke();
 
-              attached.forEach((firefly, idx) => {
-                  const t = (idx + 1) / (attached.length + 1);
-                  const pointIndex = Math.min(filament.length - 1, Math.max(0, Math.round(t * (filament.length - 1))));
-                  const beadX = filament[pointIndex].x;
-                  const beadY = filament[pointIndex].y;
-                  ctx.strokeStyle = 'rgba(236, 246, 255, 0.55)';
-                  ctx.lineWidth = 0.8;
+              for (let i = 2; i < filament.length - 1; i += 2) {
+                  const t = i / (filament.length - 1);
+                  const flutter = 0.5 + 0.5 * Math.sin(now * 3.8 + t * 12.4);
+                  const radius = 0.3 + t * 1.4 + flutter * 0.45;
+                  const alpha = (0.02 + t * 0.09) * (0.75 + flutter * 0.45);
+                  ctx.fillStyle = `rgba(230, 247, 255, ${alpha})`;
+                  ctx.beginPath();
+                  ctx.arc(filament[i].x, filament[i].y, radius, 0, Math.PI * 2);
+                  ctx.fill();
+              }
+
+              attached.forEach((firefly) => {
+                  const beadX = tip.x;
+                  const beadY = tip.y;
+                  ctx.strokeStyle = 'rgba(236, 246, 255, 0.35)';
+                  ctx.lineWidth = 0.65;
                   ctx.beginPath();
                   ctx.moveTo(beadX, beadY);
                   ctx.lineTo(firefly.x, firefly.y);
                   ctx.stroke();
               });
 
-              ctx.fillStyle = 'rgba(235, 248, 255, 0.55)';
+              ctx.fillStyle = 'rgba(235, 248, 255, 0.28)';
               ctx.beginPath();
-              ctx.arc(tip.x, tip.y, 1.2 + attached.length * 0.15, 0, Math.PI * 2);
+              ctx.arc(tip.x, tip.y, 0.9 + attached.length * 0.12, 0, Math.PI * 2);
               ctx.fill();
           }
 
