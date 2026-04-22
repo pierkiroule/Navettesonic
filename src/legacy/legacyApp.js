@@ -46,6 +46,11 @@ export function initLegacyApp() {
           const ctx = canvas.getContext('2d');
           const ui = document.getElementById('ui');
           const helperTips = document.getElementById('helperTips');
+          const echoRecorderPanel = document.getElementById('echoRecorderPanel');
+          const echoRecordToggleBtn = document.getElementById('echoRecordToggleBtn');
+          const echoRecordTimer = document.getElementById('echoRecordTimer');
+          const echoRecordStatus = document.getElementById('echoRecordStatus');
+          const echoRecordDownloadLink = document.getElementById('echoRecordDownloadLink');
           const bubblePanel = document.getElementById('bubblePanel');
           const cancelBtn = document.getElementById('cancelBtn');
           const dropBtn = document.getElementById('dropBtn');
@@ -207,6 +212,8 @@ export function initLegacyApp() {
           let helperTipIndex = 0;
           let sooncutBucketVocals = [];
           let activeArenaAudio = null;
+          const RECORDER_MAX_SECONDS = 180;
+          const RECORDER_MAX_MILLIS = RECORDER_MAX_SECONDS * 1000;
           const helperTipsPlaylist = [
               'Garde le doigt (ou clic) appuyé dans l’océan : le poisson-plume suit ton mouvement.',
               'Une nouvelle luciole émerge toutes les 15 secondes dans le courant.',
@@ -262,6 +269,17 @@ export function initLegacyApp() {
           let currentSession = null;
           let isAuthActionPending = false;
           let syncInFlightPromise = null;
+          let recordingState = 'idle';
+          let recordingTimerInterval = null;
+          let recordingAutoStopTimeout = null;
+          let recordingStartedAt = 0;
+          let recordingMediaDest = null;
+          let recordingMediaRecorder = null;
+          let recordingChunks = [];
+          let recordingMimeType = '';
+          let recordingFileExt = 'webm';
+          let recordingDownloadUrl = null;
+          let recordingFallbackNotice = '';
           const SUPABASE_BUCKET = 'Soonbucket';
           const SUPABASE_LOCAL_KEYS = {
               url: 'soono.supabase.url',
@@ -366,6 +384,15 @@ export function initLegacyApp() {
               if (!requireRegisteredUserForExperience('Soon experience')) return;
               showView('experience');
               ensureAllAudioRunning();
+          });
+
+          bindTap(echoRecordToggleBtn, () => {
+              if (recordingState === 'recording') {
+                  stopEchoRecording(false);
+                  return;
+              }
+              if (recordingState === 'finalizing') return;
+              startEchoRecording();
           });
 
           function openEchoHypnoseModal() {
@@ -2086,6 +2113,224 @@ export function initLegacyApp() {
               masterGainNode.connect(audioCtx.destination);
               return audioCtx;
           }
+
+
+          function formatRecordingTime(msElapsed) {
+              const clamped = Math.min(RECORDER_MAX_MILLIS, Math.max(0, msElapsed));
+              const totalSeconds = Math.floor(clamped / 1000);
+              const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+              const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+              return `${minutes}:${seconds}`;
+          }
+
+          function buildBalladeFilename(ext) {
+              const now = new Date();
+              const year = now.getFullYear();
+              const month = String(now.getMonth() + 1).padStart(2, '0');
+              const day = String(now.getDate()).padStart(2, '0');
+              const hours = String(now.getHours()).padStart(2, '0');
+              const mins = String(now.getMinutes()).padStart(2, '0');
+              const secs = String(now.getSeconds()).padStart(2, '0');
+              return `soon-ballade-${year}${month}${day}-${hours}${mins}${secs}.${ext}`;
+          }
+
+          function detectRecorderFormat() {
+              const defaultFormat = { mimeType: '', ext: 'webm', fallbackNotice: 'Format conteneur par défaut du navigateur.' };
+              if (typeof window.MediaRecorder === 'undefined') return null;
+              const supportsMime = typeof MediaRecorder.isTypeSupported === 'function'
+                  ? (mime) => MediaRecorder.isTypeSupported(mime)
+                  : () => true;
+
+              const formats = [
+                  { mimeType: 'audio/mpeg', ext: 'mp3', fallbackNotice: '' },
+                  { mimeType: 'audio/mp3', ext: 'mp3', fallbackNotice: '' },
+                  { mimeType: 'audio/webm;codecs=opus', ext: 'webm', fallbackNotice: 'MP3 indisponible sur ce navigateur : export en WebM/Opus.' },
+                  { mimeType: 'audio/ogg;codecs=opus', ext: 'ogg', fallbackNotice: 'MP3 indisponible sur ce navigateur : export en OGG/Opus.' },
+                  { mimeType: 'audio/wav', ext: 'wav', fallbackNotice: 'MP3 indisponible sur ce navigateur : export en WAV.' },
+              ];
+
+              for (const format of formats) {
+                  if (supportsMime(format.mimeType)) return format;
+              }
+              return defaultFormat;
+          }
+
+          function updateEchoRecorderUi() {
+              if (!echoRecorderPanel || !echoRecordToggleBtn || !echoRecordStatus || !echoRecordTimer) return;
+              echoRecordToggleBtn.classList.toggle('recording', recordingState === 'recording');
+              echoRecordToggleBtn.classList.toggle('finalizing', recordingState === 'finalizing');
+              echoRecordToggleBtn.disabled = recordingState === 'finalizing' || recordingState === 'unsupported';
+              echoRecordToggleBtn.textContent = recordingState === 'recording' ? 'STOP' : 'REC';
+
+              if (recordingState === 'idle') {
+                  echoRecordStatus.textContent = 'Prêt';
+              } else if (recordingState === 'recording') {
+                  const formatLabel = recordingFileExt.toUpperCase();
+                  echoRecordStatus.textContent = `Enregistrement… (${formatLabel})`;
+              } else if (recordingState === 'finalizing') {
+                  echoRecordStatus.textContent = 'Finalisation…';
+              } else if (recordingState === 'ready') {
+                  const fallbackMsg = recordingFallbackNotice ? ` ${recordingFallbackNotice}` : '';
+                  echoRecordStatus.textContent = `Prêt à télécharger (${recordingFileExt.toUpperCase()}).${fallbackMsg}`;
+              } else if (recordingState === 'unsupported') {
+                  echoRecordStatus.textContent = 'Enregistrement indisponible sur ce navigateur.';
+              }
+          }
+
+          function clearRecordingTimers() {
+              if (recordingTimerInterval) {
+                  clearInterval(recordingTimerInterval);
+                  recordingTimerInterval = null;
+              }
+              if (recordingAutoStopTimeout) {
+                  clearTimeout(recordingAutoStopTimeout);
+                  recordingAutoStopTimeout = null;
+              }
+          }
+
+          function refreshRecordingTimer() {
+              if (!echoRecordTimer) return;
+              const elapsed = recordingState === 'recording' ? (Date.now() - recordingStartedAt) : 0;
+              echoRecordTimer.textContent = `${formatRecordingTime(elapsed)} / 03:00`;
+          }
+
+          function setRecordingDownload(blob) {
+              if (!echoRecordDownloadLink) return;
+              if (recordingDownloadUrl) {
+                  URL.revokeObjectURL(recordingDownloadUrl);
+                  recordingDownloadUrl = null;
+              }
+              if (!blob) {
+                  echoRecordDownloadLink.hidden = true;
+                  echoRecordDownloadLink.removeAttribute('href');
+                  return;
+              }
+              recordingDownloadUrl = URL.createObjectURL(blob);
+              echoRecordDownloadLink.href = recordingDownloadUrl;
+              echoRecordDownloadLink.download = buildBalladeFilename(recordingFileExt);
+              echoRecordDownloadLink.hidden = false;
+          }
+
+          function ensureRecordingDestination(context) {
+              if (!context || !masterGainNode) return null;
+              if (recordingMediaDest) return recordingMediaDest;
+              recordingMediaDest = context.createMediaStreamDestination();
+              masterGainNode.connect(recordingMediaDest);
+              return recordingMediaDest;
+          }
+
+          function stopEchoRecording(triggeredByAutoStop) {
+              if (recordingState !== 'recording' || !recordingMediaRecorder) return;
+              clearRecordingTimers();
+              recordingState = 'finalizing';
+              if (echoRecordTimer && triggeredByAutoStop) {
+                  echoRecordTimer.textContent = '03:00 / 03:00';
+              }
+              updateEchoRecorderUi();
+              try {
+                  recordingMediaRecorder.stop();
+              } catch (_) {
+                  recordingState = 'idle';
+                  updateEchoRecorderUi();
+              }
+          }
+
+          function startEchoRecording() {
+              if (recordingState === 'recording' || recordingState === 'finalizing') return;
+              const context = ensureAudioContext();
+              ensureAllAudioRunning();
+              if (!context || !masterGainNode || typeof window.MediaRecorder === 'undefined') {
+                  recordingState = 'unsupported';
+                  updateEchoRecorderUi();
+                  return;
+              }
+
+              const mediaDest = ensureRecordingDestination(context);
+              if (!mediaDest || !mediaDest.stream) {
+                  recordingState = 'unsupported';
+                  updateEchoRecorderUi();
+                  return;
+              }
+
+              const format = detectRecorderFormat();
+              if (!format) {
+                  recordingState = 'unsupported';
+                  updateEchoRecorderUi();
+                  return;
+              }
+
+              recordingMimeType = format.mimeType || '';
+              recordingFileExt = format.ext;
+              recordingFallbackNotice = format.fallbackNotice;
+              recordingChunks = [];
+              setRecordingDownload(null);
+
+              try {
+                  recordingMediaRecorder = recordingMimeType
+                      ? new MediaRecorder(mediaDest.stream, { mimeType: recordingMimeType })
+                      : new MediaRecorder(mediaDest.stream);
+              } catch (_) {
+                  recordingState = 'unsupported';
+                  updateEchoRecorderUi();
+                  return;
+              }
+
+              recordingMediaRecorder.ondataavailable = (event) => {
+                  if (event.data && event.data.size > 0) {
+                      recordingChunks.push(event.data);
+                  }
+              };
+
+              recordingMediaRecorder.onerror = () => {
+                  clearRecordingTimers();
+                  recordingState = 'unsupported';
+                  updateEchoRecorderUi();
+              };
+
+              recordingMediaRecorder.onstop = () => {
+                  const finalType = recordingMediaRecorder?.mimeType || recordingMimeType || undefined;
+                  const blob = recordingChunks.length ? new Blob(recordingChunks, finalType ? { type: finalType } : undefined) : null;
+                  recordingMediaRecorder = null;
+                  recordingChunks = [];
+                  if (!blob || blob.size === 0) {
+                      recordingState = 'idle';
+                      updateEchoRecorderUi();
+                      return;
+                  }
+                  setRecordingDownload(blob);
+                  recordingState = 'ready';
+                  updateEchoRecorderUi();
+              };
+
+              recordingStartedAt = Date.now();
+              recordingState = 'recording';
+              refreshRecordingTimer();
+              updateEchoRecorderUi();
+              recordingMediaRecorder.start(250);
+
+              recordingTimerInterval = setInterval(() => {
+                  const elapsed = Date.now() - recordingStartedAt;
+                  if (elapsed >= RECORDER_MAX_MILLIS) {
+                      echoRecordTimer.textContent = '03:00 / 03:00';
+                      stopEchoRecording(true);
+                      return;
+                  }
+                  refreshRecordingTimer();
+              }, 200);
+
+              recordingAutoStopTimeout = setTimeout(() => {
+                  stopEchoRecording(true);
+              }, RECORDER_MAX_MILLIS);
+          }
+
+          updateEchoRecorderUi();
+          refreshRecordingTimer();
+
+          window.addEventListener('beforeunload', () => {
+              if (recordingDownloadUrl) {
+                  URL.revokeObjectURL(recordingDownloadUrl);
+              }
+          });
 
           function buildSyntheticBuffer(ctx, seconds = 3.4) {
               const sampleRate = ctx.sampleRate;
