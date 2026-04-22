@@ -2469,20 +2469,22 @@ export function initLegacyApp() {
               }
               const sideX = -backY;
               const sideY = backX;
-              const extension = 26 + attached.length * 18;
+              const extension = 52 + attached.length * 30;
               const now = performance.now() * 0.001;
-              const segmentCount = 18;
+              const segmentCount = 30;
               const filament = [];
               const speedFactor = Math.min(1.6, speed * 0.55);
               for (let i = 0; i <= segmentCount; i++) {
                   const t = i / segmentCount;
-                  const swayAmp = t * (4.9 + attached.length * 0.8 + speedFactor * 4.5);
+                  const softness = Math.pow(t, 1.25);
+                  const swayAmp = softness * (14.7 + attached.length * 1.6 + speedFactor * 9.5);
                   const sway =
                       Math.sin(now * (2.1 + speedFactor * 0.8) + t * 4.6 + ship.angle) * swayAmp
-                      + Math.sin(now * 3.4 + t * 7.2 + ship.angle * 0.4) * swayAmp * 0.35;
+                      + Math.sin(now * 3.4 + t * 7.2 + ship.angle * 0.4) * swayAmp * 0.8
+                      + Math.sin(now * 4.8 + t * 11.7 + ship.angle * 0.9) * swayAmp * 0.55;
                   const trailRef = ship.trail[Math.max(0, ship.trail.length - 1 - Math.floor(4 + t * 18))] || tail;
-                  const trailNudgeX = (trailRef.x - tail.x) * 0.08 * t;
-                  const trailNudgeY = (trailRef.y - tail.y) * 0.08 * t;
+                  const trailNudgeX = (trailRef.x - tail.x) * 0.12 * softness;
+                  const trailNudgeY = (trailRef.y - tail.y) * 0.12 * softness;
                   filament.push({
                       x: tail.x + backX * extension * t + sideX * sway + trailNudgeX,
                       y: tail.y + backY * extension * t + sideY * sway + trailNudgeY
@@ -2490,8 +2492,8 @@ export function initLegacyApp() {
               }
               const tip = filament[filament.length - 1];
 
-              ctx.strokeStyle = 'rgba(223, 244, 255, 0.62)';
-              ctx.lineWidth = 1.1 + attached.length * 0.24;
+              ctx.strokeStyle = 'rgba(223, 244, 255, 0.18)';
+              ctx.lineWidth = 0.85 + attached.length * 0.12;
               ctx.lineCap = 'round';
               ctx.lineJoin = 'round';
               ctx.beginPath();
@@ -2503,22 +2505,33 @@ export function initLegacyApp() {
               }
               ctx.stroke();
 
+              for (let i = 2; i < filament.length - 1; i += 2) {
+                  const t = i / (filament.length - 1);
+                  const flutter = 0.5 + 0.5 * Math.sin(now * 3.8 + t * 12.4);
+                  const radius = 0.3 + t * 1.4 + flutter * 0.45;
+                  const alpha = (0.02 + t * 0.09) * (0.75 + flutter * 0.45);
+                  ctx.fillStyle = `rgba(230, 247, 255, ${alpha})`;
+                  ctx.beginPath();
+                  ctx.arc(filament[i].x, filament[i].y, radius, 0, Math.PI * 2);
+                  ctx.fill();
+              }
+
               attached.forEach((firefly, idx) => {
                   const t = (idx + 1) / (attached.length + 1);
                   const pointIndex = Math.min(filament.length - 1, Math.max(0, Math.round(t * (filament.length - 1))));
                   const beadX = filament[pointIndex].x;
                   const beadY = filament[pointIndex].y;
-                  ctx.strokeStyle = 'rgba(236, 246, 255, 0.55)';
-                  ctx.lineWidth = 0.8;
+                  ctx.strokeStyle = 'rgba(236, 246, 255, 0.35)';
+                  ctx.lineWidth = 0.65;
                   ctx.beginPath();
                   ctx.moveTo(beadX, beadY);
                   ctx.lineTo(firefly.x, firefly.y);
                   ctx.stroke();
               });
 
-              ctx.fillStyle = 'rgba(235, 248, 255, 0.55)';
+              ctx.fillStyle = 'rgba(235, 248, 255, 0.28)';
               ctx.beginPath();
-              ctx.arc(tip.x, tip.y, 1.2 + attached.length * 0.15, 0, Math.PI * 2);
+              ctx.arc(tip.x, tip.y, 0.9 + attached.length * 0.12, 0, Math.PI * 2);
               ctx.fill();
           }
 
