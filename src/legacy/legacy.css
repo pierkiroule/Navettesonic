@@ -147,7 +147,7 @@
             opacity: 0;
             pointer-events: none;
         }
-        #echoHypnoseView {
+        #echoHypnoseView:not(.hidden-view) {
             display: flex;
             justify-content: center;
             align-items: flex-start;
