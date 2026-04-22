@@ -3531,27 +3531,29 @@ export function initLegacyApp() {
 
               // --- TRAILING PLUMES (very fine, longer and straight at rest) ---
               const plumeData = [
-                  { phase: 0.0, sway: -13, len: 58, hueOff: -4, width: 1.0 },
-                  { phase: 0.8, sway: -7,  len: 66, hueOff: 4,  width: 0.85 },
-                  { phase: 1.6, sway: 0,   len: 74, hueOff: 10, width: 0.8 },
-                  { phase: 2.4, sway: 7,   len: 66, hueOff: 4,  width: 0.85 },
-                  { phase: 3.2, sway: 13,  len: 58, hueOff: -4, width: 1.0 },
+                  { lane: -2, phase: 0.35, spread: 13, len: 58, hueOff: -4, width: 1.0 },
+                  { lane: -1, phase: 0.9,  spread: 7,  len: 66, hueOff: 4,  width: 0.85 },
+                  { lane: 0,  phase: 1.45, spread: 0,  len: 74, hueOff: 10, width: 0.8 },
+                  { lane: 1,  phase: 0.9,  spread: 7,  len: 66, hueOff: 4,  width: 0.85 },
+                  { lane: 2,  phase: 0.35, spread: 13, len: 58, hueOff: -4, width: 1.0 },
               ];
-              const plumeMotion = Math.max(0, Math.min(1, (glide - 0.08) / 0.92));
+              const plumeMotion = Math.max(0, Math.min(1, (glide - 0.14) / 0.86));
+              const plumeMotionSoft = plumeMotion * plumeMotion;
               const tailTipX = 0;
               const tailTipY = 22;
               plumeData.forEach((p, i) => {
-                  const wave = Math.sin(swimT * 6.6 + p.phase) * (0.4 + glide * 1.1) * plumeMotion;
-                  const curl = Math.cos(swimT * 4.5 + p.phase * 1.7) * (0.25 + glide * 0.9) * plumeMotion;
+                  const laneSign = Math.sign(p.lane);
+                  const laneShape = laneSign * p.spread * plumeMotionSoft;
+                  const wave = laneSign * Math.sin(swimT * 6.6 + p.phase) * (0.28 + glide * 0.95) * plumeMotionSoft;
+                  const curl = laneSign * Math.cos(swimT * 4.4 + p.phase * 1.55) * (0.18 + glide * 0.75) * plumeMotionSoft;
                   const alpha = (0.26 + shimmerPulse * 0.2) * (1 - Math.abs(i - 2) * 0.1);
                   const hue = bodyHueLow + p.hueOff;
                   const startY = tailTipY;
-                  const baseSway = p.sway * plumeMotion;
-                  const cp1x = tailTipX + baseSway * 0.22 + wave * 2.8;
+                  const cp1x = tailTipX + laneShape * 0.18 + wave * 2.2;
                   const cp1y = startY + p.len * 0.26;
-                  const cp2x = tailTipX + baseSway * 0.42 + wave * 4.8 + curl * 1.8;
+                  const cp2x = tailTipX + laneShape * 0.33 + wave * 3.6 + curl * 1.5;
                   const cp2y = startY + p.len * 0.68;
-                  const endX = tailTipX + baseSway * 0.16 + wave * 1.4 + curl * 0.7;
+                  const endX = tailTipX + laneShape * 0.12 + wave * 0.95 + curl * 0.55;
                   const endY = startY + p.len;
 
                   ctx.save();
@@ -3566,7 +3568,7 @@ export function initLegacyApp() {
                   plumeGrad.addColorStop(1, `hsla(${hue + 18}, 88%, 92%, 0)`);
                   ctx.strokeStyle = plumeGrad;
 
-                  ctx.lineWidth = p.width + glide * 0.2;
+                  ctx.lineWidth = p.width + glide * 0.16;
                   ctx.beginPath();
                   ctx.moveTo(tailTipX, startY);
                   ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endX, endY);
@@ -3579,9 +3581,9 @@ export function initLegacyApp() {
                   ctx.beginPath();
                   ctx.moveTo(tailTipX, startY + 0.3);
                   ctx.bezierCurveTo(
-                      cp1x * 0.85 + 0.35, cp1y - 0.6,
-                      cp2x * 0.88 + 0.5, cp2y - 0.4,
-                      endX * 0.9 + 0.25, endY - 0.8
+                      cp1x * 0.88 + laneSign * 0.15, cp1y - 0.6,
+                      cp2x * 0.9 + laneSign * 0.22, cp2y - 0.4,
+                      endX * 0.92 + laneSign * 0.12, endY - 0.8
                   );
                   ctx.stroke();
 
