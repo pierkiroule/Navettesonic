@@ -46,6 +46,10 @@ export function initLegacyApp() {
           const ctx = canvas.getContext('2d');
           const ui = document.getElementById('ui');
           const helperTips = document.getElementById('helperTips');
+          const recordToggleBtn = document.getElementById('recordToggleBtn');
+          const recordTimer = document.getElementById('recordTimer');
+          const recordStatus = document.getElementById('recordStatus');
+          const recordDownloadLink = document.getElementById('recordDownloadLink');
           const bubblePanel = document.getElementById('bubblePanel');
           const cancelBtn = document.getElementById('cancelBtn');
           const dropBtn = document.getElementById('dropBtn');
@@ -198,6 +202,17 @@ export function initLegacyApp() {
           let selectedSampleId = SAMPLE_LIBRARY[0].id;
           let audioCtx = null;
           let masterGainNode = null;
+          let recordingStreamDestination = null;
+          let recordingMediaRecorder = null;
+          let recordingChunks = [];
+          let recordingBlobUrl = '';
+          let recordingMimeType = '';
+          let recordingFileExtension = '';
+          let recordingStartedAt = 0;
+          let recordingTimerInterval = null;
+          let recordingAutoStopTimer = null;
+          let recordingStopPromise = null;
+          let recordingState = 'idle';
           let heroVideoAudioCtx = null;
           let heroVideoSourceNode = null;
           let heroVideoAnalyserNode = null;
@@ -216,6 +231,8 @@ export function initLegacyApp() {
           ];
 
           const ARENA_RADIUS = 2000;
+          const RECORDING_MAX_SECONDS = 180;
+          const RECORDING_MAX_MS = RECORDING_MAX_SECONDS * 1000;
           const SOUND_HEAR_RADIUS = 460;
           const ARENA_TRIANGLE_COUNT = 12;
           const FIREFLY_TAIL_ATTACH_RADIUS = 38;
@@ -295,6 +312,9 @@ export function initLegacyApp() {
               if (target !== 'experience') {
                   isTethered = false;
                   closeBubblePanel();
+                  if (recordingState === 'recording') {
+                      stopEchoBalladRecording('leave-experience');
+                  }
               }
               if (heroVideo) {
                   if (target === 'home') {
@@ -352,6 +372,236 @@ export function initLegacyApp() {
               }
           }
 
+          function formatRecordTime(totalSeconds) {
+              const safeSeconds = Math.max(0, Math.min(RECORDING_MAX_SECONDS, Math.floor(totalSeconds)));
+              const mins = String(Math.floor(safeSeconds / 60)).padStart(2, '0');
+              const secs = String(safeSeconds % 60).padStart(2, '0');
+              return `${mins}:${secs}`;
+          }
+
+          function formatRecordFilenameDatePart(date = new Date()) {
+              const year = String(date.getFullYear());
+              const month = String(date.getMonth() + 1).padStart(2, '0');
+              const day = String(date.getDate()).padStart(2, '0');
+              const hours = String(date.getHours()).padStart(2, '0');
+              const mins = String(date.getMinutes()).padStart(2, '0');
+              const secs = String(date.getSeconds()).padStart(2, '0');
+              return `${year}${month}${day}-${hours}${mins}${secs}`;
+          }
+
+          function resetRecordDownloadLink() {
+              if (!recordDownloadLink) return;
+              if (recordingBlobUrl) {
+                  URL.revokeObjectURL(recordingBlobUrl);
+                  recordingBlobUrl = '';
+              }
+              recordDownloadLink.removeAttribute('href');
+              recordDownloadLink.removeAttribute('download');
+              recordDownloadLink.classList.add('disabled');
+              recordDownloadLink.setAttribute('aria-disabled', 'true');
+          }
+
+          function refreshRecordUi() {
+              if (recordToggleBtn) {
+                  const isRecording = recordingState === 'recording';
+                  const isBusy = recordingState === 'finalizing';
+                  recordToggleBtn.textContent = isRecording ? 'STOP' : 'REC';
+                  recordToggleBtn.disabled = isBusy;
+                  recordToggleBtn.classList.toggle('is-recording', isRecording);
+              }
+              if (recordTimer && recordingState === 'idle' && !recordingStartedAt) {
+                  recordTimer.textContent = '00:00';
+              }
+          }
+
+          function setRecordStatus(message) {
+              if (!recordStatus) return;
+              recordStatus.textContent = message;
+          }
+
+          function pickRecorderFormat() {
+              if (typeof MediaRecorder === 'undefined') return null;
+              const candidates = [
+                  { mimeType: 'audio/mpeg', ext: 'mp3' },
+                  { mimeType: 'audio/mp3', ext: 'mp3' },
+                  { mimeType: 'audio/webm;codecs=opus', ext: 'webm' },
+                  { mimeType: 'audio/webm', ext: 'webm' },
+                  { mimeType: 'audio/ogg;codecs=opus', ext: 'ogg' },
+                  { mimeType: 'audio/ogg', ext: 'ogg' }
+              ];
+              for (const candidate of candidates) {
+                  if (MediaRecorder.isTypeSupported(candidate.mimeType)) return candidate;
+              }
+              return { mimeType: '', ext: 'webm' };
+          }
+
+          function clearRecordTimers() {
+              if (recordingTimerInterval) {
+                  clearInterval(recordingTimerInterval);
+                  recordingTimerInterval = null;
+              }
+              if (recordingAutoStopTimer) {
+                  clearTimeout(recordingAutoStopTimer);
+                  recordingAutoStopTimer = null;
+              }
+          }
+
+          function updateRecordTimer() {
+              if (!recordTimer) return;
+              if (!recordingStartedAt) {
+                  recordTimer.textContent = '00:00';
+                  return;
+              }
+              const elapsed = Math.min(RECORDING_MAX_MS, Date.now() - recordingStartedAt);
+              recordTimer.textContent = formatRecordTime(elapsed / 1000);
+          }
+
+          function ensureRecordingDestination() {
+              const ctx = ensureAudioContext();
+              if (!ctx || !masterGainNode || typeof ctx.createMediaStreamDestination !== 'function') return null;
+              if (!recordingStreamDestination) {
+                  recordingStreamDestination = ctx.createMediaStreamDestination();
+                  masterGainNode.connect(recordingStreamDestination);
+              }
+              return recordingStreamDestination;
+          }
+
+          async function stopEchoBalladRecording(reason = 'manual-stop') {
+              if (recordingState !== 'recording' || !recordingMediaRecorder) return recordingStopPromise || null;
+              clearRecordTimers();
+              recordingState = 'finalizing';
+              refreshRecordUi();
+              setRecordStatus('Finalisation…');
+              recordingStopPromise = new Promise((resolve) => {
+                  const onStopDone = () => {
+                      if (reason === 'max-duration') {
+                          updateRecordTimer();
+                      }
+                      resolve();
+                  };
+                  recordingMediaRecorder.addEventListener('stop', onStopDone, { once: true });
+                  try {
+                      recordingMediaRecorder.stop();
+                  } catch (_) {
+                      onStopDone();
+                  }
+              });
+              return recordingStopPromise;
+          }
+
+          async function startEchoBalladRecording() {
+              if (recordingState === 'recording' || recordingState === 'finalizing') return;
+              resetRecordDownloadLink();
+
+              const destination = ensureRecordingDestination();
+              if (!destination || !destination.stream) {
+                  recordingState = 'idle';
+                  refreshRecordUi();
+                  setRecordStatus('Enregistrement indisponible (WebAudio).');
+                  return;
+              }
+              if (typeof MediaRecorder === 'undefined') {
+                  recordingState = 'idle';
+                  refreshRecordUi();
+                  setRecordStatus('Enregistrement indisponible (MediaRecorder).');
+                  return;
+              }
+
+              const format = pickRecorderFormat();
+              if (!format) {
+                  recordingState = 'idle';
+                  refreshRecordUi();
+                  setRecordStatus('Aucun format d’enregistrement audio supporté.');
+                  return;
+              }
+
+              recordingChunks = [];
+              recordingMimeType = format.mimeType || '';
+              recordingFileExtension = format.ext;
+              recordingStopPromise = null;
+
+              try {
+                  recordingMediaRecorder = recordingMimeType
+                      ? new MediaRecorder(destination.stream, { mimeType: recordingMimeType })
+                      : new MediaRecorder(destination.stream);
+              } catch (_) {
+                  recordingState = 'idle';
+                  refreshRecordUi();
+                  setRecordStatus('Impossible de démarrer l’enregistrement audio.');
+                  return;
+              }
+
+              recordingMediaRecorder.addEventListener('dataavailable', (event) => {
+                  if (!event.data || !event.data.size) return;
+                  recordingChunks.push(event.data);
+              });
+
+              recordingMediaRecorder.addEventListener('stop', () => {
+                  clearRecordTimers();
+                  recordingState = 'idle';
+                  updateRecordTimer();
+                  const resolvedType = recordingMimeType || recordingMediaRecorder?.mimeType || '';
+                  const outputType = resolvedType || 'application/octet-stream';
+                  const blob = new Blob(recordingChunks, { type: outputType });
+                  recordingChunks = [];
+
+                  if (!blob.size) {
+                      setRecordStatus('Échec de finalisation. Réessaie.');
+                      refreshRecordUi();
+                      return;
+                  }
+
+                  resetRecordDownloadLink();
+                  recordingBlobUrl = URL.createObjectURL(blob);
+                  const filename = `soon-ballade-${formatRecordFilenameDatePart()}.${recordingFileExtension}`;
+                  if (recordDownloadLink) {
+                      recordDownloadLink.href = recordingBlobUrl;
+                      recordDownloadLink.download = filename;
+                      recordDownloadLink.classList.remove('disabled');
+                      recordDownloadLink.setAttribute('aria-disabled', 'false');
+                  }
+
+                  const isMp3 = recordingFileExtension === 'mp3';
+                  if (isMp3) {
+                      setRecordStatus('Prêt à télécharger (format MP3).');
+                  } else {
+                      setRecordStatus(`Prêt à télécharger (fallback .${recordingFileExtension}, MP3 non supporté ici).`);
+                  }
+                  refreshRecordUi();
+              });
+
+              recordingMediaRecorder.addEventListener('error', () => {
+                  clearRecordTimers();
+                  recordingState = 'idle';
+                  recordingMediaRecorder = null;
+                  recordingChunks = [];
+                  setRecordStatus('Erreur d’enregistrement navigateur.');
+                  refreshRecordUi();
+              });
+
+              try {
+                  recordingMediaRecorder.start(250);
+              } catch (_) {
+                  recordingState = 'idle';
+                  recordingMediaRecorder = null;
+                  setRecordStatus('Démarrage enregistrement impossible.');
+                  refreshRecordUi();
+                  return;
+              }
+
+              recordingStartedAt = Date.now();
+              updateRecordTimer();
+              recordingTimerInterval = setInterval(updateRecordTimer, 250);
+              recordingAutoStopTimer = setTimeout(() => {
+                  stopEchoBalladRecording('max-duration');
+              }, RECORDING_MAX_MS);
+              recordingState = 'recording';
+              setRecordStatus(recordingFileExtension === 'mp3'
+                  ? 'Enregistrement…'
+                  : `Enregistrement… (fallback .${recordingFileExtension})`);
+              refreshRecordUi();
+          }
+
           setInterval(() => {
               if (currentView !== 'experience' || isInteractionPaused) return;
               rotateHelperTip();
@@ -361,6 +611,14 @@ export function initLegacyApp() {
               if (!requireRegisteredUserForExperience('Soon experience')) return;
               showView('experience');
               ensureAllAudioRunning();
+          });
+          bindTap(recordToggleBtn, () => {
+              if (recordingState === 'finalizing') return;
+              if (recordingState === 'recording') {
+                  stopEchoBalladRecording('manual-stop');
+              } else {
+                  startEchoBalladRecording();
+              }
           });
 
           function openEchoHypnoseModal() {
@@ -1960,6 +2218,10 @@ export function initLegacyApp() {
               onMove(e);
           }, { passive: false });
           window.addEventListener('touchend', onEnd);
+          window.addEventListener('beforeunload', () => {
+              clearRecordTimers();
+              if (recordingBlobUrl) URL.revokeObjectURL(recordingBlobUrl);
+          });
 
           cancelBtn.addEventListener('click', closeBubblePanel);
           dropBtn.addEventListener('click', () => {
@@ -3123,6 +3385,7 @@ export function initLegacyApp() {
           }
 
           placeInitialArenaBubbles();
+          refreshRecordUi();
           showView('home');
           loop();
 

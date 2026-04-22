@@ -236,7 +236,7 @@
         }
         #helperTips {
             position: absolute;
-            top: 66px;
+            top: 122px;
             left: 50%;
             transform: translateX(-50%);
             width: min(92vw, 680px);
@@ -248,6 +248,79 @@
             line-height: 1.4;
             font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
             text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
+        }
+        #recordingPanel {
+            position: absolute;
+            top: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(94vw, 560px);
+            z-index: 165;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 14px;
+            border: 1px solid rgba(138, 206, 255, 0.32);
+            background: rgba(5, 13, 28, 0.74);
+            backdrop-filter: blur(9px);
+            box-sizing: border-box;
+        }
+        .record-toggle-btn {
+            min-width: 78px;
+            border: 1px solid rgba(255, 96, 96, 0.62);
+            border-radius: 999px;
+            padding: 9px 16px;
+            background: rgba(118, 22, 30, 0.72);
+            color: rgba(255, 226, 231, 0.96);
+            font-size: 0.84rem;
+            font-weight: 750;
+            letter-spacing: 0.04em;
+            cursor: pointer;
+            transition: transform 120ms ease, opacity 150ms ease;
+        }
+        .record-toggle-btn:active { transform: scale(0.98); }
+        .record-toggle-btn.is-recording {
+            border-color: rgba(255, 158, 158, 0.88);
+            background: linear-gradient(145deg, rgba(255, 84, 106, 0.95), rgba(185, 16, 38, 0.95));
+            color: #fff;
+            box-shadow: 0 0 18px rgba(255, 78, 98, 0.44);
+        }
+        .record-toggle-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .recording-meta {
+            min-width: 0;
+            flex: 1;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 9px;
+        }
+        .record-timer {
+            font-variant-numeric: tabular-nums;
+            font-size: 0.95rem;
+            font-weight: 680;
+            color: rgba(216, 241, 255, 0.95);
+            letter-spacing: 0.03em;
+        }
+        .record-status {
+            font-size: 0.8rem;
+            color: rgba(197, 230, 255, 0.82);
+            min-width: 0;
+        }
+        .record-download-link {
+            font-size: 0.8rem;
+            color: rgba(132, 226, 255, 0.95);
+            text-decoration: underline;
+            white-space: nowrap;
+            pointer-events: auto;
+        }
+        .record-download-link.disabled {
+            color: rgba(170, 188, 208, 0.62);
+            text-decoration: none;
+            pointer-events: none;
         }
         #arenaTrianglePad {
             position: absolute;
@@ -525,6 +598,24 @@
         }
         .auth-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         @media (max-width: 760px) {
+            #recordingPanel {
+                top: 12px;
+                padding: 9px 10px;
+            }
+            .recording-meta {
+                grid-template-columns: auto 1fr;
+                grid-template-areas:
+                    "timer download"
+                    "status status";
+                row-gap: 4px;
+            }
+            .record-timer { grid-area: timer; }
+            .record-status { grid-area: status; }
+            .record-download-link { grid-area: download; justify-self: end; }
+            #helperTips {
+                top: 118px;
+                width: min(94vw, 680px);
+            }
             .profile-hero {
                 grid-template-columns: auto 1fr;
             }

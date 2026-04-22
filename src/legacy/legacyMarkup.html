@@ -48,6 +48,14 @@
 
     <section id="experienceView" class="view hidden-view">
         <div id="ui"></div>
+        <div id="recordingPanel" aria-live="polite">
+            <button id="recordToggleBtn" type="button" class="record-toggle-btn">REC</button>
+            <div class="recording-meta">
+                <div id="recordTimer" class="record-timer">00:00</div>
+                <div id="recordStatus" class="record-status">Prêt</div>
+                <a id="recordDownloadLink" class="record-download-link disabled" href="#" download aria-disabled="true">Télécharger ma ballade</a>
+            </div>
+        </div>
         <div id="helperTips">Garde le doigt (ou clic) appuyé dans l'océan : le poisson-plume suit ton mouvement.</div>
         <div id="arenaTrianglePad" aria-label="Lucioles Sooncut"></div>
         <div id="arenaTriangleStatus">Lucioles Sooncut: touche-les avec le poisson pour déclencher les sons.</div>
