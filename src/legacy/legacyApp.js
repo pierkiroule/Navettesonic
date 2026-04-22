@@ -248,7 +248,8 @@ export function initLegacyApp() {
           const ARENA_RADIUS = 2000;
           const SOUND_HEAR_RADIUS = 460;
           const ARENA_TRIANGLE_COUNT = 12;
-          const FIREFLY_TRAIL_ATTACH_RADIUS = 34;
+          const FIREFLY_TRAIL_ATTACH_RADIUS = 38;
+          const FIREFLY_ATTACHED_SPACING_TARGETS = [0.52, 0.7, 0.86];
           const FIREFLY_AUDIO_MIN_MS = 1500;
           const FIREFLY_AUDIO_MAX_MS = 3200;
           const FIREFLY_TAIL_MAX_ATTACHED = 3;
@@ -280,6 +281,7 @@ export function initLegacyApp() {
           let nextFireflyReleaseAt = 0;
           let fireflyVocalGateUntil = 0;
           let isFireflyVocalPlaying = false;
+          let fireflyVocalQueue = Promise.resolve();
           const STARTING_BUBBLES = [
               { sampleId: 'forêt-zen', layer: 'front', hue: 188, x: -240, y: -120, r: 72 },
               { sampleId: 'ocean-deep', layer: 'below', hue: 235, x: 220, y: 170, r: 78 },
@@ -322,7 +324,7 @@ export function initLegacyApp() {
           const arenaResonance = { level: 0, hue: 198 };
 
           const ship = {
-              x: 0, y: 0, vx: 0, vy: 0, angle: 0, trail: [], maxTrail: 72,
+              x: 0, y: 0, vx: 0, vy: 0, angle: 0, trail: [], maxTrail: 128,
               stiffness: 0.0026, damping: 0.93, turnEase: 0.06, maxSpeed: 3.1,
               wakeEmitter: 0, rippleEmitter: 0
           };
@@ -1677,13 +1679,20 @@ export function initLegacyApp() {
               };
           }
 
+          function queueFireflyVocalPlayback(firefly) {
+              fireflyVocalQueue = fireflyVocalQueue
+                  .catch(() => 0)
+                  .then(() => triggerFireflyVocalPlayback(firefly));
+              return fireflyVocalQueue;
+          }
+
           async function triggerAttachedFireflyPlayback(firefly, now) {
               if (!firefly) return;
               isFireflyVocalPlaying = true;
               const provisionalDuration = FIREFLY_AUDIO_MIN_MS + Math.random() * (FIREFLY_AUDIO_MAX_MS - FIREFLY_AUDIO_MIN_MS);
               firefly.playbackEndsAt = now + provisionalDuration;
               fireflyVocalGateUntil = firefly.playbackEndsAt;
-              const duration = await triggerFireflyVocalPlayback(firefly);
+              const duration = await queueFireflyVocalPlayback(firefly);
               const effectiveDuration = Math.max(FIREFLY_AUDIO_MIN_MS, duration || provisionalDuration);
               firefly.playbackEndsAt = performance.now();
               fireflyVocalGateUntil = performance.now() + Math.min(220, effectiveDuration * 0.08);
@@ -1693,12 +1702,16 @@ export function initLegacyApp() {
           function getBubbleTriangleVertices(bubble) {
               if (!bubble) return [];
               const radius = Math.max(24, (bubble.r || 42) * 0.52);
-              const spin = (performance.now() * 0.00022) + (bubble.id ? bubble.id.length * 0.1 : 0);
+              const now = performance.now();
+              const slowSpin = (now * 0.00011) + (bubble.id ? bubble.id.length * 0.06 : 0);
+              const elasticWave = Math.sin(now * 0.0021 + (bubble.id ? bubble.id.length : 0));
               return [0, 1, 2].map((idx) => {
-                  const angle = spin + (idx / 3) * Math.PI * 2 - Math.PI / 2;
+                  const angle = slowSpin + (idx / 3) * Math.PI * 2 - Math.PI / 2;
+                  const localStretch = 1 + Math.sin(now * 0.0028 + idx * 2.15 + elasticWave) * 0.085;
+                  const localRadius = radius * localStretch;
                   return {
-                      x: bubble.x + Math.cos(angle) * radius,
-                      y: bubble.y + Math.sin(angle) * radius
+                      x: bubble.x + Math.cos(angle) * localRadius,
+                      y: bubble.y + Math.sin(angle) * localRadius
                   };
               });
           }
@@ -1802,7 +1815,7 @@ export function initLegacyApp() {
               const mouth = getShipMouthPosition();
               const tail = getShipTailPosition();
               const points = [mouth, tail];
-              const segmentCount = 16;
+              const segmentCount = 28;
               for (let i = 0; i < segmentCount; i++) {
                   const trailIndex = Math.max(0, ship.trail.length - 1 - i * 2);
                   const trailRef = ship.trail[trailIndex];
@@ -1860,7 +1873,18 @@ export function initLegacyApp() {
               if (attached.length < 3) return false;
               const trio = attached.slice(0, 3);
               const triangleId = `placed-triangle-${Math.round(now)}`;
-              const triangle = { id: triangleId, x: ship.x, y: ship.y, radius: 46, fireflyIds: trio.map((f) => f.id) };
+              const triangle = {
+                  id: triangleId,
+                  x: ship.x,
+                  y: ship.y,
+                  radius: 46,
+                  baseRadius: 46,
+                  spin: Math.random() * Math.PI * 2,
+                  spinSpeed: 0.00011 + Math.random() * 0.00009,
+                  elasticPhase: Math.random() * Math.PI * 2,
+                  elasticAmp: 0.06 + Math.random() * 0.035,
+                  fireflyIds: trio.map((f) => f.id)
+              };
               PLACED_FIREFLY_TRIANGLES.push(triangle);
               trio.forEach((firefly, idx) => {
                   firefly.attachedToTail = false;
@@ -1947,8 +1971,7 @@ export function initLegacyApp() {
               (async () => {
                   try {
                       for (let i = 0; i < trio.length; i++) {
-                          await triggerFireflyVocalPlayback(trio[i]);
-                          if (i < trio.length - 1) await delay(1000);
+                          await queueFireflyVocalPlayback(trio[i]);
                       }
                   } finally {
                       bubble.isTrianglePlaybackActive = false;
@@ -2000,21 +2023,28 @@ export function initLegacyApp() {
                   if (firefly.placedTriangleId) {
                       const placedTriangle = PLACED_FIREFLY_TRIANGLES.find((triangle) => triangle.id === firefly.placedTriangleId);
                       if (placedTriangle) {
-                          const angle = -Math.PI / 2 + (firefly.triangleVertexIndex / 3) * Math.PI * 2;
-                          firefly.x = placedTriangle.x + Math.cos(angle) * placedTriangle.radius;
-                          firefly.y = placedTriangle.y + Math.sin(angle) * placedTriangle.radius;
+                          const angleBase = -Math.PI / 2 + (firefly.triangleVertexIndex / 3) * Math.PI * 2;
+                          placedTriangle.spin = (placedTriangle.spin || 0) + (placedTriangle.spinSpeed || 0.00014);
+                          const elasticPhase = (placedTriangle.elasticPhase || 0) + timeSeconds * 1.5;
+                          const elasticPulse = 1 + Math.sin(elasticPhase + firefly.triangleVertexIndex * 2.094) * (placedTriangle.elasticAmp || 0.07);
+                          const radius = (placedTriangle.baseRadius || placedTriangle.radius || 46) * elasticPulse;
+                          const angle = angleBase + (placedTriangle.spin || 0);
+                          firefly.x = placedTriangle.x + Math.cos(angle) * radius;
+                          firefly.y = placedTriangle.y + Math.sin(angle) * radius;
                       }
                       firefly.vx = 0;
                       firefly.vy = 0;
                       return;
                   }
                   if (firefly.attachedToTail) {
-                      const spacingTargets = [0.28, 0.5, 0.72];
-                      const targetPos = getPathPointAt(bubbleTrailPath, spacingTargets[Math.max(0, Math.min(2, firefly.attachedOrder))] ?? 0.5) || tail;
+                      const targetPos = getPathPointAt(
+                          bubbleTrailPath,
+                          FIREFLY_ATTACHED_SPACING_TARGETS[Math.max(0, Math.min(2, firefly.attachedOrder))] ?? 0.7
+                      ) || tail;
                       const targetX = targetPos.x;
                       const targetY = targetPos.y;
 
-                      const spring = 0.052;
+                      const spring = 0.046;
                       firefly.vx += (targetX - firefly.x) * spring + ship.vx * 0.005;
                       firefly.vy += (targetY - firefly.y) * spring + ship.vy * 0.005;
                       firefly.vx *= 0.9;
