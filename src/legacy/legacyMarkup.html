@@ -48,11 +48,16 @@
 
     <section id="experienceView" class="view hidden-view">
         <div id="ui"></div>
+        <div id="silenceDesYeuxOverlay" aria-live="polite" aria-atomic="true" hidden>
+            <p id="silenceDesYeuxTitle" class="silence-title">Le Silence des Yeux approche…</p>
+            <p id="silenceDesYeuxCountdown" class="silence-countdown">5</p>
+            <p id="silenceDesYeuxPoem" class="silence-poem">Respire… l'océan te regarde en silence.</p>
+        </div>
         <div id="helperTips">Garde le doigt (ou clic) appuyé dans l'océan : le poisson-plume suit ton mouvement.</div>
         <div id="echoRecorderPanel" aria-live="polite">
-            <button id="echoRecordToggleBtn" class="echo-rec-btn" type="button">REC</button>
+            <button id="echoRecordToggleBtn" class="echo-rec-btn" type="button">Silence des Yeux</button>
             <div class="echo-rec-meta">
-                <p id="echoRecordTimer" class="echo-rec-timer">00:00 / 03:00</p>
+                <p id="echoRecordTimer" class="echo-rec-timer">00:00 / 01:00</p>
                 <p id="echoRecordStatus" class="echo-rec-status">Prêt</p>
                 <a id="echoRecordDownloadLink" class="echo-rec-download" href="#" download hidden>Télécharger ma ballade</a>
             </div>
@@ -114,6 +119,15 @@
                 <button class="props-delete-btn" id="propsDeleteBtn" type="button">Supprimer cette bulle</button>
             </div>
         </div>
+        <div id="silenceDesYeuxPrompt" class="silence-prompt" hidden>
+            <div class="silence-prompt-card">
+                <p>Voulez-vous conserver cette traversée du Silence des Yeux dans votre profil&nbsp;?</p>
+                <div class="silence-prompt-actions">
+                    <button id="silenceSaveNoBtn" type="button">Pas maintenant</button>
+                    <button id="silenceSaveYesBtn" type="button">Oui, conserver</button>
+                </div>
+            </div>
+        </div>
     </section>
 
     <section id="profileView" class="view hidden-view">
@@ -145,6 +159,14 @@
                         <li><span>Hier</span><strong>Session immersSoon lancée</strong></li>
                         <li><span>Il y a 3 jours</span><strong>Mise à jour des préférences audio</strong></li>
                     </ul>
+                </article>
+
+                <article class="card profile-card">
+                    <h3>Traversées du Silence des Yeux</h3>
+                    <p class="muted">Synchronisation locale de tes enregistrements audio.</p>
+                    <div id="silenceSessionList" class="silence-session-list">
+                        <p class="collection-empty">Aucune traversée conservée pour le moment.</p>
+                    </div>
                 </article>
             </div>
 
@@ -180,7 +202,7 @@
                 <p id="supabaseProbeStatus"></p>
                 <button id="authSignOutBtn" type="button">signout</button>
                 <div id="storeCatalog"></div>
-                <div id="sessionHistoryList"></div>
+                <div id="sessionHistoryListLegacy"></div>
             </div>
         </div>
     </section>
