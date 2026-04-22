@@ -207,6 +207,11 @@ export function initLegacyApp() {
           let helperTipIndex = 0;
           let sooncutBucketVocals = [];
           let activeArenaAudio = null;
+          let hasPlayedFirstFishMoveMusic = false;
+          let isStartingFirstFishMoveMusic = false;
+          let firstFishMoveMusic = null;
+          let firstFishMoveFadeInterval = null;
+          const FIRST_FISH_MOVE_MUSIC_URL = 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/music/musicsoon.mp3';
           const helperTipsPlaylist = [
               'Garde le doigt (ou clic) appuyé dans l’océan : le poisson-plume suit ton mouvement.',
               'Une nouvelle luciole émerge toutes les 15 secondes dans le courant.',
@@ -2021,6 +2026,7 @@ export function initLegacyApp() {
                   if (isDoubleTap) { openBubblePanel(); return; }
               }
               isTethered = true;
+              triggerFirstFishMoveMusic();
           }
           function onMove(e) {
               if (currentView !== 'experience') return;
@@ -2085,6 +2091,55 @@ export function initLegacyApp() {
               masterGainNode.gain.value = 1;
               masterGainNode.connect(audioCtx.destination);
               return audioCtx;
+          }
+
+          function triggerFirstFishMoveMusic() {
+              if (hasPlayedFirstFishMoveMusic || isStartingFirstFishMoveMusic) return;
+              isStartingFirstFishMoveMusic = true;
+
+              const music = firstFishMoveMusic || new Audio();
+              firstFishMoveMusic = music;
+              music.preload = 'auto';
+              if (music.src !== FIRST_FISH_MOVE_MUSIC_URL) {
+                  music.src = FIRST_FISH_MOVE_MUSIC_URL;
+              }
+              music.currentTime = 0;
+              music.volume = 1;
+
+              if (firstFishMoveFadeInterval) {
+                  clearInterval(firstFishMoveFadeInterval);
+                  firstFishMoveFadeInterval = null;
+              }
+
+              const updateMusicFade = () => {
+                  if (!Number.isFinite(music.duration) || music.duration <= 0) return;
+                  const progress = Math.max(0, Math.min(1, music.currentTime / music.duration));
+                  music.volume = Math.max(0.1, 1 - progress * 0.9);
+              };
+
+              const stopFading = () => {
+                  if (firstFishMoveFadeInterval) {
+                      clearInterval(firstFishMoveFadeInterval);
+                      firstFishMoveFadeInterval = null;
+                  }
+                  music.volume = 0.1;
+              };
+
+              music.onended = stopFading;
+              music.onerror = () => {
+                  stopFading();
+                  isStartingFirstFishMoveMusic = false;
+              };
+
+              music.play().then(() => {
+                  hasPlayedFirstFishMoveMusic = true;
+                  isStartingFirstFishMoveMusic = false;
+                  updateMusicFade();
+                  firstFishMoveFadeInterval = setInterval(updateMusicFade, 120);
+              }).catch(() => {
+                  stopFading();
+                  isStartingFirstFishMoveMusic = false;
+              });
           }
 
           function buildSyntheticBuffer(ctx, seconds = 3.4) {
