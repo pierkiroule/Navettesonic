@@ -95,7 +95,8 @@ export function initLegacyApp() {
           const authSessionInfo = document.getElementById('authSessionInfo');
           const dbConnectionStatus = document.getElementById('dbConnectionStatus');
           const storeCatalog = document.getElementById('storeCatalog');
-          const sessionHistoryList = document.getElementById('sessionHistoryList');
+          const sessionHistoryList = document.getElementById('sessionHistoryListLegacy');
+          const silenceSessionList = document.getElementById('silenceSessionList');
 
           let selectedBubble = null;
           let isDraggingBubble = false;
@@ -302,9 +303,12 @@ export function initLegacyApp() {
           let recordingFileExt = 'webm';
           let recordingDownloadUrl = null;
           let recordingFallbackNotice = '';
+          let latestRecordingBlob = null;
+          let latestRecordingMimeType = '';
           let silenceTransitionInProgress = false;
           let silenceImmersionLevel = 0;
           let silenceSessionSaved = false;
+          const savedSilenceSessions = [];
           const SUPABASE_BUCKET = 'Soonbucket';
           const SUPABASE_LOCAL_KEYS = {
               url: 'soono.supabase.url',
@@ -429,9 +433,22 @@ export function initLegacyApp() {
           });
 
           bindTap(silenceSaveYesBtn, () => {
+              if (latestRecordingBlob) {
+                  const ext = normalizeExtFromMime(latestRecordingMimeType, recordingFileExt);
+                  const filename = buildBalladeFilename(ext);
+                  const url = URL.createObjectURL(latestRecordingBlob);
+                  savedSilenceSessions.unshift({
+                      id: `silence-${Date.now()}`,
+                      label: `Traversée du ${new Date().toLocaleString('fr-FR')}`,
+                      url,
+                      filename,
+                      ext
+                  });
+                  renderSilenceSessions();
+              }
               silenceSessionSaved = true;
               if (silenceDesYeuxPrompt) silenceDesYeuxPrompt.hidden = true;
-              echoRecordStatus.textContent = 'Traversée conservée dans ton profil.';
+              echoRecordStatus.textContent = 'Traversée synchronisée dans le profil.';
           });
 
           function openEchoHypnoseModal() {
@@ -2229,6 +2246,29 @@ export function initLegacyApp() {
               return `soon-ballade-${year}${month}${day}-${hours}${mins}${secs}.${ext}`;
           }
 
+          function normalizeExtFromMime(mimeType, fallbackExt = 'webm') {
+              const mime = (mimeType || '').toLowerCase();
+              if (mime.includes('mpeg') || mime.includes('mp3')) return 'mp3';
+              if (mime.includes('ogg')) return 'ogg';
+              if (mime.includes('wav')) return 'wav';
+              if (mime.includes('webm')) return 'webm';
+              return fallbackExt;
+          }
+
+          function renderSilenceSessions() {
+              if (!silenceSessionList) return;
+              if (!savedSilenceSessions.length) {
+                  silenceSessionList.innerHTML = '<p class="collection-empty">Aucune traversée conservée pour le moment.</p>';
+                  return;
+              }
+              silenceSessionList.innerHTML = savedSilenceSessions.map((session) => `
+                  <div class="silence-session-item">
+                      <p>${session.label}</p>
+                      <a href="${session.url}" download="${session.filename}">Télécharger ${session.ext.toUpperCase()}</a>
+                  </div>
+              `).join('');
+          }
+
           function detectRecorderFormat() {
               const defaultFormat = { mimeType: '', ext: 'webm', fallbackNotice: 'Format conteneur par défaut du navigateur.' };
               if (typeof window.MediaRecorder === 'undefined') return null;
@@ -2420,6 +2460,8 @@ export function initLegacyApp() {
               recordingFileExt = format.ext;
               recordingFallbackNotice = format.fallbackNotice;
               recordingChunks = [];
+              latestRecordingBlob = null;
+              latestRecordingMimeType = '';
               setRecordingDownload(null);
 
               try {
@@ -2446,9 +2488,13 @@ export function initLegacyApp() {
 
               recordingMediaRecorder.onstop = () => {
                   const finalType = recordingMediaRecorder?.mimeType || recordingMimeType || undefined;
+                  const finalExt = normalizeExtFromMime(finalType, recordingFileExt);
                   const blob = recordingChunks.length ? new Blob(recordingChunks, finalType ? { type: finalType } : undefined) : null;
                   recordingMediaRecorder = null;
                   recordingChunks = [];
+                  latestRecordingBlob = blob;
+                  latestRecordingMimeType = finalType || '';
+                  recordingFileExt = finalExt;
                   if (!blob || blob.size === 0) {
                       recordingState = 'idle';
                       setSilenceImmersion(0);
@@ -2487,11 +2533,16 @@ export function initLegacyApp() {
 
           updateEchoRecorderUi();
           refreshRecordingTimer();
+          hideSilenceOverlay();
+          renderSilenceSessions();
 
           window.addEventListener('beforeunload', () => {
               if (recordingDownloadUrl) {
                   URL.revokeObjectURL(recordingDownloadUrl);
               }
+              savedSilenceSessions.forEach((session) => {
+                  if (session?.url) URL.revokeObjectURL(session.url);
+              });
           });
 
           function buildSyntheticBuffer(ctx, seconds = 3.4) {
@@ -3259,6 +3310,7 @@ export function initLegacyApp() {
               if (currentView !== 'experience') return;
               const silenceVisualMode = silenceTransitionInProgress || recordingState === 'recording' || silenceImmersionLevel > 0.02;
               const silenceGlow = silenceVisualMode ? Math.max(0.22, silenceImmersionLevel) : 0;
+              const heavySilenceMode = silenceVisualMode && silenceImmersionLevel >= 0.66;
 
               ctx.save();
               ctx.translate(w / 2 - camera.x, h / 2 - camera.y);
@@ -3343,7 +3395,7 @@ export function initLegacyApp() {
                   ctx.restore();
               };
 
-              if (!silenceVisualMode) {
+              if (!heavySilenceMode) {
                   BUBBLES.filter((b) => b.layer === 'below').forEach(drawBubble);
                   drawBreathWaves();
                   drawDriftMotes();
@@ -3562,11 +3614,11 @@ export function initLegacyApp() {
 
               drawFishTriangleHaloButton();
 
-              if (!silenceVisualMode) {
+              if (!heavySilenceMode) {
                   BUBBLES.filter((b) => b.layer !== 'below').forEach(drawBubble);
               }
               ctx.restore();
-              if (!silenceVisualMode) {
+              if (!heavySilenceMode) {
                   drawWaterSurface();
                   drawArenaResonanceVeil();
               } else {

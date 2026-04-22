@@ -247,6 +247,9 @@
             padding: 24px;
             background: radial-gradient(circle at center, rgba(15, 35, 52, 0.12), rgba(0, 0, 0, 0.72));
         }
+        #silenceDesYeuxOverlay[hidden] {
+            display: none !important;
+        }
         .silence-title {
             margin: 0 0 18px;
             color: rgba(211, 240, 255, 0.95);
@@ -705,12 +708,37 @@
             }
         }
         .collection-empty { font-size: 0.84rem; color: rgba(230,244,255,0.62); }
+        .silence-session-list {
+            margin-top: 12px;
+            display: grid;
+            gap: 8px;
+        }
+        .silence-session-item {
+            border: 1px solid rgba(132, 213, 255, 0.25);
+            border-radius: 12px;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            background: rgba(8, 18, 30, 0.8);
+        }
+        .silence-session-item p {
+            margin: 0;
+            font-size: 0.8rem;
+            color: rgba(214, 239, 255, 0.86);
+        }
+        .silence-session-item a {
+            color: rgba(143, 242, 255, 0.95);
+            font-size: 0.78rem;
+            text-decoration: underline;
+        }
         #canvas { display: block; }
         #experienceView.silence-mode #helperTips,
         #experienceView.silence-mode #arenaTrianglePad,
         #experienceView.silence-mode #arenaTriangleStatus,
         #experienceView.silence-mode #bubblePropsPanel {
-            opacity: 0;
+            opacity: calc(1 - (var(--silence-immersion, 0) * 1.08));
             transition: opacity 700ms ease;
         }
         #experienceView.silence-mode #echoRecorderPanel {
