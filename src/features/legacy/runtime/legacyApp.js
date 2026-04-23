@@ -220,6 +220,8 @@ export function initLegacyApp() {
           let isTraceRailAutopilot = false;
           let traceRailPath = [];
           let traceRailTargetIndex = 0;
+          let traceRailDirection = 1;
+          let traceExitConfirmUntil = 0;
           let isInteractionPaused = false;
           let lastFishTap = { time: 0, x: 0, y: 0 };
           let selectedSampleId = SAMPLE_LIBRARY[0].id;
@@ -364,7 +366,7 @@ export function initLegacyApp() {
               stiffness: 0.0026, damping: 0.93, turnEase: 0.06, maxSpeed: 3.1,
               wakeEmitter: 0, rippleEmitter: 0
           };
-          const camera = { x: 0, y: 0, targetX: 0, targetY: 0, ease: 0.05 };
+          const camera = { x: 0, y: 0, targetX: 0, targetY: 0, ease: 0.05, zoom: 1, targetZoom: 1, zoomEase: 0.08 };
 
           function setActiveNav(target) {
               [navHome, navSoon, navEchoHypnose, navProfile].forEach(btn => btn.classList.remove('active'));
@@ -1456,15 +1458,44 @@ export function initLegacyApp() {
           function getMousePos(e) {
               const sx = e.clientX ?? (e.touches && e.touches[0]?.clientX);
               const sy = e.clientY ?? (e.touches && e.touches[0]?.clientY);
-              return { x: sx - w / 2 + camera.x, y: sy - h / 2 + camera.y };
+              return {
+                  x: (sx - w / 2) / camera.zoom + camera.x,
+                  y: (sy - h / 2) / camera.zoom + camera.y
+              };
+          }
+
+          function buildSmoothedTraceRail(points) {
+              if (!Array.isArray(points) || points.length < 2) return points.slice();
+              const samplesPerSegment = 14;
+              const path = [];
+              const len = points.length;
+              for (let i = 0; i < len - 1; i++) {
+                  const p0 = points[Math.max(0, i - 1)];
+                  const p1 = points[i];
+                  const p2 = points[i + 1];
+                  const p3 = points[Math.min(len - 1, i + 2)];
+                  const c1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 };
+                  const c2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
+                  if (i === 0) path.push({ x: p1.x, y: p1.y });
+                  for (let s = 0; s < samplesPerSegment; s++) {
+                      const t = (s + 1) / samplesPerSegment;
+                      const inv = 1 - t;
+                      const x = inv * inv * inv * p1.x + 3 * inv * inv * t * c1.x + 3 * inv * t * t * c2.x + t * t * t * p2.x;
+                      const y = inv * inv * inv * p1.y + 3 * inv * inv * t * c1.y + 3 * inv * t * t * c2.y + t * t * t * p2.y;
+                      path.push({ x, y });
+                  }
+              }
+              return path;
           }
 
           function isInteractiveTarget(target) {
-              if (!target) return false;
-              return bubblePanel.contains(target) || bubblePropsPanel.contains(target) ||
-                     arenaTrianglePad.contains(target) || bottomNav.contains(target) ||
-                     homeView.contains(target) || profileView.contains(target) ||
-                     echoHypnoseView.contains(target);
+              const element = target instanceof Element ? target : target?.parentElement;
+              if (!element) return false;
+              return Boolean(element.closest(
+                  '#bubblePanel, #bubblePropsPanel, #echoRecorderPanel, #traceListeningBtn, ' +
+                  '#silenceDesYeuxPrompt, #silenceDesYeuxOverlay, #arenaTrianglePad, #bottomNav, ' +
+                  '#homeView, #profileView, #echoHypnoseView'
+              ));
           }
 
           function setArenaTriangleStatus(message, isError = false) {
@@ -2211,12 +2242,28 @@ export function initLegacyApp() {
               mouseWorld = pos;
               ensureAllAudioRunning();
               if (isTraceRailAutopilot) {
-                  isTraceRailAutopilot = false;
-                  traceRailTargetIndex = 0;
+                  const now = performance.now();
+                  if (now <= traceExitConfirmUntil) {
+                      isTraceRailAutopilot = false;
+                      isTraceListeningMode = false;
+                      isDrawingTraceRail = false;
+                      traceRailPath = [];
+                      traceRailTargetIndex = 0;
+                      traceRailDirection = 1;
+                      traceExitConfirmUntil = 0;
+                      ui.textContent = 'Mode normal réactivé.';
+                      rotateHelperTip();
+                  } else {
+                      traceExitConfirmUntil = now + 1400;
+                      ui.textContent = 'Auto-voyage actif. Retape pour quitter "Tracer l’écoute".';
+                      helperTips.textContent = 'Confirmation sortie : touche encore une fois l’océan.';
+                  }
+                  return;
               }
               if (isTraceListeningMode) {
                   isDrawingTraceRail = true;
                   traceRailPath = [pos];
+                  traceExitConfirmUntil = 0;
                   isTethered = false;
                   ui.textContent = 'Trace ton rail sonore… relâche pour lancer le voyage auto';
                   return;
@@ -2285,10 +2332,12 @@ export function initLegacyApp() {
                   isTraceListeningMode = false;
                   traceListeningBtn?.classList.remove('active');
                   if (traceRailPath.length > 1) {
+                      traceRailPath = buildSmoothedTraceRail(traceRailPath);
                       isTraceRailAutopilot = true;
                       traceRailTargetIndex = 0;
-                      ui.textContent = 'Voyage sonore auto lancé… touche l’océan pour reprendre la main.';
-                      helperTips.textContent = 'Mode rail actif : le poisson suit ton tracé. Touche l’océan pour interrompre.';
+                      traceRailDirection = 1;
+                      ui.textContent = 'Voyage sonore auto lancé : aller-retour lissé.';
+                      helperTips.textContent = 'Rail actif : au dernier point, le poisson se retourne et revient.';
                   } else {
                       traceRailPath = [];
                       ui.textContent = '';
@@ -2328,18 +2377,21 @@ export function initLegacyApp() {
           });
           traceListeningBtn?.addEventListener('click', () => {
               isTraceListeningMode = !isTraceListeningMode;
-              traceListeningBtn.classList.toggle('active', isTraceListeningMode);
-              if (isTraceListeningMode) {
-                  isTraceRailAutopilot = false;
-                  traceRailPath = [];
-                  traceRailTargetIndex = 0;
-                  ui.textContent = 'Mode Tracer l’écoute : dessine un rail dans l’océan.';
-                  helperTips.textContent = 'Maintiens puis déplace ton doigt/souris pour tracer le rail sonore.';
-              } else if (!isDrawingTraceRail) {
-                  ui.textContent = '';
-                  rotateHelperTip();
-              }
-          });
+                  traceListeningBtn.classList.toggle('active', isTraceListeningMode);
+                  if (isTraceListeningMode) {
+                      isTraceRailAutopilot = false;
+                      traceRailPath = [];
+                      traceRailTargetIndex = 0;
+                      traceRailDirection = 1;
+                      traceExitConfirmUntil = 0;
+                      ui.textContent = 'Mode Tracer l’écoute : vue d’ensemble + tracé lissé.';
+                      helperTips.textContent = 'Maintiens puis déplace ton doigt/souris pour poser le rail.';
+                  } else if (!isDrawingTraceRail) {
+                      traceExitConfirmUntil = 0;
+                      ui.textContent = '';
+                      rotateHelperTip();
+                  }
+              });
 
           function openBubblePanel() {
               isInteractionPaused = true;
@@ -2983,19 +3035,25 @@ export function initLegacyApp() {
 
           function update() {
               if (currentView !== 'experience') return;
+              if (traceExitConfirmUntil && performance.now() > traceExitConfirmUntil) {
+                  traceExitConfirmUntil = 0;
+                  if (isTraceRailAutopilot) {
+                      ui.textContent = 'Voyage sonore auto lancé : aller-retour lissé.';
+                  }
+              }
               if (isTraceRailAutopilot && traceRailPath.length > 1 && !isInteractionPaused) {
                   const target = traceRailPath[Math.min(traceRailTargetIndex, traceRailPath.length - 1)];
                   const dx = target.x - ship.x;
                   const dy = target.y - ship.y;
                   const dist = Math.hypot(dx, dy);
-                  if (dist < 20 && traceRailTargetIndex < traceRailPath.length - 1) {
-                      traceRailTargetIndex += 1;
-                  } else if (dist < 22 && traceRailTargetIndex >= traceRailPath.length - 1) {
-                      isTraceRailAutopilot = false;
-                      traceRailPath = [];
-                      traceRailTargetIndex = 0;
-                      ui.textContent = '';
-                      rotateHelperTip();
+                  if (dist < 20) {
+                      if (traceRailTargetIndex >= traceRailPath.length - 1) {
+                          traceRailDirection = -1;
+                      } else if (traceRailTargetIndex <= 0) {
+                          traceRailDirection = 1;
+                      }
+                      traceRailTargetIndex += traceRailDirection;
+                      traceRailTargetIndex = Math.max(0, Math.min(traceRailPath.length - 1, traceRailTargetIndex));
                   } else if (dist > 0.001) {
                       ship.vx += (dx / dist) * 0.36;
                       ship.vy += (dy / dist) * 0.36;
@@ -3118,10 +3176,19 @@ export function initLegacyApp() {
                   ship.angle += diff * ship.turnEase;
               }
 
-              camera.targetX = ship.x + ship.vx * 10;
-              camera.targetY = ship.y + ship.vy * 10;
+              const shouldShowArenaOverview = isTraceListeningMode || isDrawingTraceRail;
+              if (shouldShowArenaOverview) {
+                  camera.targetX = 0;
+                  camera.targetY = 0;
+                  camera.targetZoom = Math.max(0.12, Math.min(0.4, Math.min(w, h) / (ARENA_RADIUS * 2.2)));
+              } else {
+                  camera.targetX = ship.x + ship.vx * 10;
+                  camera.targetY = ship.y + ship.vy * 10;
+                  camera.targetZoom = 1;
+              }
               camera.x += (camera.targetX - camera.x) * camera.ease;
               camera.y += (camera.targetY - camera.y) * camera.ease;
+              camera.zoom += (camera.targetZoom - camera.zoom) * camera.zoomEase;
 
               updateAudioListener();
               updateWakeParticles(speed);
@@ -3744,7 +3811,9 @@ export function initLegacyApp() {
               const heavySilenceMode = silenceVisualMode && silenceImmersionLevel >= 0.66;
 
               ctx.save();
-              ctx.translate(w / 2 - camera.x, h / 2 - camera.y);
+              ctx.translate(w / 2, h / 2);
+              ctx.scale(camera.zoom, camera.zoom);
+              ctx.translate(-camera.x, -camera.y);
 
               ctx.beginPath();
               ctx.arc(0, 0, ARENA_RADIUS, 0, Math.PI * 2);
