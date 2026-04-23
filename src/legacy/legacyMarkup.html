@@ -144,16 +144,18 @@
                     <h1>Ta bulle Soon•°</h1>
                     <p class="profile-sub">Ici, ta présence, tes traversées et tes clés d'accès.</p>
                 </div>
+                <button id="profileEditBtn" class="profile-edit-btn" type="button">Éditer mon profil</button>
             </header>
 
             <div class="profile-grid profile-grid--pro">
                 <article class="card profile-card">
                     <h3>Présence</h3>
                     <div class="profile-meta-list">
-                        <p><span>Nom dans l'eau calme</span><strong>Poisson-Plume</strong></p>
+                        <p><span>Nom dans l'eau calme</span><strong id="profileDisplayName">Poisson-Plume</strong></p>
                         <p><span>Souffle du compte</span><strong class="pill">Actif</strong></p>
                         <p><span>Rythme</span><strong>Standard</strong></p>
                     </div>
+                    <p class="profile-bio" id="profileBioText">Aucune présentation pour le moment.</p>
                 </article>
 
                 <article class="card profile-card">
@@ -191,6 +193,20 @@
                     <p id="authStatus" class="status"></p>
                     <p id="authSessionInfo" class="muted"></p>
                     <button id="authSignOutBtn" type="button" class="auth-signout-btn" hidden>Se déconnecter</button>
+                </div>
+            </article>
+
+            <article id="profileEditPanel" class="card profile-edit-panel" hidden>
+                <h3>Éditer ton profil</h3>
+                <div class="stack">
+                    <label class="field-label" for="profileNameInput">Pseudo</label>
+                    <input id="profileNameInput" type="text" maxlength="48" placeholder="Poisson-Plume">
+                    <label class="field-label" for="profileBioInput">Présentation</label>
+                    <textarea id="profileBioInput" maxlength="220" rows="4" placeholder="Écris quelques lignes sur ton univers…"></textarea>
+                    <div class="auth-row">
+                        <button id="profileSaveBtn" type="button">Enregistrer</button>
+                        <button id="profileCancelBtn" type="button">Annuler</button>
+                    </div>
                 </div>
             </article>
 

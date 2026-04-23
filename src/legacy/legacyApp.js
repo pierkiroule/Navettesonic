@@ -93,6 +93,14 @@ export function initLegacyApp() {
           const authSignOutBtn = document.getElementById('authSignOutBtn');
           const authStatus = document.getElementById('authStatus');
           const authSessionInfo = document.getElementById('authSessionInfo');
+          const profileDisplayName = document.getElementById('profileDisplayName');
+          const profileBioText = document.getElementById('profileBioText');
+          const profileEditBtn = document.getElementById('profileEditBtn');
+          const profileEditPanel = document.getElementById('profileEditPanel');
+          const profileNameInput = document.getElementById('profileNameInput');
+          const profileBioInput = document.getElementById('profileBioInput');
+          const profileSaveBtn = document.getElementById('profileSaveBtn');
+          const profileCancelBtn = document.getElementById('profileCancelBtn');
           const dbConnectionStatus = document.getElementById('dbConnectionStatus');
           const storeCatalog = document.getElementById('storeCatalog');
           const sessionHistoryList = document.getElementById('sessionHistoryListLegacy');
@@ -317,6 +325,7 @@ export function initLegacyApp() {
               url: 'soono.supabase.url',
               key: 'soono.supabase.key',
           };
+          const PROFILE_LOCAL_KEY = 'soono.profile.identity';
           const ECHO_EXPERIENCES = [
               { id: 'echo-nuit-calmante', title: 'Écho Nuit Calmante', description: 'Session douce pour ralentir le mental.', priceLabel: '12,00 €', durationLabel: '25 min' },
               { id: 'echo-focus-profond', title: 'Écho Focus Profond', description: 'Immersion sonore pour concentration profonde.', priceLabel: '16,00 €', durationLabel: '35 min' },
@@ -1166,6 +1175,57 @@ export function initLegacyApp() {
               updateExperienceAccessUi();
           }
 
+          function getSavedProfileIdentity() {
+              const fallback = {
+                  displayName: 'Poisson-Plume',
+                  bio: '',
+              };
+              try {
+                  const raw = localStorage.getItem(PROFILE_LOCAL_KEY);
+                  if (!raw) return fallback;
+                  const parsed = JSON.parse(raw);
+                  return {
+                      displayName: (parsed?.displayName || fallback.displayName).toString().trim() || fallback.displayName,
+                      bio: (parsed?.bio || '').toString().trim(),
+                  };
+              } catch (_) {
+                  return fallback;
+              }
+          }
+
+          function renderProfileIdentity() {
+              const profile = getSavedProfileIdentity();
+              if (profileDisplayName) profileDisplayName.textContent = profile.displayName;
+              if (profileBioText) {
+                  profileBioText.textContent = profile.bio || 'Aucune présentation pour le moment.';
+              }
+              if (profileNameInput) profileNameInput.value = profile.displayName;
+              if (profileBioInput) profileBioInput.value = profile.bio;
+          }
+
+          function openProfileEditPanel() {
+              if (profileEditPanel) profileEditPanel.hidden = false;
+              renderProfileIdentity();
+              profileNameInput?.focus();
+          }
+
+          function closeProfileEditPanel() {
+              if (profileEditPanel) profileEditPanel.hidden = true;
+          }
+
+          function saveProfileIdentity() {
+              const displayName = (profileNameInput?.value || '').trim();
+              const bio = (profileBioInput?.value || '').trim();
+              const payload = {
+                  displayName: displayName || 'Poisson-Plume',
+                  bio,
+              };
+              localStorage.setItem(PROFILE_LOCAL_KEY, JSON.stringify(payload));
+              renderProfileIdentity();
+              closeProfileEditPanel();
+              setAuthStatus('Profil mis à jour ✅');
+          }
+
           function renderStoreCatalog() {
               if (!storeCatalog) return;
               const owned = new Set(getOwnedItems());
@@ -1329,9 +1389,13 @@ export function initLegacyApp() {
               });
           }
           initSupabaseProfileCard();
+          renderProfileIdentity();
           bindPress(authSignInBtn, signInWithEmail);
           bindPress(authSignUpBtn, signUpWithEmail);
           bindPress(authSignOutBtn, signOutSession);
+          bindTap(profileEditBtn, openProfileEditPanel);
+          bindTap(profileCancelBtn, closeProfileEditPanel);
+          bindTap(profileSaveBtn, saveProfileIdentity);
           renderStoreCatalog();
           renderSessionHistory();
           restoreSession();
