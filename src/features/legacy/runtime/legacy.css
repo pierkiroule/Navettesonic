@@ -350,6 +350,39 @@
                 min-width: 54px;
             }
         }
+        .trace-listening-btn {
+            position: absolute;
+            top: calc(12px + env(safe-area-inset-top));
+            right: clamp(10px, 2vw, 18px);
+            z-index: 166;
+            border: 1px solid rgba(146, 224, 255, 0.72);
+            border-radius: 999px;
+            padding: 9px 14px;
+            color: rgba(232, 248, 255, 0.98);
+            background: linear-gradient(180deg, rgba(45, 128, 255, 0.95), rgba(25, 85, 230, 0.95));
+            box-shadow: 0 8px 20px rgba(15, 68, 200, 0.35);
+            font-size: 0.76rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            cursor: pointer;
+            transition: transform 100ms ease, filter 120ms ease, opacity 120ms ease;
+        }
+        .trace-listening-btn:active {
+            transform: scale(0.98);
+        }
+        .trace-listening-btn.active {
+            border-color: rgba(182, 236, 255, 0.95);
+            background: linear-gradient(180deg, rgba(70, 159, 255, 0.98), rgba(42, 110, 247, 0.98));
+            box-shadow: 0 0 0 2px rgba(146, 218, 255, 0.32), 0 10px 26px rgba(28, 99, 233, 0.45);
+        }
+        @media (max-width: 860px) {
+            .trace-listening-btn {
+                top: calc(10px + env(safe-area-inset-top));
+                right: 10px;
+                padding: 8px 12px;
+                font-size: 0.72rem;
+            }
+        }
 
         #arenaTrianglePad {
             position: absolute;
