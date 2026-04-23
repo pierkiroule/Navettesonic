@@ -1489,6 +1489,8 @@ export function initLegacyApp() {
           function isInteractiveTarget(target) {
               if (!target) return false;
               return bubblePanel.contains(target) || bubblePropsPanel.contains(target) ||
+                     echoRecorderPanel.contains(target) || traceListeningBtn?.contains(target) ||
+                     silenceDesYeuxPrompt?.contains(target) ||
                      arenaTrianglePad.contains(target) || bottomNav.contains(target) ||
                      homeView.contains(target) || profileView.contains(target) ||
                      echoHypnoseView.contains(target);
