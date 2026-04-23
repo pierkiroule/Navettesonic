@@ -519,11 +519,43 @@
         }
 
         #profileView {
+            position: relative;
             color: #e6f4ff;
             padding: 26px 18px 120px;
             overflow: auto;
+            background:
+                radial-gradient(circle at 18% 16%, rgba(93, 182, 255, 0.16), transparent 43%),
+                radial-gradient(circle at 82% 82%, rgba(112, 238, 255, 0.12), transparent 48%),
+                #030308;
         }
-        .profile-wrap { width: min(980px, 100%); margin: 0 auto; }
+        .profile-bubbles {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+        .profile-bubble {
+            position: absolute;
+            bottom: -12%;
+            border-radius: 50%;
+            border: 1px solid rgba(175, 232, 255, 0.24);
+            background: radial-gradient(circle at 30% 28%, rgba(194, 245, 255, 0.34), rgba(130, 203, 255, 0.06) 62%, rgba(0, 0, 0, 0));
+            box-shadow: inset 0 0 18px rgba(122, 211, 255, 0.12), 0 0 18px rgba(92, 194, 255, 0.08);
+            opacity: 0;
+            animation: profileBubbleRise linear infinite;
+        }
+        .profile-bubble--1 { left: 8%; width: 34px; height: 34px; animation-duration: 15s; animation-delay: -2s; }
+        .profile-bubble--2 { left: 24%; width: 52px; height: 52px; animation-duration: 21s; animation-delay: -9s; }
+        .profile-bubble--3 { left: 49%; width: 28px; height: 28px; animation-duration: 13s; animation-delay: -4s; }
+        .profile-bubble--4 { left: 73%; width: 46px; height: 46px; animation-duration: 19s; animation-delay: -13s; }
+        .profile-bubble--5 { left: 89%; width: 30px; height: 30px; animation-duration: 16s; animation-delay: -6s; }
+        .profile-wrap {
+            position: relative;
+            z-index: 1;
+            width: min(980px, 100%);
+            margin: 0 auto;
+        }
         .profile-wrap h1 { margin-top: 6px; margin-bottom: 8px; font-size: clamp(1.5rem, 3vw, 2.2rem); }
         .profile-wrap--pro { display: grid; gap: 14px; }
         .profile-hero {
@@ -702,6 +734,22 @@
             color: rgba(143, 242, 255, 0.95);
             font-size: 0.78rem;
             text-decoration: underline;
+        }
+        @keyframes profileBubbleRise {
+            0% {
+                transform: translate3d(0, 0, 0) scale(0.88);
+                opacity: 0;
+            }
+            16% {
+                opacity: 0.34;
+            }
+            76% {
+                opacity: 0.24;
+            }
+            100% {
+                transform: translate3d(0, -122vh, 0) scale(1.06);
+                opacity: 0;
+            }
         }
         #canvas { display: block; }
         #experienceView.silence-mode #helperTips,

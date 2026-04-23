@@ -607,6 +607,11 @@ export function initLegacyApp() {
               return false;
           }
 
+          function redirectToSoonExperienceAfterAuth() {
+              showView('experience');
+              ensureAllAudioRunning();
+          }
+
           function getSupabaseConfig() {
               const bootConfig = window.__SOONO_CONFIG__ || {};
               const urlFromStorage = localStorage.getItem(SUPABASE_LOCAL_KEYS.url);
@@ -1218,6 +1223,7 @@ export function initLegacyApp() {
                   currentSession = data.session;
                   refreshAuthUi('Connexion réussie ✅');
                   await syncSessionAndProfile({ silent: true });
+                  redirectToSoonExperienceAfterAuth();
               } finally {
                   setAuthButtonsPending(false);
               }
@@ -1244,6 +1250,7 @@ export function initLegacyApp() {
                       currentSession = data.session;
                       refreshAuthUi('Compte créé + connecté ✅');
                       await syncSessionAndProfile({ silent: true });
+                      redirectToSoonExperienceAfterAuth();
                       return;
                   }
                   setAuthStatus('Compte créé. Vérifie ton email puis connecte-toi.');
