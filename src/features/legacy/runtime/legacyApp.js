@@ -221,6 +221,7 @@ export function initLegacyApp() {
           let traceRailPath = [];
           let traceRailTargetIndex = 0;
           let traceRailDirection = 1;
+          let traceExitConfirmUntil = 0;
           let isInteractionPaused = false;
           let lastFishTap = { time: 0, x: 0, y: 0 };
           let selectedSampleId = SAMPLE_LIBRARY[0].id;
@@ -2241,13 +2242,28 @@ export function initLegacyApp() {
               mouseWorld = pos;
               ensureAllAudioRunning();
               if (isTraceRailAutopilot) {
-                  isTraceRailAutopilot = false;
-                  traceRailTargetIndex = 0;
-                  traceRailDirection = 1;
+                  const now = performance.now();
+                  if (now <= traceExitConfirmUntil) {
+                      isTraceRailAutopilot = false;
+                      isTraceListeningMode = false;
+                      isDrawingTraceRail = false;
+                      traceRailPath = [];
+                      traceRailTargetIndex = 0;
+                      traceRailDirection = 1;
+                      traceExitConfirmUntil = 0;
+                      ui.textContent = 'Mode normal réactivé.';
+                      rotateHelperTip();
+                  } else {
+                      traceExitConfirmUntil = now + 1400;
+                      ui.textContent = 'Auto-voyage actif. Retape pour quitter "Tracer l’écoute".';
+                      helperTips.textContent = 'Confirmation sortie : touche encore une fois l’océan.';
+                  }
+                  return;
               }
               if (isTraceListeningMode) {
                   isDrawingTraceRail = true;
                   traceRailPath = [pos];
+                  traceExitConfirmUntil = 0;
                   isTethered = false;
                   ui.textContent = 'Trace ton rail sonore… relâche pour lancer le voyage auto';
                   return;
@@ -2361,19 +2377,21 @@ export function initLegacyApp() {
           });
           traceListeningBtn?.addEventListener('click', () => {
               isTraceListeningMode = !isTraceListeningMode;
-              traceListeningBtn.classList.toggle('active', isTraceListeningMode);
-              if (isTraceListeningMode) {
-                  isTraceRailAutopilot = false;
-                  traceRailPath = [];
-                  traceRailTargetIndex = 0;
-                  traceRailDirection = 1;
-                  ui.textContent = 'Mode Tracer l’écoute : vue d’ensemble + tracé lissé.';
-                  helperTips.textContent = 'Maintiens puis déplace ton doigt/souris pour poser le rail.';
-              } else if (!isDrawingTraceRail) {
-                  ui.textContent = '';
-                  rotateHelperTip();
-              }
-          });
+                  traceListeningBtn.classList.toggle('active', isTraceListeningMode);
+                  if (isTraceListeningMode) {
+                      isTraceRailAutopilot = false;
+                      traceRailPath = [];
+                      traceRailTargetIndex = 0;
+                      traceRailDirection = 1;
+                      traceExitConfirmUntil = 0;
+                      ui.textContent = 'Mode Tracer l’écoute : vue d’ensemble + tracé lissé.';
+                      helperTips.textContent = 'Maintiens puis déplace ton doigt/souris pour poser le rail.';
+                  } else if (!isDrawingTraceRail) {
+                      traceExitConfirmUntil = 0;
+                      ui.textContent = '';
+                      rotateHelperTip();
+                  }
+              });
 
           function openBubblePanel() {
               isInteractionPaused = true;
@@ -3017,6 +3035,12 @@ export function initLegacyApp() {
 
           function update() {
               if (currentView !== 'experience') return;
+              if (traceExitConfirmUntil && performance.now() > traceExitConfirmUntil) {
+                  traceExitConfirmUntil = 0;
+                  if (isTraceRailAutopilot) {
+                      ui.textContent = 'Voyage sonore auto lancé : aller-retour lissé.';
+                  }
+              }
               if (isTraceRailAutopilot && traceRailPath.length > 1 && !isInteractionPaused) {
                   const target = traceRailPath[Math.min(traceRailTargetIndex, traceRailPath.length - 1)];
                   const dx = target.x - ship.x;
