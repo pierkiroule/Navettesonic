@@ -3682,49 +3682,21 @@ export function initLegacyApp() {
           function drawTraceRailPath() {
               if (!traceRailPath.length) return;
               ctx.save();
-              ctx.strokeStyle = isTraceRailAutopilot ? 'rgba(136, 214, 255, 0.2)' : 'rgba(146, 224, 255, 0.14)';
-              ctx.lineWidth = isTraceRailAutopilot ? 1.8 : 1.2;
+              const isRailBeingDrawn = isDrawingTraceRail && !isTraceRailAutopilot;
+              ctx.strokeStyle = isRailBeingDrawn
+                  ? 'rgba(160, 230, 255, 0.72)'
+                  : (isTraceRailAutopilot ? 'rgba(146, 224, 255, 0.2)' : 'rgba(146, 224, 255, 0.16)');
+              ctx.lineWidth = isRailBeingDrawn ? 4.8 : (isTraceRailAutopilot ? 2 : 1.5);
               ctx.lineCap = 'round';
               ctx.lineJoin = 'round';
+              ctx.setLineDash(isRailBeingDrawn ? [] : [6, 10]);
               ctx.beginPath();
               ctx.moveTo(traceRailPath[0].x, traceRailPath[0].y);
               for (let i = 1; i < traceRailPath.length; i++) {
                   ctx.lineTo(traceRailPath[i].x, traceRailPath[i].y);
               }
               ctx.stroke();
-
-              for (let i = 1; i < traceRailPath.length; i++) {
-                  const prev = traceRailPath[i - 1];
-                  const curr = traceRailPath[i];
-                  const segDx = curr.x - prev.x;
-                  const segDy = curr.y - prev.y;
-                  const segLen = Math.hypot(segDx, segDy);
-                  if (segLen < 10) continue;
-
-                  const nx = -segDy / segLen;
-                  const ny = segDx / segLen;
-                  const featherCount = Math.max(1, Math.floor(segLen / 22));
-                  for (let j = 0; j < featherCount; j++) {
-                      const ratio = (j + 0.5) / featherCount;
-                      const px = prev.x + segDx * ratio;
-                      const py = prev.y + segDy * ratio;
-                      const flip = ((i + j) % 2 === 0) ? 1 : -1;
-                      const stem = (isTraceRailAutopilot ? 7.2 : 6) * (0.85 + Math.sin((i + j) * 1.7) * 0.12);
-                      const curl = stem * 0.58;
-
-                      ctx.strokeStyle = isTraceRailAutopilot ? 'rgba(188, 236, 255, 0.3)' : 'rgba(194, 238, 255, 0.22)';
-                      ctx.lineWidth = isTraceRailAutopilot ? 1.05 : 0.86;
-                      ctx.beginPath();
-                      ctx.moveTo(px - segDx / segLen * 1.2, py - segDy / segLen * 1.2);
-                      ctx.quadraticCurveTo(
-                          px + nx * stem * flip,
-                          py + ny * stem * flip,
-                          px + nx * curl * flip - segDx / segLen * 2,
-                          py + ny * curl * flip - segDy / segLen * 2
-                      );
-                      ctx.stroke();
-                  }
-              }
+              ctx.setLineDash([]);
 
               if (isTraceRailAutopilot) {
                   const marker = traceRailPath[Math.min(traceRailTargetIndex, traceRailPath.length - 1)];
