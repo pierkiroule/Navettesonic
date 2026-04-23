@@ -563,7 +563,7 @@
         .profile-wrap--pro { display: grid; gap: 14px; }
         .profile-hero {
             display: grid;
-            grid-template-columns: auto 1fr auto;
+            grid-template-columns: auto 1fr;
             gap: 14px;
             align-items: center;
             background: linear-gradient(140deg, rgba(19, 34, 56, 0.94), rgba(6, 18, 37, 0.95));
@@ -590,15 +590,6 @@
             color: rgba(212, 234, 255, 0.68);
         }
         .profile-hero-copy h1 { margin: 0 0 4px; }
-        .profile-ghost-btn {
-            border-radius: 10px;
-            border: 1px solid rgba(148, 214, 255, 0.35);
-            background: rgba(69, 142, 197, 0.12);
-            color: #cde9ff;
-            font-weight: 600;
-            padding: 10px 12px;
-            cursor: pointer;
-        }
         .profile-sub { margin-top: 0; color: rgba(230,244,255,0.75); }
         .profile-grid {
             display: grid;
@@ -709,10 +700,6 @@
         @media (max-width: 760px) {
             .profile-hero {
                 grid-template-columns: auto 1fr;
-            }
-            .profile-ghost-btn {
-                grid-column: 1 / -1;
-                width: 100%;
             }
         }
         .collection-empty { font-size: 0.84rem; color: rgba(230,244,255,0.62); }
