@@ -54,6 +54,7 @@ export function initLegacyApp() {
           const echoRecordTimer = document.getElementById('echoRecordTimer');
           const echoRecordStatus = document.getElementById('echoRecordStatus');
           const echoRecordDownloadLink = document.getElementById('echoRecordDownloadLink');
+          const traceListeningBtn = document.getElementById('traceListeningBtn');
           const silenceDesYeuxPrompt = document.getElementById('silenceDesYeuxPrompt');
           const silenceSaveNoBtn = document.getElementById('silenceSaveNoBtn');
           const silenceSaveYesBtn = document.getElementById('silenceSaveYesBtn');
@@ -214,6 +215,11 @@ export function initLegacyApp() {
           let w, h;
           let isTethered = false;
           let mouseWorld = { x: 0, y: 0 };
+          let isTraceListeningMode = false;
+          let isDrawingTraceRail = false;
+          let isTraceRailAutopilot = false;
+          let traceRailPath = [];
+          let traceRailTargetIndex = 0;
           let isInteractionPaused = false;
           let lastFishTap = { time: 0, x: 0, y: 0 };
           let selectedSampleId = SAMPLE_LIBRARY[0].id;
@@ -2204,6 +2210,17 @@ export function initLegacyApp() {
               const pos = getMousePos(e);
               mouseWorld = pos;
               ensureAllAudioRunning();
+              if (isTraceRailAutopilot) {
+                  isTraceRailAutopilot = false;
+                  traceRailTargetIndex = 0;
+              }
+              if (isTraceListeningMode) {
+                  isDrawingTraceRail = true;
+                  traceRailPath = [pos];
+                  isTethered = false;
+                  ui.textContent = 'Trace ton rail sonore… relâche pour lancer le voyage auto';
+                  return;
+              }
               const now = performance.now();
               const attachedNow = getAttachedFirefliesSorted();
 
@@ -2251,12 +2268,36 @@ export function initLegacyApp() {
               if (currentView !== 'experience') return;
               const pos = getMousePos(e);
               mouseWorld = pos;
+              if (isDrawingTraceRail) {
+                  const lastPoint = traceRailPath[traceRailPath.length - 1];
+                  if (!lastPoint || Math.hypot(pos.x - lastPoint.x, pos.y - lastPoint.y) > 8) {
+                      traceRailPath.push(pos);
+                  }
+              }
               if (isDraggingBubble && selectedBubble) {
                   selectedBubble.x = pos.x;
                   selectedBubble.y = pos.y;
               }
           }
-          function onEnd() { isTethered = false; isDraggingBubble = false; }
+          function onEnd() {
+              if (isDrawingTraceRail) {
+                  isDrawingTraceRail = false;
+                  isTraceListeningMode = false;
+                  traceListeningBtn?.classList.remove('active');
+                  if (traceRailPath.length > 1) {
+                      isTraceRailAutopilot = true;
+                      traceRailTargetIndex = 0;
+                      ui.textContent = 'Voyage sonore auto lancé… touche l’océan pour reprendre la main.';
+                      helperTips.textContent = 'Mode rail actif : le poisson suit ton tracé. Touche l’océan pour interrompre.';
+                  } else {
+                      traceRailPath = [];
+                      ui.textContent = '';
+                      rotateHelperTip();
+                  }
+              }
+              isTethered = false;
+              isDraggingBubble = false;
+          }
 
           window.addEventListener('mousedown', onStart);
           window.addEventListener('mousemove', onMove);
@@ -2284,6 +2325,20 @@ export function initLegacyApp() {
               const bubble = buildSoundBubble(sample, bubbleLayer.value);
               BUBBLES.push(bubble);
               closeBubblePanel();
+          });
+          traceListeningBtn?.addEventListener('click', () => {
+              isTraceListeningMode = !isTraceListeningMode;
+              traceListeningBtn.classList.toggle('active', isTraceListeningMode);
+              if (isTraceListeningMode) {
+                  isTraceRailAutopilot = false;
+                  traceRailPath = [];
+                  traceRailTargetIndex = 0;
+                  ui.textContent = 'Mode Tracer l’écoute : dessine un rail dans l’océan.';
+                  helperTips.textContent = 'Maintiens puis déplace ton doigt/souris pour tracer le rail sonore.';
+              } else if (!isDrawingTraceRail) {
+                  ui.textContent = '';
+                  rotateHelperTip();
+              }
           });
 
           function openBubblePanel() {
@@ -2928,6 +2983,24 @@ export function initLegacyApp() {
 
           function update() {
               if (currentView !== 'experience') return;
+              if (isTraceRailAutopilot && traceRailPath.length > 1 && !isInteractionPaused) {
+                  const target = traceRailPath[Math.min(traceRailTargetIndex, traceRailPath.length - 1)];
+                  const dx = target.x - ship.x;
+                  const dy = target.y - ship.y;
+                  const dist = Math.hypot(dx, dy);
+                  if (dist < 20 && traceRailTargetIndex < traceRailPath.length - 1) {
+                      traceRailTargetIndex += 1;
+                  } else if (dist < 22 && traceRailTargetIndex >= traceRailPath.length - 1) {
+                      isTraceRailAutopilot = false;
+                      traceRailPath = [];
+                      traceRailTargetIndex = 0;
+                      ui.textContent = '';
+                      rotateHelperTip();
+                  } else if (dist > 0.001) {
+                      ship.vx += (dx / dist) * 0.36;
+                      ship.vy += (dy / dist) * 0.36;
+                  }
+              }
               if (isTethered && !isInteractionPaused) {
                   const dx = mouseWorld.x - ship.x;
                   const dy = mouseWorld.y - ship.y;
@@ -3539,6 +3612,31 @@ export function initLegacyApp() {
               ctx.stroke();
           }
 
+          function drawTraceRailPath() {
+              if (!traceRailPath.length) return;
+              ctx.save();
+              ctx.strokeStyle = isTraceRailAutopilot ? 'rgba(108, 205, 255, 0.72)' : 'rgba(128, 218, 255, 0.52)';
+              ctx.lineWidth = isTraceRailAutopilot ? 3 : 2;
+              ctx.lineCap = 'round';
+              ctx.lineJoin = 'round';
+              ctx.setLineDash(isTraceRailAutopilot ? [] : [8, 7]);
+              ctx.beginPath();
+              ctx.moveTo(traceRailPath[0].x, traceRailPath[0].y);
+              for (let i = 1; i < traceRailPath.length; i++) {
+                  ctx.lineTo(traceRailPath[i].x, traceRailPath[i].y);
+              }
+              ctx.stroke();
+              ctx.setLineDash([]);
+              if (isTraceRailAutopilot) {
+                  const marker = traceRailPath[Math.min(traceRailTargetIndex, traceRailPath.length - 1)];
+                  ctx.fillStyle = 'rgba(170, 238, 255, 0.9)';
+                  ctx.beginPath();
+                  ctx.arc(marker.x, marker.y, 4.2, 0, Math.PI * 2);
+                  ctx.fill();
+              }
+              ctx.restore();
+          }
+
           function drawFishTriangleHaloButton() {
               const attached = getAttachedFirefliesSorted();
               if (attached.length < 3) return;
@@ -3738,6 +3836,7 @@ export function initLegacyApp() {
                   drawResonanceWaves();
                   drawWakeParticles();
                   drawRipples();
+                  drawTraceRailPath();
                   drawLuminousTrail();
               }
 
