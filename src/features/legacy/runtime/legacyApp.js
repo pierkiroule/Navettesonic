@@ -3682,11 +3682,14 @@ export function initLegacyApp() {
           function drawTraceRailPath() {
               if (!traceRailPath.length) return;
               ctx.save();
-              ctx.strokeStyle = isTraceRailAutopilot ? 'rgba(108, 205, 255, 0.72)' : 'rgba(128, 218, 255, 0.52)';
-              ctx.lineWidth = isTraceRailAutopilot ? 3 : 2;
+              const isRailBeingDrawn = isDrawingTraceRail && !isTraceRailAutopilot;
+              ctx.strokeStyle = isRailBeingDrawn
+                  ? 'rgba(160, 230, 255, 0.72)'
+                  : (isTraceRailAutopilot ? 'rgba(146, 224, 255, 0.2)' : 'rgba(146, 224, 255, 0.16)');
+              ctx.lineWidth = isRailBeingDrawn ? 4.8 : (isTraceRailAutopilot ? 2 : 1.5);
               ctx.lineCap = 'round';
               ctx.lineJoin = 'round';
-              ctx.setLineDash(isTraceRailAutopilot ? [] : [8, 7]);
+              ctx.setLineDash(isRailBeingDrawn ? [] : [6, 10]);
               ctx.beginPath();
               ctx.moveTo(traceRailPath[0].x, traceRailPath[0].y);
               for (let i = 1; i < traceRailPath.length; i++) {
@@ -3694,11 +3697,19 @@ export function initLegacyApp() {
               }
               ctx.stroke();
               ctx.setLineDash([]);
+
               if (isTraceRailAutopilot) {
                   const marker = traceRailPath[Math.min(traceRailTargetIndex, traceRailPath.length - 1)];
-                  ctx.fillStyle = 'rgba(170, 238, 255, 0.9)';
+                  const halo = ctx.createRadialGradient(marker.x, marker.y, 0, marker.x, marker.y, 8);
+                  halo.addColorStop(0, 'rgba(210, 246, 255, 0.75)');
+                  halo.addColorStop(1, 'rgba(176, 232, 255, 0)');
+                  ctx.fillStyle = halo;
                   ctx.beginPath();
-                  ctx.arc(marker.x, marker.y, 4.2, 0, Math.PI * 2);
+                  ctx.arc(marker.x, marker.y, 8, 0, Math.PI * 2);
+                  ctx.fill();
+                  ctx.fillStyle = 'rgba(222, 248, 255, 0.88)';
+                  ctx.beginPath();
+                  ctx.arc(marker.x, marker.y, 2.8, 0, Math.PI * 2);
                   ctx.fill();
               }
               ctx.restore();
