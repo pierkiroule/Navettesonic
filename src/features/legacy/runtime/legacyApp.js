@@ -220,6 +220,7 @@ export function initLegacyApp() {
           let isTraceRailAutopilot = false;
           let traceRailPath = [];
           let traceRailTargetIndex = 0;
+          let traceRailDirection = 1;
           let isInteractionPaused = false;
           let lastFishTap = { time: 0, x: 0, y: 0 };
           let selectedSampleId = SAMPLE_LIBRARY[0].id;
@@ -1462,27 +1463,27 @@ export function initLegacyApp() {
               };
           }
 
-          function buildClosedBezierRail(points) {
-              if (!Array.isArray(points) || points.length < 3) return points.slice();
+          function buildSmoothedTraceRail(points) {
+              if (!Array.isArray(points) || points.length < 2) return points.slice();
               const samplesPerSegment = 14;
               const path = [];
               const len = points.length;
-              for (let i = 0; i < len; i++) {
-                  const p0 = points[(i - 1 + len) % len];
+              for (let i = 0; i < len - 1; i++) {
+                  const p0 = points[Math.max(0, i - 1)];
                   const p1 = points[i];
-                  const p2 = points[(i + 1) % len];
-                  const p3 = points[(i + 2) % len];
+                  const p2 = points[i + 1];
+                  const p3 = points[Math.min(len - 1, i + 2)];
                   const c1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 };
                   const c2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
+                  if (i === 0) path.push({ x: p1.x, y: p1.y });
                   for (let s = 0; s < samplesPerSegment; s++) {
-                      const t = s / samplesPerSegment;
+                      const t = (s + 1) / samplesPerSegment;
                       const inv = 1 - t;
                       const x = inv * inv * inv * p1.x + 3 * inv * inv * t * c1.x + 3 * inv * t * t * c2.x + t * t * t * p2.x;
                       const y = inv * inv * inv * p1.y + 3 * inv * inv * t * c1.y + 3 * inv * t * t * c2.y + t * t * t * p2.y;
                       path.push({ x, y });
                   }
               }
-              if (path.length) path.push({ ...path[0] });
               return path;
           }
 
@@ -2242,6 +2243,7 @@ export function initLegacyApp() {
               if (isTraceRailAutopilot) {
                   isTraceRailAutopilot = false;
                   traceRailTargetIndex = 0;
+                  traceRailDirection = 1;
               }
               if (isTraceListeningMode) {
                   isDrawingTraceRail = true;
@@ -2313,12 +2315,13 @@ export function initLegacyApp() {
                   isDrawingTraceRail = false;
                   isTraceListeningMode = false;
                   traceListeningBtn?.classList.remove('active');
-                  if (traceRailPath.length > 2) {
-                      traceRailPath = buildClosedBezierRail(traceRailPath);
+                  if (traceRailPath.length > 1) {
+                      traceRailPath = buildSmoothedTraceRail(traceRailPath);
                       isTraceRailAutopilot = true;
                       traceRailTargetIndex = 0;
-                      ui.textContent = 'Voyage sonore auto lancé sur rail fermé (boucle continue).';
-                      helperTips.textContent = 'Rail actif : parcours en boucle Bézier. Touche l’océan pour interrompre.';
+                      traceRailDirection = 1;
+                      ui.textContent = 'Voyage sonore auto lancé : aller-retour lissé.';
+                      helperTips.textContent = 'Rail actif : au dernier point, le poisson se retourne et revient.';
                   } else {
                       traceRailPath = [];
                       ui.textContent = '';
@@ -2363,7 +2366,8 @@ export function initLegacyApp() {
                   isTraceRailAutopilot = false;
                   traceRailPath = [];
                   traceRailTargetIndex = 0;
-                  ui.textContent = 'Mode Tracer l’écoute : vue d’ensemble + tracé Bézier fermé.';
+                  traceRailDirection = 1;
+                  ui.textContent = 'Mode Tracer l’écoute : vue d’ensemble + tracé lissé.';
                   helperTips.textContent = 'Maintiens puis déplace ton doigt/souris pour poser le rail.';
               } else if (!isDrawingTraceRail) {
                   ui.textContent = '';
@@ -3019,7 +3023,13 @@ export function initLegacyApp() {
                   const dy = target.y - ship.y;
                   const dist = Math.hypot(dx, dy);
                   if (dist < 20) {
-                      traceRailTargetIndex = (traceRailTargetIndex + 1) % traceRailPath.length;
+                      if (traceRailTargetIndex >= traceRailPath.length - 1) {
+                          traceRailDirection = -1;
+                      } else if (traceRailTargetIndex <= 0) {
+                          traceRailDirection = 1;
+                      }
+                      traceRailTargetIndex += traceRailDirection;
+                      traceRailTargetIndex = Math.max(0, Math.min(traceRailPath.length - 1, traceRailTargetIndex));
                   } else if (dist > 0.001) {
                       ship.vx += (dx / dist) * 0.36;
                       ship.vy += (dy / dist) * 0.36;
@@ -3658,7 +3668,6 @@ export function initLegacyApp() {
               for (let i = 1; i < traceRailPath.length; i++) {
                   ctx.lineTo(traceRailPath[i].x, traceRailPath[i].y);
               }
-              if (isDrawingTraceRail && traceRailPath.length > 2) ctx.closePath();
               ctx.stroke();
               ctx.setLineDash([]);
               if (isTraceRailAutopilot) {
