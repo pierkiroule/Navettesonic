@@ -1487,13 +1487,13 @@ export function initLegacyApp() {
           }
 
           function isInteractiveTarget(target) {
-              if (!target) return false;
-              return bubblePanel.contains(target) || bubblePropsPanel.contains(target) ||
-                     echoRecorderPanel.contains(target) || traceListeningBtn?.contains(target) ||
-                     silenceDesYeuxPrompt?.contains(target) ||
-                     arenaTrianglePad.contains(target) || bottomNav.contains(target) ||
-                     homeView.contains(target) || profileView.contains(target) ||
-                     echoHypnoseView.contains(target);
+              const element = target instanceof Element ? target : target?.parentElement;
+              if (!element) return false;
+              return Boolean(element.closest(
+                  '#bubblePanel, #bubblePropsPanel, #echoRecorderPanel, #traceListeningBtn, ' +
+                  '#silenceDesYeuxPrompt, #silenceDesYeuxOverlay, #arenaTrianglePad, #bottomNav, ' +
+                  '#homeView, #profileView, #echoHypnoseView'
+              ));
           }
 
           function setArenaTriangleStatus(message, isError = false) {
