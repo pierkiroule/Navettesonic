@@ -284,6 +284,18 @@ export function initLegacyApp() {
           const MAX_BREATH_WAVES = 9;
           const DRIFT_MOTES = [];
           const MAX_DRIFT_MOTES = 22;
+          const MARINE_PARTICLES = [];
+          const MAX_MARINE_PARTICLES = 42;
+          const MARINE_PARTICLE_PARALLAX = 0.08;
+          const AUDIO_REACTIVITY = {
+              bandSmoothing: 0.14,
+              fishVelocityBoost: 0.22,
+              fishGlowBoost: 0.35,
+              fishFinBoost: 0.55,
+              backgroundGlowBoost: 0.22,
+              particleSpawnBase: 0.4,
+              particleSpawnBoost: 1.5
+          };
           const ARENA_FIREFLIES = [];
           const PLACED_FIREFLY_TRIANGLES = [];
           let hasReleasedInitialFireflies = false;
@@ -298,6 +310,7 @@ export function initLegacyApp() {
               { sampleId: 'aurore', layer: 'above', hue: 318, x: 70, y: -255, r: 68 },
           ];
           let shipBreathEmitter = 0;
+          let marineParticleEmitter = 0;
           let bubbleIdSeed = 1;
           let supabaseClient = null;
           let currentSession = null;
@@ -333,6 +346,12 @@ export function initLegacyApp() {
           ];
 
           const arenaResonance = { level: 0, hue: 198 };
+          const audioReactiveState = {
+              bass: 0,
+              mids: 0,
+              highs: 0,
+              energy: 0
+          };
 
           const ship = {
               x: 0, y: 0, vx: 0, vy: 0, angle: 0, trail: [], maxTrail: 128,
@@ -2993,6 +3012,7 @@ export function initLegacyApp() {
               arenaResonance.level += (strongestResonance - arenaResonance.level) * 0.04;
               const targetHue = resonanceWeight > 0 ? (resonanceHueMix / resonanceWeight) : 198;
               arenaResonance.hue += (targetHue - arenaResonance.hue) * 0.05;
+              updateAudioReactiveState();
 
               ship.vx *= ship.damping;
               ship.vy *= ship.damping;
@@ -3158,6 +3178,58 @@ export function initLegacyApp() {
               return Math.min(1, Math.max(0, avg * 1.9));
           }
 
+          function sampleBubbleBands(bubble) {
+              if (!bubble?.sound?.analyser || !bubble?.sound?.analyserData) return null;
+              bubble.sound.analyser.getByteFrequencyData(bubble.sound.analyserData);
+              const data = bubble.sound.analyserData;
+              const len = data.length;
+              if (!len) return null;
+
+              const bassEnd = Math.max(4, Math.floor(len * 0.14));
+              const midsEnd = Math.max(bassEnd + 4, Math.floor(len * 0.52));
+              let bassSum = 0;
+              let midsSum = 0;
+              let highsSum = 0;
+
+              for (let i = 0; i < len; i++) {
+                  const value = data[i] / 255;
+                  if (i < bassEnd) bassSum += value;
+                  else if (i < midsEnd) midsSum += value;
+                  else highsSum += value;
+              }
+
+              const bass = bassSum / bassEnd;
+              const mids = midsSum / Math.max(1, midsEnd - bassEnd);
+              const highs = highsSum / Math.max(1, len - midsEnd);
+              const energy = (bass * 0.5) + (mids * 0.32) + (highs * 0.18);
+              return { bass, mids, highs, energy };
+          }
+
+          function updateAudioReactiveState() {
+              let strongestBubble = null;
+              let strongestScore = 0;
+              for (const bubble of BUBBLES) {
+                  if (!bubble?.sound || !bubble.isActive) continue;
+                  const score = (bubble.currentVolume || 0) * 0.7 + (bubble.zoneMix || 0) * 0.3;
+                  if (score > strongestScore) {
+                      strongestScore = score;
+                      strongestBubble = bubble;
+                  }
+              }
+
+              const bands = strongestBubble ? sampleBubbleBands(strongestBubble) : null;
+              const smoothing = AUDIO_REACTIVITY.bandSmoothing;
+              const bassTarget = bands ? Math.min(1, bands.bass * 1.3) : 0;
+              const midsTarget = bands ? Math.min(1, bands.mids * 1.25) : 0;
+              const highsTarget = bands ? Math.min(1, bands.highs * 1.2) : 0;
+              const energyTarget = bands ? Math.min(1, bands.energy * 1.3) : 0;
+
+              audioReactiveState.bass += (bassTarget - audioReactiveState.bass) * smoothing;
+              audioReactiveState.mids += (midsTarget - audioReactiveState.mids) * smoothing;
+              audioReactiveState.highs += (highsTarget - audioReactiveState.highs) * smoothing;
+              audioReactiveState.energy += (energyTarget - audioReactiveState.energy) * smoothing;
+          }
+
           function spawnResonanceWave(bubble) {
               if (RESONANCE_WAVES.length >= MAX_RESONANCE_WAVES) RESONANCE_WAVES.shift();
               RESONANCE_WAVES.push({
@@ -3252,6 +3324,50 @@ export function initLegacyApp() {
                       m.y = ship.y + Math.sin(a + Math.PI) * 680;
                   }
               });
+
+              const particleSpawnRate = AUDIO_REACTIVITY.particleSpawnBase + (audioReactiveState.highs * AUDIO_REACTIVITY.particleSpawnBoost);
+              marineParticleEmitter += particleSpawnRate;
+              while (marineParticleEmitter >= 1) {
+                  marineParticleEmitter -= 1;
+                  if (MARINE_PARTICLES.length < MAX_MARINE_PARTICLES) {
+                      MARINE_PARTICLES.push(spawnMarineParticle(now));
+                  }
+              }
+
+              while (MARINE_PARTICLES.length < MAX_MARINE_PARTICLES * 0.55) {
+                  MARINE_PARTICLES.push(spawnMarineParticle(now));
+              }
+
+              for (let i = MARINE_PARTICLES.length - 1; i >= 0; i--) {
+                  const p = MARINE_PARTICLES[i];
+                  p.age = now - p.bornAt;
+                  const lifeT = p.age / p.life;
+                  if (lifeT >= 1) {
+                      MARINE_PARTICLES[i] = spawnMarineParticle(now);
+                      continue;
+                  }
+                  const audioLift = audioReactiveState.mids * 0.06;
+                  p.y += p.vy - audioLift;
+                  p.x += p.vx + Math.sin(now * 0.0012 + p.phase) * 0.05;
+              }
+          }
+
+          function spawnMarineParticle(now) {
+              const angle = Math.random() * Math.PI * 2;
+              const dist = 220 + Math.random() * 760;
+              return {
+                  x: ship.x + Math.cos(angle) * dist,
+                  y: ship.y + Math.sin(angle) * dist,
+                  vx: (Math.random() - 0.5) * 0.15,
+                  vy: -0.04 - Math.random() * 0.18,
+                  size: 0.8 + Math.random() * 2.1,
+                  hue: 176 + Math.random() * 48,
+                  phase: Math.random() * Math.PI * 2,
+                  alpha: 0.08 + Math.random() * 0.2,
+                  life: 2600 + Math.random() * 4200,
+                  bornAt: now,
+                  age: 0
+              };
           }
 
           function updateResotags(speed) {
@@ -3320,6 +3436,25 @@ export function initLegacyApp() {
                   ctx.arc(m.x, m.y, m.size * (0.8 + twinkle * 0.3), 0, Math.PI * 2);
                   ctx.fill();
               });
+          }
+
+          function drawMarineParticles() {
+              const time = performance.now() * 0.001;
+              for (const particle of MARINE_PARTICLES) {
+                  const lifeT = particle.age / particle.life;
+                  const fade = Math.max(0, 1 - Math.abs(lifeT - 0.5) * 2);
+                  const twinkle = (Math.sin(time * 3.4 + particle.phase) + 1) * 0.5;
+                  const sizeBoost = 1 + audioReactiveState.highs * 0.3;
+                  const parallaxX = (camera.x - ship.x) * MARINE_PARTICLE_PARALLAX;
+                  const parallaxY = (camera.y - ship.y) * MARINE_PARTICLE_PARALLAX;
+                  const x = particle.x + parallaxX;
+                  const y = particle.y + parallaxY;
+                  const alpha = particle.alpha * fade * (0.7 + twinkle * 0.6);
+                  ctx.fillStyle = `hsla(${particle.hue}, 88%, 76%, ${alpha})`;
+                  ctx.beginPath();
+                  ctx.arc(x, y, particle.size * sizeBoost, 0, Math.PI * 2);
+                  ctx.fill();
+              }
           }
 
           function drawArenaFireflies() {
@@ -3597,6 +3732,7 @@ export function initLegacyApp() {
                   BUBBLES.filter((b) => b.layer === 'below').forEach(drawBubble);
                   drawBreathWaves();
                   drawDriftMotes();
+                  drawMarineParticles();
                   drawArenaFireflies();
                   drawSurfaceSparkles();
                   drawResonanceWaves();
@@ -3609,11 +3745,15 @@ export function initLegacyApp() {
               ctx.translate(ship.x, ship.y);
               ctx.rotate(ship.angle + Math.PI / 2);
               const swimT = performance.now() * 0.001;
-              const glide = Math.hypot(ship.vx, ship.vy) / ship.maxSpeed;
+              const reactiveBass = audioReactiveState.bass;
+              const reactiveMids = audioReactiveState.mids;
+              const reactiveHighs = audioReactiveState.highs;
+              const reactiveEnergy = audioReactiveState.energy;
+              const glide = Math.min(1, (Math.hypot(ship.vx, ship.vy) / ship.maxSpeed) + reactiveBass * AUDIO_REACTIVITY.fishVelocityBoost);
               const wag = Math.sin(swimT * 9.5) * (0.16 + glide * 0.22);
-              const finFlap = Math.sin(swimT * 7.2 + 0.5) * (0.14 + glide * 0.10);
+              const finFlap = Math.sin(swimT * (7.2 + reactiveMids * 1.8) + 0.5) * (0.14 + glide * 0.10 + reactiveMids * AUDIO_REACTIVITY.fishFinBoost * 0.1);
               const bodyBreath = Math.sin(swimT * 2.5) * 0.65;
-              const shimmerPulse = (Math.sin(swimT * 2.2) + 1) * 0.5;
+              const shimmerPulse = Math.min(1.2, (Math.sin(swimT * (2.2 + reactiveHighs * 0.8)) + 1) * 0.5 + reactiveHighs * 0.42);
               const bodyUndulate = Math.sin(swimT * 5.8) * (0.03 + glide * 0.055);
               const bodyHueTop = 186 + Math.sin(swimT * 1.7) * 8;
               const bodyHueMid = 198 + Math.sin(swimT * 1.3 + 1.4) * 12;
@@ -3621,9 +3761,9 @@ export function initLegacyApp() {
 
               // --- AURA GLOW (reduced + closer to fish contour) ---
               const sonarPulse = 0.08;
-              const auraR = 22 + shimmerPulse * 4.2;
+              const auraR = 22 + shimmerPulse * 4.2 + reactiveBass * 4.5;
               const auraGrad = ctx.createRadialGradient(0, 2, 0, 0, 2, auraR);
-              auraGrad.addColorStop(0, `hsla(${bodyHueMid}, 88%, 80%, ${0.12 + shimmerPulse * 0.08})`);
+              auraGrad.addColorStop(0, `hsla(${bodyHueMid}, 88%, 80%, ${0.12 + shimmerPulse * 0.08 + reactiveEnergy * AUDIO_REACTIVITY.fishGlowBoost * 0.22})`);
               auraGrad.addColorStop(0.6, `hsla(${bodyHueLow}, 84%, 72%, ${0.05 + shimmerPulse * 0.05})`);
               auraGrad.addColorStop(1, 'rgba(0,0,0,0)');
               ctx.fillStyle = auraGrad;
@@ -3873,12 +4013,22 @@ export function initLegacyApp() {
 
           function drawWaterSurface() {
               const horizonY = Math.max(30, h * 0.17);
+              const audioGlow = Math.min(0.22, audioReactiveState.energy * AUDIO_REACTIVITY.backgroundGlowBoost);
               const gradient = ctx.createLinearGradient(0, 0, 0, horizonY + 120);
-              gradient.addColorStop(0, 'rgba(32, 100, 155, 0.28)');
-              gradient.addColorStop(0.7, 'rgba(20, 70, 130, 0.14)');
+              gradient.addColorStop(0, `rgba(32, 100, 155, ${0.28 + audioGlow})`);
+              gradient.addColorStop(0.7, `rgba(20, 70, 130, ${0.14 + audioGlow * 0.7})`);
               gradient.addColorStop(1, 'rgba(6, 22, 40, 0)');
               ctx.fillStyle = gradient;
               ctx.fillRect(0, 0, w, horizonY + 120);
+
+              if (audioGlow > 0.01) {
+                  const bloom = ctx.createRadialGradient(w * 0.52, h * 0.36, h * 0.08, w * 0.5, h * 0.45, h * 0.8);
+                  bloom.addColorStop(0, `rgba(120, 230, 255, ${audioGlow * 0.9})`);
+                  bloom.addColorStop(0.55, `rgba(86, 152, 246, ${audioGlow * 0.38})`);
+                  bloom.addColorStop(1, 'rgba(10, 24, 42, 0)');
+                  ctx.fillStyle = bloom;
+                  ctx.fillRect(0, 0, w, h);
+              }
           }
 
           function drawArenaResonanceVeil() {
