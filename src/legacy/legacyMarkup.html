@@ -179,16 +179,19 @@
                 <h3>Clés d'accès</h3>
                 <p>Protège ton accès et poursuis l'expérience sans détour.</p>
                 <div class="stack">
-                    <label class="field-label" for="authEmailInput">Adresse e-mail</label>
-                    <input id="authEmailInput" type="text" placeholder="email@soono.app">
-                    <label class="field-label" for="authPasswordInput">Mot de passe</label>
-                    <input id="authPasswordInput" type="password" placeholder="••••••••">
-                    <div class="auth-row">
-                        <button id="authSignInBtn" type="button">Entrer dans Soon experience</button>
-                        <button id="authSignUpBtn" type="button">Créer mon accès</button>
+                    <div id="authCredentialsBlock">
+                        <label class="field-label" for="authEmailInput">Adresse e-mail</label>
+                        <input id="authEmailInput" type="text" placeholder="email@soono.app">
+                        <label class="field-label" for="authPasswordInput">Mot de passe</label>
+                        <input id="authPasswordInput" type="password" placeholder="••••••••">
+                        <div class="auth-row">
+                            <button id="authSignInBtn" type="button">Entrer dans Soon experience</button>
+                            <button id="authSignUpBtn" type="button">Créer mon accès</button>
+                        </div>
                     </div>
                     <p id="authStatus" class="status"></p>
                     <p id="authSessionInfo" class="muted"></p>
+                    <button id="authSignOutBtn" type="button" class="auth-signout-btn" hidden>Se déconnecter</button>
                 </div>
             </article>
 
@@ -204,7 +207,6 @@
                 <p id="supabaseStatus"></p>
                 <p id="supabaseUploadedLink"></p>
                 <p id="supabaseProbeStatus"></p>
-                <button id="authSignOutBtn" type="button">signout</button>
                 <div id="storeCatalog"></div>
                 <div id="sessionHistoryListLegacy"></div>
             </div>

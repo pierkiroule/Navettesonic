@@ -87,6 +87,7 @@ export function initLegacyApp() {
           const supabaseProbeStatus = document.getElementById('supabaseProbeStatus');
           const authEmailInput = document.getElementById('authEmailInput');
           const authPasswordInput = document.getElementById('authPasswordInput');
+          const authCredentialsBlock = document.getElementById('authCredentialsBlock');
           const authSignInBtn = document.getElementById('authSignInBtn');
           const authSignUpBtn = document.getElementById('authSignUpBtn');
           const authSignOutBtn = document.getElementById('authSignOutBtn');
@@ -1151,10 +1152,16 @@ export function initLegacyApp() {
               if (message) setAuthStatus(message, false);
               if (currentSession?.user) {
                   authSessionInfo.textContent = `Connecté: ${currentSession.user.email || currentSession.user.id}`;
-                  authSignOutBtn.disabled = false;
+                  if (authCredentialsBlock) authCredentialsBlock.hidden = true;
+                  if (authEmailInput) authEmailInput.value = currentSession.user.email || '';
+                  if (authPasswordInput) authPasswordInput.value = '';
+                  if (authSignOutBtn) authSignOutBtn.hidden = false;
+                  if (authSignOutBtn) authSignOutBtn.disabled = false;
               } else {
                   authSessionInfo.textContent = 'Aucune session active.';
-                  authSignOutBtn.disabled = true;
+                  if (authCredentialsBlock) authCredentialsBlock.hidden = false;
+                  if (authSignOutBtn) authSignOutBtn.hidden = true;
+                  if (authSignOutBtn) authSignOutBtn.disabled = true;
               }
               updateExperienceAccessUi();
           }

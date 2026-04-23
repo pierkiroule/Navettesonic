@@ -700,6 +700,9 @@
             color: rgba(160, 255, 226, 0.95);
         }
         .auth-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .auth-signout-btn {
+            width: 100%;
+        }
         @media (max-width: 760px) {
             .profile-hero {
                 grid-template-columns: auto 1fr;
