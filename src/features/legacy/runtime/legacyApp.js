@@ -364,7 +364,7 @@ export function initLegacyApp() {
               stiffness: 0.0026, damping: 0.93, turnEase: 0.06, maxSpeed: 3.1,
               wakeEmitter: 0, rippleEmitter: 0
           };
-          const camera = { x: 0, y: 0, targetX: 0, targetY: 0, ease: 0.05 };
+          const camera = { x: 0, y: 0, targetX: 0, targetY: 0, ease: 0.05, zoom: 1, targetZoom: 1, zoomEase: 0.08 };
 
           function setActiveNav(target) {
               [navHome, navSoon, navEchoHypnose, navProfile].forEach(btn => btn.classList.remove('active'));
@@ -1456,7 +1456,34 @@ export function initLegacyApp() {
           function getMousePos(e) {
               const sx = e.clientX ?? (e.touches && e.touches[0]?.clientX);
               const sy = e.clientY ?? (e.touches && e.touches[0]?.clientY);
-              return { x: sx - w / 2 + camera.x, y: sy - h / 2 + camera.y };
+              return {
+                  x: (sx - w / 2) / camera.zoom + camera.x,
+                  y: (sy - h / 2) / camera.zoom + camera.y
+              };
+          }
+
+          function buildClosedBezierRail(points) {
+              if (!Array.isArray(points) || points.length < 3) return points.slice();
+              const samplesPerSegment = 14;
+              const path = [];
+              const len = points.length;
+              for (let i = 0; i < len; i++) {
+                  const p0 = points[(i - 1 + len) % len];
+                  const p1 = points[i];
+                  const p2 = points[(i + 1) % len];
+                  const p3 = points[(i + 2) % len];
+                  const c1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 };
+                  const c2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
+                  for (let s = 0; s < samplesPerSegment; s++) {
+                      const t = s / samplesPerSegment;
+                      const inv = 1 - t;
+                      const x = inv * inv * inv * p1.x + 3 * inv * inv * t * c1.x + 3 * inv * t * t * c2.x + t * t * t * p2.x;
+                      const y = inv * inv * inv * p1.y + 3 * inv * inv * t * c1.y + 3 * inv * t * t * c2.y + t * t * t * p2.y;
+                      path.push({ x, y });
+                  }
+              }
+              if (path.length) path.push({ ...path[0] });
+              return path;
           }
 
           function isInteractiveTarget(target) {
@@ -2284,11 +2311,12 @@ export function initLegacyApp() {
                   isDrawingTraceRail = false;
                   isTraceListeningMode = false;
                   traceListeningBtn?.classList.remove('active');
-                  if (traceRailPath.length > 1) {
+                  if (traceRailPath.length > 2) {
+                      traceRailPath = buildClosedBezierRail(traceRailPath);
                       isTraceRailAutopilot = true;
                       traceRailTargetIndex = 0;
-                      ui.textContent = 'Voyage sonore auto lancé… touche l’océan pour reprendre la main.';
-                      helperTips.textContent = 'Mode rail actif : le poisson suit ton tracé. Touche l’océan pour interrompre.';
+                      ui.textContent = 'Voyage sonore auto lancé sur rail fermé (boucle continue).';
+                      helperTips.textContent = 'Rail actif : parcours en boucle Bézier. Touche l’océan pour interrompre.';
                   } else {
                       traceRailPath = [];
                       ui.textContent = '';
@@ -2333,8 +2361,8 @@ export function initLegacyApp() {
                   isTraceRailAutopilot = false;
                   traceRailPath = [];
                   traceRailTargetIndex = 0;
-                  ui.textContent = 'Mode Tracer l’écoute : dessine un rail dans l’océan.';
-                  helperTips.textContent = 'Maintiens puis déplace ton doigt/souris pour tracer le rail sonore.';
+                  ui.textContent = 'Mode Tracer l’écoute : vue d’ensemble + tracé Bézier fermé.';
+                  helperTips.textContent = 'Maintiens puis déplace ton doigt/souris pour poser le rail.';
               } else if (!isDrawingTraceRail) {
                   ui.textContent = '';
                   rotateHelperTip();
@@ -2988,14 +3016,8 @@ export function initLegacyApp() {
                   const dx = target.x - ship.x;
                   const dy = target.y - ship.y;
                   const dist = Math.hypot(dx, dy);
-                  if (dist < 20 && traceRailTargetIndex < traceRailPath.length - 1) {
-                      traceRailTargetIndex += 1;
-                  } else if (dist < 22 && traceRailTargetIndex >= traceRailPath.length - 1) {
-                      isTraceRailAutopilot = false;
-                      traceRailPath = [];
-                      traceRailTargetIndex = 0;
-                      ui.textContent = '';
-                      rotateHelperTip();
+                  if (dist < 20) {
+                      traceRailTargetIndex = (traceRailTargetIndex + 1) % traceRailPath.length;
                   } else if (dist > 0.001) {
                       ship.vx += (dx / dist) * 0.36;
                       ship.vy += (dy / dist) * 0.36;
@@ -3118,10 +3140,19 @@ export function initLegacyApp() {
                   ship.angle += diff * ship.turnEase;
               }
 
-              camera.targetX = ship.x + ship.vx * 10;
-              camera.targetY = ship.y + ship.vy * 10;
+              const shouldShowArenaOverview = isTraceListeningMode || isDrawingTraceRail;
+              if (shouldShowArenaOverview) {
+                  camera.targetX = 0;
+                  camera.targetY = 0;
+                  camera.targetZoom = Math.max(0.12, Math.min(0.4, Math.min(w, h) / (ARENA_RADIUS * 2.2)));
+              } else {
+                  camera.targetX = ship.x + ship.vx * 10;
+                  camera.targetY = ship.y + ship.vy * 10;
+                  camera.targetZoom = 1;
+              }
               camera.x += (camera.targetX - camera.x) * camera.ease;
               camera.y += (camera.targetY - camera.y) * camera.ease;
+              camera.zoom += (camera.targetZoom - camera.zoom) * camera.zoomEase;
 
               updateAudioListener();
               updateWakeParticles(speed);
@@ -3625,6 +3656,7 @@ export function initLegacyApp() {
               for (let i = 1; i < traceRailPath.length; i++) {
                   ctx.lineTo(traceRailPath[i].x, traceRailPath[i].y);
               }
+              if (isDrawingTraceRail && traceRailPath.length > 2) ctx.closePath();
               ctx.stroke();
               ctx.setLineDash([]);
               if (isTraceRailAutopilot) {
@@ -3744,7 +3776,9 @@ export function initLegacyApp() {
               const heavySilenceMode = silenceVisualMode && silenceImmersionLevel >= 0.66;
 
               ctx.save();
-              ctx.translate(w / 2 - camera.x, h / 2 - camera.y);
+              ctx.translate(w / 2, h / 2);
+              ctx.scale(camera.zoom, camera.zoom);
+              ctx.translate(-camera.x, -camera.y);
 
               ctx.beginPath();
               ctx.arc(0, 0, ARENA_RADIUS, 0, Math.PI * 2);
