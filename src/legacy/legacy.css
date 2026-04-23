@@ -523,6 +523,9 @@
             color: #e6f4ff;
             padding: 26px 18px 120px;
             overflow: auto;
+            touch-action: pan-y;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-y: contain;
             background:
                 radial-gradient(circle at 18% 16%, rgba(93, 182, 255, 0.16), transparent 43%),
                 radial-gradient(circle at 82% 82%, rgba(112, 238, 255, 0.12), transparent 48%),
