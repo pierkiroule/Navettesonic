@@ -54,6 +54,10 @@ export function initLegacyApp() {
           const echoRecordTimer = document.getElementById('echoRecordTimer');
           const echoRecordStatus = document.getElementById('echoRecordStatus');
           const echoRecordDownloadLink = document.getElementById('echoRecordDownloadLink');
+          const pathRailPanel = document.getElementById('pathRailPanel');
+          const pathRailToggleBtn = document.getElementById('pathRailToggleBtn');
+          const pathRailClearBtn = document.getElementById('pathRailClearBtn');
+          const pathRailStatus = document.getElementById('pathRailStatus');
           const silenceDesYeuxPrompt = document.getElementById('silenceDesYeuxPrompt');
           const silenceSaveNoBtn = document.getElementById('silenceSaveNoBtn');
           const silenceSaveYesBtn = document.getElementById('silenceSaveYesBtn');
@@ -359,6 +363,10 @@ export function initLegacyApp() {
               wakeEmitter: 0, rippleEmitter: 0
           };
           const camera = { x: 0, y: 0, targetX: 0, targetY: 0, ease: 0.05 };
+          const PATH_RAIL_EDIT_ZOOM = 0.33;
+          let cameraZoom = 1;
+          let isPathRailEditMode = false;
+          const pathRailPoints = [];
 
           function setActiveNav(target) {
               [navHome, navSoon, navEchoHypnose, navProfile].forEach(btn => btn.classList.remove('active'));
@@ -380,6 +388,7 @@ export function initLegacyApp() {
               else setActiveNav(target);
               if (target !== 'experience') {
                   isTethered = false;
+                  setPathRailEditMode(false);
                   closeBubblePanel();
                   hideSilenceOverlay();
                   if (silenceDesYeuxPrompt) silenceDesYeuxPrompt.hidden = true;
@@ -406,6 +415,37 @@ export function initLegacyApp() {
               if (!helperTips) return;
               helperTips.textContent = helperTipsPlaylist[helperTipIndex];
               helperTipIndex = (helperTipIndex + 1) % helperTipsPlaylist.length;
+          }
+
+          function updatePathRailStatus() {
+              if (!pathRailStatus) return;
+              if (!isPathRailEditMode) {
+                  pathRailStatus.textContent = pathRailPoints.length >= 3
+                      ? `Rail prêt (${pathRailPoints.length} points, boucle active).`
+                      : 'Rail inactif.';
+                  return;
+              }
+              pathRailStatus.textContent = `Mode tracé: ${pathRailPoints.length} point(s). Le dernier segment se boucle sur le premier.`;
+          }
+
+          function setPathRailEditMode(nextMode) {
+              isPathRailEditMode = !!nextMode;
+              if (pathRailToggleBtn) {
+                  pathRailToggleBtn.classList.toggle('is-active', isPathRailEditMode);
+                  pathRailToggleBtn.textContent = isPathRailEditMode ? 'Valider rail' : 'Tracer rail';
+              }
+              if (isPathRailEditMode) {
+                  isTethered = false;
+                  isInteractionPaused = false;
+                  closeBubblePanel();
+                  closeBubblePropsPanel();
+                  ui.textContent = 'Mode tracé • Clique/touche pour ajouter des points.';
+                  helperTips.textContent = 'Vue dézoomée active. Place plusieurs points pour créer un rail bézier bouclé.';
+              } else {
+                  ui.textContent = '';
+                  rotateHelperTip();
+              }
+              updatePathRailStatus();
           }
 
           function bindTap(button, handler, options = {}) {
@@ -1450,13 +1490,14 @@ export function initLegacyApp() {
           function getMousePos(e) {
               const sx = e.clientX ?? (e.touches && e.touches[0]?.clientX);
               const sy = e.clientY ?? (e.touches && e.touches[0]?.clientY);
-              return { x: sx - w / 2 + camera.x, y: sy - h / 2 + camera.y };
+              const safeZoom = Math.max(0.001, cameraZoom);
+              return { x: (sx - w / 2) / safeZoom + camera.x, y: (sy - h / 2) / safeZoom + camera.y };
           }
 
           function isInteractiveTarget(target) {
               if (!target) return false;
               return bubblePanel.contains(target) || bubblePropsPanel.contains(target) ||
-                     arenaTrianglePad.contains(target) || bottomNav.contains(target) ||
+                     arenaTrianglePad.contains(target) || (pathRailPanel && pathRailPanel.contains(target)) || bottomNav.contains(target) ||
                      homeView.contains(target) || profileView.contains(target) ||
                      echoHypnoseView.contains(target);
           }
@@ -2204,6 +2245,13 @@ export function initLegacyApp() {
               const pos = getMousePos(e);
               mouseWorld = pos;
               ensureAllAudioRunning();
+
+              if (isPathRailEditMode) {
+                  pathRailPoints.push({ x: pos.x, y: pos.y });
+                  updatePathRailStatus();
+                  return;
+              }
+
               const now = performance.now();
               const attachedNow = getAttachedFirefliesSorted();
 
@@ -2276,6 +2324,16 @@ export function initLegacyApp() {
           }, { passive: false });
           window.addEventListener('touchend', onEnd);
           window.addEventListener('touchcancel', onEnd);
+
+          bindTap(pathRailToggleBtn, () => {
+              if (currentView !== 'experience') return;
+              setPathRailEditMode(!isPathRailEditMode);
+          });
+          bindTap(pathRailClearBtn, () => {
+              pathRailPoints.length = 0;
+              updatePathRailStatus();
+          });
+          updatePathRailStatus();
 
           cancelBtn.addEventListener('click', closeBubblePanel);
           dropBtn.addEventListener('click', () => {
@@ -3045,10 +3103,17 @@ export function initLegacyApp() {
                   ship.angle += diff * ship.turnEase;
               }
 
-              camera.targetX = ship.x + ship.vx * 10;
-              camera.targetY = ship.y + ship.vy * 10;
+              if (isPathRailEditMode) {
+                  camera.targetX = 0;
+                  camera.targetY = 0;
+              } else {
+                  camera.targetX = ship.x + ship.vx * 10;
+                  camera.targetY = ship.y + ship.vy * 10;
+              }
               camera.x += (camera.targetX - camera.x) * camera.ease;
               camera.y += (camera.targetY - camera.y) * camera.ease;
+              const targetZoom = isPathRailEditMode ? PATH_RAIL_EDIT_ZOOM : 1;
+              cameraZoom += (targetZoom - cameraZoom) * 0.08;
 
               updateAudioListener();
               updateWakeParticles(speed);
@@ -3637,6 +3702,50 @@ export function initLegacyApp() {
               ctx.restore();
           }
 
+          function drawPathRail() {
+              if (!pathRailPoints.length) return;
+              if (pathRailPoints.length === 1) {
+                  ctx.fillStyle = 'rgba(255, 215, 170, 0.9)';
+                  ctx.beginPath();
+                  ctx.arc(pathRailPoints[0].x, pathRailPoints[0].y, 9, 0, Math.PI * 2);
+                  ctx.fill();
+                  return;
+              }
+
+              ctx.save();
+              ctx.lineJoin = 'round';
+              ctx.lineCap = 'round';
+              ctx.strokeStyle = 'rgba(255, 205, 138, 0.92)';
+              ctx.lineWidth = 8;
+              ctx.shadowBlur = 20;
+              ctx.shadowColor = 'rgba(255, 167, 96, 0.5)';
+              ctx.beginPath();
+              ctx.moveTo(pathRailPoints[0].x, pathRailPoints[0].y);
+
+              for (let index = 0; index < pathRailPoints.length; index++) {
+                  const p0 = pathRailPoints[(index - 1 + pathRailPoints.length) % pathRailPoints.length];
+                  const p1 = pathRailPoints[index];
+                  const p2 = pathRailPoints[(index + 1) % pathRailPoints.length];
+                  const p3 = pathRailPoints[(index + 2) % pathRailPoints.length];
+                  const cp1x = p1.x + (p2.x - p0.x) / 6;
+                  const cp1y = p1.y + (p2.y - p0.y) / 6;
+                  const cp2x = p2.x - (p3.x - p1.x) / 6;
+                  const cp2y = p2.y - (p3.y - p1.y) / 6;
+                  ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+              }
+              ctx.closePath();
+              ctx.stroke();
+              ctx.shadowBlur = 0;
+
+              pathRailPoints.forEach((point, index) => {
+                  ctx.fillStyle = index === 0 ? 'rgba(228, 248, 255, 0.98)' : 'rgba(202, 245, 255, 0.72)';
+                  ctx.beginPath();
+                  ctx.arc(point.x, point.y, index === 0 ? 7 : 5.5, 0, Math.PI * 2);
+                  ctx.fill();
+              });
+              ctx.restore();
+          }
+
           function draw() {
               ctx.fillStyle = '#030308';
               ctx.fillRect(0, 0, w, h);
@@ -3647,6 +3756,7 @@ export function initLegacyApp() {
 
               ctx.save();
               ctx.translate(w / 2 - camera.x, h / 2 - camera.y);
+              ctx.scale(cameraZoom, cameraZoom);
 
               ctx.beginPath();
               ctx.arc(0, 0, ARENA_RADIUS, 0, Math.PI * 2);
@@ -3917,6 +4027,7 @@ export function initLegacyApp() {
 
               drawFishTriangleHaloButton();
               if (silenceVisualMode) drawSilenceCompassRing();
+              drawPathRail();
 
               if (!heavySilenceMode) {
                   BUBBLES.filter((b) => b.layer !== 'below').forEach(drawBubble);

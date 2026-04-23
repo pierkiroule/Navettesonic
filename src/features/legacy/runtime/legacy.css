@@ -351,6 +351,60 @@
             }
         }
 
+        #pathRailPanel {
+            position: absolute;
+            top: calc(12px + env(safe-area-inset-top));
+            right: clamp(10px, 2vw, 18px);
+            z-index: 166;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px;
+            border-radius: 999px;
+            background: rgba(5, 14, 26, 0.42);
+            border: 1px solid rgba(136, 202, 242, 0.2);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
+            backdrop-filter: blur(4px);
+            pointer-events: auto;
+        }
+        .path-rail-btn {
+            border: 1px solid rgba(134, 227, 255, 0.56);
+            border-radius: 999px;
+            min-width: 56px;
+            padding: 7px 11px;
+            font-size: 0.68rem;
+            font-weight: 680;
+            letter-spacing: 0.04em;
+            color: rgba(224, 248, 255, 0.92);
+            background: linear-gradient(180deg, rgba(14, 63, 88, 0.82), rgba(8, 38, 56, 0.86));
+            cursor: pointer;
+        }
+        .path-rail-btn--ghost {
+            border-color: rgba(182, 216, 233, 0.4);
+            color: rgba(189, 218, 231, 0.92);
+            background: linear-gradient(180deg, rgba(18, 32, 45, 0.75), rgba(10, 21, 33, 0.82));
+        }
+        .path-rail-btn.is-active {
+            border-color: rgba(255, 203, 135, 0.86);
+            color: rgba(255, 236, 214, 0.96);
+            background: linear-gradient(180deg, rgba(154, 88, 24, 0.9), rgba(119, 58, 18, 0.9));
+            box-shadow: 0 0 0 2px rgba(255, 184, 84, 0.22);
+        }
+        #pathRailStatus {
+            margin: 0 6px 0 2px;
+            font-size: 0.68rem;
+            color: rgba(201, 231, 245, 0.92);
+            max-width: 230px;
+            line-height: 1.25;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        @media (max-width: 860px) {
+            #pathRailPanel { right: 10px; }
+            #pathRailStatus { display: none; }
+        }
+
         #arenaTrianglePad {
             position: absolute;
             left: 50%;
@@ -784,7 +838,8 @@
         #experienceView.silence-mode #helperTips,
         #experienceView.silence-mode #arenaTrianglePad,
         #experienceView.silence-mode #arenaTriangleStatus,
-        #experienceView.silence-mode #bubblePropsPanel {
+        #experienceView.silence-mode #bubblePropsPanel,
+        #experienceView.silence-mode #pathRailPanel {
             opacity: calc(1 - (var(--silence-immersion, 0) * 1.08));
             transition: opacity 700ms ease;
         }
