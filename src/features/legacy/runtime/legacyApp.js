@@ -264,6 +264,14 @@ export function initLegacyApp() {
           ];
 
           const ARENA_RADIUS = 2000;
+          const ARENA_BORDER_WIDTH_BASE = 6;
+          const ARENA_BORDER_WIDTH_BREATH = 1.2;
+          const ARENA_BORDER_SCREEN_MIN = 3.5;
+          const ARENA_BORDER_SCREEN_MAX = 8;
+          const ARENA_HALO_INNER = 28;
+          const ARENA_HALO_OUTER = 68;
+          const ARENA_HALO_ALPHA = 0.2;
+          const ARENA_INNER_RIM_WIDTH = 1.4;
           const SOUND_HEAR_RADIUS = 460;
           const ARENA_TRIANGLE_COUNT = 12;
           const FIREFLY_TRAIL_ATTACH_RADIUS = 38;
@@ -3813,6 +3821,56 @@ export function initLegacyApp() {
               ctx.restore();
           }
 
+          function drawArenaBoundary(silenceVisualMode, silenceGlow) {
+              const now = performance.now();
+              const breath = (Math.sin(now * 0.00145) + 1) * 0.5;
+              const zoomSafe = Math.max(0.08, camera.zoom);
+              const silenceMultiplier = silenceVisualMode ? (0.48 + silenceGlow * 0.92) : 1;
+              const haloAlpha = ARENA_HALO_ALPHA * (0.78 + breath * 0.42) * silenceMultiplier;
+              const haloInner = ARENA_HALO_INNER * (0.92 + breath * 0.18);
+              const haloOuter = ARENA_HALO_OUTER * (0.9 + breath * 0.22);
+              const mainStrokePx = Math.max(
+                  ARENA_BORDER_SCREEN_MIN,
+                  Math.min(ARENA_BORDER_SCREEN_MAX, ARENA_BORDER_WIDTH_BASE + ARENA_BORDER_WIDTH_BREATH * breath)
+              );
+              const mainStrokeWorld = mainStrokePx / zoomSafe;
+              const innerRimWorld = (ARENA_INNER_RIM_WIDTH + breath * 0.55) / zoomSafe;
+
+              // Passe 1 : halo radial externe.
+              const haloGradient = ctx.createRadialGradient(
+                  0, 0, ARENA_RADIUS - haloInner,
+                  0, 0, ARENA_RADIUS + haloOuter
+              );
+              haloGradient.addColorStop(0, 'rgba(126, 244, 255, 0)');
+              haloGradient.addColorStop(0.66, `rgba(126, 244, 255, ${haloAlpha * 0.55})`);
+              haloGradient.addColorStop(0.86, `rgba(138, 229, 255, ${haloAlpha})`);
+              haloGradient.addColorStop(1, 'rgba(138, 229, 255, 0)');
+              ctx.fillStyle = haloGradient;
+              ctx.beginPath();
+              ctx.arc(0, 0, ARENA_RADIUS + haloOuter, 0, Math.PI * 2);
+              ctx.arc(0, 0, ARENA_RADIUS - haloInner, 0, Math.PI * 2, true);
+              ctx.fill();
+
+              // Passe 2 : trait principal lumineux et épais.
+              const mainAlpha = (0.2 + breath * 0.14) * silenceMultiplier;
+              ctx.strokeStyle = `rgba(205, 248, 255, ${mainAlpha})`;
+              ctx.lineWidth = mainStrokeWorld;
+              ctx.shadowBlur = (12 + breath * 10) * silenceMultiplier;
+              ctx.shadowColor = `rgba(118, 231, 255, ${0.34 * silenceMultiplier})`;
+              ctx.beginPath();
+              ctx.arc(0, 0, ARENA_RADIUS, 0, Math.PI * 2);
+              ctx.stroke();
+
+              // Passe 3 : liseré interne pour l'effet bulle.
+              ctx.shadowBlur = 0;
+              const innerAlpha = (0.3 + breath * 0.16) * (0.82 + silenceMultiplier * 0.35);
+              ctx.strokeStyle = `rgba(241, 254, 255, ${innerAlpha})`;
+              ctx.lineWidth = Math.max(0.8 / zoomSafe, innerRimWorld);
+              ctx.beginPath();
+              ctx.arc(0, 0, ARENA_RADIUS - mainStrokeWorld * 0.55, 0, Math.PI * 2);
+              ctx.stroke();
+          }
+
           function draw() {
               ctx.fillStyle = '#030308';
               ctx.fillRect(0, 0, w, h);
@@ -3826,20 +3884,7 @@ export function initLegacyApp() {
               ctx.scale(camera.zoom, camera.zoom);
               ctx.translate(-camera.x, -camera.y);
 
-              ctx.beginPath();
-              ctx.arc(0, 0, ARENA_RADIUS, 0, Math.PI * 2);
-              if (silenceVisualMode) {
-                  const rimAlpha = 0.16 + silenceGlow * 0.3 + Math.sin(performance.now() * 0.0025) * 0.08;
-                  ctx.strokeStyle = `rgba(126, 242, 255, ${Math.max(0.1, rimAlpha)})`;
-                  ctx.shadowBlur = 28;
-                  ctx.shadowColor = 'rgba(118, 231, 255, 0.45)';
-                  ctx.lineWidth = 3;
-              } else {
-                  ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-                  ctx.lineWidth = 2;
-              }
-              ctx.stroke();
-              ctx.shadowBlur = 0;
+              drawArenaBoundary(silenceVisualMode, silenceGlow);
 
               const drawBubble = (b) => {
                   const isSurface = b.layer !== 'below';
