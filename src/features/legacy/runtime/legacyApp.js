@@ -275,13 +275,13 @@ export function initLegacyApp() {
           const ARENA_MEMBRANE_SEGMENTS_BASE = 96;
           const ARENA_MEMBRANE_SEGMENTS_MIN = 64;
           const ARENA_MEMBRANE_SEGMENTS_MAX = 128;
-          const ARENA_MEMBRANE_STIFFNESS = 0.014;
-          const ARENA_MEMBRANE_DAMPING = 0.075;
+          const ARENA_MEMBRANE_STIFFNESS = 0.009;
+          const ARENA_MEMBRANE_DAMPING = 0.045;
           const ARENA_MEMBRANE_NEIGHBOR_COUPLING = 0.14;
           const ARENA_MEMBRANE_MAX_DEFORMATION = 250;
           const ARENA_MEMBRANE_IMPACT_COOLDOWN_MS = 80;
           const ARENA_MEMBRANE_IMPACT_SPREAD = 6;
-          const ARENA_MEMBRANE_IMPACT_FORCE = 62;
+          const ARENA_MEMBRANE_IMPACT_FORCE = 44;
           const SOUND_HEAR_RADIUS = 460;
           const ARENA_TRIANGLE_COUNT = 12;
           const FIREFLY_TRAIL_ATTACH_RADIUS = 38;
@@ -446,7 +446,9 @@ export function initLegacyApp() {
                   const weight = Math.max(0, 1 - Math.abs(k) / (ARENA_MEMBRANE_IMPACT_SPREAD + 0.001));
                   const segment = ARENA_MEMBRANE_SEGMENTS[idx];
                   if (!segment) continue;
-                  segment.offset -= force * weight;
+                  const smoothImpulse = force * weight;
+                  segment.velocity -= smoothImpulse * 0.065;
+                  segment.offset -= smoothImpulse * 0.32;
                   if (segment.offset < -ARENA_MEMBRANE_MAX_DEFORMATION) segment.offset = -ARENA_MEMBRANE_MAX_DEFORMATION;
               }
           }
@@ -3277,6 +3279,22 @@ export function initLegacyApp() {
                   ship.vx *= ratio;
                   ship.vy *= ratio;
               }
+              const preMoveTheta = Math.atan2(ship.y, ship.x);
+              const preMoveRadius = sampleArenaRadius(preMoveTheta);
+              const preMoveDistCenter = Math.hypot(ship.x, ship.y);
+              const preMoveMargin = preMoveRadius - preMoveDistCenter;
+              if (preMoveMargin < 220) {
+                  const preMoveNormal = sampleArenaNormal(preMoveTheta);
+                  const approaching = ship.vx * preMoveNormal.x + ship.vy * preMoveNormal.y;
+                  if (approaching > 0) {
+                      const slowFactor = Math.min(1, (220 - preMoveMargin) / 220);
+                      const brake = approaching * (0.22 + slowFactor * 0.56);
+                      ship.vx -= preMoveNormal.x * brake;
+                      ship.vy -= preMoveNormal.y * brake;
+                      ship.vx *= 0.992 - slowFactor * 0.05;
+                      ship.vy *= 0.992 - slowFactor * 0.05;
+                  }
+              }
               ship.x += ship.vx;
               ship.y += ship.vy;
 
@@ -3289,20 +3307,20 @@ export function initLegacyApp() {
               if (dCenter > localArenaRadius) {
                   const normal = sampleArenaNormal(thetaShip);
                   const penetration = dCenter - localArenaRadius;
-                  const softCorrection = Math.min(6.5, penetration * 0.36 + 0.35);
+                  const softCorrection = Math.min(2.1, penetration * 0.14 + 0.08);
                   ship.x -= normal.x * softCorrection;
                   ship.y -= normal.y * softCorrection;
 
                   const vn = ship.vx * normal.x + ship.vy * normal.y;
                   const vtX = ship.vx - normal.x * vn;
                   const vtY = ship.vy - normal.y * vn;
-                  const restitution = 0.2;
-                  const tangentDamping = 0.965;
-                  const reflectedVn = vn > 0 ? -vn * restitution : vn * 0.12;
+                  const restitution = 0.06;
+                  const tangentDamping = 0.985;
+                  const reflectedVn = vn > 0 ? -vn * restitution : vn * 0.04;
                   ship.vx = vtX * tangentDamping + normal.x * reflectedVn;
                   ship.vy = vtY * tangentDamping + normal.y * reflectedVn;
 
-                  const centerBias = Math.min(0.08, 0.028 + penetration * 0.01);
+                  const centerBias = Math.min(0.032, 0.008 + penetration * 0.0035);
                   ship.vx -= normal.x * centerBias;
                   ship.vy -= normal.y * centerBias;
 
