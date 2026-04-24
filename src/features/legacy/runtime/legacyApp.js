@@ -378,12 +378,22 @@ export function initLegacyApp() {
               highs: 0,
               energy: 0
           };
+          const METAMORPH_CONFIG = {
+              risePerSecond: 0.06,
+              hitLoss: 0.12,
+              hitCooldownMs: 260,
+              finWingSpread: 0.6,
+              beakMaxLength: 8
+          };
 
           const ship = {
               x: 0, y: 0, vx: 0, vy: 0, angle: 0, trail: [], maxTrail: 128,
               stiffness: 0.0026, damping: 0.93, turnEase: 0.06, maxSpeed: 3.1,
               wakeEmitter: 0, rippleEmitter: 0
           };
+          let metamorph = 0;
+          let lastMetamorphTickAt = performance.now();
+          let lastMetamorphHitAt = 0;
           const ARENA_MEMBRANE_SEGMENTS = Array.from({ length: ARENA_MEMBRANE_SEGMENTS_BASE }, () => ({ offset: 0, velocity: 0 }));
           let arenaMembraneActiveSegments = ARENA_MEMBRANE_SEGMENTS_BASE;
           let lastArenaImpactAt = 0;
@@ -3159,6 +3169,9 @@ export function initLegacyApp() {
           function update() {
               if (currentView !== 'experience') return;
               const now = performance.now();
+              const morphDt = Math.min(0.12, Math.max(0, (now - lastMetamorphTickAt) / 1000));
+              lastMetamorphTickAt = now;
+              metamorph = Math.min(1, metamorph + METAMORPH_CONFIG.risePerSecond * morphDt);
               updateArenaMembranePerfBudget(now);
               updateArenaMembraneDynamics();
               if (traceExitConfirmUntil && performance.now() > traceExitConfirmUntil) {
@@ -3327,6 +3340,10 @@ export function initLegacyApp() {
                   if (now - lastArenaImpactAt >= ARENA_MEMBRANE_IMPACT_COOLDOWN_MS) {
                       injectArenaMembraneImpact(thetaShip);
                       lastArenaImpactAt = now;
+                  }
+                  if (now - lastMetamorphHitAt >= METAMORPH_CONFIG.hitCooldownMs) {
+                      metamorph = Math.max(0, metamorph - METAMORPH_CONFIG.hitLoss);
+                      lastMetamorphHitAt = now;
                   }
               }
 
@@ -4162,6 +4179,8 @@ export function initLegacyApp() {
               const bodyHueTop = 186 + Math.sin(swimT * 1.7) * 8;
               const bodyHueMid = 198 + Math.sin(swimT * 1.3 + 1.4) * 12;
               const bodyHueLow = 210 + Math.sin(swimT * 1.9 + 2.1) * 10;
+              const wingMorph = metamorph;
+              const finSpan = 1 + wingMorph * METAMORPH_CONFIG.finWingSpread;
 
               // --- AURA GLOW (reduced + closer to fish contour) ---
               const sonarPulse = 0.08;
@@ -4213,48 +4232,49 @@ export function initLegacyApp() {
               ctx.shadowBlur = 6;
               ctx.save();
               ctx.translate(-7, 2);
-              ctx.rotate(-0.38 + finFlap);
-              const finGradL = ctx.createLinearGradient(0, -1, -12, 14);
-              finGradL.addColorStop(0, `hsla(${bodyHueMid}, 80%, 82%, 0.70)`);
-              finGradL.addColorStop(1, `hsla(${bodyHueMid + 12}, 78%, 88%, 0)`);
+              ctx.rotate((-0.38 + finFlap) - wingMorph * 0.15);
+              const finGradL = ctx.createLinearGradient(0, -1, -12 * finSpan, 14 * finSpan);
+              finGradL.addColorStop(0, `hsla(${bodyHueMid}, 80%, 82%, ${0.7 - wingMorph * 0.12})`);
+              finGradL.addColorStop(1, `hsla(${bodyHueMid + 26}, 82%, 92%, 0)`);
               ctx.fillStyle = finGradL;
               ctx.shadowColor = `hsla(${bodyHueMid}, 80%, 80%, 0.3)`;
               ctx.beginPath();
               ctx.moveTo(0, -1);
-              ctx.bezierCurveTo(-10, 0, -14, 7, -8, 15);
-              ctx.bezierCurveTo(-4, 10, -1, 4, 0, -1);
+              ctx.bezierCurveTo(-10 * finSpan, -2 - wingMorph * 2, -16 * finSpan, 8 * finSpan, -8 * finSpan, 15 * finSpan);
+              ctx.bezierCurveTo(-5 * finSpan, 12 * finSpan, -1.5, 5, 0, -1);
               ctx.fill();
               ctx.restore();
               ctx.save();
               ctx.translate(7, 2);
-              ctx.rotate(0.38 - finFlap);
-              const finGradR = ctx.createLinearGradient(0, -1, 12, 14);
-              finGradR.addColorStop(0, `hsla(${bodyHueMid}, 80%, 82%, 0.70)`);
-              finGradR.addColorStop(1, `hsla(${bodyHueMid + 12}, 78%, 88%, 0)`);
+              ctx.rotate((0.38 - finFlap) + wingMorph * 0.15);
+              const finGradR = ctx.createLinearGradient(0, -1, 12 * finSpan, 14 * finSpan);
+              finGradR.addColorStop(0, `hsla(${bodyHueMid}, 80%, 82%, ${0.7 - wingMorph * 0.12})`);
+              finGradR.addColorStop(1, `hsla(${bodyHueMid + 26}, 82%, 92%, 0)`);
               ctx.fillStyle = finGradR;
               ctx.shadowColor = `hsla(${bodyHueMid}, 80%, 80%, 0.3)`;
               ctx.beginPath();
               ctx.moveTo(0, -1);
-              ctx.bezierCurveTo(10, 0, 14, 7, 8, 15);
-              ctx.bezierCurveTo(4, 10, 1, 4, 0, -1);
+              ctx.bezierCurveTo(10 * finSpan, -2 - wingMorph * 2, 16 * finSpan, 8 * finSpan, 8 * finSpan, 15 * finSpan);
+              ctx.bezierCurveTo(5 * finSpan, 12 * finSpan, 1.5, 5, 0, -1);
               ctx.fill();
               ctx.restore();
 
               // --- TAIL with feathered tips ---
               ctx.save();
+              const tailStretch = 1 + wingMorph * 0.75;
               ctx.translate(0, 20);
               ctx.rotate(wag);
               ctx.shadowBlur = 10;
               ctx.shadowColor = `hsla(${bodyHueLow}, 85%, 80%, 0.45)`;
-              const tailGrad = ctx.createLinearGradient(0, 0, 0, 26);
+              const tailGrad = ctx.createLinearGradient(0, 0, 0, 26 * tailStretch);
               tailGrad.addColorStop(0, `hsla(${bodyHueMid}, 84%, 80%, 0.92)`);
               tailGrad.addColorStop(1, `hsla(${bodyHueLow + 10}, 80%, 74%, 0)`);
               ctx.fillStyle = tailGrad;
               ctx.beginPath();
               ctx.moveTo(0, 0);
-              ctx.bezierCurveTo(-7, 5, -9, 14, -3.5, 22);
-              ctx.quadraticCurveTo(0, 18, 3.5, 22);
-              ctx.bezierCurveTo(9, 14, 7, 5, 0, 0);
+              ctx.bezierCurveTo(-7, 5, -9, 14 * tailStretch, -3.5, 22 * tailStretch);
+              ctx.quadraticCurveTo(0, (18 + wingMorph * 5) * tailStretch, 3.5, 22 * tailStretch);
+              ctx.bezierCurveTo(9, 14 * tailStretch, 7, 5, 0, 0);
               ctx.fill();
               // Left feather tip
               const tipGrad = ctx.createLinearGradient(0, 18, -6, 36);
@@ -4262,9 +4282,9 @@ export function initLegacyApp() {
               tipGrad.addColorStop(1, `hsla(${bodyHueTop + 8}, 88%, 94%, 0)`);
               ctx.fillStyle = tipGrad;
               ctx.beginPath();
-              ctx.moveTo(-1.5, 18);
-              ctx.bezierCurveTo(-5, 23, -8, 31, -4.5, 36);
-              ctx.quadraticCurveTo(-2, 30, -1.5, 18);
+              ctx.moveTo(-1.5, 18 * tailStretch);
+              ctx.bezierCurveTo(-5, 23 * tailStretch, -8, 31 * tailStretch, -4.5, 36 * tailStretch);
+              ctx.quadraticCurveTo(-2, 30 * tailStretch, -1.5, 18 * tailStretch);
               ctx.fill();
               // Right feather tip
               const tipGrad2 = ctx.createLinearGradient(0, 18, 6, 36);
@@ -4272,9 +4292,9 @@ export function initLegacyApp() {
               tipGrad2.addColorStop(1, `hsla(${bodyHueTop + 8}, 88%, 94%, 0)`);
               ctx.fillStyle = tipGrad2;
               ctx.beginPath();
-              ctx.moveTo(1.5, 18);
-              ctx.bezierCurveTo(5, 23, 8, 31, 4.5, 36);
-              ctx.quadraticCurveTo(2, 30, 1.5, 18);
+              ctx.moveTo(1.5, 18 * tailStretch);
+              ctx.bezierCurveTo(5, 23 * tailStretch, 8, 31 * tailStretch, 4.5, 36 * tailStretch);
+              ctx.quadraticCurveTo(2, 30 * tailStretch, 1.5, 18 * tailStretch);
               ctx.fill();
               ctx.restore();
 
@@ -4317,6 +4337,21 @@ export function initLegacyApp() {
               ctx.arc(-5.6, -12.6, 0.52, 0, Math.PI * 2);
               ctx.arc(6.8, -12.6, 0.52, 0, Math.PI * 2);
               ctx.fill();
+              if (wingMorph > 0.001) {
+                  const beakLen = wingMorph * METAMORPH_CONFIG.beakMaxLength;
+                  const beakWidth = 2.4 + wingMorph * 1.8;
+                  const beakGrad = ctx.createLinearGradient(0, -14, 0, -14 - beakLen);
+                  beakGrad.addColorStop(0, `hsla(${36 + wingMorph * 8}, 92%, 66%, 0.92)`);
+                  beakGrad.addColorStop(1, `hsla(${44 + wingMorph * 8}, 96%, 74%, 0.08)`);
+                  ctx.fillStyle = beakGrad;
+                  ctx.beginPath();
+                  ctx.moveTo(0, -13.8);
+                  ctx.lineTo(-beakWidth, -13.8 - beakLen * 0.28);
+                  ctx.lineTo(0, -13.8 - beakLen);
+                  ctx.lineTo(beakWidth, -13.8 - beakLen * 0.28);
+                  ctx.closePath();
+                  ctx.fill();
+              }
               ctx.restore();
 
               drawFishTriangleHaloButton();
@@ -4337,6 +4372,12 @@ export function initLegacyApp() {
                   ctx.fillStyle = halo;
                   ctx.fillRect(0, 0, w, h);
               }
+              ctx.save();
+              ctx.setTransform(1, 0, 0, 1, 0, 0);
+              ctx.font = '600 13px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+              ctx.fillStyle = 'rgba(210, 240, 255, 0.9)';
+              ctx.fillText(`metamorph ${metamorph.toFixed(2)}`, 16, 24);
+              ctx.restore();
           }
 
           function drawWakeParticles() {
