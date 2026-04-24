@@ -275,13 +275,13 @@ export function initLegacyApp() {
           const ARENA_MEMBRANE_SEGMENTS_BASE = 96;
           const ARENA_MEMBRANE_SEGMENTS_MIN = 64;
           const ARENA_MEMBRANE_SEGMENTS_MAX = 128;
-          const ARENA_MEMBRANE_STIFFNESS = 0.022;
-          const ARENA_MEMBRANE_DAMPING = 0.085;
-          const ARENA_MEMBRANE_NEIGHBOR_COUPLING = 0.11;
-          const ARENA_MEMBRANE_MAX_DEFORMATION = 170;
+          const ARENA_MEMBRANE_STIFFNESS = 0.014;
+          const ARENA_MEMBRANE_DAMPING = 0.075;
+          const ARENA_MEMBRANE_NEIGHBOR_COUPLING = 0.14;
+          const ARENA_MEMBRANE_MAX_DEFORMATION = 250;
           const ARENA_MEMBRANE_IMPACT_COOLDOWN_MS = 80;
-          const ARENA_MEMBRANE_IMPACT_SPREAD = 4;
-          const ARENA_MEMBRANE_IMPACT_FORCE = 38;
+          const ARENA_MEMBRANE_IMPACT_SPREAD = 6;
+          const ARENA_MEMBRANE_IMPACT_FORCE = 62;
           const SOUND_HEAR_RADIUS = 460;
           const ARENA_TRIANGLE_COUNT = 12;
           const FIREFLY_TRAIL_ATTACH_RADIUS = 38;
@@ -3289,19 +3289,20 @@ export function initLegacyApp() {
               if (dCenter > localArenaRadius) {
                   const normal = sampleArenaNormal(thetaShip);
                   const penetration = dCenter - localArenaRadius;
-                  ship.x -= normal.x * (penetration + 0.8);
-                  ship.y -= normal.y * (penetration + 0.8);
+                  const softCorrection = Math.min(6.5, penetration * 0.36 + 0.35);
+                  ship.x -= normal.x * softCorrection;
+                  ship.y -= normal.y * softCorrection;
 
                   const vn = ship.vx * normal.x + ship.vy * normal.y;
                   const vtX = ship.vx - normal.x * vn;
                   const vtY = ship.vy - normal.y * vn;
-                  const restitution = 0.55;
-                  const tangentDamping = 0.92;
-                  const reflectedVn = vn > 0 ? -vn * restitution : vn * 0.35;
+                  const restitution = 0.2;
+                  const tangentDamping = 0.965;
+                  const reflectedVn = vn > 0 ? -vn * restitution : vn * 0.12;
                   ship.vx = vtX * tangentDamping + normal.x * reflectedVn;
                   ship.vy = vtY * tangentDamping + normal.y * reflectedVn;
 
-                  const centerBias = 0.14;
+                  const centerBias = Math.min(0.08, 0.028 + penetration * 0.01);
                   ship.vx -= normal.x * centerBias;
                   ship.vy -= normal.y * centerBias;
 
