@@ -379,11 +379,13 @@ export function initLegacyApp() {
               energy: 0
           };
           const METAMORPH_CONFIG = {
-              risePerSecond: 0.06,
-              hitLoss: 0.12,
+              risePerSecond: 0.22,
+              bubbleBoost: 0.18,
+              hitLoss: 0.1,
               hitCooldownMs: 260,
-              finWingSpread: 0.6,
-              beakMaxLength: 8
+              finWingSpread: 1.05,
+              beakMaxLength: 13,
+              visualIntensity: 1.45
           };
 
           const ship = {
@@ -3171,7 +3173,6 @@ export function initLegacyApp() {
               const now = performance.now();
               const morphDt = Math.min(0.12, Math.max(0, (now - lastMetamorphTickAt) / 1000));
               lastMetamorphTickAt = now;
-              metamorph = Math.min(1, metamorph + METAMORPH_CONFIG.risePerSecond * morphDt);
               updateArenaMembranePerfBudget(now);
               updateArenaMembraneDynamics();
               if (traceExitConfirmUntil && performance.now() > traceExitConfirmUntil) {
@@ -3208,6 +3209,7 @@ export function initLegacyApp() {
               let strongestResonance = 0;
               let resonanceHueMix = 0;
               let resonanceWeight = 0;
+              let isInsideAnyBubble = false;
 
               BUBBLES.forEach(b => {
                   const dx = ship.x - b.x;
@@ -3216,6 +3218,7 @@ export function initLegacyApp() {
                   const dist3d = Math.sqrt(dx * dx + dy * dy + dz * dz);
                   const zoneRadius = SOUND_HEAR_RADIUS * 0.7;
                   const insideZone = dist3d < zoneRadius;
+                  if (insideZone) isInsideAnyBubble = true;
 
                   if (b.sound) {
                       const normalized = Math.max(0, 1 - (dist3d / SOUND_HEAR_RADIUS));
@@ -3258,6 +3261,7 @@ export function initLegacyApp() {
                       if (insideZone && !b.wasInZone) {
                           spawnResonanceWave(b);
                           releaseInitialFirefliesFromBubble(b, performance.now());
+                          metamorph = Math.min(1, metamorph + METAMORPH_CONFIG.bubbleBoost);
                       }
                       const stored = getStoredBubbleFireflies(b);
                       if (stored.length >= 3) {
@@ -3282,6 +3286,8 @@ export function initLegacyApp() {
               arenaResonance.level += (strongestResonance - arenaResonance.level) * 0.04;
               const targetHue = resonanceWeight > 0 ? (resonanceHueMix / resonanceWeight) : 198;
               arenaResonance.hue += (targetHue - arenaResonance.hue) * 0.05;
+              const morphRise = isInsideAnyBubble ? METAMORPH_CONFIG.risePerSecond : 0;
+              metamorph = Math.min(1, metamorph + morphRise * morphDt);
               updateAudioReactiveState();
 
               ship.vx *= ship.damping;
@@ -4179,7 +4185,7 @@ export function initLegacyApp() {
               const bodyHueTop = 186 + Math.sin(swimT * 1.7) * 8;
               const bodyHueMid = 198 + Math.sin(swimT * 1.3 + 1.4) * 12;
               const bodyHueLow = 210 + Math.sin(swimT * 1.9 + 2.1) * 10;
-              const wingMorph = metamorph;
+              const wingMorph = Math.min(1, Math.pow(metamorph, 0.72) * METAMORPH_CONFIG.visualIntensity);
               const finSpan = 1 + wingMorph * METAMORPH_CONFIG.finWingSpread;
 
               // --- AURA GLOW (reduced + closer to fish contour) ---
