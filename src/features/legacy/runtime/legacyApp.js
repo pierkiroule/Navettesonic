@@ -272,6 +272,16 @@ export function initLegacyApp() {
           const ARENA_HALO_OUTER = 68;
           const ARENA_HALO_ALPHA = 0.2;
           const ARENA_INNER_RIM_WIDTH = 1.4;
+          const ARENA_MEMBRANE_SEGMENTS_BASE = 96;
+          const ARENA_MEMBRANE_SEGMENTS_MIN = 64;
+          const ARENA_MEMBRANE_SEGMENTS_MAX = 128;
+          const ARENA_MEMBRANE_STIFFNESS = 0.009;
+          const ARENA_MEMBRANE_DAMPING = 0.045;
+          const ARENA_MEMBRANE_NEIGHBOR_COUPLING = 0.14;
+          const ARENA_MEMBRANE_MAX_DEFORMATION = 250;
+          const ARENA_MEMBRANE_IMPACT_COOLDOWN_MS = 80;
+          const ARENA_MEMBRANE_IMPACT_SPREAD = 6;
+          const ARENA_MEMBRANE_IMPACT_FORCE = 44;
           const SOUND_HEAR_RADIUS = 460;
           const ARENA_TRIANGLE_COUNT = 12;
           const FIREFLY_TRAIL_ATTACH_RADIUS = 38;
@@ -374,7 +384,112 @@ export function initLegacyApp() {
               stiffness: 0.0026, damping: 0.93, turnEase: 0.06, maxSpeed: 3.1,
               wakeEmitter: 0, rippleEmitter: 0
           };
+          const ARENA_MEMBRANE_SEGMENTS = Array.from({ length: ARENA_MEMBRANE_SEGMENTS_BASE }, () => ({ offset: 0, velocity: 0 }));
+          let arenaMembraneActiveSegments = ARENA_MEMBRANE_SEGMENTS_BASE;
+          let lastArenaImpactAt = 0;
+          let frameLastAt = performance.now();
+          let fpsSmoothed = 60;
+          let fpsSampleAt = frameLastAt;
           const camera = { x: 0, y: 0, targetX: 0, targetY: 0, ease: 0.05, zoom: 1, targetZoom: 1, zoomEase: 0.08 };
+
+          function normalizeAngle(theta) {
+              const tau = Math.PI * 2;
+              let wrapped = theta % tau;
+              if (wrapped < 0) wrapped += tau;
+              return wrapped;
+          }
+
+          function sampleArenaOffset(theta) {
+              const activeCount = Math.max(ARENA_MEMBRANE_SEGMENTS_MIN, Math.min(ARENA_MEMBRANE_SEGMENTS_MAX, arenaMembraneActiveSegments));
+              const wrapped = normalizeAngle(theta);
+              const scaled = (wrapped / (Math.PI * 2)) * activeCount;
+              const i0 = Math.floor(scaled) % activeCount;
+              const i1 = (i0 + 1) % activeCount;
+              const t = scaled - Math.floor(scaled);
+              const o0 = ARENA_MEMBRANE_SEGMENTS[i0]?.offset ?? 0;
+              const o1 = ARENA_MEMBRANE_SEGMENTS[i1]?.offset ?? 0;
+              return o0 + (o1 - o0) * t;
+          }
+
+          function sampleArenaRadius(theta) {
+              return ARENA_RADIUS + sampleArenaOffset(theta);
+          }
+
+          function sampleArenaNormal(theta) {
+              const epsilon = (Math.PI * 2) / Math.max(ARENA_MEMBRANE_SEGMENTS_MIN, arenaMembraneActiveSegments);
+              const p0r = sampleArenaRadius(theta - epsilon);
+              const p1r = sampleArenaRadius(theta + epsilon);
+              const p0x = Math.cos(theta - epsilon) * p0r;
+              const p0y = Math.sin(theta - epsilon) * p0r;
+              const p1x = Math.cos(theta + epsilon) * p1r;
+              const p1y = Math.sin(theta + epsilon) * p1r;
+              const tx = p1x - p0x;
+              const ty = p1y - p0y;
+              let nx = ty;
+              let ny = -tx;
+              const nLen = Math.hypot(nx, ny) || 1;
+              nx /= nLen;
+              ny /= nLen;
+              if ((nx * Math.cos(theta)) + (ny * Math.sin(theta)) < 0) {
+                  nx *= -1;
+                  ny *= -1;
+              }
+              return { x: nx, y: ny };
+          }
+
+          function injectArenaMembraneImpact(theta, force = ARENA_MEMBRANE_IMPACT_FORCE) {
+              const activeCount = Math.max(ARENA_MEMBRANE_SEGMENTS_MIN, Math.min(ARENA_MEMBRANE_SEGMENTS_MAX, arenaMembraneActiveSegments));
+              const wrapped = normalizeAngle(theta);
+              const centerIndex = Math.floor((wrapped / (Math.PI * 2)) * activeCount) % activeCount;
+              for (let k = -ARENA_MEMBRANE_IMPACT_SPREAD; k <= ARENA_MEMBRANE_IMPACT_SPREAD; k++) {
+                  const idx = (centerIndex + k + activeCount) % activeCount;
+                  const weight = Math.max(0, 1 - Math.abs(k) / (ARENA_MEMBRANE_IMPACT_SPREAD + 0.001));
+                  const segment = ARENA_MEMBRANE_SEGMENTS[idx];
+                  if (!segment) continue;
+                  const smoothImpulse = force * weight;
+                  segment.velocity -= smoothImpulse * 0.065;
+                  segment.offset -= smoothImpulse * 0.32;
+                  if (segment.offset < -ARENA_MEMBRANE_MAX_DEFORMATION) segment.offset = -ARENA_MEMBRANE_MAX_DEFORMATION;
+              }
+          }
+
+          function updateArenaMembraneDynamics() {
+              const activeCount = Math.max(ARENA_MEMBRANE_SEGMENTS_MIN, Math.min(ARENA_MEMBRANE_SEGMENTS_MAX, arenaMembraneActiveSegments));
+              const offsetSnapshot = new Array(activeCount);
+              for (let i = 0; i < activeCount; i++) offsetSnapshot[i] = ARENA_MEMBRANE_SEGMENTS[i]?.offset ?? 0;
+              for (let i = 0; i < activeCount; i++) {
+                  const segment = ARENA_MEMBRANE_SEGMENTS[i];
+                  if (!segment) continue;
+                  const prev = offsetSnapshot[(i - 1 + activeCount) % activeCount];
+                  const next = offsetSnapshot[(i + 1) % activeCount];
+                  const neighborPull = (prev + next - offsetSnapshot[i] * 2) * ARENA_MEMBRANE_NEIGHBOR_COUPLING;
+                  segment.velocity += (-segment.offset * ARENA_MEMBRANE_STIFFNESS - segment.velocity * ARENA_MEMBRANE_DAMPING) + neighborPull;
+                  segment.offset += segment.velocity;
+                  if (segment.offset > ARENA_MEMBRANE_MAX_DEFORMATION) {
+                      segment.offset = ARENA_MEMBRANE_MAX_DEFORMATION;
+                      segment.velocity *= 0.6;
+                  } else if (segment.offset < -ARENA_MEMBRANE_MAX_DEFORMATION) {
+                      segment.offset = -ARENA_MEMBRANE_MAX_DEFORMATION;
+                      segment.velocity *= 0.6;
+                  }
+              }
+          }
+
+          function updateArenaMembranePerfBudget(now) {
+              const dt = now - frameLastAt;
+              frameLastAt = now;
+              if (dt > 0 && dt < 1000) {
+                  const instantFps = 1000 / dt;
+                  fpsSmoothed += (instantFps - fpsSmoothed) * 0.08;
+              }
+              if (now - fpsSampleAt < 450) return;
+              fpsSampleAt = now;
+              if (fpsSmoothed < 45) {
+                  arenaMembraneActiveSegments = ARENA_MEMBRANE_SEGMENTS_MIN;
+              } else if (fpsSmoothed > 56) {
+                  arenaMembraneActiveSegments = ARENA_MEMBRANE_SEGMENTS_BASE;
+              }
+          }
 
           function setActiveNav(target) {
               [navHome, navSoon, navEchoHypnose, navProfile].forEach(btn => btn.classList.remove('active'));
@@ -3043,6 +3158,9 @@ export function initLegacyApp() {
 
           function update() {
               if (currentView !== 'experience') return;
+              const now = performance.now();
+              updateArenaMembranePerfBudget(now);
+              updateArenaMembraneDynamics();
               if (traceExitConfirmUntil && performance.now() > traceExitConfirmUntil) {
                   traceExitConfirmUntil = 0;
                   if (isTraceRailAutopilot) {
@@ -3161,19 +3279,55 @@ export function initLegacyApp() {
                   ship.vx *= ratio;
                   ship.vy *= ratio;
               }
+              const preMoveTheta = Math.atan2(ship.y, ship.x);
+              const preMoveRadius = sampleArenaRadius(preMoveTheta);
+              const preMoveDistCenter = Math.hypot(ship.x, ship.y);
+              const preMoveMargin = preMoveRadius - preMoveDistCenter;
+              if (preMoveMargin < 220) {
+                  const preMoveNormal = sampleArenaNormal(preMoveTheta);
+                  const approaching = ship.vx * preMoveNormal.x + ship.vy * preMoveNormal.y;
+                  if (approaching > 0) {
+                      const slowFactor = Math.min(1, (220 - preMoveMargin) / 220);
+                      const brake = approaching * (0.22 + slowFactor * 0.56);
+                      ship.vx -= preMoveNormal.x * brake;
+                      ship.vy -= preMoveNormal.y * brake;
+                      ship.vx *= 0.992 - slowFactor * 0.05;
+                      ship.vy *= 0.992 - slowFactor * 0.05;
+                  }
+              }
               ship.x += ship.vx;
               ship.y += ship.vy;
 
               ship.trail.push({ x: ship.x, y: ship.y });
               if (ship.trail.length > ship.maxTrail) ship.trail.shift();
 
+              const thetaShip = Math.atan2(ship.y, ship.x);
               const dCenter = Math.hypot(ship.x, ship.y);
-              if (dCenter > ARENA_RADIUS) {
-                  const angle = Math.atan2(ship.y, ship.x);
-                  ship.x = Math.cos(angle) * ARENA_RADIUS;
-                  ship.y = Math.sin(angle) * ARENA_RADIUS;
-                  ship.vx *= -0.5;
-                  ship.vy *= -0.5;
+              const localArenaRadius = sampleArenaRadius(thetaShip);
+              if (dCenter > localArenaRadius) {
+                  const normal = sampleArenaNormal(thetaShip);
+                  const penetration = dCenter - localArenaRadius;
+                  const softCorrection = Math.min(2.1, penetration * 0.14 + 0.08);
+                  ship.x -= normal.x * softCorrection;
+                  ship.y -= normal.y * softCorrection;
+
+                  const vn = ship.vx * normal.x + ship.vy * normal.y;
+                  const vtX = ship.vx - normal.x * vn;
+                  const vtY = ship.vy - normal.y * vn;
+                  const restitution = 0.06;
+                  const tangentDamping = 0.985;
+                  const reflectedVn = vn > 0 ? -vn * restitution : vn * 0.04;
+                  ship.vx = vtX * tangentDamping + normal.x * reflectedVn;
+                  ship.vy = vtY * tangentDamping + normal.y * reflectedVn;
+
+                  const centerBias = Math.min(0.032, 0.008 + penetration * 0.0035);
+                  ship.vx -= normal.x * centerBias;
+                  ship.vy -= normal.y * centerBias;
+
+                  if (now - lastArenaImpactAt >= ARENA_MEMBRANE_IMPACT_COOLDOWN_MS) {
+                      injectArenaMembraneImpact(thetaShip);
+                      lastArenaImpactAt = now;
+                  }
               }
 
               if (speed > 0.08) {
@@ -3835,6 +3989,32 @@ export function initLegacyApp() {
               );
               const mainStrokeWorld = mainStrokePx / zoomSafe;
               const innerRimWorld = (ARENA_INNER_RIM_WIDTH + breath * 0.55) / zoomSafe;
+              const pathSampleCount = Math.max(40, Math.floor(arenaMembraneActiveSegments * (fpsSmoothed < 45 ? 0.72 : 1)));
+
+              const traceArenaPath = (radiusBias = 0, reverse = false) => {
+                  const points = [];
+                  for (let i = 0; i < pathSampleCount; i++) {
+                      const t = i / pathSampleCount;
+                      const theta = t * Math.PI * 2;
+                      const radius = Math.max(120, sampleArenaRadius(theta) + radiusBias);
+                      points.push({
+                          x: Math.cos(theta) * radius,
+                          y: Math.sin(theta) * radius
+                      });
+                  }
+                  if (reverse) points.reverse();
+                  if (!points.length) return;
+                  const first = points[0];
+                  const second = points[1] || first;
+                  ctx.moveTo((first.x + second.x) * 0.5, (first.y + second.y) * 0.5);
+                  for (let i = 0; i < points.length; i++) {
+                      const current = points[i];
+                      const next = points[(i + 1) % points.length];
+                      const midX = (current.x + next.x) * 0.5;
+                      const midY = (current.y + next.y) * 0.5;
+                      ctx.quadraticCurveTo(current.x, current.y, midX, midY);
+                  }
+              };
 
               // Passe 1 : halo radial externe.
               const haloGradient = ctx.createRadialGradient(
@@ -3847,8 +4027,8 @@ export function initLegacyApp() {
               haloGradient.addColorStop(1, 'rgba(138, 229, 255, 0)');
               ctx.fillStyle = haloGradient;
               ctx.beginPath();
-              ctx.arc(0, 0, ARENA_RADIUS + haloOuter, 0, Math.PI * 2);
-              ctx.arc(0, 0, ARENA_RADIUS - haloInner, 0, Math.PI * 2, true);
+              traceArenaPath(haloOuter);
+              traceArenaPath(-haloInner, true);
               ctx.fill();
 
               // Passe 2 : trait principal lumineux et épais.
@@ -3858,7 +4038,7 @@ export function initLegacyApp() {
               ctx.shadowBlur = (12 + breath * 10) * silenceMultiplier;
               ctx.shadowColor = `rgba(118, 231, 255, ${0.34 * silenceMultiplier})`;
               ctx.beginPath();
-              ctx.arc(0, 0, ARENA_RADIUS, 0, Math.PI * 2);
+              traceArenaPath(0);
               ctx.stroke();
 
               // Passe 3 : liseré interne pour l'effet bulle.
@@ -3867,7 +4047,7 @@ export function initLegacyApp() {
               ctx.strokeStyle = `rgba(241, 254, 255, ${innerAlpha})`;
               ctx.lineWidth = Math.max(0.8 / zoomSafe, innerRimWorld);
               ctx.beginPath();
-              ctx.arc(0, 0, ARENA_RADIUS - mainStrokeWorld * 0.55, 0, Math.PI * 2);
+              traceArenaPath(-mainStrokeWorld * 0.55);
               ctx.stroke();
           }
 
