@@ -3929,6 +3929,49 @@ export function initLegacyApp() {
               return { bubble: nearest, dx, dy, distanceRatio, audioReactive };
           }
 
+          function drawFishFinMorphSparkles(swimT, finMorph, reactiveHighs, bubbleAudioInfluence, wingSpan, wingLength) {
+              const sparkleIntensity = Math.min(1, finMorph * 0.75 + reactiveHighs * 0.65 + bubbleAudioInfluence * 0.45);
+              if (sparkleIntensity < 0.12) return;
+
+              const sparkleCount = 4 + Math.floor(sparkleIntensity * 8);
+              const now = performance.now() * 0.001;
+              for (let i = 0; i < sparkleCount; i++) {
+                  const n = i / Math.max(1, sparkleCount - 1);
+                  const side = i % 2 === 0 ? -1 : 1;
+                  const lane = Math.floor(i * 0.5);
+                  const phase = swimT * (7.5 + reactiveHighs * 6.2) + lane * 0.95 + side * 0.6;
+                  const lifePulse = (Math.sin(now * (4.8 + sparkleIntensity * 5.2) + phase) + 1) * 0.5;
+                  const alpha = (0.08 + sparkleIntensity * 0.34) * lifePulse;
+                  if (alpha <= 0.03) continue;
+                  const x = side * (5 + wingSpan * (0.34 + n * 0.58));
+                  const y = 1.5 + wingLength * (0.18 + n * 0.72) + Math.sin(phase) * (0.6 + sparkleIntensity * 0.9);
+                  const radius = 0.5 + lifePulse * (0.6 + sparkleIntensity * 1.05);
+
+                  const warmTone = i % 3 === 0;
+                  ctx.fillStyle = warmTone
+                      ? `rgba(255, 245, 168, ${alpha})`
+                      : `rgba(255, 255, 255, ${alpha + 0.08})`;
+                  ctx.shadowBlur = 5 + sparkleIntensity * 10;
+                  ctx.shadowColor = warmTone
+                      ? `rgba(255, 226, 120, ${0.42 + sparkleIntensity * 0.32})`
+                      : `rgba(255, 255, 255, ${0.4 + sparkleIntensity * 0.36})`;
+                  ctx.beginPath();
+                  ctx.arc(x, y, radius, 0, Math.PI * 2);
+                  ctx.fill();
+
+                  ctx.strokeStyle = warmTone
+                      ? `rgba(255, 239, 152, ${alpha * 0.85})`
+                      : `rgba(255, 255, 255, ${alpha * 0.92})`;
+                  ctx.lineWidth = 0.8;
+                  ctx.beginPath();
+                  ctx.moveTo(x - radius * 1.8, y);
+                  ctx.lineTo(x + radius * 1.8, y);
+                  ctx.moveTo(x, y - radius * 1.8);
+                  ctx.lineTo(x, y + radius * 1.8);
+                  ctx.stroke();
+              }
+          }
+
           function drawSilenceCompassRing() {
               const nearestBubbleData = getNearestBubbleForShip();
               const pulse = (Math.sin(performance.now() * 0.008) + 1) * 0.5;
@@ -4145,6 +4188,10 @@ export function initLegacyApp() {
                   drawLuminousTrail();
               }
 
+              const nearestBubbleData = getNearestBubbleForShip();
+              const bubbleProximity = nearestBubbleData ? nearestBubbleData.distanceRatio : 0;
+              const bubbleAudioInfluence = nearestBubbleData ? nearestBubbleData.audioReactive : 0;
+
               ctx.save();
               ctx.translate(ship.x, ship.y);
               ctx.rotate(ship.angle + Math.PI / 2);
@@ -4155,9 +4202,10 @@ export function initLegacyApp() {
               const reactiveEnergy = audioReactiveState.energy;
               const glide = Math.min(1, (Math.hypot(ship.vx, ship.vy) / ship.maxSpeed) + reactiveBass * AUDIO_REACTIVITY.fishVelocityBoost);
               const wag = Math.sin(swimT * 9.5) * (0.16 + glide * 0.22);
-              const finFlap = Math.sin(swimT * (7.2 + reactiveMids * 1.8) + 0.5) * (0.14 + glide * 0.10 + reactiveMids * AUDIO_REACTIVITY.fishFinBoost * 0.1);
+              const finMorph = Math.min(1, bubbleProximity * 0.65 + bubbleAudioInfluence * 0.9 + reactiveMids * 0.25);
+              const finFlap = Math.sin(swimT * (7.2 + reactiveMids * 1.8 + bubbleAudioInfluence * 2.1) + 0.5) * (0.14 + glide * 0.10 + reactiveMids * AUDIO_REACTIVITY.fishFinBoost * 0.1 + finMorph * 0.24);
               const bodyBreath = Math.sin(swimT * 2.5) * 0.65;
-              const shimmerPulse = Math.min(1.2, (Math.sin(swimT * (2.2 + reactiveHighs * 0.8)) + 1) * 0.5 + reactiveHighs * 0.42);
+              const shimmerPulse = Math.min(1.2, (Math.sin(swimT * (2.2 + reactiveHighs * 0.8 + bubbleAudioInfluence * 0.9)) + 1) * 0.5 + reactiveHighs * 0.42);
               const bodyUndulate = Math.sin(swimT * 5.8) * (0.03 + glide * 0.055);
               const bodyHueTop = 186 + Math.sin(swimT * 1.7) * 8;
               const bodyHueMid = 198 + Math.sin(swimT * 1.3 + 1.4) * 12;
@@ -4209,36 +4257,46 @@ export function initLegacyApp() {
 
               ctx.restore();
 
-              // --- PECTORAL FINS ---
-              ctx.shadowBlur = 6;
+              // --- PECTORAL FINS / AUDIO WINGS ---
+              const wingSpan = 12 + finMorph * 22;
+              const wingLength = 15 + finMorph * 30;
+              const wingDrift = Math.sin(swimT * (4.4 + bubbleAudioInfluence * 2.2)) * (0.8 + finMorph * 1.4);
+              ctx.shadowBlur = 8 + finMorph * 10;
               ctx.save();
+              ctx.globalCompositeOperation = 'screen';
               ctx.translate(-7, 2);
-              ctx.rotate(-0.38 + finFlap);
-              const finGradL = ctx.createLinearGradient(0, -1, -12, 14);
-              finGradL.addColorStop(0, `hsla(${bodyHueMid}, 80%, 82%, 0.70)`);
-              finGradL.addColorStop(1, `hsla(${bodyHueMid + 12}, 78%, 88%, 0)`);
+              ctx.rotate(-0.38 + finFlap - wingDrift * 0.03);
+              const finGradL = ctx.createLinearGradient(0, -2, -wingSpan, wingLength);
+              finGradL.addColorStop(0, `hsla(${196 + bubbleAudioInfluence * 10}, 92%, 80%, ${0.66 + finMorph * 0.16})`);
+              finGradL.addColorStop(0.52, `hsla(${216 + bubbleAudioInfluence * 8}, 94%, 68%, ${0.55 + finMorph * 0.2})`);
+              finGradL.addColorStop(1, `hsla(${328 + finMorph * 12}, 96%, 72%, 0)`);
               ctx.fillStyle = finGradL;
-              ctx.shadowColor = `hsla(${bodyHueMid}, 80%, 80%, 0.3)`;
+              ctx.shadowColor = `hsla(${206 + finMorph * 16}, 96%, 76%, ${0.35 + finMorph * 0.45})`;
               ctx.beginPath();
               ctx.moveTo(0, -1);
-              ctx.bezierCurveTo(-10, 0, -14, 7, -8, 15);
-              ctx.bezierCurveTo(-4, 10, -1, 4, 0, -1);
+              ctx.bezierCurveTo(-wingSpan * 0.56, -1.5 - finMorph * 1.2, -wingSpan * 1.18, wingLength * 0.52, -wingSpan * 0.58, wingLength);
+              ctx.bezierCurveTo(-wingSpan * 0.25, wingLength * 0.66, -2, 5 + finMorph * 2.8, 0, -1);
               ctx.fill();
               ctx.restore();
+
               ctx.save();
+              ctx.globalCompositeOperation = 'screen';
               ctx.translate(7, 2);
-              ctx.rotate(0.38 - finFlap);
-              const finGradR = ctx.createLinearGradient(0, -1, 12, 14);
-              finGradR.addColorStop(0, `hsla(${bodyHueMid}, 80%, 82%, 0.70)`);
-              finGradR.addColorStop(1, `hsla(${bodyHueMid + 12}, 78%, 88%, 0)`);
+              ctx.rotate(0.38 - finFlap + wingDrift * 0.03);
+              const finGradR = ctx.createLinearGradient(0, -2, wingSpan, wingLength);
+              finGradR.addColorStop(0, `hsla(${196 + bubbleAudioInfluence * 10}, 92%, 80%, ${0.66 + finMorph * 0.16})`);
+              finGradR.addColorStop(0.52, `hsla(${216 + bubbleAudioInfluence * 8}, 94%, 68%, ${0.55 + finMorph * 0.2})`);
+              finGradR.addColorStop(1, `hsla(${328 + finMorph * 12}, 96%, 72%, 0)`);
               ctx.fillStyle = finGradR;
-              ctx.shadowColor = `hsla(${bodyHueMid}, 80%, 80%, 0.3)`;
+              ctx.shadowColor = `hsla(${206 + finMorph * 16}, 96%, 76%, ${0.35 + finMorph * 0.45})`;
               ctx.beginPath();
               ctx.moveTo(0, -1);
-              ctx.bezierCurveTo(10, 0, 14, 7, 8, 15);
-              ctx.bezierCurveTo(4, 10, 1, 4, 0, -1);
+              ctx.bezierCurveTo(wingSpan * 0.56, -1.5 - finMorph * 1.2, wingSpan * 1.18, wingLength * 0.52, wingSpan * 0.58, wingLength);
+              ctx.bezierCurveTo(wingSpan * 0.25, wingLength * 0.66, 2, 5 + finMorph * 2.8, 0, -1);
               ctx.fill();
               ctx.restore();
+
+              drawFishFinMorphSparkles(swimT, finMorph, reactiveHighs, bubbleAudioInfluence, wingSpan, wingLength);
 
               // --- TAIL with feathered tips ---
               ctx.save();
