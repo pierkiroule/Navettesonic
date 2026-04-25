@@ -232,6 +232,16 @@ export function initLegacyApp() {
               minZoomScale: 0.75,
               maxZoomScale: 2.4
           };
+          const traceCamMenuDrag = {
+              active: false,
+              pointerId: null,
+              startClientX: 0,
+              startClientY: 0,
+              startOffsetX: 0,
+              startOffsetY: 0,
+              offsetX: 0,
+              offsetY: 0
+          };
           let isInteractionPaused = false;
           let lastFishTap = { time: 0, x: 0, y: 0 };
           let selectedSampleId = SAMPLE_LIBRARY[0].id;
@@ -1642,7 +1652,7 @@ export function initLegacyApp() {
 
           function updateTraceCamControlsVisibility() {
               if (!traceCamControls) return;
-              const shouldShow = currentView === 'experience' && (isTraceListeningMode || isTraceRailAutopilot || isDrawingTraceRail);
+              const shouldShow = currentView === 'experience' && (isTraceListeningMode || isDrawingTraceRail);
               traceCamControls.classList.toggle('visible', shouldShow);
           }
 
@@ -1653,7 +1663,7 @@ export function initLegacyApp() {
           }
 
           function applyTraceCameraAction(action) {
-              if (!(isTraceListeningMode || isTraceRailAutopilot || isDrawingTraceRail)) return;
+              if (!(isTraceListeningMode || isDrawingTraceRail)) return;
               const baseZoom = getTraceOverviewBaseZoom();
               const worldZoom = Math.max(traceOverviewZoomMin, Math.min(traceOverviewZoomMax, baseZoom * traceCameraControl.zoomScale));
               const panStep = Math.max(26, 44 / Math.max(0.3, worldZoom));
@@ -1674,6 +1684,22 @@ export function initLegacyApp() {
               } else if (action === 'right') {
                   traceCameraControl.panX += panStep;
               }
+          }
+
+          function updateTraceCamMenuDragPosition() {
+              if (!traceCamControls) return;
+              traceCamControls.style.setProperty('--trace-cam-drag-x', `${traceCamMenuDrag.offsetX}px`);
+              traceCamControls.style.setProperty('--trace-cam-drag-y', `${traceCamMenuDrag.offsetY}px`);
+          }
+
+          function clampTraceCamMenuDrag(nextX, nextY) {
+              const maxX = Math.max(0, Math.floor((window.innerWidth - 190) * 0.5));
+              const minY = -Math.max(80, Math.floor(window.innerHeight * 0.62));
+              const maxY = 36;
+              return {
+                  x: Math.max(-maxX, Math.min(maxX, nextX)),
+                  y: Math.max(minY, Math.min(maxY, nextY))
+              };
           }
 
           function setArenaTriangleStatus(message, isError = false) {
@@ -2590,6 +2616,49 @@ export function initLegacyApp() {
               button.addEventListener('pointercancel', stopRepeat);
               button.addEventListener('lostpointercapture', stopRepeat);
           });
+          const traceCamDragZone = traceCamControls?.querySelector('[data-trace-cam-drag-zone]');
+          const stopTraceCamMenuDrag = () => {
+              traceCamMenuDrag.active = false;
+              traceCamMenuDrag.pointerId = null;
+          };
+          traceCamDragZone?.addEventListener('pointerdown', (event) => {
+              if (!(isTraceListeningMode || isDrawingTraceRail)) return;
+              event.preventDefault();
+              event.stopPropagation();
+              traceCamMenuDrag.active = true;
+              traceCamMenuDrag.pointerId = event.pointerId;
+              traceCamMenuDrag.startClientX = event.clientX;
+              traceCamMenuDrag.startClientY = event.clientY;
+              traceCamMenuDrag.startOffsetX = traceCamMenuDrag.offsetX;
+              traceCamMenuDrag.startOffsetY = traceCamMenuDrag.offsetY;
+              traceCamDragZone.setPointerCapture?.(event.pointerId);
+          });
+          traceCamDragZone?.addEventListener('pointermove', (event) => {
+              if (!traceCamMenuDrag.active) return;
+              if (traceCamMenuDrag.pointerId !== null && event.pointerId !== traceCamMenuDrag.pointerId) return;
+              event.preventDefault();
+              event.stopPropagation();
+              const proposedX = traceCamMenuDrag.startOffsetX + (event.clientX - traceCamMenuDrag.startClientX);
+              const proposedY = traceCamMenuDrag.startOffsetY + (event.clientY - traceCamMenuDrag.startClientY);
+              const clamped = clampTraceCamMenuDrag(proposedX, proposedY);
+              traceCamMenuDrag.offsetX = clamped.x;
+              traceCamMenuDrag.offsetY = clamped.y;
+              updateTraceCamMenuDragPosition();
+          });
+          traceCamDragZone?.addEventListener('pointerup', (event) => {
+              if (traceCamMenuDrag.pointerId === event.pointerId) stopTraceCamMenuDrag();
+          });
+          traceCamDragZone?.addEventListener('pointercancel', (event) => {
+              if (traceCamMenuDrag.pointerId === event.pointerId) stopTraceCamMenuDrag();
+          });
+          traceCamDragZone?.addEventListener('lostpointercapture', stopTraceCamMenuDrag);
+          window.addEventListener('resize', () => {
+              const clamped = clampTraceCamMenuDrag(traceCamMenuDrag.offsetX, traceCamMenuDrag.offsetY);
+              traceCamMenuDrag.offsetX = clamped.x;
+              traceCamMenuDrag.offsetY = clamped.y;
+              updateTraceCamMenuDragPosition();
+          });
+          updateTraceCamMenuDragPosition();
           updateTraceCamControlsVisibility();
 
           cancelBtn.addEventListener('click', closeBubblePanel);
@@ -2611,7 +2680,7 @@ export function initLegacyApp() {
                       traceExitConfirmUntil = 0;
                       resetTraceCameraControl();
                       ui.textContent = 'Mode Tracer l’écoute : vue d’ensemble + tracé lissé.';
-                      helperTips.textContent = 'Maintiens pour tracer · en bas : + / − et flèches pour ajuster la vue.';
+                      helperTips.textContent = 'Maintiens pour tracer · menu circulaire draggable : + / − au centre, flèches autour.';
                   } else if (!isDrawingTraceRail) {
                       traceExitConfirmUntil = 0;
                       resetTraceCameraControl();
@@ -3443,7 +3512,7 @@ export function initLegacyApp() {
                   ship.angle += diff * ship.turnEase;
               }
 
-              const shouldShowArenaOverview = isTraceListeningMode || isDrawingTraceRail || isTraceRailAutopilot;
+              const shouldShowArenaOverview = isTraceListeningMode || isDrawingTraceRail;
               if (shouldShowArenaOverview) {
                   const baseZoom = getTraceOverviewBaseZoom();
                   const desiredZoom = Math.max(traceOverviewZoomMin, Math.min(traceOverviewZoomMax, baseZoom * traceCameraControl.zoomScale));
