@@ -3963,49 +3963,6 @@ export function initLegacyApp() {
               ctx.restore();
           }
 
-          function drawFishFinMorphSparkles(swimT, finMorph, wingPresence, reactiveHighs, bubbleAudioInfluence, wingSpan, wingLength) {
-              const sparkleIntensity = Math.min(1, wingPresence * (finMorph * 0.7 + reactiveHighs * 0.65 + bubbleAudioInfluence * 0.55));
-              if (sparkleIntensity < 0.12) return;
-
-              const sparkleCount = 4 + Math.floor(sparkleIntensity * 8);
-              const now = performance.now() * 0.001;
-              for (let i = 0; i < sparkleCount; i++) {
-                  const n = i / Math.max(1, sparkleCount - 1);
-                  const side = i % 2 === 0 ? -1 : 1;
-                  const lane = Math.floor(i * 0.5);
-                  const phase = swimT * (7.5 + reactiveHighs * 6.2) + lane * 0.95 + side * 0.6;
-                  const lifePulse = (Math.sin(now * (4.8 + sparkleIntensity * 5.2) + phase) + 1) * 0.5;
-                  const alpha = (0.08 + sparkleIntensity * 0.34) * lifePulse;
-                  if (alpha <= 0.03) continue;
-                  const x = side * (5 + wingSpan * (0.34 + n * 0.58));
-                  const y = 1.5 + wingLength * (0.18 + n * 0.72) + Math.sin(phase) * (0.6 + sparkleIntensity * 0.9);
-                  const radius = 0.5 + lifePulse * (0.6 + sparkleIntensity * 1.05);
-
-                  const warmTone = i % 3 === 0;
-                  ctx.fillStyle = warmTone
-                      ? `rgba(255, 245, 168, ${alpha})`
-                      : `rgba(255, 255, 255, ${alpha + 0.08})`;
-                  ctx.shadowBlur = 5 + sparkleIntensity * 10;
-                  ctx.shadowColor = warmTone
-                      ? `rgba(255, 226, 120, ${0.42 + sparkleIntensity * 0.32})`
-                      : `rgba(255, 255, 255, ${0.4 + sparkleIntensity * 0.36})`;
-                  ctx.beginPath();
-                  ctx.arc(x, y, radius, 0, Math.PI * 2);
-                  ctx.fill();
-
-                  ctx.strokeStyle = warmTone
-                      ? `rgba(255, 239, 152, ${alpha * 0.85})`
-                      : `rgba(255, 255, 255, ${alpha * 0.92})`;
-                  ctx.lineWidth = 0.8;
-                  ctx.beginPath();
-                  ctx.moveTo(x - radius * 1.8, y);
-                  ctx.lineTo(x + radius * 1.8, y);
-                  ctx.moveTo(x, y - radius * 1.8);
-                  ctx.lineTo(x, y + radius * 1.8);
-                  ctx.stroke();
-              }
-          }
-
           function drawSilenceCompassRing() {
               const nearestBubbleData = getNearestBubbleForShip();
               const pulse = (Math.sin(performance.now() * 0.008) + 1) * 0.5;
@@ -4339,7 +4296,6 @@ export function initLegacyApp() {
                   ctx.fill();
                   ctx.restore();
 
-                  drawFishFinMorphSparkles(swimT, finMorph, wingPresence, reactiveHighs, bubbleAudioInfluence, wingSpan, wingLength);
               }
 
               // --- TAIL with feathered tips ---
