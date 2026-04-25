@@ -52,6 +52,31 @@
             <p id="silenceDesYeuxPoem" class="silence-poem">Respire… l'océan te regarde en silence.</p>
         </div>
         <div id="helperTips">Garde le doigt (ou clic) appuyé dans l'océan : le poisson suit ton mouvement.</div>
+        <section id="soonJourneyProgress" class="soon-journey-progress" aria-label="Parcours Soon experience">
+            <header class="soon-journey-progress__header">
+                <span>Parcours Soon experience</span>
+                <strong id="soonJourneyStepLabel">Étape 1 · Composer</strong>
+            </header>
+            <ol id="soonJourneySteps" class="soon-journey-progress__list">
+                <li data-step="1"><span>1</span><em>Composer</em></li>
+                <li data-step="2"><span>2</span><em>Récolter</em></li>
+                <li data-step="3"><span>3</span><em>Tracer</em></li>
+                <li data-step="4"><span>4</span><em>Écouter</em></li>
+                <li data-step="5"><span>5</span><em>Résonner</em></li>
+            </ol>
+        </section>
+        <section id="resonanceFormPanel" class="resonance-form-panel" hidden>
+            <div class="resonance-form-card">
+                <h3>Étape 5 · Résonner</h3>
+                <p>Dépose ce qui vibre après ta traversée.</p>
+                <form id="resonanceForm">
+                    <label for="resonanceInput">Ma résonance</label>
+                    <textarea id="resonanceInput" maxlength="280" rows="4" placeholder="Quelques mots, une sensation, une image..." required></textarea>
+                    <button id="resonanceSubmitBtn" type="submit">Déposer ma résonance</button>
+                </form>
+                <p id="resonanceFormStatus" class="resonance-form-status" aria-live="polite"></p>
+            </div>
+        </section>
         <div id="echoRecorderPanel" aria-live="polite">
             <button id="echoRecordToggleBtn" class="echo-rec-btn" type="button">👂Le silence des yeux !</button>
             <div class="echo-rec-meta">

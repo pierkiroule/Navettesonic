@@ -256,7 +256,7 @@
         }
         #helperTips {
             position: absolute;
-            top: 66px;
+            top: 122px;
             left: 50%;
             transform: translateX(-50%);
             width: min(92vw, 680px);
@@ -268,6 +268,132 @@
             line-height: 1.4;
             font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
             text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
+        }
+        .soon-journey-progress {
+            position: absolute;
+            top: calc(10px + env(safe-area-inset-top));
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 168;
+            width: min(94vw, 720px);
+            padding: 8px 12px 10px;
+            border-radius: 14px;
+            border: 1px solid rgba(146, 224, 255, 0.3);
+            background: rgba(6, 21, 40, 0.72);
+            backdrop-filter: blur(5px);
+        }
+        .soon-journey-progress__header {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 6px;
+            color: rgba(219, 244, 255, 0.95);
+            font-size: 0.76rem;
+        }
+        .soon-journey-progress__list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 8px;
+        }
+        .soon-journey-progress__list li {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            color: rgba(189, 218, 235, 0.82);
+            font-size: 0.66rem;
+            text-align: center;
+            opacity: 0.6;
+            transition: opacity 120ms ease, transform 120ms ease;
+        }
+        .soon-journey-progress__list li span {
+            width: 22px;
+            height: 22px;
+            display: grid;
+            place-items: center;
+            border-radius: 50%;
+            border: 1px solid rgba(167, 219, 245, 0.42);
+            background: rgba(14, 38, 61, 0.8);
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+        .soon-journey-progress__list li.is-current,
+        .soon-journey-progress__list li.is-complete {
+            opacity: 1;
+        }
+        .soon-journey-progress__list li.is-current {
+            transform: translateY(-1px);
+            color: rgba(225, 248, 255, 0.98);
+        }
+        .soon-journey-progress__list li.is-current span {
+            border-color: rgba(159, 237, 255, 0.9);
+            box-shadow: 0 0 0 2px rgba(118, 226, 255, 0.2);
+            background: linear-gradient(180deg, rgba(62, 145, 255, 0.95), rgba(35, 103, 228, 0.92));
+        }
+        .soon-journey-progress__list li.is-complete span {
+            border-color: rgba(166, 255, 219, 0.86);
+            background: linear-gradient(180deg, rgba(47, 138, 130, 0.95), rgba(27, 105, 107, 0.9));
+        }
+        .resonance-form-panel {
+            position: absolute;
+            right: clamp(10px, 2vw, 18px);
+            bottom: calc(var(--bottom-nav-clearance) + 18px + env(safe-area-inset-bottom));
+            z-index: 171;
+            width: min(88vw, 340px);
+        }
+        .resonance-form-card {
+            padding: 14px;
+            border-radius: 14px;
+            border: 1px solid rgba(144, 220, 255, 0.4);
+            background: rgba(8, 22, 38, 0.9);
+            box-shadow: 0 12px 26px rgba(0, 0, 0, 0.3);
+            color: rgba(229, 247, 255, 0.96);
+        }
+        .resonance-form-card h3 {
+            margin: 0 0 6px;
+            font-size: 0.92rem;
+        }
+        .resonance-form-card p {
+            margin: 0 0 10px;
+            font-size: 0.78rem;
+            color: rgba(205, 232, 247, 0.9);
+        }
+        .resonance-form-card label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.72rem;
+            color: rgba(206, 236, 252, 0.95);
+        }
+        .resonance-form-card textarea {
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 8px;
+            border-radius: 10px;
+            border: 1px solid rgba(157, 219, 249, 0.32);
+            background: rgba(10, 28, 47, 0.95);
+            color: rgba(233, 249, 255, 0.98);
+            resize: vertical;
+            min-height: 86px;
+            padding: 9px;
+            font: inherit;
+        }
+        .resonance-form-card button {
+            width: 100%;
+            border: 0;
+            border-radius: 10px;
+            padding: 9px 10px;
+            background: linear-gradient(135deg, rgba(80, 216, 255, 0.94), rgba(78, 132, 255, 0.93));
+            color: #031321;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .resonance-form-status {
+            min-height: 1.2em;
+            margin-top: 8px;
+            font-size: 0.74rem;
         }
         #echoRecorderPanel {
             position: absolute;
@@ -351,6 +477,20 @@
             }
             .echo-rec-btn {
                 min-width: 54px;
+            }
+            .soon-journey-progress {
+                width: min(96vw, 620px);
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+            .soon-journey-progress__list {
+                gap: 5px;
+            }
+            .soon-journey-progress__list li em {
+                font-size: 0.62rem;
+            }
+            #helperTips {
+                top: 116px;
             }
         }
         .trace-listening-btn {

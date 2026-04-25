@@ -46,6 +46,13 @@ export function initLegacyApp() {
           const ctx = canvas.getContext('2d');
           const ui = document.getElementById('ui');
           const helperTips = document.getElementById('helperTips');
+          const soonJourneyProgress = document.getElementById('soonJourneyProgress');
+          const soonJourneySteps = document.getElementById('soonJourneySteps');
+          const soonJourneyStepLabel = document.getElementById('soonJourneyStepLabel');
+          const resonanceFormPanel = document.getElementById('resonanceFormPanel');
+          const resonanceForm = document.getElementById('resonanceForm');
+          const resonanceInput = document.getElementById('resonanceInput');
+          const resonanceFormStatus = document.getElementById('resonanceFormStatus');
           const silenceDesYeuxOverlay = document.getElementById('silenceDesYeuxOverlay');
           const silenceDesYeuxTitle = document.getElementById('silenceDesYeuxTitle');
           const silenceDesYeuxCountdown = document.getElementById('silenceDesYeuxCountdown');
@@ -215,6 +222,14 @@ export function initLegacyApp() {
           propsCloseBtn.addEventListener('click', closeBubblePropsPanel);
 
           let currentView = 'home';
+          const SOON_JOURNEY_STEPS = [
+              { id: 1, label: 'Composer' },
+              { id: 2, label: 'Récolter' },
+              { id: 3, label: 'Tracer' },
+              { id: 4, label: 'Écouter' },
+              { id: 5, label: 'Résonner' },
+          ];
+          let soonJourneyHighestStep = 1;
           let w, h;
           let isTethered = false;
           let mouseWorld = { x: 0, y: 0 };
@@ -284,6 +299,28 @@ export function initLegacyApp() {
               'La traînée de bulles peut accrocher 3 lucioles espacées en mouvement.',
               'Quand 3 lucioles sont accrochées, touche le halo triangulaire autour du poisson pour les poser.'
           ];
+
+          function updateSoonJourneyProgress() {
+              if (!soonJourneyProgress || !soonJourneySteps || !soonJourneyStepLabel) return;
+              const capped = Math.max(1, Math.min(5, soonJourneyHighestStep));
+              const activeStep = SOON_JOURNEY_STEPS[capped - 1];
+              soonJourneyStepLabel.textContent = `Étape ${activeStep.id} · ${activeStep.label}`;
+              soonJourneySteps.querySelectorAll('li[data-step]').forEach((stepNode) => {
+                  const stepId = Number(stepNode.dataset.step || 0);
+                  stepNode.classList.toggle('is-complete', stepId < capped);
+                  stepNode.classList.toggle('is-current', stepId === capped);
+              });
+              if (resonanceFormPanel) resonanceFormPanel.hidden = capped < 5;
+          }
+
+          function advanceSoonJourney(stepId) {
+              const normalizedStep = Math.max(1, Math.min(5, Number(stepId) || 1));
+              if (normalizedStep <= soonJourneyHighestStep) return;
+              soonJourneyHighestStep = normalizedStep;
+              updateSoonJourneyProgress();
+          }
+
+          updateSoonJourneyProgress();
 
           const ARENA_RADIUS = 2000;
           const ARENA_BORDER_WIDTH_BASE = 6;
@@ -2277,6 +2314,7 @@ export function initLegacyApp() {
               if (!firefly || firefly.attachedToTail) return;
               const attached = getAttachedFirefliesSorted();
               if (attached.length >= FIREFLY_TAIL_MAX_ATTACHED) return;
+              advanceSoonJourney(2);
               firefly.attachedToTail = true;
               firefly.attachedOrder = attached.length;
               firefly.attachedAt = now;
@@ -2690,12 +2728,14 @@ export function initLegacyApp() {
               if (!sample) return;
               const bubble = buildSoundBubble(sample, bubbleLayer.value);
               BUBBLES.push(bubble);
+              advanceSoonJourney(2);
               closeBubblePanel();
           });
           traceListeningBtn?.addEventListener('click', () => {
               isTraceListeningMode = !isTraceListeningMode;
                   traceListeningBtn.classList.toggle('active', isTraceListeningMode);
                   if (isTraceListeningMode) {
+                      advanceSoonJourney(3);
                       isTraceRailAutopilot = false;
                       traceRailPath = [];
                       traceRailTargetIndex = 0;
@@ -2965,6 +3005,7 @@ export function initLegacyApp() {
 
           async function startSilenceDesYeuxSequence() {
               if (recordingState === 'recording' || recordingState === 'finalizing' || silenceTransitionInProgress) return;
+              advanceSoonJourney(4);
               silenceTransitionInProgress = true;
               silenceSessionSaved = false;
               if (silenceDesYeuxPrompt) silenceDesYeuxPrompt.hidden = true;
@@ -3166,6 +3207,22 @@ export function initLegacyApp() {
           refreshRecordingTimer();
           hideSilenceOverlay();
           renderSilenceSessions();
+          resonanceInput?.addEventListener('focus', () => {
+              advanceSoonJourney(5);
+          });
+          resonanceForm?.addEventListener('submit', (event) => {
+              event.preventDefault();
+              const message = resonanceInput?.value?.trim();
+              if (!message) {
+                  if (resonanceFormStatus) resonanceFormStatus.textContent = 'Écris au moins une résonance avant de déposer.';
+                  return;
+              }
+              advanceSoonJourney(5);
+              if (resonanceFormStatus) {
+                  resonanceFormStatus.textContent = 'Résonance déposée. Merci pour ta traversée.';
+              }
+              if (resonanceInput) resonanceInput.value = '';
+          });
 
           window.addEventListener('beforeunload', () => {
               if (recordingDownloadUrl) {
