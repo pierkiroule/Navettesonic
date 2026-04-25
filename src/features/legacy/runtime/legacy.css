@@ -389,7 +389,7 @@
         .trace-cam-controls {
             position: absolute;
             left: 50%;
-            bottom: calc(14px + env(safe-area-inset-bottom));
+            bottom: calc(var(--bottom-nav-clearance) + 12px + env(safe-area-inset-bottom));
             transform: translate(
                 calc(-50% + var(--trace-cam-drag-x, 0px)),
                 var(--trace-cam-drag-y, 0px)

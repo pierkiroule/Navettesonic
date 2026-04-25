@@ -1708,7 +1708,7 @@ export function initLegacyApp() {
           function clampTraceCamMenuDrag(nextX, nextY) {
               const maxX = Math.max(0, Math.floor((window.innerWidth - 190) * 0.5));
               const minY = -Math.max(80, Math.floor(window.innerHeight * 0.62));
-              const maxY = 36;
+              const maxY = 0;
               return {
                   x: Math.max(-maxX, Math.min(maxX, nextX)),
                   y: Math.max(minY, Math.min(maxY, nextY))
