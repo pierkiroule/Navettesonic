@@ -242,7 +242,10 @@
     </section>
 
     <nav id="bottomNav" class="bottom-nav hidden-view" aria-label="Navigation principale">
-        <div class="nav-shell">
+        <button id="bottomNavToggle" class="nav-toggle" type="button" aria-expanded="true" aria-controls="bottomNavPanel" aria-label="Réduire le menu">
+            <span class="nav-toggle-icon" aria-hidden="true">▾</span>
+        </button>
+        <div id="bottomNavPanel" class="nav-shell">
             <button id="navHome" class="nav-btn nav-btn-icon" type="button" aria-label="Accueil">⌂</button>
             <button id="navSoon" class="nav-btn active" type="button">Soon•°</button>
             <button id="navEchoHypnose" class="nav-btn" type="button">Échohypnose</button>
