@@ -61,6 +61,18 @@
             </div>
         </div>
         <button id="traceListeningBtn" class="trace-listening-btn" type="button">Tracer l'écoute</button>
+        <div id="traceCamControls" class="trace-cam-controls" aria-label="Contrôle de caméra tracé">
+            <div class="trace-cam-orb">
+                <button type="button" class="trace-cam-btn trace-cam-btn--up" data-trace-cam-action="up" aria-label="Déplacer vers le haut">↑</button>
+                <button type="button" class="trace-cam-btn trace-cam-btn--right" data-trace-cam-action="right" aria-label="Déplacer vers la droite">→</button>
+                <button type="button" class="trace-cam-btn trace-cam-btn--down" data-trace-cam-action="down" aria-label="Déplacer vers le bas">↓</button>
+                <button type="button" class="trace-cam-btn trace-cam-btn--left" data-trace-cam-action="left" aria-label="Déplacer vers la gauche">←</button>
+                <div class="trace-cam-center" data-trace-cam-drag-zone aria-label="Glisser pour déplacer le menu">
+                    <button type="button" class="trace-cam-btn trace-cam-btn--zoom" data-trace-cam-action="zoom-in" aria-label="Zoom avant">+</button>
+                    <button type="button" class="trace-cam-btn trace-cam-btn--zoom" data-trace-cam-action="zoom-out" aria-label="Zoom arrière">−</button>
+                </div>
+            </div>
+        </div>
         <div id="arenaTrianglePad" aria-label="Lucioles Sooncut"></div>
         <div id="arenaTriangleStatus">Lucioles Sooncut : accroche-les à la traînée de bulles puis touche le halo triangulaire pour les poser.</div>
         <div id="bubblePanel" class="hidden">
