@@ -78,7 +78,7 @@
             position: absolute;
             inset: -8%;
             border-radius: 50%;
-            pointer-events: none;
+            pointer-events: auto;
             transform: scale(calc(var(--halo-scale) * 1.015));
             transition: transform 120ms linear, opacity 120ms linear, filter 160ms linear;
         }
@@ -149,7 +149,7 @@
         }
         .hero-play-btn.hidden {
             opacity: 0;
-            pointer-events: none;
+            pointer-events: auto;
         }
         #echoHypnoseView:not(.hidden-view) {
             display: flex;
@@ -206,7 +206,7 @@
             top: 28px;
             width: 100%;
             text-align: center;
-            pointer-events: none;
+            pointer-events: auto;
             z-index: 100;
             color: rgba(255, 255, 255, 0.28);
             font-family: 'Georgia', serif;
@@ -256,7 +256,7 @@
         }
         #helperTips {
             position: absolute;
-            top: 66px;
+            top: 122px;
             left: 50%;
             transform: translateX(-50%);
             width: min(92vw, 680px);
@@ -268,6 +268,123 @@
             line-height: 1.4;
             font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
             text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
+        }
+        .soon-modes-tabs {
+            position: absolute;
+            top: calc(10px + env(safe-area-inset-top));
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 168;
+            width: min(94vw, 720px);
+            padding: 8px;
+            border-radius: 14px;
+            border: 1px solid rgba(146, 224, 255, 0.3);
+            background: rgba(6, 21, 40, 0.72);
+            backdrop-filter: blur(5px);
+            pointer-events: auto;
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .soon-modes-tabs button {
+            border: 1px solid rgba(160, 213, 244, 0.45);
+            border-radius: 999px;
+            padding: 6px 11px;
+            background: rgba(15, 42, 66, 0.8);
+            color: rgba(205, 234, 251, 0.92);
+            font-size: 0.72rem;
+            font-weight: 650;
+            cursor: pointer;
+            transition: transform 120ms ease, filter 120ms ease, border-color 120ms ease;
+        }
+        .soon-modes-tabs button.active {
+            border-color: rgba(159, 237, 255, 0.9);
+            background: linear-gradient(180deg, rgba(62, 145, 255, 0.95), rgba(35, 103, 228, 0.92));
+            color: rgba(236, 249, 255, 0.98);
+            box-shadow: 0 0 0 2px rgba(118, 226, 255, 0.2);
+        }
+        .resonance-form-panel {
+            position: absolute;
+            right: clamp(10px, 2vw, 18px);
+            bottom: calc(var(--bottom-nav-clearance) + 18px + env(safe-area-inset-bottom));
+            z-index: 171;
+            width: min(88vw, 340px);
+            pointer-events: none;
+        }
+        .resonance-form-card {
+            padding: 14px;
+            border-radius: 14px;
+            border: 1px solid rgba(144, 220, 255, 0.4);
+            background: rgba(8, 22, 38, 0.9);
+            box-shadow: 0 12px 26px rgba(0, 0, 0, 0.3);
+            color: rgba(229, 247, 255, 0.96);
+            pointer-events: auto;
+            max-height: min(70vh, 420px);
+            overflow: auto;
+        }
+        .resonance-form-card.is-collapsed p,
+        .resonance-form-card.is-collapsed form,
+        .resonance-form-card.is-collapsed .resonance-form-status {
+            display: none;
+        }
+        .resonance-form-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .resonance-form-card h3 {
+            margin: 0 0 6px;
+            font-size: 0.92rem;
+        }
+        .resonance-toggle-btn {
+            border: 1px solid rgba(148, 215, 255, 0.6);
+            border-radius: 999px;
+            padding: 5px 10px;
+            background: rgba(16, 53, 84, 0.78);
+            color: rgba(226, 246, 255, 0.96);
+            font-size: 0.68rem;
+            cursor: pointer;
+        }
+        .resonance-form-card p {
+            margin: 0 0 10px;
+            font-size: 0.78rem;
+            color: rgba(205, 232, 247, 0.9);
+        }
+        .resonance-form-card label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.72rem;
+            color: rgba(206, 236, 252, 0.95);
+        }
+        .resonance-form-card textarea {
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 8px;
+            border-radius: 10px;
+            border: 1px solid rgba(157, 219, 249, 0.32);
+            background: rgba(10, 28, 47, 0.95);
+            color: rgba(233, 249, 255, 0.98);
+            resize: vertical;
+            min-height: 86px;
+            padding: 9px;
+            font: inherit;
+        }
+        .resonance-form-card button {
+            width: 100%;
+            border: 0;
+            border-radius: 10px;
+            padding: 9px 10px;
+            background: linear-gradient(135deg, rgba(80, 216, 255, 0.94), rgba(78, 132, 255, 0.93));
+            color: #031321;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .resonance-form-status {
+            min-height: 1.2em;
+            margin-top: 8px;
+            font-size: 0.74rem;
         }
         #echoRecorderPanel {
             position: absolute;
@@ -351,6 +468,24 @@
             }
             .echo-rec-btn {
                 min-width: 54px;
+            }
+            .soon-modes-tabs {
+                width: min(96vw, 620px);
+                padding-left: 10px;
+                padding-right: 10px;
+                top: calc(52px + env(safe-area-inset-top));
+            }
+            .soon-modes-tabs button {
+                font-size: 0.68rem;
+                padding: 6px 10px;
+            }
+            #helperTips {
+                top: 160px;
+            }
+            .resonance-form-panel {
+                left: 10px;
+                right: 10px;
+                width: auto;
             }
         }
         .trace-listening-btn {

@@ -46,6 +46,12 @@ export function initLegacyApp() {
           const ctx = canvas.getContext('2d');
           const ui = document.getElementById('ui');
           const helperTips = document.getElementById('helperTips');
+          const soonModesTabs = document.getElementById('soonModesTabs');
+          const resonanceFormPanel = document.getElementById('resonanceFormPanel');
+          const resonanceForm = document.getElementById('resonanceForm');
+          const resonanceInput = document.getElementById('resonanceInput');
+          const resonanceFormStatus = document.getElementById('resonanceFormStatus');
+          const resonanceToggleBtn = document.getElementById('resonanceToggleBtn');
           const silenceDesYeuxOverlay = document.getElementById('silenceDesYeuxOverlay');
           const silenceDesYeuxTitle = document.getElementById('silenceDesYeuxTitle');
           const silenceDesYeuxCountdown = document.getElementById('silenceDesYeuxCountdown');
@@ -215,6 +221,9 @@ export function initLegacyApp() {
           propsCloseBtn.addEventListener('click', closeBubblePropsPanel);
 
           let currentView = 'home';
+          const SOON_MODES = ['composer', 'recolter', 'tracer', 'ecouter', 'resonner'];
+          let soonCurrentMode = 'composer';
+          let isResonancePanelExpanded = false;
           let w, h;
           let isTethered = false;
           let mouseWorld = { x: 0, y: 0 };
@@ -284,6 +293,68 @@ export function initLegacyApp() {
               'La traînée de bulles peut accrocher 3 lucioles espacées en mouvement.',
               'Quand 3 lucioles sont accrochées, touche le halo triangulaire autour du poisson pour les poser.'
           ];
+
+          function setSoonMode(modeId) {
+              if (!SOON_MODES.includes(modeId)) return;
+              soonCurrentMode = modeId;
+              soonModesTabs?.querySelectorAll('button[data-mode]').forEach((button) => {
+                  button.classList.toggle('active', button.dataset.mode === modeId);
+              });
+              if (resonanceFormPanel) resonanceFormPanel.hidden = modeId !== 'resonner';
+              if (modeId === 'resonner') {
+                  isResonancePanelExpanded = true;
+              }
+              applyTraceModeState(modeId === 'tracer');
+              updateResonancePanelUi();
+          }
+
+          function applyTraceModeState(enabled) {
+              if (enabled) {
+                  if (isTraceListeningMode) return;
+                  isTraceListeningMode = true;
+                  traceListeningBtn?.classList.add('active');
+                  isTraceRailAutopilot = false;
+                  traceRailPath = [];
+                  traceRailTargetIndex = 0;
+                  traceRailDirection = 1;
+                  traceExitConfirmUntil = 0;
+                  resetTraceCameraControl();
+                  ui.textContent = 'Mode Tracer l’écoute : vue d’ensemble + tracé lissé.';
+                  helperTips.textContent = 'Maintiens pour tracer · menu circulaire draggable : + / − au centre, flèches autour.';
+                  updateTraceCamControlsVisibility();
+                  return;
+              }
+              if (!isTraceListeningMode) return;
+              isTraceListeningMode = false;
+              traceListeningBtn?.classList.remove('active');
+              isDrawingTraceRail = false;
+              isTraceRailAutopilot = false;
+              traceExitConfirmUntil = 0;
+              resetTraceCameraControl();
+              ui.textContent = '';
+              rotateHelperTip();
+              updateTraceCamControlsVisibility();
+          }
+
+          function updateResonancePanelUi() {
+              if (!resonanceFormPanel) return;
+              const card = resonanceFormPanel.querySelector('.resonance-form-card');
+              if (card) {
+                  card.classList.toggle('is-collapsed', !isResonancePanelExpanded);
+              }
+              if (resonanceToggleBtn) {
+                  resonanceToggleBtn.setAttribute('aria-expanded', isResonancePanelExpanded ? 'true' : 'false');
+                  resonanceToggleBtn.textContent = isResonancePanelExpanded ? 'Réduire' : 'Ouvrir';
+              }
+          }
+
+          setSoonMode('composer');
+          soonModesTabs?.querySelectorAll('button[data-mode]')?.forEach((button) => {
+              const modeId = button.dataset.mode;
+              button.addEventListener('click', () => {
+                  setSoonMode(modeId);
+              });
+          });
 
           const ARENA_RADIUS = 2000;
           const ARENA_BORDER_WIDTH_BASE = 6;
@@ -2277,6 +2348,7 @@ export function initLegacyApp() {
               if (!firefly || firefly.attachedToTail) return;
               const attached = getAttachedFirefliesSorted();
               if (attached.length >= FIREFLY_TAIL_MAX_ATTACHED) return;
+              setSoonMode('recolter');
               firefly.attachedToTail = true;
               firefly.attachedOrder = attached.length;
               firefly.attachedAt = now;
@@ -2690,28 +2762,12 @@ export function initLegacyApp() {
               if (!sample) return;
               const bubble = buildSoundBubble(sample, bubbleLayer.value);
               BUBBLES.push(bubble);
+              setSoonMode('composer');
               closeBubblePanel();
           });
           traceListeningBtn?.addEventListener('click', () => {
-              isTraceListeningMode = !isTraceListeningMode;
-                  traceListeningBtn.classList.toggle('active', isTraceListeningMode);
-                  if (isTraceListeningMode) {
-                      isTraceRailAutopilot = false;
-                      traceRailPath = [];
-                      traceRailTargetIndex = 0;
-                      traceRailDirection = 1;
-                      traceExitConfirmUntil = 0;
-                      resetTraceCameraControl();
-                      ui.textContent = 'Mode Tracer l’écoute : vue d’ensemble + tracé lissé.';
-                      helperTips.textContent = 'Maintiens pour tracer · menu circulaire draggable : + / − au centre, flèches autour.';
-                  } else if (!isDrawingTraceRail) {
-                      traceExitConfirmUntil = 0;
-                      resetTraceCameraControl();
-                      ui.textContent = '';
-                      rotateHelperTip();
-                  }
-                  updateTraceCamControlsVisibility();
-              });
+              setSoonMode(isTraceListeningMode ? 'composer' : 'tracer');
+          });
 
           function openBubblePanel() {
               isInteractionPaused = true;
@@ -2965,6 +3021,7 @@ export function initLegacyApp() {
 
           async function startSilenceDesYeuxSequence() {
               if (recordingState === 'recording' || recordingState === 'finalizing' || silenceTransitionInProgress) return;
+              setSoonMode('ecouter');
               silenceTransitionInProgress = true;
               silenceSessionSaved = false;
               if (silenceDesYeuxPrompt) silenceDesYeuxPrompt.hidden = true;
@@ -3166,6 +3223,30 @@ export function initLegacyApp() {
           refreshRecordingTimer();
           hideSilenceOverlay();
           renderSilenceSessions();
+          resonanceInput?.addEventListener('focus', () => {
+              setSoonMode('resonner');
+              isResonancePanelExpanded = true;
+              updateResonancePanelUi();
+          });
+          resonanceToggleBtn?.addEventListener('click', () => {
+              isResonancePanelExpanded = !isResonancePanelExpanded;
+              updateResonancePanelUi();
+          });
+          resonanceForm?.addEventListener('submit', (event) => {
+              event.preventDefault();
+              const message = resonanceInput?.value?.trim();
+              if (!message) {
+                  if (resonanceFormStatus) resonanceFormStatus.textContent = 'Écris au moins une résonance avant de déposer.';
+                  return;
+              }
+              setSoonMode('resonner');
+              isResonancePanelExpanded = true;
+              updateResonancePanelUi();
+              if (resonanceFormStatus) {
+                  resonanceFormStatus.textContent = 'Résonance déposée. Merci pour ta traversée.';
+              }
+              if (resonanceInput) resonanceInput.value = '';
+          });
 
           window.addEventListener('beforeunload', () => {
               if (recordingDownloadUrl) {
