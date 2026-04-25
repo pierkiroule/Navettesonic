@@ -1,8 +1,8 @@
-let legacyAppBooted = false;
-
 export function initLegacyApp() {
-  if (legacyAppBooted) return;
-  legacyAppBooted = true;
+  const experienceRoot = document.getElementById('experienceView');
+  if (!experienceRoot) return;
+  if (experienceRoot.dataset.legacyBooted === 'true') return;
+  experienceRoot.dataset.legacyBooted = 'true';
 
           const SAMPLE_LIBRARY = [
               { id: 'zen-gong', name: 'Zen Gong', texture: 'Gong profond et respirant', type: 'triangle', freq: 132, lfo: 0.06, lfoDepth: 0.018, gain: 0.28, baseCutoff: 3400, resonanceFreq: 420, resonanceQ: 1.5 },
