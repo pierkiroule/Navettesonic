@@ -53,6 +53,7 @@ export function initLegacyApp() {
           const resonanceForm = document.getElementById('resonanceForm');
           const resonanceInput = document.getElementById('resonanceInput');
           const resonanceFormStatus = document.getElementById('resonanceFormStatus');
+          const resonanceToggleBtn = document.getElementById('resonanceToggleBtn');
           const silenceDesYeuxOverlay = document.getElementById('silenceDesYeuxOverlay');
           const silenceDesYeuxTitle = document.getElementById('silenceDesYeuxTitle');
           const silenceDesYeuxCountdown = document.getElementById('silenceDesYeuxCountdown');
@@ -230,6 +231,7 @@ export function initLegacyApp() {
               { id: 5, label: 'Résonner' },
           ];
           let soonJourneyHighestStep = 1;
+          let isResonancePanelExpanded = false;
           let w, h;
           let isTethered = false;
           let mouseWorld = { x: 0, y: 0 };
@@ -311,6 +313,7 @@ export function initLegacyApp() {
                   stepNode.classList.toggle('is-current', stepId === capped);
               });
               if (resonanceFormPanel) resonanceFormPanel.hidden = capped < 5;
+              updateResonancePanelUi();
           }
 
           function advanceSoonJourney(stepId) {
@@ -318,6 +321,18 @@ export function initLegacyApp() {
               if (normalizedStep <= soonJourneyHighestStep) return;
               soonJourneyHighestStep = normalizedStep;
               updateSoonJourneyProgress();
+          }
+
+          function updateResonancePanelUi() {
+              if (!resonanceFormPanel) return;
+              const card = resonanceFormPanel.querySelector('.resonance-form-card');
+              if (card) {
+                  card.classList.toggle('is-collapsed', !isResonancePanelExpanded);
+              }
+              if (resonanceToggleBtn) {
+                  resonanceToggleBtn.setAttribute('aria-expanded', isResonancePanelExpanded ? 'true' : 'false');
+                  resonanceToggleBtn.textContent = isResonancePanelExpanded ? 'Réduire' : 'Ouvrir';
+              }
           }
 
           updateSoonJourneyProgress();
@@ -3209,6 +3224,12 @@ export function initLegacyApp() {
           renderSilenceSessions();
           resonanceInput?.addEventListener('focus', () => {
               advanceSoonJourney(5);
+              isResonancePanelExpanded = true;
+              updateResonancePanelUi();
+          });
+          resonanceToggleBtn?.addEventListener('click', () => {
+              isResonancePanelExpanded = !isResonancePanelExpanded;
+              updateResonancePanelUi();
           });
           resonanceForm?.addEventListener('submit', (event) => {
               event.preventDefault();
@@ -3218,6 +3239,8 @@ export function initLegacyApp() {
                   return;
               }
               advanceSoonJourney(5);
+              isResonancePanelExpanded = true;
+              updateResonancePanelUi();
               if (resonanceFormStatus) {
                   resonanceFormStatus.textContent = 'Résonance déposée. Merci pour ta traversée.';
               }
