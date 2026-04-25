@@ -230,7 +230,7 @@ export function initLegacyApp() {
               { id: 4, label: 'Écouter' },
               { id: 5, label: 'Résonner' },
           ];
-          let soonJourneyHighestStep = 1;
+          let soonJourneyCurrentStep = 1;
           let isResonancePanelExpanded = false;
           let w, h;
           let isTethered = false;
@@ -304,7 +304,7 @@ export function initLegacyApp() {
 
           function updateSoonJourneyProgress() {
               if (!soonJourneyProgress || !soonJourneySteps || !soonJourneyStepLabel) return;
-              const capped = Math.max(1, Math.min(5, soonJourneyHighestStep));
+              const capped = Math.max(1, Math.min(5, soonJourneyCurrentStep));
               const activeStep = SOON_JOURNEY_STEPS[capped - 1];
               soonJourneyStepLabel.textContent = `Étape ${activeStep.id} · ${activeStep.label}`;
               soonJourneySteps.querySelectorAll('li[data-step]').forEach((stepNode) => {
@@ -312,15 +312,20 @@ export function initLegacyApp() {
                   stepNode.classList.toggle('is-complete', stepId < capped);
                   stepNode.classList.toggle('is-current', stepId === capped);
               });
-              if (resonanceFormPanel) resonanceFormPanel.hidden = capped < 5;
+              if (resonanceFormPanel) resonanceFormPanel.hidden = capped !== 5;
               updateResonancePanelUi();
+          }
+
+          function setSoonJourneyStep(stepId) {
+              const normalizedStep = Math.max(1, Math.min(5, Number(stepId) || 1));
+              soonJourneyCurrentStep = normalizedStep;
+              updateSoonJourneyProgress();
           }
 
           function advanceSoonJourney(stepId) {
               const normalizedStep = Math.max(1, Math.min(5, Number(stepId) || 1));
-              if (normalizedStep <= soonJourneyHighestStep) return;
-              soonJourneyHighestStep = normalizedStep;
-              updateSoonJourneyProgress();
+              if (normalizedStep <= soonJourneyCurrentStep) return;
+              setSoonJourneyStep(normalizedStep);
           }
 
           function updateResonancePanelUi() {
@@ -336,6 +341,27 @@ export function initLegacyApp() {
           }
 
           updateSoonJourneyProgress();
+          soonJourneySteps?.querySelectorAll('li[data-step]')?.forEach((stepNode) => {
+              stepNode.setAttribute('role', 'button');
+              stepNode.setAttribute('tabindex', '0');
+              const stepId = Number(stepNode.dataset.step || 1);
+              stepNode.addEventListener('click', () => {
+                  setSoonJourneyStep(stepId);
+                  if (stepId === 5) {
+                      isResonancePanelExpanded = true;
+                      updateResonancePanelUi();
+                  }
+              });
+              stepNode.addEventListener('keydown', (event) => {
+                  if (event.key !== 'Enter' && event.key !== ' ') return;
+                  event.preventDefault();
+                  setSoonJourneyStep(stepId);
+                  if (stepId === 5) {
+                      isResonancePanelExpanded = true;
+                      updateResonancePanelUi();
+                  }
+              });
+          });
 
           const ARENA_RADIUS = 2000;
           const ARENA_BORDER_WIDTH_BASE = 6;
