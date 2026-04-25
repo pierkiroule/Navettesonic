@@ -46,9 +46,7 @@ export function initLegacyApp() {
           const ctx = canvas.getContext('2d');
           const ui = document.getElementById('ui');
           const helperTips = document.getElementById('helperTips');
-          const soonJourneyProgress = document.getElementById('soonJourneyProgress');
-          const soonJourneySteps = document.getElementById('soonJourneySteps');
-          const soonJourneyStepLabel = document.getElementById('soonJourneyStepLabel');
+          const soonModesTabs = document.getElementById('soonModesTabs');
           const resonanceFormPanel = document.getElementById('resonanceFormPanel');
           const resonanceForm = document.getElementById('resonanceForm');
           const resonanceInput = document.getElementById('resonanceInput');
@@ -223,14 +221,8 @@ export function initLegacyApp() {
           propsCloseBtn.addEventListener('click', closeBubblePropsPanel);
 
           let currentView = 'home';
-          const SOON_JOURNEY_STEPS = [
-              { id: 1, label: 'Composer' },
-              { id: 2, label: 'Récolter' },
-              { id: 3, label: 'Tracer' },
-              { id: 4, label: 'Écouter' },
-              { id: 5, label: 'Résonner' },
-          ];
-          let soonJourneyCurrentStep = 1;
+          const SOON_MODES = ['composer', 'recolter', 'tracer', 'ecouter', 'resonner'];
+          let soonCurrentMode = 'composer';
           let isResonancePanelExpanded = false;
           let w, h;
           let isTethered = false;
@@ -302,30 +294,27 @@ export function initLegacyApp() {
               'Quand 3 lucioles sont accrochées, touche le halo triangulaire autour du poisson pour les poser.'
           ];
 
-          function updateSoonJourneyProgress() {
-              if (!soonJourneyProgress || !soonJourneySteps || !soonJourneyStepLabel) return;
-              const capped = Math.max(1, Math.min(5, soonJourneyCurrentStep));
-              const activeStep = SOON_JOURNEY_STEPS[capped - 1];
-              soonJourneyStepLabel.textContent = `Étape ${activeStep.id} · ${activeStep.label}`;
-              soonJourneySteps.querySelectorAll('li[data-step]').forEach((stepNode) => {
-                  const stepId = Number(stepNode.dataset.step || 0);
-                  stepNode.classList.toggle('is-complete', stepId < capped);
-                  stepNode.classList.toggle('is-current', stepId === capped);
+          function setSoonMode(modeId) {
+              if (!SOON_MODES.includes(modeId)) return;
+              soonCurrentMode = modeId;
+              soonModesTabs?.querySelectorAll('button[data-mode]').forEach((button) => {
+                  button.classList.toggle('active', button.dataset.mode === modeId);
               });
-              if (resonanceFormPanel) resonanceFormPanel.hidden = capped !== 5;
+              if (resonanceFormPanel) resonanceFormPanel.hidden = modeId !== 'resonner';
+              if (modeId === 'resonner') {
+                  isResonancePanelExpanded = true;
+              }
+              if (modeId === 'tracer' && !isTraceListeningMode) {
+                  isTraceListeningMode = true;
+                  traceListeningBtn?.classList.add('active');
+                  updateTraceCamControlsVisibility();
+              }
+              if (modeId !== 'tracer' && isTraceListeningMode && !isDrawingTraceRail) {
+                  isTraceListeningMode = false;
+                  traceListeningBtn?.classList.remove('active');
+                  updateTraceCamControlsVisibility();
+              }
               updateResonancePanelUi();
-          }
-
-          function setSoonJourneyStep(stepId) {
-              const normalizedStep = Math.max(1, Math.min(5, Number(stepId) || 1));
-              soonJourneyCurrentStep = normalizedStep;
-              updateSoonJourneyProgress();
-          }
-
-          function advanceSoonJourney(stepId) {
-              const normalizedStep = Math.max(1, Math.min(5, Number(stepId) || 1));
-              if (normalizedStep <= soonJourneyCurrentStep) return;
-              setSoonJourneyStep(normalizedStep);
           }
 
           function updateResonancePanelUi() {
@@ -340,26 +329,11 @@ export function initLegacyApp() {
               }
           }
 
-          updateSoonJourneyProgress();
-          soonJourneySteps?.querySelectorAll('li[data-step]')?.forEach((stepNode) => {
-              stepNode.setAttribute('role', 'button');
-              stepNode.setAttribute('tabindex', '0');
-              const stepId = Number(stepNode.dataset.step || 1);
-              stepNode.addEventListener('click', () => {
-                  setSoonJourneyStep(stepId);
-                  if (stepId === 5) {
-                      isResonancePanelExpanded = true;
-                      updateResonancePanelUi();
-                  }
-              });
-              stepNode.addEventListener('keydown', (event) => {
-                  if (event.key !== 'Enter' && event.key !== ' ') return;
-                  event.preventDefault();
-                  setSoonJourneyStep(stepId);
-                  if (stepId === 5) {
-                      isResonancePanelExpanded = true;
-                      updateResonancePanelUi();
-                  }
+          setSoonMode('composer');
+          soonModesTabs?.querySelectorAll('button[data-mode]')?.forEach((button) => {
+              const modeId = button.dataset.mode;
+              button.addEventListener('click', () => {
+                  setSoonMode(modeId);
               });
           });
 
@@ -2355,7 +2329,7 @@ export function initLegacyApp() {
               if (!firefly || firefly.attachedToTail) return;
               const attached = getAttachedFirefliesSorted();
               if (attached.length >= FIREFLY_TAIL_MAX_ATTACHED) return;
-              advanceSoonJourney(2);
+              setSoonMode('recolter');
               firefly.attachedToTail = true;
               firefly.attachedOrder = attached.length;
               firefly.attachedAt = now;
@@ -2769,14 +2743,14 @@ export function initLegacyApp() {
               if (!sample) return;
               const bubble = buildSoundBubble(sample, bubbleLayer.value);
               BUBBLES.push(bubble);
-              advanceSoonJourney(2);
+              setSoonMode('composer');
               closeBubblePanel();
           });
           traceListeningBtn?.addEventListener('click', () => {
               isTraceListeningMode = !isTraceListeningMode;
                   traceListeningBtn.classList.toggle('active', isTraceListeningMode);
                   if (isTraceListeningMode) {
-                      advanceSoonJourney(3);
+                      setSoonMode('tracer');
                       isTraceRailAutopilot = false;
                       traceRailPath = [];
                       traceRailTargetIndex = 0;
@@ -3046,7 +3020,7 @@ export function initLegacyApp() {
 
           async function startSilenceDesYeuxSequence() {
               if (recordingState === 'recording' || recordingState === 'finalizing' || silenceTransitionInProgress) return;
-              advanceSoonJourney(4);
+              setSoonMode('ecouter');
               silenceTransitionInProgress = true;
               silenceSessionSaved = false;
               if (silenceDesYeuxPrompt) silenceDesYeuxPrompt.hidden = true;
@@ -3249,7 +3223,7 @@ export function initLegacyApp() {
           hideSilenceOverlay();
           renderSilenceSessions();
           resonanceInput?.addEventListener('focus', () => {
-              advanceSoonJourney(5);
+              setSoonMode('resonner');
               isResonancePanelExpanded = true;
               updateResonancePanelUi();
           });
@@ -3264,7 +3238,7 @@ export function initLegacyApp() {
                   if (resonanceFormStatus) resonanceFormStatus.textContent = 'Écris au moins une résonance avant de déposer.';
                   return;
               }
-              advanceSoonJourney(5);
+              setSoonMode('resonner');
               isResonancePanelExpanded = true;
               updateResonancePanelUi();
               if (resonanceFormStatus) {
