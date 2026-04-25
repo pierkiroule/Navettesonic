@@ -533,6 +533,7 @@ export function initLegacyApp() {
           }
 
           function showView(target) {
+              console.log('[legacyApp] showView called', { target, currentViewBefore: currentView });
               currentView = target;
               homeView.classList.toggle('hidden-view', target !== 'home');
               experienceView.classList.toggle('hidden-view', target !== 'experience');
@@ -614,6 +615,10 @@ export function initLegacyApp() {
           bindTap(enterExperienceBtn, () => {
               if (!requireRegisteredUserForExperience('Soon experience')) return;
               showView('experience');
+              console.log('[legacyApp] enterExperienceBtn -> showView("experience") called', {
+                  currentView,
+                  experienceViewHidden: experienceView?.classList.contains('hidden-view')
+              });
               ensureAllAudioRunning();
           });
 
@@ -743,6 +748,10 @@ export function initLegacyApp() {
           bindTap(navSoon, () => {
               if (!requireRegisteredUserForExperience('navigation')) return;
               showView('experience');
+              console.log('[legacyApp] navSoon -> showView("experience") called', {
+                  currentView,
+                  experienceViewHidden: experienceView?.classList.contains('hidden-view')
+              });
           });
           bindTap(navEchoHypnose, () => showView('echohypnose'));
           bindTap(navProfile, () => showView('profile'));
@@ -796,6 +805,7 @@ export function initLegacyApp() {
           function requireRegisteredUserForExperience(triggerLabel = 'Soon experience') {
               if (currentSession?.user) return true;
               setAuthStatus(`Inscris-toi ou connecte-toi pour accéder à l'expérience (${triggerLabel}).`, true);
+              console.warn('[legacyApp] Access denied for experience, redirecting to profile', { triggerLabel });
               showView('profile');
               authEmailInput?.focus();
               return false;
