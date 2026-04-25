@@ -383,43 +383,73 @@
                 font-size: 0.72rem;
             }
         }
-        .trace-pinch-tool {
+        .trace-cam-controls {
             position: absolute;
             left: 50%;
             bottom: calc(14px + env(safe-area-inset-bottom));
             transform: translateX(-50%);
             z-index: 167;
-            width: min(94vw, 620px);
+            width: min(94vw, 420px);
             border-radius: 14px;
             border: 1px solid rgba(146, 224, 255, 0.44);
             background: linear-gradient(180deg, rgba(7, 24, 58, 0.75), rgba(4, 15, 38, 0.8));
             box-shadow: 0 14px 30px rgba(0, 0, 0, 0.36), inset 0 0 0 1px rgba(146, 224, 255, 0.14);
-            padding: 9px 14px 10px;
+            padding: 8px 10px 10px;
             text-align: center;
             color: rgba(219, 242, 255, 0.95);
             display: none;
-            touch-action: none;
+            touch-action: manipulation;
             user-select: none;
             -webkit-user-select: none;
         }
-        .trace-pinch-tool.visible {
+        .trace-cam-controls.visible {
             display: block;
         }
-        .trace-pinch-tool__title {
-            font-size: 0.76rem;
+        .trace-cam-controls__title {
+            font-size: 0.7rem;
             font-weight: 700;
             letter-spacing: 0.035em;
+            margin-bottom: 7px;
         }
-        .trace-pinch-tool__hint {
-            margin-top: 3px;
-            font-size: 0.7rem;
-            color: rgba(182, 225, 248, 0.86);
+        .trace-cam-controls__grid {
+            display: grid;
+            gap: 6px;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-areas:
+                ". up zoomIn"
+                "left down right"
+                ". . zoomOut";
         }
+        .trace-cam-btn {
+            border: 1px solid rgba(153, 222, 255, 0.6);
+            border-radius: 10px;
+            min-height: 30px;
+            background: linear-gradient(180deg, rgba(26, 100, 212, 0.86), rgba(20, 69, 166, 0.88));
+            color: rgba(235, 250, 255, 0.98);
+            font-size: 0.95rem;
+            font-weight: 700;
+            line-height: 1;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+        .trace-cam-btn:active {
+            transform: scale(0.98);
+            filter: brightness(1.07);
+        }
+        .trace-cam-btn[data-trace-cam-action="up"] { grid-area: up; }
+        .trace-cam-btn[data-trace-cam-action="down"] { grid-area: down; }
+        .trace-cam-btn[data-trace-cam-action="left"] { grid-area: left; }
+        .trace-cam-btn[data-trace-cam-action="right"] { grid-area: right; }
+        .trace-cam-btn[data-trace-cam-action="zoom-in"] { grid-area: zoomIn; }
+        .trace-cam-btn[data-trace-cam-action="zoom-out"] { grid-area: zoomOut; }
         @media (max-width: 860px) {
-            .trace-pinch-tool {
-                width: min(96vw, 560px);
+            .trace-cam-controls {
+                width: min(94vw, 360px);
                 border-radius: 12px;
-                padding: 8px 10px;
+                padding: 8px;
+            }
+            .trace-cam-btn {
+                min-height: 28px;
             }
         }
 

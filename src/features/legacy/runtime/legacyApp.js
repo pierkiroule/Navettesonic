@@ -55,7 +55,7 @@ export function initLegacyApp() {
           const echoRecordStatus = document.getElementById('echoRecordStatus');
           const echoRecordDownloadLink = document.getElementById('echoRecordDownloadLink');
           const traceListeningBtn = document.getElementById('traceListeningBtn');
-          const tracePinchTool = document.getElementById('tracePinchTool');
+          const traceCamControls = document.getElementById('traceCamControls');
           const silenceDesYeuxPrompt = document.getElementById('silenceDesYeuxPrompt');
           const silenceSaveNoBtn = document.getElementById('silenceSaveNoBtn');
           const silenceSaveYesBtn = document.getElementById('silenceSaveYesBtn');
@@ -219,7 +219,6 @@ export function initLegacyApp() {
           let isTraceListeningMode = false;
           let isDrawingTraceRail = false;
           let isTraceRailAutopilot = false;
-          let isTracePinchActive = false;
           let traceRailPath = [];
           let traceRailTargetIndex = 0;
           let traceRailDirection = 1;
@@ -231,15 +230,7 @@ export function initLegacyApp() {
               panY: 0,
               zoomScale: 1,
               minZoomScale: 0.75,
-              maxZoomScale: 2.4,
-              gesture: {
-                  startCenterX: 0,
-                  startCenterY: 0,
-                  startDistance: 0,
-                  startPanX: 0,
-                  startPanY: 0,
-                  startZoomScale: 1
-              }
+              maxZoomScale: 2.4
           };
           let isInteractionPaused = false;
           let lastFishTap = { time: 0, x: 0, y: 0 };
@@ -1635,7 +1626,7 @@ export function initLegacyApp() {
               const element = target instanceof Element ? target : target?.parentElement;
               if (!element) return false;
               return Boolean(element.closest(
-                  '#bubblePanel, #bubblePropsPanel, #echoRecorderPanel, #traceListeningBtn, #tracePinchTool, ' +
+                  '#bubblePanel, #bubblePropsPanel, #echoRecorderPanel, #traceListeningBtn, #traceCamControls, ' +
                   '#silenceDesYeuxPrompt, #silenceDesYeuxOverlay, #arenaTrianglePad, #bottomNav, ' +
                   '#homeView, #profileView, #echoHypnoseView'
               ));
@@ -1649,10 +1640,10 @@ export function initLegacyApp() {
               return Math.max(traceCameraControl.minZoomScale, Math.min(traceCameraControl.maxZoomScale, nextScale));
           }
 
-          function updateTracePinchToolVisibility() {
-              if (!tracePinchTool) return;
+          function updateTraceCamControlsVisibility() {
+              if (!traceCamControls) return;
               const shouldShow = currentView === 'experience' && (isTraceListeningMode || isTraceRailAutopilot || isDrawingTraceRail);
-              tracePinchTool.classList.toggle('visible', shouldShow);
+              traceCamControls.classList.toggle('visible', shouldShow);
           }
 
           function resetTraceCameraControl(keepZoomScale = false) {
@@ -1661,45 +1652,28 @@ export function initLegacyApp() {
               if (!keepZoomScale) traceCameraControl.zoomScale = 1;
           }
 
-          function beginTracePinchGesture(touches) {
-              if (!touches || touches.length < 2) return;
-              const a = touches[0];
-              const b = touches[1];
-              const centerX = (a.clientX + b.clientX) * 0.5;
-              const centerY = (a.clientY + b.clientY) * 0.5;
-              const dx = b.clientX - a.clientX;
-              const dy = b.clientY - a.clientY;
-              const distance = Math.hypot(dx, dy) || 1;
-              traceCameraControl.gesture.startCenterX = centerX;
-              traceCameraControl.gesture.startCenterY = centerY;
-              traceCameraControl.gesture.startDistance = distance;
-              traceCameraControl.gesture.startPanX = traceCameraControl.panX;
-              traceCameraControl.gesture.startPanY = traceCameraControl.panY;
-              traceCameraControl.gesture.startZoomScale = traceCameraControl.zoomScale;
-              isTracePinchActive = true;
-          }
-
-          function moveTracePinchGesture(touches) {
-              if (!isTracePinchActive || !touches || touches.length < 2) return;
-              const a = touches[0];
-              const b = touches[1];
-              const centerX = (a.clientX + b.clientX) * 0.5;
-              const centerY = (a.clientY + b.clientY) * 0.5;
-              const dx = b.clientX - a.clientX;
-              const dy = b.clientY - a.clientY;
-              const distance = Math.hypot(dx, dy) || 1;
-              const distanceRatio = distance / Math.max(1, traceCameraControl.gesture.startDistance);
-              traceCameraControl.zoomScale = clampTraceZoomScale(traceCameraControl.gesture.startZoomScale * distanceRatio);
+          function applyTraceCameraAction(action) {
+              if (!(isTraceListeningMode || isTraceRailAutopilot || isDrawingTraceRail)) return;
               const baseZoom = getTraceOverviewBaseZoom();
               const worldZoom = Math.max(traceOverviewZoomMin, Math.min(traceOverviewZoomMax, baseZoom * traceCameraControl.zoomScale));
-              const screenDeltaX = centerX - traceCameraControl.gesture.startCenterX;
-              const screenDeltaY = centerY - traceCameraControl.gesture.startCenterY;
-              traceCameraControl.panX = traceCameraControl.gesture.startPanX - (screenDeltaX / worldZoom);
-              traceCameraControl.panY = traceCameraControl.gesture.startPanY - (screenDeltaY / worldZoom);
-          }
-
-          function endTracePinchGesture() {
-              isTracePinchActive = false;
+              const panStep = Math.max(26, 44 / Math.max(0.3, worldZoom));
+              if (action === 'zoom-in') {
+                  traceCameraControl.zoomScale = clampTraceZoomScale(traceCameraControl.zoomScale * 1.08);
+                  return;
+              }
+              if (action === 'zoom-out') {
+                  traceCameraControl.zoomScale = clampTraceZoomScale(traceCameraControl.zoomScale / 1.08);
+                  return;
+              }
+              if (action === 'up') {
+                  traceCameraControl.panY -= panStep;
+              } else if (action === 'down') {
+                  traceCameraControl.panY += panStep;
+              } else if (action === 'left') {
+                  traceCameraControl.panX -= panStep;
+              } else if (action === 'right') {
+                  traceCameraControl.panX += panStep;
+              }
           }
 
           function setArenaTriangleStatus(message, isError = false) {
@@ -2458,7 +2432,7 @@ export function initLegacyApp() {
                       resetTraceCameraControl();
                       ui.textContent = 'Mode normal réactivé.';
                       rotateHelperTip();
-                      updateTracePinchToolVisibility();
+                      updateTraceCamControlsVisibility();
                   } else {
                       traceExitConfirmUntil = now + 1400;
                       ui.textContent = 'Auto-voyage actif. Retape pour quitter "Tracer l’écoute".';
@@ -2472,7 +2446,7 @@ export function initLegacyApp() {
                   traceExitConfirmUntil = 0;
                   isTethered = false;
                   ui.textContent = 'Trace ton rail sonore… relâche pour lancer le voyage auto';
-                  updateTracePinchToolVisibility();
+                  updateTraceCamControlsVisibility();
                   return;
               }
               const now = performance.now();
@@ -2550,7 +2524,7 @@ export function initLegacyApp() {
                       ui.textContent = '';
                       rotateHelperTip();
                   }
-                  updateTracePinchToolVisibility();
+                  updateTraceCamControlsVisibility();
               }
               isTethered = false;
               isDraggingBubble = false;
@@ -2575,37 +2549,48 @@ export function initLegacyApp() {
           window.addEventListener('touchend', onEnd);
           window.addEventListener('touchcancel', onEnd);
 
-          tracePinchTool?.addEventListener('touchstart', (e) => {
-              if (!(isTraceListeningMode || isTraceRailAutopilot || isDrawingTraceRail)) return;
-              e.preventDefault();
-              e.stopPropagation();
-              if (e.touches.length >= 2) beginTracePinchGesture(e.touches);
-          }, { passive: false });
-          tracePinchTool?.addEventListener('touchmove', (e) => {
-              if (!(isTraceListeningMode || isTraceRailAutopilot || isDrawingTraceRail)) return;
-              e.preventDefault();
-              e.stopPropagation();
-              if (e.touches.length >= 2) {
-                  moveTracePinchGesture(e.touches);
-              } else {
-                  endTracePinchGesture();
-              }
-          }, { passive: false });
-          tracePinchTool?.addEventListener('touchend', (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (e.touches.length >= 2) {
-                  beginTracePinchGesture(e.touches);
-              } else {
-                  endTracePinchGesture();
-              }
-          }, { passive: false });
-          tracePinchTool?.addEventListener('touchcancel', (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              endTracePinchGesture();
-          }, { passive: false });
-          updateTracePinchToolVisibility();
+          const traceCamButtons = traceCamControls?.querySelectorAll('[data-trace-cam-action]');
+          traceCamButtons?.forEach((button) => {
+              let repeatTimer = null;
+              let repeatInterval = null;
+              let skipNextClick = false;
+              const action = button.getAttribute('data-trace-cam-action');
+              const stopRepeat = () => {
+                  if (repeatTimer) {
+                      clearTimeout(repeatTimer);
+                      repeatTimer = null;
+                  }
+                  if (repeatInterval) {
+                      clearInterval(repeatInterval);
+                      repeatInterval = null;
+                  }
+              };
+              const runAction = () => {
+                  if (!action) return;
+                  applyTraceCameraAction(action);
+              };
+              button.addEventListener('click', () => {
+                  if (skipNextClick) {
+                      skipNextClick = false;
+                      return;
+                  }
+                  runAction();
+              });
+              button.addEventListener('pointerdown', (event) => {
+                  event.preventDefault();
+                  skipNextClick = true;
+                  runAction();
+                  stopRepeat();
+                  repeatTimer = window.setTimeout(() => {
+                      repeatInterval = window.setInterval(runAction, 72);
+                  }, 240);
+              });
+              button.addEventListener('pointerup', stopRepeat);
+              button.addEventListener('pointerleave', stopRepeat);
+              button.addEventListener('pointercancel', stopRepeat);
+              button.addEventListener('lostpointercapture', stopRepeat);
+          });
+          updateTraceCamControlsVisibility();
 
           cancelBtn.addEventListener('click', closeBubblePanel);
           dropBtn.addEventListener('click', () => {
@@ -2626,14 +2611,14 @@ export function initLegacyApp() {
                       traceExitConfirmUntil = 0;
                       resetTraceCameraControl();
                       ui.textContent = 'Mode Tracer l’écoute : vue d’ensemble + tracé lissé.';
-                      helperTips.textContent = 'Maintiens pour tracer · outil du bas : pinch 2 doigts pour zoomer/déplacer la vue.';
+                      helperTips.textContent = 'Maintiens pour tracer · en bas : + / − et flèches pour ajuster la vue.';
                   } else if (!isDrawingTraceRail) {
                       traceExitConfirmUntil = 0;
                       resetTraceCameraControl();
                       ui.textContent = '';
                       rotateHelperTip();
                   }
-                  updateTracePinchToolVisibility();
+                  updateTraceCamControlsVisibility();
               });
 
           function openBubblePanel() {
