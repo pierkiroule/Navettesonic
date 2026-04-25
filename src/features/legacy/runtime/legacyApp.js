@@ -32,6 +32,7 @@ export function initLegacyApp() {
           const echoHypnoseView = document.getElementById('echoHypnoseView');
           const profileView = document.getElementById('profileView');
           const bottomNav = document.getElementById('bottomNav');
+          const bottomNavToggle = document.getElementById('bottomNavToggle');
           const navHome = document.getElementById('navHome');
           const navSoon = document.getElementById('navSoon');
           const navEchoHypnose = document.getElementById('navEchoHypnose');
@@ -109,6 +110,7 @@ export function initLegacyApp() {
           const silenceSessionList = document.getElementById('silenceSessionList');
 
           let selectedBubble = null;
+          let bottomNavCollapsed = false;
           let isDraggingBubble = false;
           let lastBubbleTapTime = 0;
           let lastBubbleTapTarget = null;
@@ -520,6 +522,16 @@ export function initLegacyApp() {
               if (target === 'profile') navProfile.classList.add('active');
           }
 
+          function setBottomNavCollapsed(collapsed) {
+              bottomNavCollapsed = Boolean(collapsed);
+              bottomNav?.classList.toggle('is-collapsed', bottomNavCollapsed);
+              document.body.classList.toggle('nav-collapsed', bottomNavCollapsed);
+              if (bottomNavToggle) {
+                  bottomNavToggle.setAttribute('aria-expanded', bottomNavCollapsed ? 'false' : 'true');
+                  bottomNavToggle.setAttribute('aria-label', bottomNavCollapsed ? 'Déplier le menu' : 'Réduire le menu');
+              }
+          }
+
           function showView(target) {
               currentView = target;
               homeView.classList.toggle('hidden-view', target !== 'home');
@@ -727,6 +739,7 @@ export function initLegacyApp() {
           }
 
           bindTap(navHome, () => showView('home'));
+          bindTap(bottomNavToggle, () => setBottomNavCollapsed(!bottomNavCollapsed), { preventTouchDefault: true });
           bindTap(navSoon, () => {
               if (!requireRegisteredUserForExperience('navigation')) return;
               showView('experience');
@@ -4686,6 +4699,7 @@ export function initLegacyApp() {
 
           placeInitialArenaBubbles();
           showView('home');
+          setBottomNavCollapsed(false);
           loop();
 
 }
