@@ -304,17 +304,36 @@ export function initLegacyApp() {
               if (modeId === 'resonner') {
                   isResonancePanelExpanded = true;
               }
-              if (modeId === 'tracer' && !isTraceListeningMode) {
+              applyTraceModeState(modeId === 'tracer');
+              updateResonancePanelUi();
+          }
+
+          function applyTraceModeState(enabled) {
+              if (enabled) {
+                  if (isTraceListeningMode) return;
                   isTraceListeningMode = true;
                   traceListeningBtn?.classList.add('active');
+                  isTraceRailAutopilot = false;
+                  traceRailPath = [];
+                  traceRailTargetIndex = 0;
+                  traceRailDirection = 1;
+                  traceExitConfirmUntil = 0;
+                  resetTraceCameraControl();
+                  ui.textContent = 'Mode Tracer l’écoute : vue d’ensemble + tracé lissé.';
+                  helperTips.textContent = 'Maintiens pour tracer · menu circulaire draggable : + / − au centre, flèches autour.';
                   updateTraceCamControlsVisibility();
+                  return;
               }
-              if (modeId !== 'tracer' && isTraceListeningMode && !isDrawingTraceRail) {
-                  isTraceListeningMode = false;
-                  traceListeningBtn?.classList.remove('active');
-                  updateTraceCamControlsVisibility();
-              }
-              updateResonancePanelUi();
+              if (!isTraceListeningMode) return;
+              isTraceListeningMode = false;
+              traceListeningBtn?.classList.remove('active');
+              isDrawingTraceRail = false;
+              isTraceRailAutopilot = false;
+              traceExitConfirmUntil = 0;
+              resetTraceCameraControl();
+              ui.textContent = '';
+              rotateHelperTip();
+              updateTraceCamControlsVisibility();
           }
 
           function updateResonancePanelUi() {
@@ -2747,26 +2766,8 @@ export function initLegacyApp() {
               closeBubblePanel();
           });
           traceListeningBtn?.addEventListener('click', () => {
-              isTraceListeningMode = !isTraceListeningMode;
-                  traceListeningBtn.classList.toggle('active', isTraceListeningMode);
-                  if (isTraceListeningMode) {
-                      setSoonMode('tracer');
-                      isTraceRailAutopilot = false;
-                      traceRailPath = [];
-                      traceRailTargetIndex = 0;
-                      traceRailDirection = 1;
-                      traceExitConfirmUntil = 0;
-                      resetTraceCameraControl();
-                      ui.textContent = 'Mode Tracer l’écoute : vue d’ensemble + tracé lissé.';
-                      helperTips.textContent = 'Maintiens pour tracer · menu circulaire draggable : + / − au centre, flèches autour.';
-                  } else if (!isDrawingTraceRail) {
-                      traceExitConfirmUntil = 0;
-                      resetTraceCameraControl();
-                      ui.textContent = '';
-                      rotateHelperTip();
-                  }
-                  updateTraceCamControlsVisibility();
-              });
+              setSoonMode(isTraceListeningMode ? 'composer' : 'tracer');
+          });
 
           function openBubblePanel() {
               isInteractionPaused = true;
