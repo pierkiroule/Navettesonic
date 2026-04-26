@@ -1732,7 +1732,7 @@ export function initLegacyApp() {
               return Boolean(element.closest(
                   '#bubblePanel, #bubblePropsPanel, #echoRecorderPanel, #traceListeningBtn, #traceCamControls, ' +
                   '#silenceDesYeuxPrompt, #silenceDesYeuxOverlay, #arenaTrianglePad, #bottomNav, ' +
-                  '#homeView, #profileView, #echoHypnoseView'
+                  '#homeView, #profileView, #echoHypnoseView, #soonModesTabs, #resonanceFormPanel, .resonance-form-card'
               ));
           }
 
