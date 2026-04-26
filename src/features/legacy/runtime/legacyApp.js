@@ -2092,27 +2092,6 @@ export function initLegacyApp() {
               });
           }
 
-          function distancePointToSegment(point, a, b) {
-              const abX = b.x - a.x;
-              const abY = b.y - a.y;
-              const abLenSq = abX * abX + abY * abY;
-              if (abLenSq <= 0.0001) return Math.hypot(point.x - a.x, point.y - a.y);
-              const tRaw = ((point.x - a.x) * abX + (point.y - a.y) * abY) / abLenSq;
-              const t = Math.max(0, Math.min(1, tRaw));
-              const projX = a.x + abX * t;
-              const projY = a.y + abY * t;
-              return Math.hypot(point.x - projX, point.y - projY);
-          }
-
-          function isPointTouchingTriangleElement(point, vertices, threshold = 16) {
-              if (!point || !vertices || vertices.length < 3) return false;
-              for (const vertex of vertices) {
-                  if (Math.hypot(point.x - vertex.x, point.y - vertex.y) <= threshold) return true;
-              }
-              const edges = [[0, 1], [1, 2], [2, 0]];
-              return edges.some(([aIdx, bIdx]) => distancePointToSegment(point, vertices[aIdx], vertices[bIdx]) <= threshold);
-          }
-
           function delay(ms) {
               return new Promise((resolve) => setTimeout(resolve, ms));
           }
@@ -2265,7 +2244,6 @@ export function initLegacyApp() {
               firefly.x = bubble.x;
               firefly.y = bubble.y;
               bubble.storedFireflyIds.push(firefly.id);
-              bubble.wasShipInsideFireflyTriangle = false;
               bubble.trianglePlaybackLockUntil = 0;
               bubble.isTrianglePlaybackActive = false;
               normalizeAttachedOrders();
@@ -2287,7 +2265,7 @@ export function initLegacyApp() {
               bubble.isTrianglePlaybackActive = true;
               bubble.trianglePlaybackLockUntil = now + 60000;
               const trio = stored.slice(0, 3);
-              setArenaTriangleStatus(`Triangle touché : lecture séquentielle des 3 vocaux dans ${bubble.label || 'la bulle sonore'}.`);
+              setArenaTriangleStatus(`Bulle traversée : lecture séquentielle des 3 vocaux dans ${bubble.label || 'la bulle sonore'}.`);
               (async () => {
                   try {
                       for (let i = 0; i < trio.length; i++) {
@@ -3207,7 +3185,6 @@ export function initLegacyApp() {
                   fishTouching: false,
                   storedFireflyIds: [],
                   nextStoredFireflyPlaybackIndex: 0,
-                  wasShipInsideFireflyTriangle: false,
                   trianglePlaybackLockUntil: 0,
                   isTrianglePlaybackActive: false
               };
@@ -3364,6 +3341,8 @@ export function initLegacyApp() {
               let strongestResonance = 0;
               let resonanceHueMix = 0;
               let resonanceWeight = 0;
+              let enteredBubble = null;
+              let enteredBubbleDist = Number.POSITIVE_INFINITY;
 
               BUBBLES.forEach(b => {
                   const dx = ship.x - b.x;
@@ -3414,18 +3393,10 @@ export function initLegacyApp() {
                       if (insideZone && !b.wasInZone) {
                           spawnResonanceWave(b);
                           releaseInitialFirefliesFromBubble(b, performance.now());
-                          depositOldestAttachedFireflyIntoBubble(b, performance.now());
-                      }
-                      const stored = getStoredBubbleFireflies(b);
-                      if (stored.length >= 3) {
-                          const triangleVertices = getBubbleTriangleVertices(b);
-                          const shipTouchingTriangle = isPointTouchingTriangleElement({ x: ship.x, y: ship.y }, triangleVertices, 18);
-                          if (shipTouchingTriangle && !b.wasShipInsideFireflyTriangle) {
-                              maybePlayBubbleStoredVocal(b);
+                          if (dist3d < enteredBubbleDist) {
+                              enteredBubble = b;
+                              enteredBubbleDist = dist3d;
                           }
-                          b.wasShipInsideFireflyTriangle = shipTouchingTriangle;
-                      } else {
-                          b.wasShipInsideFireflyTriangle = false;
                       }
                       if (b.resonance > strongestResonance) strongestResonance = b.resonance;
                       resonanceHueMix += b.resonance * (b.layer === 'below' ? 228 : 192);
@@ -3435,6 +3406,13 @@ export function initLegacyApp() {
                       b.isActive = false;
                   }
               });
+
+              if (enteredBubble) {
+                  depositOldestAttachedFireflyIntoBubble(enteredBubble, now);
+                  if (getStoredBubbleFireflies(enteredBubble).length >= 3) {
+                      maybePlayBubbleStoredVocal(enteredBubble);
+                  }
+              }
 
               arenaResonance.level += (strongestResonance - arenaResonance.level) * 0.04;
               const targetHue = resonanceWeight > 0 ? (resonanceHueMix / resonanceWeight) : 198;
@@ -3934,6 +3912,20 @@ export function initLegacyApp() {
           function drawArenaFireflies() {
               if (!ARENA_FIREFLIES.length) return;
               const now = performance.now() * 0.001;
+
+              BUBBLES.forEach((bubble) => {
+                  const stored = getStoredBubbleFireflies(bubble);
+                  if (stored.length < 3) return;
+                  const pulse = (Math.sin(now * 3.2 + (bubble.id?.length || 0)) + 1) * 0.5;
+                  ctx.strokeStyle = `rgba(255, 216, 132, ${0.38 + pulse * 0.28})`;
+                  ctx.lineWidth = 1.5 + pulse * 0.8;
+                  ctx.beginPath();
+                  ctx.moveTo(stored[0].x, stored[0].y);
+                  ctx.lineTo(stored[1].x, stored[1].y);
+                  ctx.lineTo(stored[2].x, stored[2].y);
+                  ctx.closePath();
+                  ctx.stroke();
+              });
 
               PLACED_FIREFLY_TRIANGLES.forEach((triangle) => {
                   const stored = triangle.fireflyIds
