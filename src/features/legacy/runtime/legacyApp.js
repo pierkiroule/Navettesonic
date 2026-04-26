@@ -798,7 +798,7 @@ export function initLegacyApp() {
                   enterExperienceBtn.textContent = hasAccess ? 'Soon experience' : 'Soon experience 🔒';
               }
               if (navSoon) {
-                  navSoon.textContent = hasAccess ? 'Soon•°' : 'Soon•° 🔒';
+                  navSoon.textContent = hasAccess ? '🐟' : '🐟 🔒';
               }
           }
 
@@ -2907,7 +2907,7 @@ export function initLegacyApp() {
               echoRecordToggleBtn.classList.toggle('finalizing', recordingState === 'finalizing');
               echoRecordToggleBtn.classList.toggle('hypnosis', recordingState === 'recording' || silenceTransitionInProgress);
               echoRecordToggleBtn.disabled = recordingState === 'finalizing' || recordingState === 'unsupported' || silenceTransitionInProgress;
-              echoRecordToggleBtn.textContent = recordingState === 'recording' ? 'STOP' : '👂Le silence des yeux !';
+              echoRecordToggleBtn.textContent = recordingState === 'recording' ? 'STOP' : '👂';
 
               if (recordingState === 'idle') {
                   if (!silenceTransitionInProgress) {
