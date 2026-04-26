@@ -50,6 +50,8 @@ export function initFabRadialMenu({
   let isBusy = false;
   let longPressTimer = null;
   let isDragging = false;
+  let didLongPress = false;
+  let pointerTapHandledAt = 0;
   let dragOffset = { x: 0, y: 0 };
 
   const setOpen = (nextOpen, { skipHistory = false } = {}) => {
@@ -133,8 +135,10 @@ export function initFabRadialMenu({
   };
 
   fabButton.addEventListener('pointerdown', (event) => {
+    didLongPress = false;
     if (!moveEnabled) return;
     longPressTimer = window.setTimeout(() => {
+      didLongPress = true;
       closeAll();
       startDragging(event);
       safeVibrate();
@@ -142,14 +146,24 @@ export function initFabRadialMenu({
     }, LONG_PRESS_MS);
   });
 
-  fabButton.addEventListener('pointerup', () => {
+  const cancelLongPress = () => {
     if (longPressTimer) {
       clearTimeout(longPressTimer);
       longPressTimer = null;
     }
+  };
+
+  fabButton.addEventListener('pointerleave', cancelLongPress);
+  fabButton.addEventListener('pointercancel', cancelLongPress);
+  fabButton.addEventListener('pointerup', () => {
+    cancelLongPress();
+    if (didLongPress || isBusy || isDragging) return;
+    pointerTapHandledAt = Date.now();
+    setOpen(!isOpen);
   });
 
   fabButton.addEventListener('click', () => {
+    if (Date.now() - pointerTapHandledAt < 350) return;
     if (isDragging || isBusy) return;
     setOpen(!isOpen);
   });
