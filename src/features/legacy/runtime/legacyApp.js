@@ -46,8 +46,15 @@ export function initLegacyApp() {
           const ui = document.getElementById('ui');
           const helperTips = document.getElementById('helperTips');
           const soonTutoLink = document.getElementById('soonTutoLink');
-          const soonTutoModal = document.getElementById('soonTutoModal');
+          const soonTutoCarousel = document.getElementById('soonTutoCarousel');
           const soonTutoCloseBtn = document.getElementById('soonTutoCloseBtn');
+          const soonTutoStepLabel = document.getElementById('soonTutoStepLabel');
+          const soonTutoProgressBar = document.getElementById('soonTutoProgressBar');
+          const soonTutoTitle = document.getElementById('soonTutoTitle');
+          const soonTutoBody = document.getElementById('soonTutoBody');
+          const soonTutoDots = document.getElementById('soonTutoDots');
+          const soonTutoPrevBtn = document.getElementById('soonTutoPrevBtn');
+          const soonTutoNextBtn = document.getElementById('soonTutoNextBtn');
           const silenceDesYeuxOverlay = document.getElementById('silenceDesYeuxOverlay');
           const silenceDesYeuxTitle = document.getElementById('silenceDesYeuxTitle');
           const silenceDesYeuxCountdown = document.getElementById('silenceDesYeuxCountdown');
@@ -262,6 +269,7 @@ export function initLegacyApp() {
           let heroHaloRAF = null;
           let heroHaloEnergy = 0;
           let helperTipIndex = 0;
+          let soonTutorialStepIndex = 0;
           let sooncutBucketVocals = [];
           let activeArenaAudio = null;
           let routedMediaElementSources = new WeakMap();
@@ -289,6 +297,32 @@ export function initLegacyApp() {
               'Chaque luciole collectée lit son vocal : attends la fin pour en accrocher une autre.',
               'La traînée de bulles peut accrocher 3 lucioles espacées en mouvement.',
               'Quand 3 lucioles sont accrochées, touche le halo triangulaire autour du poisson pour les poser.'
+          ];
+          const soonTutorialSlides = [
+              {
+                  title: 'Bienvenue dans Soon•° 🐟',
+                  body: 'Cette expérience se vit lentement : prends ton temps, écoute et laisse le poisson te guider.'
+              },
+              {
+                  title: 'Navigation rapide',
+                  body: '💧 Accueil · 🐟 immersion · 🫆 profil-bulle. Le bouton Tuto•° rouvre ce guide à tout moment.'
+              },
+              {
+                  title: 'Déplacement principal',
+                  body: 'Garde le doigt (ou clic) appuyé dans l’océan : le poisson suit ton mouvement en douceur.'
+              },
+              {
+                  title: 'Mode Silence des Yeux 👂',
+                  body: 'Active 👂 pour lancer une traversée intérieure, lente et réceptive, puis conserver la session.'
+              },
+              {
+                  title: 'Mode Tracer l’écoute 🪶',
+                  body: 'Active 🪶 pour dessiner une trajectoire d’écoute et composer ta dérive sonore gestuelle.'
+              },
+              {
+                  title: 'Lucioles & halo triangulaire',
+                  body: 'Accroche 3 lucioles à la traînée de bulles puis touche le halo triangulaire pour les déposer.'
+              }
           ];
 
           const ARENA_RADIUS = 2000;
@@ -550,7 +584,8 @@ export function initLegacyApp() {
               else setActiveNav(target);
               if (target !== 'experience') {
                   isTethered = false;
-                  if (soonTutoModal) soonTutoModal.hidden = true;
+                  if (soonTutoCarousel) soonTutoCarousel.hidden = true;
+                  document.body.classList.remove('soon-tuto-open');
                   closeBubblePanel();
                   hideSilenceOverlay();
                   if (silenceDesYeuxPrompt) silenceDesYeuxPrompt.hidden = true;
@@ -567,6 +602,7 @@ export function initLegacyApp() {
               }
               if (target === 'experience') {
                   rotateHelperTip(true);
+                  openSoonTutorialCarousel(true);
                   releaseInitialFirefliesFromBubble(null, performance.now());
               }
               resize();
@@ -577,6 +613,45 @@ export function initLegacyApp() {
               if (!helperTips) return;
               helperTips.textContent = helperTipsPlaylist[helperTipIndex];
               helperTipIndex = (helperTipIndex + 1) % helperTipsPlaylist.length;
+          }
+
+          function renderSoonTutorialSlide() {
+              if (!soonTutoCarousel || !soonTutoTitle || !soonTutoBody || !soonTutoStepLabel) return;
+              const totalSlides = soonTutorialSlides.length;
+              const safeIndex = Math.max(0, Math.min(totalSlides - 1, soonTutorialStepIndex));
+              soonTutorialStepIndex = safeIndex;
+              const currentSlide = soonTutorialSlides[safeIndex];
+              soonTutoTitle.textContent = currentSlide.title;
+              soonTutoBody.textContent = currentSlide.body;
+              soonTutoStepLabel.textContent = `Tip ${safeIndex + 1}/${totalSlides}`;
+              if (soonTutoProgressBar) {
+                  soonTutoProgressBar.style.width = `${((safeIndex + 1) / totalSlides) * 100}%`;
+                  const progressContainer = soonTutoProgressBar.parentElement;
+                  if (progressContainer) progressContainer.setAttribute('aria-valuenow', String(safeIndex + 1));
+              }
+              if (soonTutoPrevBtn) soonTutoPrevBtn.disabled = safeIndex === 0;
+              if (soonTutoNextBtn) soonTutoNextBtn.textContent = safeIndex === totalSlides - 1 ? 'Terminer' : 'Suivant';
+              if (soonTutoDots) {
+                  soonTutoDots.querySelectorAll('.soon-tuto-dot').forEach((dotButton, idx) => {
+                      const isActive = idx === safeIndex;
+                      dotButton.classList.toggle('is-active', isActive);
+                      dotButton.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                  });
+              }
+          }
+
+          function openSoonTutorialCarousel(reset = false) {
+              if (!soonTutoCarousel) return;
+              if (reset) soonTutorialStepIndex = 0;
+              soonTutoCarousel.hidden = false;
+              document.body.classList.add('soon-tuto-open');
+              renderSoonTutorialSlide();
+          }
+
+          function closeSoonTutorialCarousel() {
+              if (!soonTutoCarousel) return;
+              soonTutoCarousel.hidden = true;
+              document.body.classList.remove('soon-tuto-open');
           }
 
           function bindTap(button, handler, options = {}) {
@@ -761,17 +836,45 @@ export function initLegacyApp() {
           });
           bindTap(navProfile, () => showView('profile'));
           bindTap(soonTutoLink, () => {
-              if (currentView !== 'experience' || !soonTutoModal) return;
-              soonTutoModal.hidden = false;
+              if (currentView !== 'experience') return;
+              openSoonTutorialCarousel(true);
           });
           bindTap(soonTutoCloseBtn, () => {
-              if (!soonTutoModal) return;
-              soonTutoModal.hidden = true;
+              closeSoonTutorialCarousel();
           });
-          if (soonTutoModal) {
-              soonTutoModal.addEventListener('click', (event) => {
-                  if (event.target === soonTutoModal) soonTutoModal.hidden = true;
+          if (soonTutoDots) {
+              soonTutoDots.innerHTML = '';
+              soonTutorialSlides.forEach((_, idx) => {
+                  const dotButton = document.createElement('button');
+                  dotButton.type = 'button';
+                  dotButton.className = 'soon-tuto-dot';
+                  dotButton.textContent = String(idx + 1);
+                  dotButton.setAttribute('role', 'tab');
+                  dotButton.setAttribute('aria-label', `Aller au tip ${idx + 1}`);
+                  dotButton.addEventListener('click', () => {
+                      soonTutorialStepIndex = idx;
+                      renderSoonTutorialSlide();
+                  });
+                  soonTutoDots.appendChild(dotButton);
               });
+          }
+          bindTap(soonTutoPrevBtn, () => {
+              soonTutorialStepIndex = Math.max(0, soonTutorialStepIndex - 1);
+              renderSoonTutorialSlide();
+          });
+          bindTap(soonTutoNextBtn, () => {
+              if (soonTutorialStepIndex >= soonTutorialSlides.length - 1) {
+                  closeSoonTutorialCarousel();
+                  return;
+              }
+              soonTutorialStepIndex += 1;
+              renderSoonTutorialSlide();
+          });
+          if (soonTutoCarousel) {
+              soonTutoCarousel.addEventListener('keydown', (event) => {
+                  if (event.key === 'Escape') closeSoonTutorialCarousel();
+              });
+              renderSoonTutorialSlide();
           }
 
           function maskApiKey(key) {
