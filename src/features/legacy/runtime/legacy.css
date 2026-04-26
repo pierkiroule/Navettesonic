@@ -1084,7 +1084,13 @@
         .legacy-redundant-control {
             display: none !important;
         }
-        .bottom-nav {
+        body:not(.fab-enhanced) #echoRecorderPanel.legacy-redundant-control {
+            display: flex !important;
+        }
+        body:not(.fab-enhanced) #traceListeningBtn.legacy-redundant-control {
+            display: inline-flex !important;
+        }
+        body.fab-enhanced .bottom-nav {
             display: none;
         }
         .fab-menu-root {

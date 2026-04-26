@@ -108,6 +108,7 @@ export function initFabRadialMenu({
 
   const saved = loadPosition();
   if (saved) applyPosition(saved.x, saved.y);
+  else applyPosition(window.innerWidth - 48, window.innerHeight - 52);
 
   const onPointerMove = (event) => {
     if (!isDragging) return;
@@ -186,6 +187,13 @@ export function initFabRadialMenu({
   window.addEventListener('popstate', () => {
     if (isOpen) {
       closeAll({ skipHistory: true });
+    }
+  });
+
+  window.addEventListener('resize', () => {
+    const savedPosition = loadPosition();
+    if (savedPosition) {
+      applyPosition(savedPosition.x, savedPosition.y);
     }
   });
 

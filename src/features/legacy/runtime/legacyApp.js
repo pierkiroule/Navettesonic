@@ -818,6 +818,9 @@ export function initLegacyApp() {
               onAction: async (actionId) => runFabAction(actionId),
               moveEnabled: true
           });
+          if (fabController) {
+              document.body.classList.add('fab-enhanced');
+          }
 
           function maskApiKey(key) {
               if (!key || key.length < 12) return key;
