@@ -58,6 +58,7 @@ export function initLegacyApp() {
           const echoRecordStatus = document.getElementById('echoRecordStatus');
           const echoRecordDownloadLink = document.getElementById('echoRecordDownloadLink');
           const traceListeningBtn = document.getElementById('traceListeningBtn');
+          const dolphinNavModeBtn = document.getElementById('dolphinNavModeBtn');
           const traceCamControls = document.getElementById('traceCamControls');
           const silenceDesYeuxPrompt = document.getElementById('silenceDesYeuxPrompt');
           const silenceSaveNoBtn = document.getElementById('silenceSaveNoBtn');
@@ -571,6 +572,7 @@ export function initLegacyApp() {
                   rotateHelperTip(true);
                   releaseInitialFirefliesFromBubble(null, performance.now());
               }
+              syncExperienceModeChips();
               resize();
           }
 
@@ -621,9 +623,12 @@ export function initLegacyApp() {
                   silenceTransitionInProgress ||
                   silenceImmersionLevel > 0.02;
               const isTraceModeActive = isTraceListeningMode || isDrawingTraceRail;
+              const isDolphinNavigationActive = currentView === 'experience' && isTethered;
 
               echoRecordToggleBtn?.classList.toggle('active', isSilenceModeActive);
               traceListeningBtn?.classList.toggle('active', isTraceModeActive);
+              dolphinNavModeBtn?.classList.toggle('active', isDolphinNavigationActive);
+              if (dolphinNavModeBtn) dolphinNavModeBtn.setAttribute('aria-pressed', isDolphinNavigationActive ? 'true' : 'false');
           }
 
           function setTraceListeningMode(nextState) {
@@ -1735,7 +1740,7 @@ export function initLegacyApp() {
               if (!element) return false;
               return Boolean(element.closest(
                   '#bubblePanel, #bubblePropsPanel, #echoRecorderPanel, #traceListeningBtn, #traceCamControls, ' +
-                  '#silenceDesYeuxPrompt, #silenceDesYeuxOverlay, #arenaTrianglePad, #bottomNav, ' +
+                  '#dolphinNavModeBtn, #silenceDesYeuxPrompt, #silenceDesYeuxOverlay, #arenaTrianglePad, #bottomNav, ' +
                   '#homeView, #profileView, #echoHypnoseView'
               ));
           }
@@ -2531,6 +2536,7 @@ export function initLegacyApp() {
                   }, FISH_LONG_PRESS_MS);
               }
               isTethered = true;
+              syncExperienceModeChips();
               triggerFirstFishMoveMusic();
           }
           function onMove(e) {
@@ -2558,7 +2564,6 @@ export function initLegacyApp() {
               if (isDrawingTraceRail) {
                   setDrawingTraceRail(false);
                   setTraceListeningMode(false);
-                  traceListeningBtn?.classList.remove('active');
                   if (traceRailPath.length > 1) {
                       traceRailPath = buildSmoothedTraceRail(traceRailPath);
                       isTraceRailAutopilot = true;
@@ -2575,6 +2580,7 @@ export function initLegacyApp() {
               }
               isTethered = false;
               isDraggingBubble = false;
+              syncExperienceModeChips();
           }
 
           function cancelFishLongPress() {
