@@ -1028,6 +1028,14 @@
             opacity: calc(1 - (var(--silence-immersion, 0) * 1.08));
             transition: opacity 700ms ease;
         }
+        #experienceView.silence-mode.dual-mode #helperTips,
+        #experienceView.silence-mode.dual-mode #arenaTrianglePad,
+        #experienceView.silence-mode.dual-mode #arenaTriangleStatus {
+            opacity: max(0.44, calc(1 - (var(--silence-immersion, 0) * 0.86)));
+        }
+        #experienceView.silence-mode.dual-mode #bubblePropsPanel {
+            opacity: calc(1 - (var(--silence-immersion, 0) * 1.08));
+        }
         #experienceView.silence-mode #echoRecorderPanel {
             border-color: rgba(154, 240, 255, 0.52);
             background: rgba(5, 18, 34, 0.74);

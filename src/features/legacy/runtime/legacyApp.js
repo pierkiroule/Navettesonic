@@ -291,6 +291,7 @@ export function initLegacyApp() {
               'Traverse une bulle sonore pour y déposer automatiquement la luciole la plus ancienne.',
               'Chaque bulle sonore peut accueillir 3 lucioles qui se relient en triangle.'
           ];
+          const helperTipsDualModeMessage = 'Silence des Yeux + Tracer l’écoute : les aides restent tamisées pour te guider sans casser l’immersion.';
 
           const ARENA_RADIUS = 2000;
           const ARENA_BORDER_WIDTH_BASE = 6;
@@ -576,8 +577,50 @@ export function initLegacyApp() {
           function rotateHelperTip(reset = false) {
               if (reset) helperTipIndex = 0;
               if (!helperTips) return;
+              if (experienceUiModeState.isDualMode) {
+                  helperTips.textContent = helperTipsDualModeMessage;
+                  return;
+              }
               helperTips.textContent = helperTipsPlaylist[helperTipIndex];
               helperTipIndex = (helperTipIndex + 1) % helperTipsPlaylist.length;
+          }
+
+          const experienceUiModeState = {
+              isSilenceActive: false,
+              isTraceActive: false,
+              isDualMode: false,
+              uiMode: 'default'
+          };
+
+          function applyExperienceUiModeState() {
+              experienceUiModeState.isSilenceActive = silenceImmersionLevel > 0.02;
+              experienceUiModeState.isTraceActive = isTraceListeningMode || isDrawingTraceRail;
+              experienceUiModeState.isDualMode = experienceUiModeState.isSilenceActive && experienceUiModeState.isTraceActive;
+              experienceUiModeState.uiMode = experienceUiModeState.isDualMode
+                  ? 'silence-trace'
+                  : (experienceUiModeState.isSilenceActive ? 'silence' : (experienceUiModeState.isTraceActive ? 'trace' : 'default'));
+
+              if (experienceView) {
+                  experienceView.classList.toggle('silence-mode', experienceUiModeState.isSilenceActive);
+                  experienceView.classList.toggle('trace-mode', experienceUiModeState.isTraceActive);
+                  experienceView.classList.toggle('dual-mode', experienceUiModeState.isDualMode);
+                  experienceView.dataset.uiMode = experienceUiModeState.uiMode;
+                  experienceView.style.setProperty('--silence-immersion', silenceImmersionLevel.toFixed(3));
+              }
+
+              if (currentView === 'experience') {
+                  rotateHelperTip();
+              }
+          }
+
+          function setTraceListeningMode(nextState) {
+              isTraceListeningMode = Boolean(nextState);
+              applyExperienceUiModeState();
+          }
+
+          function setDrawingTraceRail(nextState) {
+              isDrawingTraceRail = Boolean(nextState);
+              applyExperienceUiModeState();
           }
 
           function bindTap(button, handler, options = {}) {
@@ -2412,8 +2455,8 @@ export function initLegacyApp() {
                   const now = performance.now();
                   if (now <= traceExitConfirmUntil) {
                       isTraceRailAutopilot = false;
-                      isTraceListeningMode = false;
-                      isDrawingTraceRail = false;
+                      setTraceListeningMode(false);
+                      setDrawingTraceRail(false);
                       traceRailPath = [];
                       traceRailTargetIndex = 0;
                       traceRailDirection = 1;
@@ -2430,7 +2473,7 @@ export function initLegacyApp() {
                   return;
               }
               if (isTraceListeningMode) {
-                  isDrawingTraceRail = true;
+                  setDrawingTraceRail(true);
                   traceRailPath = [pos];
                   traceExitConfirmUntil = 0;
                   isTethered = false;
@@ -2500,8 +2543,8 @@ export function initLegacyApp() {
           function onEnd() {
               cancelFishLongPress();
               if (isDrawingTraceRail) {
-                  isDrawingTraceRail = false;
-                  isTraceListeningMode = false;
+                  setDrawingTraceRail(false);
+                  setTraceListeningMode(false);
                   traceListeningBtn?.classList.remove('active');
                   if (traceRailPath.length > 1) {
                       traceRailPath = buildSmoothedTraceRail(traceRailPath);
@@ -2643,7 +2686,7 @@ export function initLegacyApp() {
               closeBubblePanel();
           });
           traceListeningBtn?.addEventListener('click', () => {
-              isTraceListeningMode = !isTraceListeningMode;
+              setTraceListeningMode(!isTraceListeningMode);
                   traceListeningBtn.classList.toggle('active', isTraceListeningMode);
                   if (isTraceListeningMode) {
                       isTraceRailAutopilot = false;
@@ -2896,8 +2939,7 @@ export function initLegacyApp() {
           function setSilenceImmersion(level) {
               silenceImmersionLevel = Math.max(0, Math.min(1, level));
               if (experienceView) {
-                  experienceView.classList.toggle('silence-mode', silenceImmersionLevel > 0.02);
-                  experienceView.style.setProperty('--silence-immersion', silenceImmersionLevel.toFixed(3));
+                  applyExperienceUiModeState();
               }
           }
 
