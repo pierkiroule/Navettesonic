@@ -275,7 +275,11 @@ export function initLegacyApp() {
           let lastFishTap = { time: 0, x: 0, y: 0 };
           const FISH_LONG_PRESS_MS = 520;
           const FISH_LONG_PRESS_MOVE_TOLERANCE = 24;
-          const FISH_INTERACTION_RADIUS = 42;
+          const FISH_INTERACTION_CAPSULE = {
+              mouthY: -30,
+              tailY: 30,
+              radius: 52,
+          };
           let fishLongPressTimer = null;
           let fishLongPressOrigin = null;
           let fishDepthLayer = 'front';
@@ -512,9 +516,25 @@ export function initLegacyApp() {
           function isPointOnFishBody(point) {
               const dx = point.x - ship.x;
               const dy = point.y - ship.y;
-              // Use a larger circular interaction zone around the fish to make double tap/long press
-              // detection resilient on mobile and during motion.
-              return Math.hypot(dx, dy) <= FISH_INTERACTION_RADIUS;
+
+              // Convert pointer world coordinates to fish-local coordinates so the hit area
+              // follows fish orientation and stays aligned with the fish body axis.
+              const cos = Math.cos(-(ship.angle + Math.PI / 2));
+              const sin = Math.sin(-(ship.angle + Math.PI / 2));
+              const localX = dx * cos - dy * sin;
+              const localY = dx * sin + dy * cos;
+
+              // Use an enlarged capsule from mouth to tail so long-press/double-tap are easy
+              // anywhere across the fish body on touch devices.
+              const segmentStartY = FISH_INTERACTION_CAPSULE.mouthY;
+              const segmentEndY = FISH_INTERACTION_CAPSULE.tailY;
+              const segmentLength = segmentEndY - segmentStartY;
+              const projected = segmentLength === 0
+                  ? 0
+                  : Math.max(0, Math.min(1, (localY - segmentStartY) / segmentLength));
+              const closestY = segmentStartY + projected * segmentLength;
+              const distToAxis = Math.hypot(localX, localY - closestY);
+              return distToAxis <= FISH_INTERACTION_CAPSULE.radius;
           }
 
           function isBubbleOnFishCurrentLevel(bubble) {
