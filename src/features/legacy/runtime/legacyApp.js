@@ -349,6 +349,10 @@ export function initLegacyApp() {
           const BUBBLE_PUSH_DAMPING = 0.92;
           const BUBBLE_PUSH_COUPLING = 0.34;
           const BUBBLE_TRAIL_MAX_POINTS = 10;
+          const DOLPHIN_REBOUND_MULTIPLIER = 3;
+          const DOLPHIN_DRAG_DAMPING_BOOST = 0.05;
+          const DOLPHIN_TRAIL_BOOST = 1.45;
+          const BUBBLE_DEFORM_RECOVERY = 0.86;
           const BUBBLE_RESTITUTION = 0.78;
           const FIREFLY_RESTITUTION = 0.72;
           const AUDIO_REACTIVITY = {
@@ -478,6 +482,7 @@ export function initLegacyApp() {
 
           function resolveDolphinBubbleCollisions() {
               const shipSpeed = Math.hypot(ship.vx, ship.vy);
+              const now = performance.now();
               BUBBLES.forEach((bubble) => {
                   if (!bubble) return;
                   const dx = bubble.x - ship.x;
@@ -492,13 +497,19 @@ export function initLegacyApp() {
                   bubble.y += ny * overlap * 0.9;
                   ship.x -= nx * overlap * 0.1;
                   ship.y -= ny * overlap * 0.1;
-                  const pushImpulse = shipSpeed * BUBBLE_PUSH_COUPLING + overlap * 0.05;
+                  const pushImpulse = (shipSpeed * BUBBLE_PUSH_COUPLING + overlap * 0.05) * DOLPHIN_REBOUND_MULTIPLIER;
                   bubble.vx = (bubble.vx || 0) + nx * pushImpulse + ship.vx * 0.08;
                   bubble.vy = (bubble.vy || 0) + ny * pushImpulse + ship.vy * 0.08;
+                  const elasticKick = Math.min(1.9, overlap * 0.035 + shipSpeed * 0.11);
+                  ship.vx -= nx * elasticKick * 0.28;
+                  ship.vy -= ny * elasticKick * 0.28;
+                  bubble.deformAmount = Math.max(bubble.deformAmount || 0, Math.min(0.38, 0.12 + pushImpulse * 0.035));
+                  bubble.deformAngle = Math.atan2(ny, nx);
+                  bubble.lastImpactAt = now;
               });
           }
 
-          function updateBubbleKinetics() {
+          function updateBubbleKinetics(isDolphinNavigationActive) {
               BUBBLES.forEach((bubble) => {
                   if (!bubble) return;
                   if (isDraggingBubble && selectedBubble === bubble) {
@@ -506,27 +517,33 @@ export function initLegacyApp() {
                       bubble.vy = 0;
                       return;
                   }
-                  bubble.vx = (bubble.vx || 0) * BUBBLE_PUSH_DAMPING;
-                  bubble.vy = (bubble.vy || 0) * BUBBLE_PUSH_DAMPING;
+                  const damping = isDolphinNavigationActive
+                      ? Math.min(0.985, BUBBLE_PUSH_DAMPING + DOLPHIN_DRAG_DAMPING_BOOST)
+                      : BUBBLE_PUSH_DAMPING;
+                  bubble.vx = (bubble.vx || 0) * damping;
+                  bubble.vy = (bubble.vy || 0) * damping;
                   bubble.x += bubble.vx;
                   bubble.y += bubble.vy;
+                  bubble.deformAmount = (bubble.deformAmount || 0) * BUBBLE_DEFORM_RECOVERY;
+                  if ((bubble.deformAmount || 0) < 0.01) bubble.deformAmount = 0;
                   const bubbleSpeed = Math.hypot(bubble.vx, bubble.vy);
                   if (!Array.isArray(bubble.motionTrail)) bubble.motionTrail = [];
-                  if (bubbleSpeed > 0.08) {
+                  const trailBoost = isDolphinNavigationActive ? DOLPHIN_TRAIL_BOOST : 1;
+                  if (bubbleSpeed > 0.06) {
                       bubble.motionTrail.push({
                           x: bubble.x,
                           y: bubble.y,
-                          alpha: Math.min(1, bubbleSpeed / 1.5),
-                          radius: bubble.r * (0.84 + Math.min(0.24, bubbleSpeed * 0.08))
+                          alpha: Math.min(1, (bubbleSpeed / 1.5) * trailBoost),
+                          radius: bubble.r * (0.84 + Math.min(0.32, bubbleSpeed * 0.08 * trailBoost))
                       });
                   }
                   bubble.motionTrail.forEach((point) => {
-                      point.alpha *= 0.88;
-                      point.radius *= 0.985;
+                      point.alpha *= isDolphinNavigationActive ? 0.9 : 0.88;
+                      point.radius *= isDolphinNavigationActive ? 0.99 : 0.985;
                   });
                   bubble.motionTrail = bubble.motionTrail
                       .filter((point) => point.alpha > 0.05)
-                      .slice(-BUBBLE_TRAIL_MAX_POINTS);
+                      .slice(-(isDolphinNavigationActive ? Math.round(BUBBLE_TRAIL_MAX_POINTS * 1.8) : BUBBLE_TRAIL_MAX_POINTS));
                   const theta = Math.atan2(bubble.y, bubble.x);
                   const bubbleDistance = Math.hypot(bubble.x, bubble.y);
                   const bubbleArenaRadius = sampleArenaRadius(theta) - bubble.r - 10;
@@ -539,6 +556,8 @@ export function initLegacyApp() {
                       if (outwardSpeed > 0) {
                           bubble.vx -= boundaryNormal.x * outwardSpeed * 1.4;
                           bubble.vy -= boundaryNormal.y * outwardSpeed * 1.4;
+                          bubble.deformAmount = Math.max(bubble.deformAmount || 0, Math.min(0.28, outwardSpeed * 0.08));
+                          bubble.deformAngle = Math.atan2(boundaryNormal.y, boundaryNormal.x);
                       }
                   }
               });
@@ -3691,7 +3710,7 @@ export function initLegacyApp() {
               ship.x += ship.vx;
               ship.y += ship.vy;
               if (isDolphinNavigationActive) resolveDolphinBubbleCollisions();
-              updateBubbleKinetics();
+              updateBubbleKinetics(isDolphinNavigationActive);
 
               ship.trail.push({ x: ship.x, y: ship.y });
               if (ship.trail.length > ship.maxTrail) ship.trail.shift();
@@ -3760,7 +3779,8 @@ export function initLegacyApp() {
           function updateWakeParticles(speed) {
               const now = performance.now();
               const speedNorm = Math.min(1, speed / ship.maxSpeed);
-              ship.wakeEmitter += 0.24 + speedNorm * 0.95;
+              const dolphinBoost = isDolphinModeEnabled ? 1.55 : 1;
+              ship.wakeEmitter += (0.24 + speedNorm * 0.95) * dolphinBoost;
 
               const mouth = getShipMouthPosition();
               const tail = getShipTailPosition();
@@ -3771,7 +3791,7 @@ export function initLegacyApp() {
               const dirY = flowY / flowLen;
               const tangentX = -dirY;
               const tangentY = dirX;
-              const targetCount = Math.min(MAX_WAKE_PARTICLES, 10 + Math.round(speedNorm * 16));
+              const targetCount = Math.min(MAX_WAKE_PARTICLES, 10 + Math.round(speedNorm * 16 * dolphinBoost));
 
               while (WAKE_PARTICLES.length < targetCount) spawnWakeParticle(mouth, tail, dirX, dirY, tangentX, tangentY, now, speedNorm);
               while (ship.wakeEmitter >= 1) {
@@ -3797,15 +3817,16 @@ export function initLegacyApp() {
           }
 
           function spawnWakeParticle(mouth, tail, dirX, dirY, tangentX, tangentY, now, speedNorm) {
+              const dolphinBoost = isDolphinModeEnabled ? 1.35 : 1;
               const along = Math.random() * 0.2;
               const jitter = 1.2 + Math.random() * 2.1;
               WAKE_PARTICLES.push({
                   x: mouth.x + (tail.x - mouth.x) * along + tangentX * (Math.random() - 0.5) * jitter,
                   y: mouth.y + (tail.y - mouth.y) * along + tangentY * (Math.random() - 0.5) * jitter,
-                  vx: dirX * (0.22 + Math.random() * 0.48 + speedNorm * 0.3) + tangentX * (Math.random() - 0.5) * 0.05,
-                  vy: dirY * (0.22 + Math.random() * 0.48 + speedNorm * 0.3) + tangentY * (Math.random() - 0.5) * 0.05,
-                  age: 0, life: 640 + Math.random() * 360, size: 0.9 + Math.random() * 1.8,
-                  alpha: 0.22 + Math.random() * 0.28, bornAt: now
+                  vx: dirX * (0.22 + Math.random() * 0.48 + speedNorm * 0.3 * dolphinBoost) + tangentX * (Math.random() - 0.5) * 0.05,
+                  vy: dirY * (0.22 + Math.random() * 0.48 + speedNorm * 0.3 * dolphinBoost) + tangentY * (Math.random() - 0.5) * 0.05,
+                  age: 0, life: 640 + Math.random() * 360, size: 0.9 + Math.random() * 1.8 * dolphinBoost,
+                  alpha: 0.22 + Math.random() * 0.28 + (isDolphinModeEnabled ? 0.08 : 0), bornAt: now
               });
           }
 
@@ -4497,6 +4518,27 @@ export function initLegacyApp() {
                   const isSurface = b.layer !== 'below';
                   const opacityBoost = b.isActive ? 1.2 : 1;
                   const bHue = b.hue ?? 195;
+                  const deformAmount = Math.min(0.38, b.deformAmount || 0);
+                  const deformAngle = b.deformAngle || 0;
+                  const ellipseRx = b.r * (1 - deformAmount * 0.2);
+                  const ellipseRy = b.r * (1 + deformAmount * 0.17);
+                  const drawBubbleShape = (radiusOffset = 0) => {
+                      const radius = b.r + radiusOffset;
+                      if (deformAmount > 0.01) {
+                          const scale = Math.max(0.2, radius / b.r);
+                          ctx.ellipse(
+                              b.x,
+                              b.y,
+                              Math.max(3, ellipseRx * scale),
+                              Math.max(3, ellipseRy * scale),
+                              deformAngle,
+                              0,
+                              Math.PI * 2
+                          );
+                          return;
+                      }
+                      ctx.arc(b.x, b.y, radius, 0, Math.PI * 2);
+                  };
                   ctx.save();
                   const trail = Array.isArray(b.motionTrail) ? b.motionTrail : [];
                   for (let i = 0; i < trail.length; i++) {
@@ -4519,7 +4561,7 @@ export function initLegacyApp() {
                       ctx.filter = 'blur(7px)';
                       ctx.fillStyle = grad;
                       ctx.beginPath();
-                      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                      drawBubbleShape();
                       ctx.fill();
                       ctx.filter = 'none';
                       ctx.strokeStyle = `hsla(${bHue}, 75%, 72%, ${0.20 * opacityBoost})`;
@@ -4531,14 +4573,14 @@ export function initLegacyApp() {
                       grad.addColorStop(1, `hsla(${bHue + 15}, 72%, 46%, ${0.60 * opacityBoost})`);
                       ctx.fillStyle = grad;
                       ctx.beginPath();
-                      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                      drawBubbleShape();
                       ctx.fill();
                       ctx.strokeStyle = `hsla(${bHue}, 88%, 84%, ${0.66 * opacityBoost})`;
                       ctx.lineWidth = b.isActive ? 2.8 : 2.1;
                   }
 
                   ctx.beginPath();
-                  ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                  drawBubbleShape();
                   ctx.stroke();
 
                   // Selection ring
@@ -4549,7 +4591,7 @@ export function initLegacyApp() {
                       ctx.setLineDash([7, 5]);
                       ctx.lineDashOffset = performance.now() * 0.04;
                       ctx.beginPath();
-                      ctx.arc(b.x, b.y, b.r + 10 + pulse * 3, 0, Math.PI * 2);
+                      drawBubbleShape(10 + pulse * 3);
                       ctx.stroke();
                       ctx.setLineDash([]);
                       ctx.lineDashOffset = 0;
