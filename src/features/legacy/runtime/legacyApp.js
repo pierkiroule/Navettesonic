@@ -316,7 +316,8 @@ export function initLegacyApp() {
               'Une nouvelle luciole émerge toutes les 15 secondes dans le courant.',
               'Chaque luciole collectée lit son vocal : attends la fin pour en accrocher une autre.',
               'Le poisson peut porter jusqu’à 6 lucioles à la fois.',
-              'Traverse une bulle sonore pour y déposer automatiquement la luciole la plus ancienne.',
+              'Le poisson ne traverse jamais une bulle de son niveau courant : il la pousse.',
+              'Traverse une bulle sonore d’un autre niveau pour y déposer automatiquement la luciole la plus ancienne.',
               'Chaque bulle sonore peut accueillir 3 lucioles qui se relient en triangle.'
           ];
           const helperTipsDualModeMessage = 'Silence des Yeux + Tracer l’écoute : les aides restent tamisées pour te guider sans casser l’immersion.';
@@ -524,11 +525,16 @@ export function initLegacyApp() {
               return bodyCore || bellyZone;
           }
 
-          function resolveDolphinBubbleCollisions() {
+          function isBubbleOnFishCurrentLevel(bubble) {
+              return (bubble?.layer || 'front') === 'front';
+          }
+
+          function resolveFishBubbleCollisions(isDolphinNavigationActive) {
               const shipSpeed = Math.hypot(ship.vx, ship.vy);
               const now = performance.now();
               BUBBLES.forEach((bubble) => {
                   if (!bubble) return;
+                  if (!isDolphinNavigationActive && !isBubbleOnFishCurrentLevel(bubble)) return;
                   const dx = bubble.x - ship.x;
                   const dy = bubble.y - ship.y;
                   const dist = Math.hypot(dx, dy);
@@ -2979,7 +2985,7 @@ export function initLegacyApp() {
                   helperTips.textContent = 'Mode 🐬 actif : collision avec les bulles sonores.';
               } else {
                   ui.textContent = 'Mode 🐬 désactivé : traversée des bulles restaurée.';
-                  helperTips.textContent = 'Mode normal : traverse les bulles pour déposer les lucioles.';
+                  helperTips.textContent = 'Mode normal : pousse les bulles du niveau courant, traverse les autres pour déposer les lucioles.';
               }
               syncExperienceModeChips();
           });
@@ -3707,7 +3713,8 @@ export function initLegacyApp() {
                           spawnResonanceWave(b);
                           releaseInitialFirefliesFromBubble(b, performance.now());
                       }
-                      if (!isDolphinNavigationActive && insideBubbleBody && !b.wasShipInsideBody && dist2d < enteredBubbleDist) {
+                      const canCrossForDeposit = !isBubbleOnFishCurrentLevel(b);
+                      if (!isDolphinNavigationActive && canCrossForDeposit && insideBubbleBody && !b.wasShipInsideBody && dist2d < enteredBubbleDist) {
                           enteredBubble = b;
                           enteredBubbleDist = dist2d;
                       }
@@ -3760,7 +3767,7 @@ export function initLegacyApp() {
               }
               ship.x += ship.vx;
               ship.y += ship.vy;
-              if (isDolphinNavigationActive) resolveDolphinBubbleCollisions();
+              resolveFishBubbleCollisions(isDolphinNavigationActive);
               updateBubbleKinetics(isDolphinNavigationActive);
 
               ship.trail.push({ x: ship.x, y: ship.y });
