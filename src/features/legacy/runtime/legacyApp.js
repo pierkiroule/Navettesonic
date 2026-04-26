@@ -220,6 +220,7 @@ export function initLegacyApp() {
           let currentView = 'home';
           let w, h;
           let isTethered = false;
+          let isDolphinModeEnabled = false;
           let mouseWorld = { x: 0, y: 0 };
           let isTraceListeningMode = false;
           let isDrawingTraceRail = false;
@@ -788,7 +789,7 @@ export function initLegacyApp() {
                   silenceTransitionInProgress ||
                   silenceImmersionLevel > 0.02;
               const isTraceModeActive = isTraceListeningMode || isDrawingTraceRail;
-              const isDolphinNavigationActive = currentView === 'experience' && isTethered;
+              const isDolphinNavigationActive = currentView === 'experience' && isDolphinModeEnabled;
 
               echoRecordToggleBtn?.classList.toggle('active', isSilenceModeActive);
               traceListeningBtn?.classList.toggle('active', isTraceModeActive);
@@ -2903,6 +2904,17 @@ export function initLegacyApp() {
                   }
                   updateTraceCamControlsVisibility();
               });
+          dolphinNavModeBtn?.addEventListener('click', () => {
+              isDolphinModeEnabled = !isDolphinModeEnabled;
+              if (isDolphinModeEnabled) {
+                  ui.textContent = 'Mode 🐬 activé : le poisson pousse les bulles.';
+                  helperTips.textContent = 'Mode 🐬 actif : collision avec les bulles sonores.';
+              } else {
+                  ui.textContent = 'Mode 🐬 désactivé : traversée des bulles restaurée.';
+                  helperTips.textContent = 'Mode normal : traverse les bulles pour déposer les lucioles.';
+              }
+              syncExperienceModeChips();
+          });
 
           function openBubblePanel() {
               isInteractionPaused = true;
@@ -3588,7 +3600,7 @@ export function initLegacyApp() {
               let resonanceWeight = 0;
               let enteredBubble = null;
               let enteredBubbleDist = Number.POSITIVE_INFINITY;
-              const isDolphinNavigationActive = currentView === 'experience' && isTethered;
+              const isDolphinNavigationActive = currentView === 'experience' && isTethered && isDolphinModeEnabled;
 
               BUBBLES.forEach(b => {
                   const dx = ship.x - b.x;
