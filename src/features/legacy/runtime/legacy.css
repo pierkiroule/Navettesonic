@@ -256,7 +256,7 @@
         }
         #helperTips {
             position: absolute;
-            top: 94px;
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 86px);
             left: 50%;
             transform: translateX(-50%);
             width: min(92vw, 680px);
