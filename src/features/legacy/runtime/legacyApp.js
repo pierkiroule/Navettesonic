@@ -277,6 +277,8 @@ export function initLegacyApp() {
           const FISH_LONG_PRESS_MOVE_TOLERANCE = 24;
           let fishLongPressTimer = null;
           let fishLongPressOrigin = null;
+          let fishDepthLayer = 'front';
+          let fishDepthMessageTimer = null;
           let selectedSampleId = SAMPLE_LIBRARY[0].id;
           let selectedHaloStyleId = HALO_STYLE_LIBRARY[0].id;
           let audioCtx = null;
@@ -524,7 +526,38 @@ export function initLegacyApp() {
           }
 
           function isBubbleOnFishCurrentLevel(bubble) {
-              return (bubble?.layer || 'front') === 'front';
+              return (bubble?.layer || 'front') === fishDepthLayer;
+          }
+
+          function getFishDepthOffset() {
+              return layerToSpatial(fishDepthLayer).depthOffset;
+          }
+
+          function getFishDepthLabel(layer = fishDepthLayer) {
+              if (layer === 'above') return 'En hauteur';
+              if (layer === 'below') return 'En profondeur';
+              return 'Niveau courant';
+          }
+
+          function showFishDepthSelectionMessage() {
+              const message = `Profondeur du poisson : ${getFishDepthLabel()}`;
+              ui.textContent = message;
+              if (fishDepthMessageTimer) clearTimeout(fishDepthMessageTimer);
+              fishDepthMessageTimer = window.setTimeout(() => {
+                  fishDepthMessageTimer = null;
+                  if (ui.textContent === message && !isTraceRailAutopilot) {
+                      ui.textContent = '';
+                      rotateHelperTip();
+                  }
+              }, 1500);
+          }
+
+          function cycleFishDepthLevel() {
+              const depthCycle = ['front', 'above', 'below'];
+              const currentIndex = depthCycle.indexOf(fishDepthLayer);
+              const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % depthCycle.length;
+              fishDepthLayer = depthCycle[nextIndex];
+              showFishDepthSelectionMessage();
           }
 
           function resolveFishBubbleCollisions(isDolphinNavigationActive) {
@@ -2760,7 +2793,7 @@ export function initLegacyApp() {
 
               if (isInteractionPaused) return;
 
-              // Fish double tap → open creation panel
+              // Fish double tap → open creation panel · long press → cycle depth layer
               const now2 = now;
               if (isPointOnFishBody(pos)) {
                   const isDoubleTap = now2 - lastFishTap.time < 330 && Math.hypot(pos.x - lastFishTap.x, pos.y - lastFishTap.y) < 40;
@@ -2770,7 +2803,7 @@ export function initLegacyApp() {
                   fishLongPressTimer = window.setTimeout(() => {
                       fishLongPressTimer = null;
                       if (currentView !== 'experience' || isInteractionPaused || selectedBubble) return;
-                      openBubblePanel();
+                      cycleFishDepthLevel();
                   }, FISH_LONG_PRESS_MS);
               }
 
@@ -3587,7 +3620,7 @@ export function initLegacyApp() {
               if (listener.positionX) {
                   listener.positionX.value = ship.x;
                   listener.positionY.value = ship.y;
-                  listener.positionZ.value = 0;
+                  listener.positionZ.value = getFishDepthOffset();
                   listener.forwardX.value = forwardX;
                   listener.forwardY.value = forwardY;
                   listener.forwardZ.value = 0;
@@ -3595,7 +3628,7 @@ export function initLegacyApp() {
                   listener.upY.value = 0;
                   listener.upZ.value = 1;
               } else if (listener.setPosition && listener.setOrientation) {
-                  listener.setPosition(ship.x, ship.y, 0);
+                  listener.setPosition(ship.x, ship.y, getFishDepthOffset());
                   listener.setOrientation(forwardX, forwardY, 0, 0, 0, 1);
               }
           }
@@ -3646,7 +3679,7 @@ export function initLegacyApp() {
               BUBBLES.forEach(b => {
                   const dx = ship.x - b.x;
                   const dy = ship.y - b.y;
-                  const dz = (b.depthOffset ?? 0);
+                  const dz = (b.depthOffset ?? 0) - getFishDepthOffset();
                   const dist3d = Math.sqrt(dx * dx + dy * dy + dz * dz);
                   const dist2d = Math.hypot(dx, dy);
                   const zoneRadius = SOUND_HEAR_RADIUS * 0.7;
