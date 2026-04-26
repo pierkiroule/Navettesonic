@@ -2747,6 +2747,13 @@ export function initLegacyApp() {
               });
 
           function openBubblePanel() {
+              const attachedCount = getAttachedFirefliesSorted().length;
+              if (attachedCount >= 3) {
+                  setArenaTriangleStatus("Pose d'une bulle bloquée : pose d'abord le triangle pulsant autour du poisson.", true);
+                  ui.textContent = "Triangle pulsant détecté : pose-le avant d'ouvrir la collection.";
+                  helperTips.textContent = "Touche le halo triangulaire autour du poisson pour poser les 3 lucioles.";
+                  return;
+              }
               isInteractionPaused = true;
               isTethered = false;
               ship.vx = 0;
