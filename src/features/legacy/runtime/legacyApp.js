@@ -480,6 +480,24 @@ export function initLegacyApp() {
               return { x: nx, y: ny };
           }
 
+          function isPointOnFishBody(point) {
+              const dx = point.x - ship.x;
+              const dy = point.y - ship.y;
+              const cos = Math.cos(ship.angle);
+              const sin = Math.sin(ship.angle);
+
+              // Convert world coordinates to the fish local space so the hit zone rotates with the body.
+              const localX = (dx * cos) + (dy * sin);
+              const localY = (-dx * sin) + (dy * cos);
+
+              // Slightly stretched body core (matches the painted fish silhouette better than a circle).
+              const bodyCore = ((localX * localX) / (14 * 14)) + (((localY - 1.5) * (localY - 1.5)) / (20.5 * 20.5)) <= 1;
+              // Soft extension towards the lower belly to keep taps natural on mobile.
+              const bellyZone = ((localX * localX) / (11 * 11)) + (((localY - 9.5) * (localY - 9.5)) / (10.5 * 10.5)) <= 1;
+
+              return bodyCore || bellyZone;
+          }
+
           function resolveDolphinBubbleCollisions() {
               const shipSpeed = Math.hypot(ship.vx, ship.vy);
               const now = performance.now();
@@ -2711,9 +2729,8 @@ export function initLegacyApp() {
               if (isInteractionPaused) return;
 
               // Fish double tap → open creation panel
-              const fishTapDistance = Math.hypot(pos.x - ship.x, pos.y - ship.y);
               const now2 = now;
-              if (fishTapDistance < 28) {
+              if (isPointOnFishBody(pos)) {
                   const isDoubleTap = now2 - lastFishTap.time < 330 && Math.hypot(pos.x - lastFishTap.x, pos.y - lastFishTap.y) < 40;
                   lastFishTap = { time: now2, x: pos.x, y: pos.y };
                   if (isDoubleTap) { openBubblePanel(); return; }
