@@ -2980,27 +2980,10 @@ export function initLegacyApp() {
               silenceTransitionInProgress = true;
               silenceSessionSaved = false;
               if (silenceDesYeuxPrompt) silenceDesYeuxPrompt.hidden = true;
-              revealSilenceOverlay('Le Silence des Yeux approche…', SILENCE_COUNTDOWN_VALUES[0], SILENCE_POETIC_LINES[0]);
+              setSilenceImmersion(1);
+              revealSilenceOverlay('Le Silence des Yeux est là…', '0•°', 'Traverse 60 secondes d’écoute sensible.');
               echoRecordStatus.textContent = 'Préparation hypnotique…';
               updateEchoRecorderUi();
-
-              for (let i = 0; i < SILENCE_COUNTDOWN_VALUES.length; i++) {
-                  const progress = i / (SILENCE_COUNTDOWN_VALUES.length - 1);
-                  setSilenceImmersion(progress);
-                  revealSilenceOverlay('Le Silence des Yeux approche…', SILENCE_COUNTDOWN_VALUES[i], SILENCE_POETIC_LINES[i] || SILENCE_POETIC_LINES[SILENCE_POETIC_LINES.length - 1]);
-                  if (i < SILENCE_COUNTDOWN_DURATIONS_MS.length) {
-                      await wait(SILENCE_COUNTDOWN_DURATIONS_MS[i]);
-                      if (recordingState === 'unsupported') {
-                          hideSilenceOverlay();
-                          setSilenceImmersion(0);
-                          silenceTransitionInProgress = false;
-                          updateEchoRecorderUi();
-                          return;
-                      }
-                  }
-              }
-
-              revealSilenceOverlay('Le Silence des Yeux est là…', '0•°', 'Traverse 60 secondes d’écoute sensible.');
               startEchoRecording();
               if (recordingState !== 'recording') {
                   hideSilenceOverlay();
