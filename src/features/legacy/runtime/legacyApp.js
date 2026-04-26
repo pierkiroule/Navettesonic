@@ -287,8 +287,9 @@ export function initLegacyApp() {
               'Garde le doigt (ou clic) appuyé dans l’océan : le poisson suit ton mouvement.',
               'Une nouvelle luciole émerge toutes les 15 secondes dans le courant.',
               'Chaque luciole collectée lit son vocal : attends la fin pour en accrocher une autre.',
-              'La traînée de bulles peut accrocher 3 lucioles espacées en mouvement.',
-              'Quand 3 lucioles sont accrochées, touche le halo triangulaire autour du poisson pour les poser.'
+              'Le poisson peut porter jusqu’à 6 lucioles à la fois.',
+              'Traverse une bulle sonore pour y déposer automatiquement la luciole la plus ancienne.',
+              'Chaque bulle sonore peut accueillir 3 lucioles qui se relient en triangle.'
           ];
 
           const ARENA_RADIUS = 2000;
@@ -313,10 +314,10 @@ export function initLegacyApp() {
           const SOUND_HEAR_RADIUS = 460;
           const ARENA_TRIANGLE_COUNT = 12;
           const FIREFLY_TRAIL_ATTACH_RADIUS = 38;
-          const FIREFLY_ATTACHED_SPACING_TARGETS = [0.52, 0.7, 0.86];
+          const FIREFLY_ATTACHED_SPACING_TARGETS = [0.46, 0.56, 0.66, 0.76, 0.86, 0.94];
           const FIREFLY_AUDIO_MIN_MS = 1500;
           const FIREFLY_AUDIO_MAX_MS = 3200;
-          const FIREFLY_TAIL_MAX_ATTACHED = 3;
+          const FIREFLY_TAIL_MAX_ATTACHED = 6;
           const FIREFLY_REPULSE_COOLDOWN_MS = 900;
           const FIREFLY_RELEASE_INTERVAL_MS = 15000;
           const DEFAULT_SUPABASE_URL = 'https://qyffktrggapfzlmmlerq.supabase.co';
@@ -2091,39 +2092,6 @@ export function initLegacyApp() {
               });
           }
 
-          function pointInsideTriangle(point, vertices) {
-              if (!point || !vertices || vertices.length < 3) return false;
-              const [a, b, c] = vertices;
-              const sign = (p1, p2, p3) => (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
-              const d1 = sign(point, a, b);
-              const d2 = sign(point, b, c);
-              const d3 = sign(point, c, a);
-              const hasNeg = d1 < 0 || d2 < 0 || d3 < 0;
-              const hasPos = d1 > 0 || d2 > 0 || d3 > 0;
-              return !(hasNeg && hasPos);
-          }
-
-          function distancePointToSegment(point, a, b) {
-              const abX = b.x - a.x;
-              const abY = b.y - a.y;
-              const abLenSq = abX * abX + abY * abY;
-              if (abLenSq <= 0.0001) return Math.hypot(point.x - a.x, point.y - a.y);
-              const tRaw = ((point.x - a.x) * abX + (point.y - a.y) * abY) / abLenSq;
-              const t = Math.max(0, Math.min(1, tRaw));
-              const projX = a.x + abX * t;
-              const projY = a.y + abY * t;
-              return Math.hypot(point.x - projX, point.y - projY);
-          }
-
-          function isPointTouchingTriangleElement(point, vertices, threshold = 16) {
-              if (!point || !vertices || vertices.length < 3) return false;
-              for (const vertex of vertices) {
-                  if (Math.hypot(point.x - vertex.x, point.y - vertex.y) <= threshold) return true;
-              }
-              const edges = [[0, 1], [1, 2], [2, 0]];
-              return edges.some(([aIdx, bIdx]) => distancePointToSegment(point, vertices[aIdx], vertices[bIdx]) <= threshold);
-          }
-
           function delay(ms) {
               return new Promise((resolve) => setTimeout(resolve, ms));
           }
@@ -2227,52 +2195,6 @@ export function initLegacyApp() {
               return best;
           }
 
-          function getHaloTriangleVertices() {
-              const radius = 48;
-              const spin = performance.now() * 0.0012;
-              return [0, 1, 2].map((idx) => {
-                  const angle = ship.angle - Math.PI / 2 + spin + (idx / 3) * Math.PI * 2;
-                  return {
-                      x: ship.x + Math.cos(angle) * radius,
-                      y: ship.y + Math.sin(angle) * radius
-                  };
-              });
-          }
-
-          function placeAttachedFirefliesAsTriangle(now) {
-              const attached = getAttachedFirefliesSorted();
-              if (attached.length < 3) return false;
-              const trio = attached.slice(0, 3);
-              const triangleId = `placed-triangle-${Math.round(now)}`;
-              const triangle = {
-                  id: triangleId,
-                  x: ship.x,
-                  y: ship.y,
-                  radius: 46,
-                  baseRadius: 46,
-                  spin: Math.random() * Math.PI * 2,
-                  spinSpeed: 0.00011 + Math.random() * 0.00009,
-                  elasticPhase: Math.random() * Math.PI * 2,
-                  elasticAmp: 0.06 + Math.random() * 0.035,
-                  fireflyIds: trio.map((f) => f.id)
-              };
-              PLACED_FIREFLY_TRIANGLES.push(triangle);
-              trio.forEach((firefly, idx) => {
-                  firefly.attachedToTail = false;
-                  firefly.attachedOrder = -1;
-                  firefly.playbackEndsAt = 0;
-                  firefly.containedInBubbleId = null;
-                  firefly.placedTriangleId = triangleId;
-                  firefly.triangleVertexIndex = idx;
-                  firefly.linkedCooldownUntil = now + 700;
-                  firefly.vx = 0;
-                  firefly.vy = 0;
-              });
-              normalizeAttachedOrders();
-              setArenaTriangleStatus('Triangle posé : les 3 lucioles forment un réseau lumineux.');
-              return true;
-          }
-
           function getStoredBubbleFireflies(bubble) {
               if (!bubble) return [];
               if (!Array.isArray(bubble.storedFireflyIds)) bubble.storedFireflyIds = [];
@@ -2298,34 +2220,39 @@ export function initLegacyApp() {
               firefly.vx *= 0.25;
               firefly.vy *= 0.25;
               normalizeAttachedOrders();
-              setArenaTriangleStatus(`Luciole accrochée à la traînée (${attached.length + 1}/3).`);
+              setArenaTriangleStatus(`Luciole accrochée à la traînée (${attached.length + 1}/${FIREFLY_TAIL_MAX_ATTACHED}).`);
               void triggerAttachedFireflyPlayback(firefly, now);
           }
 
-          function depositAttachedFireflyIntoBubble(bubble, now) {
+          function depositOldestAttachedFireflyIntoBubble(bubble, now) {
               const attached = getAttachedFirefliesSorted();
-              if (attached.length < 3) return false;
-              const trio = attached.slice(0, 3);
+              if (!attached.length) return false;
               if (!Array.isArray(bubble.storedFireflyIds)) bubble.storedFireflyIds = [];
-              bubble.storedFireflyIds = [];
-              trio.forEach((firefly, idx) => {
-                  firefly.attachedToTail = false;
-                  firefly.attachedOrder = -1;
-                  firefly.playbackEndsAt = 0;
-                  firefly.containedInBubbleId = bubble.id;
-                  firefly.triangleVertexIndex = idx;
-                  firefly.linkedCooldownUntil = now + 600;
-                  firefly.vx = 0;
-                  firefly.vy = 0;
-                  firefly.x = bubble.x;
-                  firefly.y = bubble.y;
-                  bubble.storedFireflyIds.push(firefly.id);
-              });
-              bubble.wasShipInsideFireflyTriangle = false;
+              if (bubble.storedFireflyIds.length >= 3) {
+                  setArenaTriangleStatus(`${bubble.label || 'Cette bulle sonore'} contient déjà 3 lucioles.`);
+                  return false;
+              }
+              const firefly = attached[0];
+              firefly.attachedToTail = false;
+              firefly.attachedOrder = -1;
+              firefly.playbackEndsAt = 0;
+              firefly.containedInBubbleId = bubble.id;
+              firefly.triangleVertexIndex = bubble.storedFireflyIds.length;
+              firefly.linkedCooldownUntil = now + 600;
+              firefly.vx = 0;
+              firefly.vy = 0;
+              firefly.x = bubble.x;
+              firefly.y = bubble.y;
+              bubble.storedFireflyIds.push(firefly.id);
               bubble.trianglePlaybackLockUntil = 0;
               bubble.isTrianglePlaybackActive = false;
               normalizeAttachedOrders();
-              setArenaTriangleStatus(`Triangle de 3 lucioles formé dans ${bubble.label || 'la bulle sonore'}. Traverse le triangle avec le poisson pour lire les audios.`);
+              const storedCount = bubble.storedFireflyIds.length;
+              if (storedCount >= 3) {
+                  setArenaTriangleStatus(`Triangle de 3 lucioles formé dans ${bubble.label || 'la bulle sonore'}.`);
+              } else {
+                  setArenaTriangleStatus(`Luciole déposée dans ${bubble.label || 'la bulle sonore'} (${storedCount}/3).`);
+              }
               return true;
           }
 
@@ -2338,7 +2265,7 @@ export function initLegacyApp() {
               bubble.isTrianglePlaybackActive = true;
               bubble.trianglePlaybackLockUntil = now + 60000;
               const trio = stored.slice(0, 3);
-              setArenaTriangleStatus(`Triangle touché : lecture séquentielle des 3 vocaux dans ${bubble.label || 'la bulle sonore'}.`);
+              setArenaTriangleStatus(`Bulle traversée : lecture séquentielle des 3 vocaux dans ${bubble.label || 'la bulle sonore'}.`);
               (async () => {
                   try {
                       for (let i = 0; i < trio.length; i++) {
@@ -2408,7 +2335,7 @@ export function initLegacyApp() {
                   if (firefly.attachedToTail) {
                       const targetPos = getPathPointAt(
                           bubbleTrailPath,
-                          FIREFLY_ATTACHED_SPACING_TARGETS[Math.max(0, Math.min(2, firefly.attachedOrder))] ?? 0.7
+                          FIREFLY_ATTACHED_SPACING_TARGETS[Math.max(0, Math.min(FIREFLY_ATTACHED_SPACING_TARGETS.length - 1, firefly.attachedOrder))] ?? 0.7
                       ) || tail;
                       const targetX = targetPos.x;
                       const targetY = targetPos.y;
@@ -2512,16 +2439,6 @@ export function initLegacyApp() {
                   return;
               }
               const now = performance.now();
-              const attachedNow = getAttachedFirefliesSorted();
-
-              if (attachedNow.length >= 3) {
-                  const haloVertices = getHaloTriangleVertices();
-                  if (pointInsideTriangle(pos, haloVertices) || isPointTouchingTriangleElement(pos, haloVertices, 16)) {
-                      placeAttachedFirefliesAsTriangle(now);
-                      isTethered = false;
-                      return;
-                  }
-              }
 
               // Props panel open → canvas touch = drag selected bubble
               if (selectedBubble) {
@@ -2719,13 +2636,6 @@ export function initLegacyApp() {
 
           cancelBtn.addEventListener('click', closeBubblePanel);
           dropBtn.addEventListener('click', () => {
-              if (getAttachedFirefliesSorted().length >= 3) {
-                  closeBubblePanel();
-                  setArenaTriangleStatus("Pose d'une bulle bloquée : pose d'abord le triangle pulsant autour du poisson.", true);
-                  ui.textContent = "Triangle pulsant détecté : pose-le avant d'ajouter une bulle sonore.";
-                  helperTips.textContent = "Touche le halo triangulaire autour du poisson pour poser les 3 lucioles, puis refais un double tap pour ouvrir la collection.";
-                  return;
-              }
               const sample = SAMPLE_LIBRARY.find(s => s.id === selectedSampleId);
               if (!sample) return;
               const bubble = buildSoundBubble(sample, bubbleLayer.value);
@@ -3273,9 +3183,9 @@ export function initLegacyApp() {
                   currentVolume: 0, zoneMix: 0, resonance: 0, wasInZone: false, hue: 195,
                   lastImpactAt: 0,
                   fishTouching: false,
+                  wasShipInsideBody: false,
                   storedFireflyIds: [],
                   nextStoredFireflyPlaybackIndex: 0,
-                  wasShipInsideFireflyTriangle: false,
                   trianglePlaybackLockUntil: 0,
                   isTrianglePlaybackActive: false
               };
@@ -3432,14 +3342,18 @@ export function initLegacyApp() {
               let strongestResonance = 0;
               let resonanceHueMix = 0;
               let resonanceWeight = 0;
+              let enteredBubble = null;
+              let enteredBubbleDist = Number.POSITIVE_INFINITY;
 
               BUBBLES.forEach(b => {
                   const dx = ship.x - b.x;
                   const dy = ship.y - b.y;
                   const dz = (b.depthOffset ?? 0);
                   const dist3d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                  const dist2d = Math.hypot(dx, dy);
                   const zoneRadius = SOUND_HEAR_RADIUS * 0.7;
                   const insideZone = dist3d < zoneRadius;
+                  const insideBubbleBody = dist2d <= b.r;
 
                   if (b.sound) {
                       const normalized = Math.max(0, 1 - (dist3d / SOUND_HEAR_RADIUS));
@@ -3483,25 +3397,27 @@ export function initLegacyApp() {
                           spawnResonanceWave(b);
                           releaseInitialFirefliesFromBubble(b, performance.now());
                       }
-                      const stored = getStoredBubbleFireflies(b);
-                      if (stored.length >= 3) {
-                          const triangleVertices = getBubbleTriangleVertices(b);
-                          const shipTouchingTriangle = isPointTouchingTriangleElement({ x: ship.x, y: ship.y }, triangleVertices, 18);
-                          if (shipTouchingTriangle && !b.wasShipInsideFireflyTriangle) {
-                              maybePlayBubbleStoredVocal(b);
-                          }
-                          b.wasShipInsideFireflyTriangle = shipTouchingTriangle;
-                      } else {
-                          b.wasShipInsideFireflyTriangle = false;
+                      if (insideBubbleBody && !b.wasShipInsideBody && dist2d < enteredBubbleDist) {
+                          enteredBubble = b;
+                          enteredBubbleDist = dist2d;
                       }
                       if (b.resonance > strongestResonance) strongestResonance = b.resonance;
                       resonanceHueMix += b.resonance * (b.layer === 'below' ? 228 : 192);
                       resonanceWeight += b.resonance;
                       b.wasInZone = insideZone;
+                      b.wasShipInsideBody = insideBubbleBody;
                   } else {
                       b.isActive = false;
+                      b.wasShipInsideBody = insideBubbleBody;
                   }
               });
+
+              if (enteredBubble) {
+                  depositOldestAttachedFireflyIntoBubble(enteredBubble, now);
+                  if (getStoredBubbleFireflies(enteredBubble).length >= 3) {
+                      maybePlayBubbleStoredVocal(enteredBubble);
+                  }
+              }
 
               arenaResonance.level += (strongestResonance - arenaResonance.level) * 0.04;
               const targetHue = resonanceWeight > 0 ? (resonanceHueMix / resonanceWeight) : 198;
@@ -4002,6 +3918,20 @@ export function initLegacyApp() {
               if (!ARENA_FIREFLIES.length) return;
               const now = performance.now() * 0.001;
 
+              BUBBLES.forEach((bubble) => {
+                  const stored = getStoredBubbleFireflies(bubble);
+                  if (stored.length < 3) return;
+                  const pulse = (Math.sin(now * 3.2 + (bubble.id?.length || 0)) + 1) * 0.5;
+                  ctx.strokeStyle = `rgba(255, 216, 132, ${0.38 + pulse * 0.28})`;
+                  ctx.lineWidth = 1.5 + pulse * 0.8;
+                  ctx.beginPath();
+                  ctx.moveTo(stored[0].x, stored[0].y);
+                  ctx.lineTo(stored[1].x, stored[1].y);
+                  ctx.lineTo(stored[2].x, stored[2].y);
+                  ctx.closePath();
+                  ctx.stroke();
+              });
+
               PLACED_FIREFLY_TRIANGLES.forEach((triangle) => {
                   const stored = triangle.fireflyIds
                       .map((id) => ARENA_FIREFLIES.find((firefly) => firefly.id === id))
@@ -4114,23 +4044,6 @@ export function initLegacyApp() {
                   ctx.fill();
               }
               ctx.restore();
-          }
-
-          function drawFishTriangleHaloButton() {
-              const attached = getAttachedFirefliesSorted();
-              if (attached.length < 3) return;
-              const vertices = getHaloTriangleVertices();
-              const pulse = (Math.sin(performance.now() * 0.008) + 1) * 0.5;
-              ctx.fillStyle = `rgba(255, 228, 140, ${0.18 + pulse * 0.18})`;
-              ctx.strokeStyle = `rgba(255, 240, 180, ${0.55 + pulse * 0.35})`;
-              ctx.lineWidth = 2.2;
-              ctx.beginPath();
-              ctx.moveTo(vertices[0].x, vertices[0].y);
-              ctx.lineTo(vertices[1].x, vertices[1].y);
-              ctx.lineTo(vertices[2].x, vertices[2].y);
-              ctx.closePath();
-              ctx.fill();
-              ctx.stroke();
           }
 
           function traceFishBodyPath(pathCtx, bodyUndulate, bodyBreath) {
@@ -4615,7 +4528,6 @@ export function initLegacyApp() {
               ctx.fill();
               ctx.restore();
 
-              drawFishTriangleHaloButton();
               if (silenceVisualMode) drawSilenceCompassRing();
 
               if (!heavySilenceMode) {
