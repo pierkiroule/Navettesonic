@@ -278,7 +278,8 @@ export function initLegacyApp() {
           let fishLongPressTimer = null;
           let fishLongPressOrigin = null;
           let fishDepthLayer = 'front';
-          let fishDepthMessageTimer = null;
+          let fishDepthToastText = '';
+          let fishDepthToastUntil = 0;
           let selectedSampleId = SAMPLE_LIBRARY[0].id;
           let selectedHaloStyleId = HALO_STYLE_LIBRARY[0].id;
           let audioCtx = null;
@@ -533,23 +534,15 @@ export function initLegacyApp() {
               return layerToSpatial(fishDepthLayer).depthOffset;
           }
 
-          function getFishDepthLabel(layer = fishDepthLayer) {
-              if (layer === 'above') return 'En hauteur';
-              if (layer === 'below') return 'En profondeur';
-              return 'Niveau courant';
+          function getFishDepthIndex(layer = fishDepthLayer) {
+              if (layer === 'above') return 2;
+              if (layer === 'below') return 3;
+              return 1;
           }
 
           function showFishDepthSelectionMessage() {
-              const message = `Profondeur du poisson : ${getFishDepthLabel()}`;
-              ui.textContent = message;
-              if (fishDepthMessageTimer) clearTimeout(fishDepthMessageTimer);
-              fishDepthMessageTimer = window.setTimeout(() => {
-                  fishDepthMessageTimer = null;
-                  if (ui.textContent === message && !isTraceRailAutopilot) {
-                      ui.textContent = '';
-                      rotateHelperTip();
-                  }
-              }, 1500);
+              fishDepthToastText = `Profondeur ${getFishDepthIndex()}`;
+              fishDepthToastUntil = performance.now() + 1500;
           }
 
           function cycleFishDepthLevel() {
@@ -4934,6 +4927,25 @@ export function initLegacyApp() {
               ctx.arc(6.8, -12.6, 0.52, 0, Math.PI * 2);
               ctx.fill();
               ctx.restore();
+
+              if (fishDepthToastUntil > performance.now()) {
+                  const toastFade = Math.min(1, Math.max(0, (fishDepthToastUntil - performance.now()) / 260));
+                  const bubbleY = ship.y - 54;
+                  const bubbleWidth = 122;
+                  const bubbleHeight = 30;
+                  ctx.save();
+                  ctx.fillStyle = `rgba(8, 20, 38, ${0.62 * toastFade})`;
+                  ctx.strokeStyle = `rgba(184, 232, 255, ${0.78 * toastFade})`;
+                  ctx.lineWidth = 1.2;
+                  ctx.fillRect(ship.x - bubbleWidth / 2, bubbleY - bubbleHeight / 2, bubbleWidth, bubbleHeight);
+                  ctx.strokeRect(ship.x - bubbleWidth / 2, bubbleY - bubbleHeight / 2, bubbleWidth, bubbleHeight);
+                  ctx.fillStyle = `rgba(231, 247, 255, ${0.95 * toastFade})`;
+                  ctx.font = '600 14px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+                  ctx.textAlign = 'center';
+                  ctx.textBaseline = 'middle';
+                  ctx.fillText(fishDepthToastText, ship.x, bubbleY + 0.5);
+                  ctx.restore();
+              }
 
               if (silenceVisualMode) drawSilenceCompassRing();
 
