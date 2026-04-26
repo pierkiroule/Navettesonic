@@ -2719,6 +2719,13 @@ export function initLegacyApp() {
 
           cancelBtn.addEventListener('click', closeBubblePanel);
           dropBtn.addEventListener('click', () => {
+              if (getAttachedFirefliesSorted().length >= 3) {
+                  closeBubblePanel();
+                  setArenaTriangleStatus("Pose d'une bulle bloquée : pose d'abord le triangle pulsant autour du poisson.", true);
+                  ui.textContent = "Triangle pulsant détecté : pose-le avant d'ajouter une bulle sonore.";
+                  helperTips.textContent = "Touche le halo triangulaire autour du poisson pour poser les 3 lucioles, puis refais un double tap pour ouvrir la collection.";
+                  return;
+              }
               const sample = SAMPLE_LIBRARY.find(s => s.id === selectedSampleId);
               if (!sample) return;
               const bubble = buildSoundBubble(sample, bubbleLayer.value);
