@@ -611,6 +611,19 @@ export function initLegacyApp() {
               if (currentView === 'experience') {
                   rotateHelperTip();
               }
+
+              syncExperienceModeChips();
+          }
+
+          function syncExperienceModeChips() {
+              const isSilenceModeActive =
+                  recordingState === 'recording' ||
+                  silenceTransitionInProgress ||
+                  silenceImmersionLevel > 0.02;
+              const isTraceModeActive = isTraceListeningMode || isDrawingTraceRail;
+
+              echoRecordToggleBtn?.classList.toggle('active', isSilenceModeActive);
+              traceListeningBtn?.classList.toggle('active', isTraceModeActive);
           }
 
           function setTraceListeningMode(nextState) {
@@ -2687,7 +2700,6 @@ export function initLegacyApp() {
           });
           traceListeningBtn?.addEventListener('click', () => {
               setTraceListeningMode(!isTraceListeningMode);
-                  traceListeningBtn.classList.toggle('active', isTraceListeningMode);
                   if (isTraceListeningMode) {
                       isTraceRailAutopilot = false;
                       traceRailPath = [];
@@ -2917,6 +2929,8 @@ export function initLegacyApp() {
               } else if (recordingState === 'unsupported') {
                   echoRecordStatus.textContent = 'Enregistrement indisponible sur ce navigateur.';
               }
+
+              syncExperienceModeChips();
           }
 
           function clearRecordingTimers() {
