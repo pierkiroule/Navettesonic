@@ -738,9 +738,16 @@
             display: flex;
             justify-content: center;
             gap: 8px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
+            align-items: center;
+            max-width: calc(100vw - 20px);
+            overflow-x: auto;
+            overflow-y: hidden;
+            scrollbar-width: none;
             pointer-events: auto;
         }
+        .experience-mode-group::-webkit-scrollbar { display: none; }
+        .experience-mode-group > * { flex: 0 0 auto; }
         .soon-tuto-link {
             border: 1px solid rgba(158, 230, 255, 0.56);
             border-radius: 999px;
