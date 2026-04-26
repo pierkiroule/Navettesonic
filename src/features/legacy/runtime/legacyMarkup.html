@@ -52,6 +52,17 @@
             <p id="silenceDesYeuxPoem" class="silence-poem">Respire… l'océan te regarde en silence.</p>
         </div>
         <div id="helperTips">Garde le doigt (ou clic) appuyé dans l'océan : le poisson suit ton mouvement.</div>
+        <div id="experienceModes" class="experience-mode-group" aria-label="Modes d'écoute">
+            <div id="echoRecorderPanel" aria-live="polite">
+                <button id="echoRecordToggleBtn" class="echo-rec-btn" type="button" aria-label="Le silence des yeux">👂</button>
+                <div class="echo-rec-meta">
+                    <p id="echoRecordTimer" class="echo-rec-timer">00:00 / 01:00</p>
+                    <p id="echoRecordStatus" class="echo-rec-status">Prêt</p>
+                    <a id="echoRecordDownloadLink" class="echo-rec-download" href="#" download hidden>Télécharger ma ballade</a>
+                </div>
+            </div>
+            <button id="traceListeningBtn" class="trace-listening-btn" type="button" aria-label="Tracer l'écoute">🪶</button>
+        </div>
         <div id="traceCamControls" class="trace-cam-controls" aria-label="Contrôle de caméra tracé">
             <div class="trace-cam-orb">
                 <button type="button" class="trace-cam-btn trace-cam-btn--up" data-trace-cam-action="up" aria-label="Déplacer vers le haut">↑</button>
@@ -240,16 +251,5 @@
             <button id="navHome" class="nav-btn nav-btn-icon" type="button" aria-label="Accueil">💧</button>
             <button id="navSoon" class="nav-btn active" type="button" aria-label="Soon">🐟</button>
             <button id="navProfile" class="nav-btn nav-btn-icon" type="button" aria-label="Profil">🫆</button>
-            <div class="nav-mode-group" aria-label="Modes d'écoute">
-                <div id="echoRecorderPanel" aria-live="polite">
-                    <button id="echoRecordToggleBtn" class="echo-rec-btn" type="button" aria-label="Le silence des yeux">👂</button>
-                    <div class="echo-rec-meta">
-                        <p id="echoRecordTimer" class="echo-rec-timer">00:00 / 01:00</p>
-                        <p id="echoRecordStatus" class="echo-rec-status">Prêt</p>
-                        <a id="echoRecordDownloadLink" class="echo-rec-download" href="#" download hidden>Télécharger ma ballade</a>
-                    </div>
-                </div>
-                <button id="traceListeningBtn" class="trace-listening-btn" type="button" aria-label="Tracer l'écoute">🪶</button>
-            </div>
         </div>
     </nav>
