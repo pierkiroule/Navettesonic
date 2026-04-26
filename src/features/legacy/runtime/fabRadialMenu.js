@@ -61,6 +61,9 @@ export function initFabRadialMenu({
     fabButton.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
     if (isOpen) backdrop.removeAttribute('hidden');
     else backdrop.setAttribute('hidden', '');
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.classList.toggle('fab-menu-open', isOpen);
+    }
     if (isOpen) {
       safeVibrate();
       if (!skipHistory) {

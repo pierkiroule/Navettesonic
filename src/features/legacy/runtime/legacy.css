@@ -1101,6 +1101,13 @@
             z-index: 240;
             pointer-events: none;
         }
+        body.fab-menu-open #experienceView {
+            pointer-events: none;
+        }
+        body.fab-menu-open .fab-menu-root,
+        body.fab-menu-open .fab-menu-root * {
+            pointer-events: auto;
+        }
         .fab-main-button {
             position: absolute;
             left: var(--fab-x);
