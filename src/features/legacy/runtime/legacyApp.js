@@ -1,3 +1,5 @@
+import { initFabRadialMenu } from './fabRadialMenu';
+
 export function initLegacyApp() {
   const experienceRoot = document.getElementById('experienceView');
   if (!experienceRoot) return;
@@ -37,6 +39,13 @@ export function initLegacyApp() {
           const navSoon = document.getElementById('navSoon');
           const navEchoHypnose = document.getElementById('navEchoHypnose');
           const navProfile = document.getElementById('navProfile');
+          const fabMenuRoot = document.getElementById('fabMenuRoot');
+          const fabMenuBackdrop = document.getElementById('fabMenuBackdrop');
+          const fabMainButton = document.getElementById('fabMainButton');
+          const fabMoreBtn = document.getElementById('fabMoreBtn');
+          const fabMoreSheet = document.getElementById('fabMoreSheet');
+          const fabMoreCloseBtn = document.getElementById('fabMoreCloseBtn');
+          const fabActionStatus = document.getElementById('fabActionStatus');
           const enterExperienceBtn = document.getElementById('enterExperienceBtn');
           const heroVideo = document.getElementById('heroVideo');
           const heroVideoShell = document.getElementById('heroVideoShell');
@@ -110,6 +119,7 @@ export function initLegacyApp() {
           const silenceSessionList = document.getElementById('silenceSessionList');
 
           let selectedBubble = null;
+          let fabController = null;
           let bottomNavCollapsed = false;
           let isDraggingBubble = false;
           let lastBubbleTapTime = 0;
@@ -532,6 +542,45 @@ export function initLegacyApp() {
               }
           }
 
+          function triggerHapticFeedback(pattern = 16) {
+              if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+                  navigator.vibrate(pattern);
+              }
+          }
+
+          function runFabAction(actionId) {
+              if (actionId === 'home') {
+                  showView('home');
+                  triggerHapticFeedback();
+                  return;
+              }
+              if (actionId === 'experience') {
+                  showView('experience');
+                  triggerHapticFeedback();
+                  return;
+              }
+              if (actionId === 'echohypnose') {
+                  showView('echohypnose');
+                  triggerHapticFeedback();
+                  return;
+              }
+              if (actionId === 'profile') {
+                  showView('profile');
+                  triggerHapticFeedback();
+                  return;
+              }
+              if (actionId === 'trace') {
+                  traceListeningBtn?.click();
+                  triggerHapticFeedback([10, 30, 10]);
+                  return;
+              }
+              if (actionId === 'record') {
+                  echoRecordToggleBtn?.click();
+                  triggerHapticFeedback([12, 40, 12]);
+                  return;
+              }
+          }
+
           function showView(target) {
               console.log('[legacyApp] showView called', { target, currentViewBefore: currentView });
               currentView = target;
@@ -755,6 +804,20 @@ export function initLegacyApp() {
           });
           bindTap(navEchoHypnose, () => showView('echohypnose'));
           bindTap(navProfile, () => showView('profile'));
+
+          fabController = initFabRadialMenu({
+              root: fabMenuRoot,
+              fabButton: fabMainButton,
+              backdrop: fabMenuBackdrop,
+              actionButtons: Array.from(document.querySelectorAll('.fab-action-btn')).filter((button) => button.dataset.action !== 'more'),
+              moreButton: fabMoreBtn,
+              moreSheet: fabMoreSheet,
+              moreCloseButton: fabMoreCloseBtn,
+              moreActionButtons: Array.from(document.querySelectorAll('.fab-more-action')),
+              statusNode: fabActionStatus,
+              onAction: async (actionId) => runFabAction(actionId),
+              moveEnabled: true
+          });
 
           function maskApiKey(key) {
               if (!key || key.length < 12) return key;

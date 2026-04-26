@@ -1080,3 +1080,115 @@
         .props-delete-btn:active { background: rgba(255, 70, 95, 0.28); }
         .bubble-selected-ring { pointer-events: none; }
     
+
+        .legacy-redundant-control {
+            display: none !important;
+        }
+        .bottom-nav {
+            display: none;
+        }
+        .fab-menu-root {
+            --fab-x: calc(100vw - 48px);
+            --fab-y: calc(100vh - 52px - env(safe-area-inset-bottom));
+            position: fixed;
+            inset: 0;
+            z-index: 240;
+            pointer-events: none;
+        }
+        .fab-main-button {
+            position: absolute;
+            left: var(--fab-x);
+            top: var(--fab-y);
+            transform: translate(-50%, -50%);
+            width: 64px;
+            height: 64px;
+            min-width: 44px;
+            min-height: 44px;
+            border-radius: 999px;
+            border: 1px solid rgba(173, 234, 255, 0.65);
+            background: linear-gradient(180deg, rgba(42, 138, 244, 0.98), rgba(20, 88, 202, 0.98));
+            color: #f6fcff;
+            font-size: 0.74rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4);
+            pointer-events: auto;
+            cursor: pointer;
+        }
+        .fab-menu-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(3, 7, 18, 0.38);
+            pointer-events: auto;
+        }
+        .fab-radial-actions {
+            position: absolute;
+            left: var(--fab-x);
+            top: var(--fab-y);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        .fab-action-btn {
+            position: absolute;
+            width: 76px;
+            min-height: 44px;
+            border-radius: 14px;
+            border: 1px solid rgba(152, 220, 255, 0.55);
+            background: rgba(9, 26, 52, 0.96);
+            color: rgba(238, 248, 255, 0.98);
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            font-size: 1rem;
+            pointer-events: auto;
+            opacity: 0;
+            transform: translate(0, 0) scale(0.82);
+            transition: transform 180ms ease, opacity 180ms ease;
+        }
+        .fab-action-btn span { font-size: 0.64rem; }
+        .fab-menu-root.is-open .fab-action-btn { opacity: 1; }
+        .fab-menu-root.is-open .fab-action-btn:nth-child(1) { transform: translate(-120px, -6px) scale(1); }
+        .fab-menu-root.is-open .fab-action-btn:nth-child(2) { transform: translate(-96px, -96px) scale(1); }
+        .fab-menu-root.is-open .fab-action-btn:nth-child(3) { transform: translate(-8px, -128px) scale(1); }
+        .fab-menu-root.is-open .fab-action-btn:nth-child(4) { transform: translate(84px, -94px) scale(1); }
+        .fab-menu-root.is-open .fab-action-btn:nth-child(5) { transform: translate(116px, -2px) scale(1); }
+        .fab-more-sheet {
+            position: absolute;
+            left: 12px;
+            right: 12px;
+            bottom: calc(86px + env(safe-area-inset-bottom));
+            border-radius: 16px;
+            border: 1px solid rgba(165, 228, 255, 0.34);
+            background: rgba(6, 18, 36, 0.98);
+            padding: 12px;
+            pointer-events: auto;
+        }
+        .fab-more-sheet-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+        .fab-more-sheet-header p { margin:0; font-weight:700; }
+        .fab-more-action, .fab-more-sheet-header button {
+            min-height: 44px;
+            border-radius: 10px;
+            border: 1px solid rgba(164, 225, 255, 0.35);
+            background: rgba(17, 49, 86, 0.9);
+            color: #eef8ff;
+            padding: 8px 12px;
+        }
+        .fab-more-action { width:100%; margin-top:8px; text-align:left; }
+        .fab-action-status {
+            position: absolute;
+            bottom: calc(20px + env(safe-area-inset-bottom));
+            left: 12px;
+            right: 88px;
+            margin: 0;
+            font-size: 0.75rem;
+            color: rgba(222, 244, 255, 0.95);
+            pointer-events: none;
+        }
+        .fab-action-status[data-tone="loading"] { color: #ffe8b3; }
+        .fab-action-status[data-tone="success"] { color: #c8ffd6; }
+        .fab-action-status[data-tone="error"] { color: #ffd0d0; }
+        .fab-menu-root.is-busy .fab-main-button,
+        .fab-menu-root.is-busy .fab-action-btn,
+        .fab-menu-root.is-busy .fab-more-action { pointer-events: none; opacity: 0.72; }

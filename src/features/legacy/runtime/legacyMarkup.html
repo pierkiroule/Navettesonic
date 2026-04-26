@@ -52,7 +52,7 @@
             <p id="silenceDesYeuxPoem" class="silence-poem">Respire… l'océan te regarde en silence.</p>
         </div>
         <div id="helperTips">Garde le doigt (ou clic) appuyé dans l'océan : le poisson suit ton mouvement.</div>
-        <div id="echoRecorderPanel" aria-live="polite">
+        <div id="echoRecorderPanel" class="legacy-redundant-control" aria-live="polite">
             <button id="echoRecordToggleBtn" class="echo-rec-btn" type="button">👂Le silence des yeux !</button>
             <div class="echo-rec-meta">
                 <p id="echoRecordTimer" class="echo-rec-timer">00:00 / 01:00</p>
@@ -60,7 +60,7 @@
                 <a id="echoRecordDownloadLink" class="echo-rec-download" href="#" download hidden>Télécharger ma ballade</a>
             </div>
         </div>
-        <button id="traceListeningBtn" class="trace-listening-btn" type="button">Tracer l'écoute</button>
+        <button id="traceListeningBtn" class="trace-listening-btn legacy-redundant-control" type="button">Tracer l'écoute</button>
         <div id="traceCamControls" class="trace-cam-controls" aria-label="Contrôle de caméra tracé">
             <div class="trace-cam-orb">
                 <button type="button" class="trace-cam-btn trace-cam-btn--up" data-trace-cam-action="up" aria-label="Déplacer vers le haut">↑</button>
@@ -240,6 +240,27 @@
             </div>
         </div>
     </section>
+
+    <div id="fabMenuRoot" class="fab-menu-root" aria-live="polite">
+        <div id="fabMenuBackdrop" class="fab-menu-backdrop" hidden></div>
+        <div id="fabRadialActions" class="fab-radial-actions" role="menu" aria-label="Actions principales">
+            <button type="button" class="fab-action-btn" data-action="home" role="menuitem" aria-label="Accueil">⌂<span>Accueil</span></button>
+            <button type="button" class="fab-action-btn" data-action="experience" role="menuitem" aria-label="Soon expérience">◉<span>Soon</span></button>
+            <button type="button" class="fab-action-btn" data-action="echohypnose" role="menuitem" aria-label="Échohypnose">◌<span>Écho</span></button>
+            <button type="button" class="fab-action-btn" data-action="profile" role="menuitem" aria-label="Profil">🫧<span>Profil</span></button>
+            <button type="button" id="fabMoreBtn" class="fab-action-btn" data-action="more" role="menuitem" aria-label="Plus d'actions" aria-expanded="false">＋<span>Plus</span></button>
+        </div>
+        <button id="fabMainButton" class="fab-main-button" type="button" aria-label="Ouvrir les actions" aria-controls="fabRadialActions" aria-expanded="false">Actions</button>
+        <div id="fabMoreSheet" class="fab-more-sheet" hidden>
+            <div class="fab-more-sheet-header">
+                <p>Actions rares</p>
+                <button id="fabMoreCloseBtn" type="button" aria-label="Fermer">✕</button>
+            </div>
+            <button type="button" class="fab-more-action" data-action="trace">Tracer l'écoute</button>
+            <button type="button" class="fab-more-action" data-action="record">Silence des yeux</button>
+        </div>
+        <p id="fabActionStatus" class="fab-action-status" aria-live="polite">Prêt</p>
+    </div>
 
     <nav id="bottomNav" class="bottom-nav hidden-view" aria-label="Navigation principale">
         <button id="bottomNavToggle" class="nav-toggle" type="button" aria-expanded="true" aria-controls="bottomNavPanel" aria-label="Réduire le menu">
