@@ -797,6 +797,37 @@
             margin: 8px 0 10px;
             padding-left: 18px;
         }
+        .soon-tuto-table-wrap {
+            margin: 10px 0 14px;
+            overflow-x: auto;
+            border: 1px solid rgba(158, 230, 255, 0.28);
+            border-radius: 12px;
+            background: rgba(8, 29, 52, 0.45);
+        }
+        .soon-tuto-table {
+            width: 100%;
+            min-width: 620px;
+            border-collapse: collapse;
+            font-size: 0.86rem;
+            line-height: 1.4;
+        }
+        .soon-tuto-table th,
+        .soon-tuto-table td {
+            border: 1px solid rgba(158, 230, 255, 0.22);
+            padding: 9px 10px;
+            vertical-align: top;
+            text-align: left;
+        }
+        .soon-tuto-table thead th {
+            background: rgba(35, 99, 148, 0.35);
+            font-size: 0.8rem;
+            letter-spacing: 0.02em;
+        }
+        .soon-tuto-table tbody th {
+            background: rgba(21, 64, 101, 0.3);
+            font-weight: 700;
+            width: 22%;
+        }
         .soon-tuto-close-btn {
             float: right;
             border: 1px solid rgba(171, 224, 255, 0.48);
