@@ -2155,8 +2155,7 @@ export function initLegacyApp() {
               nextFireflyReleaseAt = now + FIREFLY_RELEASE_INTERVAL_MS;
               const releasedNow = releaseSingleFireflyFromBubble(sourceBubble, now);
               if (releasedNow) {
-                  const remaining = ARENA_FIREFLIES.filter((firefly) => !firefly.isReleased).length;
-                  setArenaTriangleStatus(`Une nouvelle luciole émerge. Stock restant : ${remaining}.`);
+                  setArenaTriangleStatus('Une nouvelle luciole émerge.');
               }
           }
 
@@ -2367,8 +2366,7 @@ export function initLegacyApp() {
                   };
                   const released = releaseSingleFireflyFromBubble(pseudoBubble, now);
                   if (released) {
-                      const remaining = ARENA_FIREFLIES.filter((firefly) => !firefly.isReleased).length;
-                      setArenaTriangleStatus(`Une nouvelle luciole apparaît dans le courant. Stock restant : ${remaining}.`);
+                      setArenaTriangleStatus('Une nouvelle luciole apparaît dans le courant.');
                       nextFireflyReleaseAt = now + FIREFLY_RELEASE_INTERVAL_MS;
                   } else {
                       fireflyReleaseSequenceActive = false;
