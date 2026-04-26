@@ -344,6 +344,9 @@ export function initLegacyApp() {
           const MARINE_PARTICLES = [];
           const MAX_MARINE_PARTICLES = 42;
           const MARINE_PARTICLE_PARALLAX = 0.08;
+          const DOLPHIN_FISH_COLLIDER_RADIUS = 24;
+          const BUBBLE_PUSH_DAMPING = 0.92;
+          const BUBBLE_PUSH_COUPLING = 0.34;
           const AUDIO_REACTIVITY = {
               bandSmoothing: 0.14,
               fishVelocityBoost: 0.22,
@@ -467,6 +470,57 @@ export function initLegacyApp() {
                   ny *= -1;
               }
               return { x: nx, y: ny };
+          }
+
+          function resolveDolphinBubbleCollisions() {
+              const shipSpeed = Math.hypot(ship.vx, ship.vy);
+              BUBBLES.forEach((bubble) => {
+                  if (!bubble) return;
+                  const dx = bubble.x - ship.x;
+                  const dy = bubble.y - ship.y;
+                  const dist = Math.hypot(dx, dy);
+                  const minDist = DOLPHIN_FISH_COLLIDER_RADIUS + bubble.r;
+                  if (dist >= minDist) return;
+                  const nx = dist > 0.001 ? (dx / dist) : Math.cos(ship.angle - Math.PI / 2);
+                  const ny = dist > 0.001 ? (dy / dist) : Math.sin(ship.angle - Math.PI / 2);
+                  const overlap = minDist - dist;
+                  bubble.x += nx * overlap * 0.9;
+                  bubble.y += ny * overlap * 0.9;
+                  ship.x -= nx * overlap * 0.1;
+                  ship.y -= ny * overlap * 0.1;
+                  const pushImpulse = shipSpeed * BUBBLE_PUSH_COUPLING + overlap * 0.05;
+                  bubble.vx = (bubble.vx || 0) + nx * pushImpulse + ship.vx * 0.08;
+                  bubble.vy = (bubble.vy || 0) + ny * pushImpulse + ship.vy * 0.08;
+              });
+          }
+
+          function updateBubbleKinetics() {
+              BUBBLES.forEach((bubble) => {
+                  if (!bubble) return;
+                  if (isDraggingBubble && selectedBubble === bubble) {
+                      bubble.vx = 0;
+                      bubble.vy = 0;
+                      return;
+                  }
+                  bubble.vx = (bubble.vx || 0) * BUBBLE_PUSH_DAMPING;
+                  bubble.vy = (bubble.vy || 0) * BUBBLE_PUSH_DAMPING;
+                  bubble.x += bubble.vx;
+                  bubble.y += bubble.vy;
+                  const theta = Math.atan2(bubble.y, bubble.x);
+                  const bubbleDistance = Math.hypot(bubble.x, bubble.y);
+                  const bubbleArenaRadius = sampleArenaRadius(theta) - bubble.r - 10;
+                  if (bubbleDistance > bubbleArenaRadius) {
+                      const boundaryNormal = sampleArenaNormal(theta);
+                      const penetration = bubbleDistance - bubbleArenaRadius;
+                      bubble.x -= boundaryNormal.x * penetration;
+                      bubble.y -= boundaryNormal.y * penetration;
+                      const outwardSpeed = bubble.vx * boundaryNormal.x + bubble.vy * boundaryNormal.y;
+                      if (outwardSpeed > 0) {
+                          bubble.vx -= boundaryNormal.x * outwardSpeed * 1.4;
+                          bubble.vy -= boundaryNormal.y * outwardSpeed * 1.4;
+                      }
+                  }
+              });
           }
 
           function injectArenaMembraneImpact(theta, force = ARENA_MEMBRANE_IMPACT_FORCE) {
@@ -3245,6 +3299,8 @@ export function initLegacyApp() {
                   currentVolume: 0, zoneMix: 0, resonance: 0, wasInZone: false, hue: 195,
                   lastImpactAt: 0,
                   fishTouching: false,
+                  vx: 0,
+                  vy: 0,
                   wasShipInsideBody: false,
                   storedFireflyIds: [],
                   nextStoredFireflyPlaybackIndex: 0,
@@ -3406,6 +3462,7 @@ export function initLegacyApp() {
               let resonanceWeight = 0;
               let enteredBubble = null;
               let enteredBubbleDist = Number.POSITIVE_INFINITY;
+              const isDolphinNavigationActive = currentView === 'experience' && isTethered;
 
               BUBBLES.forEach(b => {
                   const dx = ship.x - b.x;
@@ -3459,7 +3516,7 @@ export function initLegacyApp() {
                           spawnResonanceWave(b);
                           releaseInitialFirefliesFromBubble(b, performance.now());
                       }
-                      if (insideBubbleBody && !b.wasShipInsideBody && dist2d < enteredBubbleDist) {
+                      if (!isDolphinNavigationActive && insideBubbleBody && !b.wasShipInsideBody && dist2d < enteredBubbleDist) {
                           enteredBubble = b;
                           enteredBubbleDist = dist2d;
                       }
@@ -3512,6 +3569,8 @@ export function initLegacyApp() {
               }
               ship.x += ship.vx;
               ship.y += ship.vy;
+              if (isDolphinNavigationActive) resolveDolphinBubbleCollisions();
+              updateBubbleKinetics();
 
               ship.trail.push({ x: ship.x, y: ship.y });
               if (ship.trail.length > ship.maxTrail) ship.trail.shift();
