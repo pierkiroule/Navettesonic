@@ -58,6 +58,7 @@ export function initLegacyApp() {
           const echoRecordStatus = document.getElementById('echoRecordStatus');
           const echoRecordDownloadLink = document.getElementById('echoRecordDownloadLink');
           const traceListeningBtn = document.getElementById('traceListeningBtn');
+          const dolphinModeBtn = document.getElementById('dolphinModeBtn');
           const traceCamControls = document.getElementById('traceCamControls');
           const silenceDesYeuxPrompt = document.getElementById('silenceDesYeuxPrompt');
           const silenceSaveNoBtn = document.getElementById('silenceSaveNoBtn');
@@ -221,6 +222,7 @@ export function initLegacyApp() {
           let isTethered = false;
           let mouseWorld = { x: 0, y: 0 };
           let isTraceListeningMode = false;
+          let isDolphinMode = false;
           let isDrawingTraceRail = false;
           let isTraceRailAutopilot = false;
           let traceRailPath = [];
@@ -339,6 +341,8 @@ export function initLegacyApp() {
           const MAX_BREATH_WAVES = 9;
           const DRIFT_MOTES = [];
           const MAX_DRIFT_MOTES = 22;
+          const BUBBLE_TRAIL_PARTICLES = [];
+          const MAX_BUBBLE_TRAIL_PARTICLES = 420;
           const MARINE_PARTICLES = [];
           const MAX_MARINE_PARTICLES = 42;
           const MARINE_PARTICLE_PARALLAX = 0.08;
@@ -421,6 +425,15 @@ export function initLegacyApp() {
           let fpsSmoothed = 60;
           let fpsSampleAt = frameLastAt;
           const camera = { x: 0, y: 0, targetX: 0, targetY: 0, ease: 0.05, zoom: 1, targetZoom: 1, zoomEase: 0.08 };
+          const DOLPHIN_PHYSICS = {
+              fishCollisionPadding: 6,
+              fishPushTransfer: 0.075,
+              fishPushAlongMouth: 0.32,
+              bubbleDrag: 0.986,
+              bubbleStabilizeThreshold: 0.018,
+              wallRestitution: 0.82,
+              bubbleRestitution: 0.86
+          };
 
           function normalizeAngle(theta) {
               const tau = Math.PI * 2;
@@ -2663,6 +2676,18 @@ export function initLegacyApp() {
                   updateTraceCamControlsVisibility();
               });
 
+          dolphinModeBtn?.addEventListener('click', () => {
+              isDolphinMode = !isDolphinMode;
+              dolphinModeBtn.classList.toggle('active', isDolphinMode);
+              if (isDolphinMode) {
+                  ui.textContent = 'Mode 🐬 actif : les bulles deviennent un billard aquatique.';
+                  helperTips.textContent = 'Avec la bouche du poisson-plume, pousse les bulles sonores : elles rebondissent doucement entre elles.';
+              } else if (!isTraceListeningMode && !isDrawingTraceRail) {
+                  ui.textContent = '';
+                  rotateHelperTip();
+              }
+          });
+
           function openBubblePanel() {
               isInteractionPaused = true;
               isTethered = false;
@@ -3179,6 +3204,7 @@ export function initLegacyApp() {
               return {
                   id: `bubble-${bubbleIdSeed++}`,
                   x, y, r: 64, layer, depthOffset: spatial.depthOffset, isActive: false,
+                  vx: 0, vy: 0, motionLevel: 0,
                   sound, label: sample.name, _sampleId: sample.id,
                   currentVolume: 0, zoneMix: 0, resonance: 0, wasInZone: false, hue: 195,
                   lastImpactAt: 0,
@@ -3303,6 +3329,127 @@ export function initLegacyApp() {
               }
           }
 
+          function emitBubbleTrail(bubble, speed, now) {
+              const normalized = Math.min(1, speed / 2.4);
+              const emitCount = 1 + Math.floor(normalized * 3);
+              const heading = Math.atan2(bubble.vy || 0, bubble.vx || 0);
+              for (let i = 0; i < emitCount; i++) {
+                  if (BUBBLE_TRAIL_PARTICLES.length >= MAX_BUBBLE_TRAIL_PARTICLES) BUBBLE_TRAIL_PARTICLES.shift();
+                  const radial = Math.random() * Math.PI * 2;
+                  const radius = bubble.r * (0.14 + Math.random() * 0.32);
+                  BUBBLE_TRAIL_PARTICLES.push({
+                      x: bubble.x + Math.cos(radial) * radius,
+                      y: bubble.y + Math.sin(radial) * radius,
+                      vx: -Math.cos(heading) * (0.08 + normalized * 0.36 + Math.random() * 0.18) + (Math.random() - 0.5) * 0.22,
+                      vy: -Math.sin(heading) * (0.08 + normalized * 0.36 + Math.random() * 0.18) + (Math.random() - 0.5) * 0.22,
+                      alpha: 0.09 + normalized * 0.24 + Math.random() * 0.08,
+                      size: 0.8 + normalized * 1.8 + Math.random() * 1.4,
+                      life: 640 + Math.random() * 760,
+                      bornAt: now,
+                      hue: (bubble.hue ?? 195) + 6 + Math.random() * 24
+                  });
+              }
+          }
+
+          function updateBubbleTrails(now) {
+              for (let i = BUBBLE_TRAIL_PARTICLES.length - 1; i >= 0; i--) {
+                  const p = BUBBLE_TRAIL_PARTICLES[i];
+                  const age = now - p.bornAt;
+                  const t = age / p.life;
+                  if (t >= 1) {
+                      BUBBLE_TRAIL_PARTICLES.splice(i, 1);
+                      continue;
+                  }
+                  p.vx *= 0.988;
+                  p.vy *= 0.988;
+                  p.x += p.vx;
+                  p.y += p.vy;
+                  p.currentAlpha = p.alpha * (1 - t) * (0.7 + (1 - t) * 0.3);
+                  p.currentSize = p.size * (0.7 + t * 0.9);
+              }
+          }
+
+          function updateAquaticBilliard(now) {
+              if (!isDolphinMode || !BUBBLES.length) return;
+              const mouth = getShipMouthPosition();
+              for (const bubble of BUBBLES) {
+                  bubble.vx = (bubble.vx || 0) * DOLPHIN_PHYSICS.bubbleDrag;
+                  bubble.vy = (bubble.vy || 0) * DOLPHIN_PHYSICS.bubbleDrag;
+                  const speed = Math.hypot(bubble.vx, bubble.vy);
+                  if (speed < DOLPHIN_PHYSICS.bubbleStabilizeThreshold) {
+                      bubble.vx = 0;
+                      bubble.vy = 0;
+                  }
+
+                  const dxMouth = bubble.x - mouth.x;
+                  const dyMouth = bubble.y - mouth.y;
+                  const distMouth = Math.hypot(dxMouth, dyMouth) || 0.0001;
+                  const pushRadius = bubble.r + 22;
+                  if (distMouth < pushRadius) {
+                      const nx = dxMouth / distMouth;
+                      const ny = dyMouth / distMouth;
+                      const overlap = pushRadius - distMouth;
+                      bubble.x += nx * overlap * 0.72;
+                      bubble.y += ny * overlap * 0.72;
+                      bubble.vx += ship.vx * DOLPHIN_PHYSICS.fishPushTransfer + nx * overlap * DOLPHIN_PHYSICS.fishPushAlongMouth;
+                      bubble.vy += ship.vy * DOLPHIN_PHYSICS.fishPushTransfer + ny * overlap * DOLPHIN_PHYSICS.fishPushAlongMouth;
+                  }
+
+                  bubble.x += bubble.vx || 0;
+                  bubble.y += bubble.vy || 0;
+
+                  const theta = Math.atan2(bubble.y, bubble.x);
+                  const arenaRadius = sampleArenaRadius(theta);
+                  const distCenter = Math.hypot(bubble.x, bubble.y);
+                  const maxCenterDist = arenaRadius - bubble.r - 4;
+                  if (distCenter > maxCenterDist) {
+                      const nx = bubble.x / (distCenter || 1);
+                      const ny = bubble.y / (distCenter || 1);
+                      const penetration = distCenter - maxCenterDist;
+                      bubble.x -= nx * penetration;
+                      bubble.y -= ny * penetration;
+                      const vn = (bubble.vx || 0) * nx + (bubble.vy || 0) * ny;
+                      if (vn > 0) {
+                          bubble.vx -= nx * vn * (1 + DOLPHIN_PHYSICS.wallRestitution);
+                          bubble.vy -= ny * vn * (1 + DOLPHIN_PHYSICS.wallRestitution);
+                      }
+                  }
+
+                  const postSpeed = Math.hypot(bubble.vx || 0, bubble.vy || 0);
+                  bubble.motionLevel = Math.max(0, Math.min(1, postSpeed / 2.5));
+                  if (postSpeed > 0.03) emitBubbleTrail(bubble, postSpeed, now);
+              }
+
+              for (let i = 0; i < BUBBLES.length; i++) {
+                  for (let j = i + 1; j < BUBBLES.length; j++) {
+                      const a = BUBBLES[i];
+                      const b = BUBBLES[j];
+                      const dx = b.x - a.x;
+                      const dy = b.y - a.y;
+                      const dist = Math.hypot(dx, dy) || 0.0001;
+                      const minDist = a.r + b.r;
+                      if (dist >= minDist) continue;
+                      const nx = dx / dist;
+                      const ny = dy / dist;
+                      const overlap = minDist - dist;
+                      a.x -= nx * overlap * 0.5;
+                      a.y -= ny * overlap * 0.5;
+                      b.x += nx * overlap * 0.5;
+                      b.y += ny * overlap * 0.5;
+                      const relVx = (b.vx || 0) - (a.vx || 0);
+                      const relVy = (b.vy || 0) - (a.vy || 0);
+                      const sepSpeed = relVx * nx + relVy * ny;
+                      if (sepSpeed < 0) {
+                          const impulse = -(1 + DOLPHIN_PHYSICS.bubbleRestitution) * sepSpeed * 0.5;
+                          a.vx = (a.vx || 0) - impulse * nx;
+                          a.vy = (a.vy || 0) - impulse * ny;
+                          b.vx = (b.vx || 0) + impulse * nx;
+                          b.vy = (b.vy || 0) + impulse * ny;
+                      }
+                  }
+              }
+          }
+
           function update() {
               if (currentView !== 'experience') return;
               const now = performance.now();
@@ -3397,7 +3544,7 @@ export function initLegacyApp() {
                           spawnResonanceWave(b);
                           releaseInitialFirefliesFromBubble(b, performance.now());
                       }
-                      if (insideBubbleBody && !b.wasShipInsideBody && dist2d < enteredBubbleDist) {
+                      if (!isDolphinMode && insideBubbleBody && !b.wasShipInsideBody && dist2d < enteredBubbleDist) {
                           enteredBubble = b;
                           enteredBubbleDist = dist2d;
                       }
@@ -3483,6 +3630,28 @@ export function initLegacyApp() {
                   }
               }
 
+              if (isDolphinMode) {
+                  for (const b of BUBBLES) {
+                      const dx = ship.x - b.x;
+                      const dy = ship.y - b.y;
+                      const dist = Math.hypot(dx, dy) || 0.0001;
+                      const minDist = b.r + DOLPHIN_PHYSICS.fishCollisionPadding;
+                      if (dist >= minDist) continue;
+                      const nx = dx / dist;
+                      const ny = dy / dist;
+                      const overlap = minDist - dist;
+                      ship.x += nx * overlap;
+                      ship.y += ny * overlap;
+                      const vn = ship.vx * nx + ship.vy * ny;
+                      if (vn < 0) {
+                          ship.vx -= nx * vn * 0.9;
+                          ship.vy -= ny * vn * 0.9;
+                      }
+                      b.vx = (b.vx || 0) - nx * overlap * 0.06;
+                      b.vy = (b.vy || 0) - ny * overlap * 0.06;
+                  }
+              }
+
               if (speed > 0.08) {
                   const angleVitesse = Math.atan2(ship.vy, ship.vx);
                   let diff = angleVitesse - ship.angle;
@@ -3508,6 +3677,8 @@ export function initLegacyApp() {
               camera.zoom += (camera.targetZoom - camera.zoom) * camera.zoomEase;
 
               updateAudioListener();
+              updateAquaticBilliard(now);
+              updateBubbleTrails(now);
               updateWakeParticles(speed);
               updateSurfaceEffects(speed);
               updateResonanceWaves();
@@ -4317,6 +4488,7 @@ export function initLegacyApp() {
               };
 
               if (!heavySilenceMode) {
+                  drawBubbleTrails();
                   BUBBLES.filter((b) => b.layer === 'below').forEach(drawBubble);
                   drawBreathWaves();
                   drawDriftMotes();
@@ -4613,6 +4785,18 @@ export function initLegacyApp() {
                   ctx.arc(wave.x, wave.y, wave.radius, 0, Math.PI * 2);
                   ctx.stroke();
               });
+          }
+
+          function drawBubbleTrails() {
+              for (const p of BUBBLE_TRAIL_PARTICLES) {
+                  const alpha = p.currentAlpha ?? p.alpha ?? 0;
+                  if (alpha <= 0.002) continue;
+                  const size = p.currentSize ?? p.size ?? 1;
+                  ctx.fillStyle = `hsla(${p.hue ?? 198}, 92%, 84%, ${alpha})`;
+                  ctx.beginPath();
+                  ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+                  ctx.fill();
+              }
           }
 
           function drawResotagLinks() {

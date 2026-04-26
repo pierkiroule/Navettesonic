@@ -367,6 +367,16 @@
             background: linear-gradient(180deg, rgba(70, 159, 255, 0.98), rgba(42, 110, 247, 0.98));
             box-shadow: 0 0 0 2px rgba(146, 218, 255, 0.32), 0 10px 26px rgba(28, 99, 233, 0.45);
         }
+        .dolphin-mode-btn {
+            border-color: rgba(126, 246, 255, 0.8);
+            background: linear-gradient(180deg, rgba(20, 162, 182, 0.95), rgba(18, 118, 152, 0.95));
+            box-shadow: 0 8px 20px rgba(10, 109, 138, 0.3);
+        }
+        .dolphin-mode-btn.active {
+            border-color: rgba(178, 247, 255, 0.95);
+            background: linear-gradient(180deg, rgba(56, 202, 224, 0.98), rgba(22, 145, 189, 0.98));
+            box-shadow: 0 0 0 2px rgba(129, 245, 255, 0.3), 0 10px 26px rgba(18, 144, 179, 0.42);
+        }
         @media (max-width: 860px) {
             .trace-listening-btn {
                 padding: 8px 12px;
