@@ -113,7 +113,7 @@ export function initFabRadialMenu({
 
   const saved = loadPosition();
   if (saved) applyPosition(saved.x, saved.y);
-  else applyPosition(window.innerWidth - 48, window.innerHeight - 52);
+  else applyPosition(window.innerWidth / 2, window.innerHeight / 2);
 
   const onPointerMove = (event) => {
     if (!isDragging) return;
