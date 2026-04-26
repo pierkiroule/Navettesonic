@@ -35,7 +35,6 @@ export function initLegacyApp() {
           const bottomNavToggle = document.getElementById('bottomNavToggle');
           const navHome = document.getElementById('navHome');
           const navSoon = document.getElementById('navSoon');
-          const navEchoHypnose = document.getElementById('navEchoHypnose');
           const navProfile = document.getElementById('navProfile');
           const enterExperienceBtn = document.getElementById('enterExperienceBtn');
           const heroVideo = document.getElementById('heroVideo');
@@ -515,10 +514,9 @@ export function initLegacyApp() {
           }
 
           function setActiveNav(target) {
-              [navHome, navSoon, navEchoHypnose, navProfile].forEach(btn => btn.classList.remove('active'));
+              [navHome, navSoon, navProfile].forEach(btn => btn?.classList.remove('active'));
               if (target === 'home') navHome.classList.add('active');
               if (target === 'soon') navSoon.classList.add('active');
-              if (target === 'echohypnose') navEchoHypnose.classList.add('active');
               if (target === 'profile') navProfile.classList.add('active');
           }
 
@@ -753,7 +751,6 @@ export function initLegacyApp() {
                   experienceViewHidden: experienceView?.classList.contains('hidden-view')
               });
           });
-          bindTap(navEchoHypnose, () => showView('echohypnose'));
           bindTap(navProfile, () => showView('profile'));
 
           function maskApiKey(key) {
@@ -798,7 +795,7 @@ export function initLegacyApp() {
                   enterExperienceBtn.textContent = hasAccess ? 'Soon experience' : 'Soon experience 🔒';
               }
               if (navSoon) {
-                  navSoon.textContent = hasAccess ? 'Soon•°' : 'Soon•° 🔒';
+                  navSoon.textContent = hasAccess ? '🐟' : '🐟 🔒';
               }
           }
 
@@ -2907,7 +2904,7 @@ export function initLegacyApp() {
               echoRecordToggleBtn.classList.toggle('finalizing', recordingState === 'finalizing');
               echoRecordToggleBtn.classList.toggle('hypnosis', recordingState === 'recording' || silenceTransitionInProgress);
               echoRecordToggleBtn.disabled = recordingState === 'finalizing' || recordingState === 'unsupported' || silenceTransitionInProgress;
-              echoRecordToggleBtn.textContent = recordingState === 'recording' ? 'STOP' : '👂Le silence des yeux !';
+              echoRecordToggleBtn.textContent = recordingState === 'recording' ? 'STOP' : '👂';
 
               if (recordingState === 'idle') {
                   if (!silenceTransitionInProgress) {

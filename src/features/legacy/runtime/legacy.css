@@ -647,7 +647,7 @@
         }
         .nav-shell {
             display: grid;
-            grid-template-columns: repeat(4, minmax(72px, 1fr));
+            grid-template-columns: repeat(3, minmax(72px, 1fr));
             gap: 8px;
             width: min(560px, 95vw);
             border-radius: 999px;
@@ -682,12 +682,17 @@
             font-weight: 700;
             letter-spacing: 0;
         }
-        .nav-mode-group {
-            grid-column: 1 / -1;
+        .experience-mode-group {
+            position: fixed;
+            top: calc(env(safe-area-inset-top, 0px) + 12px);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 240;
             display: flex;
             justify-content: center;
             gap: 8px;
             flex-wrap: wrap;
+            pointer-events: auto;
         }
 
         #profileView {
