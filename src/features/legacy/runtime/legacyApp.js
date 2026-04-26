@@ -275,7 +275,11 @@ export function initLegacyApp() {
           let lastFishTap = { time: 0, x: 0, y: 0 };
           const FISH_LONG_PRESS_MS = 520;
           const FISH_LONG_PRESS_MOVE_TOLERANCE = 24;
-          const FISH_INTERACTION_RADIUS = 42;
+          const FISH_INTERACTION_ELLIPSE = {
+              offsetY: 2,
+              radiusX: 54,
+              radiusY: 46,
+          };
           let fishLongPressTimer = null;
           let fishLongPressOrigin = null;
           let fishDepthLayer = 'front';
@@ -512,9 +516,19 @@ export function initLegacyApp() {
           function isPointOnFishBody(point) {
               const dx = point.x - ship.x;
               const dy = point.y - ship.y;
-              // Use a larger circular interaction zone around the fish to make double tap/long press
-              // detection resilient on mobile and during motion.
-              return Math.hypot(dx, dy) <= FISH_INTERACTION_RADIUS;
+
+              // Convert pointer world coordinates to fish-local coordinates so the hit area
+              // follows fish orientation and aligns with the rendered body.
+              const cos = Math.cos(-(ship.angle + Math.PI / 2));
+              const sin = Math.sin(-(ship.angle + Math.PI / 2));
+              const localX = dx * cos - dy * sin;
+              const localY = dx * sin + dy * cos;
+
+              // Expanded ellipse tuned to be more forgiving on touch devices for
+              // double-tap and long-press gestures on the fish body.
+              const nx = localX / FISH_INTERACTION_ELLIPSE.radiusX;
+              const ny = (localY - FISH_INTERACTION_ELLIPSE.offsetY) / FISH_INTERACTION_ELLIPSE.radiusY;
+              return (nx * nx + ny * ny) <= 1;
           }
 
           function isBubbleOnFishCurrentLevel(bubble) {
