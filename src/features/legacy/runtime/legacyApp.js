@@ -3183,6 +3183,7 @@ export function initLegacyApp() {
                   currentVolume: 0, zoneMix: 0, resonance: 0, wasInZone: false, hue: 195,
                   lastImpactAt: 0,
                   fishTouching: false,
+                  wasShipInsideBody: false,
                   storedFireflyIds: [],
                   nextStoredFireflyPlaybackIndex: 0,
                   trianglePlaybackLockUntil: 0,
@@ -3349,8 +3350,10 @@ export function initLegacyApp() {
                   const dy = ship.y - b.y;
                   const dz = (b.depthOffset ?? 0);
                   const dist3d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                  const dist2d = Math.hypot(dx, dy);
                   const zoneRadius = SOUND_HEAR_RADIUS * 0.7;
                   const insideZone = dist3d < zoneRadius;
+                  const insideBubbleBody = dist2d <= b.r;
 
                   if (b.sound) {
                       const normalized = Math.max(0, 1 - (dist3d / SOUND_HEAR_RADIUS));
@@ -3393,17 +3396,19 @@ export function initLegacyApp() {
                       if (insideZone && !b.wasInZone) {
                           spawnResonanceWave(b);
                           releaseInitialFirefliesFromBubble(b, performance.now());
-                          if (dist3d < enteredBubbleDist) {
-                              enteredBubble = b;
-                              enteredBubbleDist = dist3d;
-                          }
+                      }
+                      if (insideBubbleBody && !b.wasShipInsideBody && dist2d < enteredBubbleDist) {
+                          enteredBubble = b;
+                          enteredBubbleDist = dist2d;
                       }
                       if (b.resonance > strongestResonance) strongestResonance = b.resonance;
                       resonanceHueMix += b.resonance * (b.layer === 'below' ? 228 : 192);
                       resonanceWeight += b.resonance;
                       b.wasInZone = insideZone;
+                      b.wasShipInsideBody = insideBubbleBody;
                   } else {
                       b.isActive = false;
+                      b.wasShipInsideBody = insideBubbleBody;
                   }
               });
 
