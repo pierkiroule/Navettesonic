@@ -58,7 +58,6 @@ export function initLegacyApp() {
           const echoRecordStatus = document.getElementById('echoRecordStatus');
           const echoRecordDownloadLink = document.getElementById('echoRecordDownloadLink');
           const traceListeningBtn = document.getElementById('traceListeningBtn');
-          const dolphinNavModeBtn = document.getElementById('dolphinNavModeBtn');
           const traceCamControls = document.getElementById('traceCamControls');
           const silenceDesYeuxPrompt = document.getElementById('silenceDesYeuxPrompt');
           const silenceSaveNoBtn = document.getElementById('silenceSaveNoBtn');
@@ -245,7 +244,6 @@ export function initLegacyApp() {
           let currentView = 'home';
           let w, h;
           let isTethered = false;
-          let isDolphinModeEnabled = false;
           let mouseWorld = { x: 0, y: 0 };
           let isTraceListeningMode = false;
           let isDrawingTraceRail = false;
@@ -858,12 +856,8 @@ export function initLegacyApp() {
                   silenceTransitionInProgress ||
                   silenceImmersionLevel > 0.02;
               const isTraceModeActive = isTraceListeningMode || isDrawingTraceRail;
-              const isDolphinNavigationActive = currentView === 'experience' && isDolphinModeEnabled;
-
               echoRecordToggleBtn?.classList.toggle('active', isSilenceModeActive);
               traceListeningBtn?.classList.toggle('active', isTraceModeActive);
-              dolphinNavModeBtn?.classList.toggle('active', isDolphinNavigationActive);
-              if (dolphinNavModeBtn) dolphinNavModeBtn.setAttribute('aria-pressed', isDolphinNavigationActive ? 'true' : 'false');
           }
 
           function setTraceListeningMode(nextState) {
@@ -1981,7 +1975,7 @@ export function initLegacyApp() {
               if (!element) return false;
               return Boolean(element.closest(
                   '#bubblePanel, #bubblePropsPanel, #echoRecorderPanel, #traceListeningBtn, #traceCamControls, ' +
-                  '#dolphinNavModeBtn, #silenceDesYeuxPrompt, #silenceDesYeuxOverlay, #arenaTrianglePad, #bottomNav, ' +
+                  '#silenceDesYeuxPrompt, #silenceDesYeuxOverlay, #arenaTrianglePad, #bottomNav, ' +
                   '#homeView, #profileView, #echoHypnoseView'
               ));
           }
@@ -2978,18 +2972,6 @@ export function initLegacyApp() {
                   }
                   updateTraceCamControlsVisibility();
               });
-          dolphinNavModeBtn?.addEventListener('click', () => {
-              isDolphinModeEnabled = !isDolphinModeEnabled;
-              if (isDolphinModeEnabled) {
-                  ui.textContent = 'Mode 🐬 activé : le poisson pousse les bulles.';
-                  helperTips.textContent = 'Mode 🐬 actif : collision avec les bulles sonores.';
-              } else {
-                  ui.textContent = 'Mode 🐬 désactivé : traversée des bulles restaurée.';
-                  helperTips.textContent = 'Mode normal : pousse les bulles du niveau courant, traverse les autres pour déposer les lucioles.';
-              }
-              syncExperienceModeChips();
-          });
-
           function openBubblePanel() {
               isInteractionPaused = true;
               isTethered = false;
@@ -3659,7 +3641,7 @@ export function initLegacyApp() {
               let resonanceWeight = 0;
               let enteredBubble = null;
               let enteredBubbleDist = Number.POSITIVE_INFINITY;
-              const isDolphinNavigationActive = currentView === 'experience' && isTethered && isDolphinModeEnabled;
+              const isDolphinNavigationActive = false;
 
               BUBBLES.forEach(b => {
                   const dx = ship.x - b.x;
@@ -3837,7 +3819,7 @@ export function initLegacyApp() {
           function updateWakeParticles(speed) {
               const now = performance.now();
               const speedNorm = Math.min(1, speed / ship.maxSpeed);
-              const dolphinBoost = isDolphinModeEnabled ? 1.55 : 1;
+              const dolphinBoost = 1;
               ship.wakeEmitter += (0.24 + speedNorm * 0.95) * dolphinBoost;
 
               const mouth = getShipMouthPosition();
@@ -3875,7 +3857,7 @@ export function initLegacyApp() {
           }
 
           function spawnWakeParticle(mouth, tail, dirX, dirY, tangentX, tangentY, now, speedNorm) {
-              const dolphinBoost = isDolphinModeEnabled ? 1.35 : 1;
+              const dolphinBoost = 1;
               const along = Math.random() * 0.2;
               const jitter = 1.2 + Math.random() * 2.1;
               WAKE_PARTICLES.push({
@@ -3884,7 +3866,7 @@ export function initLegacyApp() {
                   vx: dirX * (0.22 + Math.random() * 0.48 + speedNorm * 0.3 * dolphinBoost) + tangentX * (Math.random() - 0.5) * 0.05,
                   vy: dirY * (0.22 + Math.random() * 0.48 + speedNorm * 0.3 * dolphinBoost) + tangentY * (Math.random() - 0.5) * 0.05,
                   age: 0, life: 640 + Math.random() * 360, size: 0.9 + Math.random() * 1.8 * dolphinBoost,
-                  alpha: 0.22 + Math.random() * 0.28 + (isDolphinModeEnabled ? 0.08 : 0), bornAt: now
+                  alpha: 0.22 + Math.random() * 0.28, bornAt: now
               });
           }
 
