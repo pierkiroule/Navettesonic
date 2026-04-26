@@ -270,10 +270,6 @@
             text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
         }
         #echoRecorderPanel {
-            position: absolute;
-            top: calc(12px + env(safe-area-inset-top));
-            left: clamp(10px, 2vw, 18px);
-            z-index: 165;
             display: flex;
             align-items: center;
             gap: 6px;
@@ -343,9 +339,6 @@
         }
         @media (max-width: 860px) {
             #echoRecorderPanel {
-                top: calc(10px + env(safe-area-inset-top));
-                left: 10px;
-                transform: none;
                 width: auto;
                 justify-content: flex-start;
             }
@@ -354,10 +347,6 @@
             }
         }
         .trace-listening-btn {
-            position: absolute;
-            top: calc(12px + env(safe-area-inset-top));
-            right: clamp(10px, 2vw, 18px);
-            z-index: 166;
             border: 1px solid rgba(146, 224, 255, 0.72);
             border-radius: 999px;
             padding: 9px 14px;
@@ -380,8 +369,6 @@
         }
         @media (max-width: 860px) {
             .trace-listening-btn {
-                top: calc(10px + env(safe-area-inset-top));
-                right: 10px;
                 padding: 8px 12px;
                 font-size: 0.72rem;
             }
@@ -694,6 +681,13 @@
             font-size: 1.12rem;
             font-weight: 700;
             letter-spacing: 0;
+        }
+        .nav-mode-group {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
         }
 
         #profileView {
