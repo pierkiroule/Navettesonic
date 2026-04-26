@@ -220,6 +220,7 @@ export function initLegacyApp() {
           let currentView = 'home';
           let w, h;
           let isTethered = false;
+          let isDolphinModeEnabled = false;
           let mouseWorld = { x: 0, y: 0 };
           let isTraceListeningMode = false;
           let isDrawingTraceRail = false;
@@ -344,6 +345,12 @@ export function initLegacyApp() {
           const MARINE_PARTICLES = [];
           const MAX_MARINE_PARTICLES = 42;
           const MARINE_PARTICLE_PARALLAX = 0.08;
+          const DOLPHIN_FISH_COLLIDER_RADIUS = 24;
+          const BUBBLE_PUSH_DAMPING = 0.92;
+          const BUBBLE_PUSH_COUPLING = 0.34;
+          const BUBBLE_TRAIL_MAX_POINTS = 10;
+          const BUBBLE_RESTITUTION = 0.78;
+          const FIREFLY_RESTITUTION = 0.72;
           const AUDIO_REACTIVITY = {
               bandSmoothing: 0.14,
               fishVelocityBoost: 0.22,
@@ -467,6 +474,165 @@ export function initLegacyApp() {
                   ny *= -1;
               }
               return { x: nx, y: ny };
+          }
+
+          function resolveDolphinBubbleCollisions() {
+              const shipSpeed = Math.hypot(ship.vx, ship.vy);
+              BUBBLES.forEach((bubble) => {
+                  if (!bubble) return;
+                  const dx = bubble.x - ship.x;
+                  const dy = bubble.y - ship.y;
+                  const dist = Math.hypot(dx, dy);
+                  const minDist = DOLPHIN_FISH_COLLIDER_RADIUS + bubble.r;
+                  if (dist >= minDist) return;
+                  const nx = dist > 0.001 ? (dx / dist) : Math.cos(ship.angle - Math.PI / 2);
+                  const ny = dist > 0.001 ? (dy / dist) : Math.sin(ship.angle - Math.PI / 2);
+                  const overlap = minDist - dist;
+                  bubble.x += nx * overlap * 0.9;
+                  bubble.y += ny * overlap * 0.9;
+                  ship.x -= nx * overlap * 0.1;
+                  ship.y -= ny * overlap * 0.1;
+                  const pushImpulse = shipSpeed * BUBBLE_PUSH_COUPLING + overlap * 0.05;
+                  bubble.vx = (bubble.vx || 0) + nx * pushImpulse + ship.vx * 0.08;
+                  bubble.vy = (bubble.vy || 0) + ny * pushImpulse + ship.vy * 0.08;
+              });
+          }
+
+          function updateBubbleKinetics() {
+              BUBBLES.forEach((bubble) => {
+                  if (!bubble) return;
+                  if (isDraggingBubble && selectedBubble === bubble) {
+                      bubble.vx = 0;
+                      bubble.vy = 0;
+                      return;
+                  }
+                  bubble.vx = (bubble.vx || 0) * BUBBLE_PUSH_DAMPING;
+                  bubble.vy = (bubble.vy || 0) * BUBBLE_PUSH_DAMPING;
+                  bubble.x += bubble.vx;
+                  bubble.y += bubble.vy;
+                  const bubbleSpeed = Math.hypot(bubble.vx, bubble.vy);
+                  if (!Array.isArray(bubble.motionTrail)) bubble.motionTrail = [];
+                  if (bubbleSpeed > 0.08) {
+                      bubble.motionTrail.push({
+                          x: bubble.x,
+                          y: bubble.y,
+                          alpha: Math.min(1, bubbleSpeed / 1.5),
+                          radius: bubble.r * (0.84 + Math.min(0.24, bubbleSpeed * 0.08))
+                      });
+                  }
+                  bubble.motionTrail.forEach((point) => {
+                      point.alpha *= 0.88;
+                      point.radius *= 0.985;
+                  });
+                  bubble.motionTrail = bubble.motionTrail
+                      .filter((point) => point.alpha > 0.05)
+                      .slice(-BUBBLE_TRAIL_MAX_POINTS);
+                  const theta = Math.atan2(bubble.y, bubble.x);
+                  const bubbleDistance = Math.hypot(bubble.x, bubble.y);
+                  const bubbleArenaRadius = sampleArenaRadius(theta) - bubble.r - 10;
+                  if (bubbleDistance > bubbleArenaRadius) {
+                      const boundaryNormal = sampleArenaNormal(theta);
+                      const penetration = bubbleDistance - bubbleArenaRadius;
+                      bubble.x -= boundaryNormal.x * penetration;
+                      bubble.y -= boundaryNormal.y * penetration;
+                      const outwardSpeed = bubble.vx * boundaryNormal.x + bubble.vy * boundaryNormal.y;
+                      if (outwardSpeed > 0) {
+                          bubble.vx -= boundaryNormal.x * outwardSpeed * 1.4;
+                          bubble.vy -= boundaryNormal.y * outwardSpeed * 1.4;
+                      }
+                  }
+              });
+
+              for (let i = 0; i < BUBBLES.length; i++) {
+                  const a = BUBBLES[i];
+                  if (!a) continue;
+                  for (let j = i + 1; j < BUBBLES.length; j++) {
+                      const b = BUBBLES[j];
+                      if (!b) continue;
+                      const dx = b.x - a.x;
+                      const dy = b.y - a.y;
+                      const dist = Math.hypot(dx, dy);
+                      const minDist = a.r + b.r;
+                      if (dist >= minDist || minDist <= 0) continue;
+                      const nx = dist > 0.001 ? dx / dist : 1;
+                      const ny = dist > 0.001 ? dy / dist : 0;
+                      const overlap = minDist - dist;
+                      const totalRadius = Math.max(1, a.r + b.r);
+                      const aShare = b.r / totalRadius;
+                      const bShare = a.r / totalRadius;
+                      a.x -= nx * overlap * aShare;
+                      a.y -= ny * overlap * aShare;
+                      b.x += nx * overlap * bShare;
+                      b.y += ny * overlap * bShare;
+
+                      const avx = a.vx || 0;
+                      const avy = a.vy || 0;
+                      const bvx = b.vx || 0;
+                      const bvy = b.vy || 0;
+                      const relSpeed = (bvx - avx) * nx + (bvy - avy) * ny;
+                      if (relSpeed > 0) continue;
+                      const impulse = (-(1 + BUBBLE_RESTITUTION) * relSpeed) / 2;
+                      a.vx = avx - impulse * nx;
+                      a.vy = avy - impulse * ny;
+                      b.vx = bvx + impulse * nx;
+                      b.vy = bvy + impulse * ny;
+                  }
+              }
+          }
+
+          function resolveArenaFireflyCollisions() {
+              const freeFireflies = ARENA_FIREFLIES.filter((firefly) => {
+                  if (!firefly?.isReleased) return false;
+                  if (firefly.attachedToTail) return false;
+                  if (firefly.containedInBubbleId) return false;
+                  if (firefly.placedTriangleId) return false;
+                  return true;
+              });
+              for (let i = 0; i < freeFireflies.length; i++) {
+                  const firefly = freeFireflies[i];
+                  const fireflyRadius = Math.max(4, firefly.size * 0.95);
+                  for (const bubble of BUBBLES) {
+                      const dx = firefly.x - bubble.x;
+                      const dy = firefly.y - bubble.y;
+                      const dist = Math.hypot(dx, dy);
+                      const minDist = bubble.r + fireflyRadius;
+                      if (dist >= minDist) continue;
+                      const nx = dist > 0.001 ? dx / dist : 1;
+                      const ny = dist > 0.001 ? dy / dist : 0;
+                      const overlap = minDist - dist;
+                      firefly.x += nx * overlap;
+                      firefly.y += ny * overlap;
+                      const rel = firefly.vx * nx + firefly.vy * ny;
+                      if (rel < 0) {
+                          firefly.vx -= (1 + FIREFLY_RESTITUTION) * rel * nx;
+                          firefly.vy -= (1 + FIREFLY_RESTITUTION) * rel * ny;
+                      }
+                      bubble.vx = (bubble.vx || 0) - nx * overlap * 0.012;
+                      bubble.vy = (bubble.vy || 0) - ny * overlap * 0.012;
+                  }
+                  for (let j = i + 1; j < freeFireflies.length; j++) {
+                      const other = freeFireflies[j];
+                      const dx = other.x - firefly.x;
+                      const dy = other.y - firefly.y;
+                      const dist = Math.hypot(dx, dy);
+                      const minDist = Math.max(4, firefly.size * 0.9) + Math.max(4, other.size * 0.9);
+                      if (dist >= minDist) continue;
+                      const nx = dist > 0.001 ? dx / dist : 1;
+                      const ny = dist > 0.001 ? dy / dist : 0;
+                      const overlap = minDist - dist;
+                      firefly.x -= nx * overlap * 0.5;
+                      firefly.y -= ny * overlap * 0.5;
+                      other.x += nx * overlap * 0.5;
+                      other.y += ny * overlap * 0.5;
+                      const relSpeed = (other.vx - firefly.vx) * nx + (other.vy - firefly.vy) * ny;
+                      if (relSpeed > 0) continue;
+                      const impulse = (-(1 + FIREFLY_RESTITUTION) * relSpeed) / 2;
+                      firefly.vx -= impulse * nx;
+                      firefly.vy -= impulse * ny;
+                      other.vx += impulse * nx;
+                      other.vy += impulse * ny;
+                  }
+              }
           }
 
           function injectArenaMembraneImpact(theta, force = ARENA_MEMBRANE_IMPACT_FORCE) {
@@ -623,7 +789,7 @@ export function initLegacyApp() {
                   silenceTransitionInProgress ||
                   silenceImmersionLevel > 0.02;
               const isTraceModeActive = isTraceListeningMode || isDrawingTraceRail;
-              const isDolphinNavigationActive = currentView === 'experience' && isTethered;
+              const isDolphinNavigationActive = currentView === 'experience' && isDolphinModeEnabled;
 
               echoRecordToggleBtn?.classList.toggle('active', isSilenceModeActive);
               traceListeningBtn?.classList.toggle('active', isTraceModeActive);
@@ -2440,7 +2606,22 @@ export function initLegacyApp() {
                   }
                   firefly.x += firefly.vx;
                   firefly.y += firefly.vy;
+                  const theta = Math.atan2(firefly.y, firefly.x);
+                  const arenaLimit = sampleArenaRadius(theta) - Math.max(8, firefly.size + 2);
+                  const centerDist = Math.hypot(firefly.x, firefly.y);
+                  if (centerDist > arenaLimit) {
+                      const normal = sampleArenaNormal(theta);
+                      const penetration = centerDist - arenaLimit;
+                      firefly.x -= normal.x * penetration;
+                      firefly.y -= normal.y * penetration;
+                      const outward = firefly.vx * normal.x + firefly.vy * normal.y;
+                      if (outward > 0) {
+                          firefly.vx -= normal.x * outward * (1 + FIREFLY_RESTITUTION);
+                          firefly.vy -= normal.y * outward * (1 + FIREFLY_RESTITUTION);
+                      }
+                  }
               });
+              resolveArenaFireflyCollisions();
 
               const attachCandidate = ARENA_FIREFLIES.find((firefly) => {
                   if (!firefly.isReleased) return false;
@@ -2723,6 +2904,17 @@ export function initLegacyApp() {
                   }
                   updateTraceCamControlsVisibility();
               });
+          dolphinNavModeBtn?.addEventListener('click', () => {
+              isDolphinModeEnabled = !isDolphinModeEnabled;
+              if (isDolphinModeEnabled) {
+                  ui.textContent = 'Mode 🐬 activé : le poisson pousse les bulles.';
+                  helperTips.textContent = 'Mode 🐬 actif : collision avec les bulles sonores.';
+              } else {
+                  ui.textContent = 'Mode 🐬 désactivé : traversée des bulles restaurée.';
+                  helperTips.textContent = 'Mode normal : traverse les bulles pour déposer les lucioles.';
+              }
+              syncExperienceModeChips();
+          });
 
           function openBubblePanel() {
               isInteractionPaused = true;
@@ -3228,6 +3420,8 @@ export function initLegacyApp() {
                   currentVolume: 0, zoneMix: 0, resonance: 0, wasInZone: false, hue: 195,
                   lastImpactAt: 0,
                   fishTouching: false,
+                  vx: 0,
+                  vy: 0,
                   wasShipInsideBody: false,
                   storedFireflyIds: [],
                   nextStoredFireflyPlaybackIndex: 0,
@@ -3389,6 +3583,7 @@ export function initLegacyApp() {
               let resonanceWeight = 0;
               let enteredBubble = null;
               let enteredBubbleDist = Number.POSITIVE_INFINITY;
+              const isDolphinNavigationActive = currentView === 'experience' && isTethered && isDolphinModeEnabled;
 
               BUBBLES.forEach(b => {
                   const dx = ship.x - b.x;
@@ -3442,7 +3637,7 @@ export function initLegacyApp() {
                           spawnResonanceWave(b);
                           releaseInitialFirefliesFromBubble(b, performance.now());
                       }
-                      if (insideBubbleBody && !b.wasShipInsideBody && dist2d < enteredBubbleDist) {
+                      if (!isDolphinNavigationActive && insideBubbleBody && !b.wasShipInsideBody && dist2d < enteredBubbleDist) {
                           enteredBubble = b;
                           enteredBubbleDist = dist2d;
                       }
@@ -3495,6 +3690,8 @@ export function initLegacyApp() {
               }
               ship.x += ship.vx;
               ship.y += ship.vy;
+              if (isDolphinNavigationActive) resolveDolphinBubbleCollisions();
+              updateBubbleKinetics();
 
               ship.trail.push({ x: ship.x, y: ship.y });
               if (ship.trail.length > ship.maxTrail) ship.trail.shift();
@@ -4301,6 +4498,18 @@ export function initLegacyApp() {
                   const opacityBoost = b.isActive ? 1.2 : 1;
                   const bHue = b.hue ?? 195;
                   ctx.save();
+                  const trail = Array.isArray(b.motionTrail) ? b.motionTrail : [];
+                  for (let i = 0; i < trail.length; i++) {
+                      const point = trail[i];
+                      const fade = point.alpha * (i + 1) / Math.max(1, trail.length);
+                      const trailGradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, point.radius);
+                      trailGradient.addColorStop(0, `hsla(${bHue}, 88%, 82%, ${fade * 0.18})`);
+                      trailGradient.addColorStop(1, `hsla(${bHue + 14}, 88%, 55%, 0)`);
+                      ctx.fillStyle = trailGradient;
+                      ctx.beginPath();
+                      ctx.arc(point.x, point.y, point.radius, 0, Math.PI * 2);
+                      ctx.fill();
+                  }
 
                   if (!isSurface) {
                       const grad = ctx.createRadialGradient(b.x, b.y, b.r * 0.05, b.x, b.y, b.r);
