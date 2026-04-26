@@ -2719,6 +2719,12 @@ export function initLegacyApp() {
 
           cancelBtn.addEventListener('click', closeBubblePanel);
           dropBtn.addEventListener('click', () => {
+              if (getAttachedFirefliesSorted().length >= 3) {
+                  setArenaTriangleStatus("Pose d'une bulle bloquée : pose d'abord le triangle pulsant autour du poisson.", true);
+                  ui.textContent = "Triangle pulsant détecté : pose-le avant d'ajouter une bulle sonore.";
+                  helperTips.textContent = "Touche le halo triangulaire autour du poisson pour poser les 3 lucioles, puis reviens ajouter une bulle.";
+                  return;
+              }
               const sample = SAMPLE_LIBRARY.find(s => s.id === selectedSampleId);
               if (!sample) return;
               const bubble = buildSoundBubble(sample, bubbleLayer.value);
@@ -2747,13 +2753,6 @@ export function initLegacyApp() {
               });
 
           function openBubblePanel() {
-              const attachedCount = getAttachedFirefliesSorted().length;
-              if (attachedCount >= 3) {
-                  setArenaTriangleStatus("Pose d'une bulle bloquée : pose d'abord le triangle pulsant autour du poisson.", true);
-                  ui.textContent = "Triangle pulsant détecté : pose-le avant d'ouvrir la collection.";
-                  helperTips.textContent = "Touche le halo triangulaire autour du poisson pour poser les 3 lucioles.";
-                  return;
-              }
               isInteractionPaused = true;
               isTethered = false;
               ship.vx = 0;
