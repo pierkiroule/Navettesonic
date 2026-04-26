@@ -683,11 +683,11 @@
             letter-spacing: 0;
         }
         .experience-mode-group {
-            position: absolute;
-            top: 18px;
+            position: fixed;
+            top: calc(env(safe-area-inset-top, 0px) + 12px);
             left: 50%;
             transform: translateX(-50%);
-            z-index: 140;
+            z-index: 240;
             display: flex;
             justify-content: center;
             gap: 8px;
