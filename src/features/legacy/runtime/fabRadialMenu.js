@@ -162,11 +162,20 @@ export function initFabRadialMenu({
     setOpen(!isOpen);
   });
 
-  fabButton.addEventListener('click', () => {
-    if (Date.now() - pointerTapHandledAt < 350) return;
+  fabButton.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
     if (isDragging || isBusy) return;
     setOpen(!isOpen);
   });
+
+  if (!('PointerEvent' in window)) {
+    fabButton.addEventListener('click', () => {
+      if (Date.now() - pointerTapHandledAt < 700) return;
+      if (isDragging || isBusy) return;
+      setOpen(!isOpen);
+    });
+  }
 
   backdrop.addEventListener('click', () => closeAll());
 
