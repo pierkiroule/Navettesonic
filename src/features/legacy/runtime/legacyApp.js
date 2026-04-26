@@ -67,6 +67,7 @@ export function initLegacyApp() {
           const cancelBtn = document.getElementById('cancelBtn');
           const dropBtn = document.getElementById('dropBtn');
           const bubbleLayer = document.getElementById('bubbleLayer');
+          const bubbleHaloStyle = document.getElementById('bubbleHaloStyle');
           const sampleSelect = document.getElementById('sampleSelect');
           const sampleHint = document.getElementById('sampleHint');
           const arenaTrianglePad = document.getElementById('arenaTrianglePad');
@@ -78,6 +79,7 @@ export function initLegacyApp() {
           const propsSizeVal = document.getElementById('propsSizeVal');
           const colorSwatches = document.getElementById('colorSwatches');
           const propsLayerSelect = document.getElementById('propsLayerSelect');
+          const propsHaloStyleSelect = document.getElementById('propsHaloStyleSelect');
           const propsDeleteBtn = document.getElementById('propsDeleteBtn');
           const propsCloseBtn = document.getElementById('propsCloseBtn');
           const supabaseUrlInput = document.getElementById('supabaseUrlInput');
@@ -118,6 +120,12 @@ export function initLegacyApp() {
           let lastBubbleTapTime = 0;
           let lastBubbleTapTarget = null;
 
+          const HALO_STYLE_LIBRARY = [
+              { id: 'aurora', name: 'Aurore liquide', hint: 'Voile doux qui respire.' },
+              { id: 'stardust', name: 'Poussière stellaire', hint: 'Petites étincelles orbitantes.' },
+              { id: 'pulse', name: 'Pulsation poétique', hint: 'Anneaux concentriques hypnotiques.' },
+          ];
+
           const BUBBLE_COLORS = [
               { hue: 195 }, { hue: 230 }, { hue: 265 }, { hue: 315 },
               { hue: 15 },  { hue: 45 },  { hue: 140 }, { hue: 175 },
@@ -134,6 +142,18 @@ export function initLegacyApp() {
                   refreshSwatchSelection();
               });
               colorSwatches.appendChild(sw);
+          });
+
+          HALO_STYLE_LIBRARY.forEach((haloStyle) => {
+              const creationOption = document.createElement('option');
+              creationOption.value = haloStyle.id;
+              creationOption.textContent = haloStyle.name;
+              bubbleHaloStyle.appendChild(creationOption);
+
+              const propsOption = document.createElement('option');
+              propsOption.value = haloStyle.id;
+              propsOption.textContent = haloStyle.name;
+              propsHaloStyleSelect.appendChild(propsOption);
           });
 
           SAMPLE_LIBRARY.forEach(s => {
@@ -157,6 +177,7 @@ export function initLegacyApp() {
               propsSizeRange.value = bubble.r;
               propsSizeVal.textContent = Math.round(bubble.r) + 'px';
               propsLayerSelect.value = bubble.layer;
+              propsHaloStyleSelect.value = bubble.haloStyle || HALO_STYLE_LIBRARY[0].id;
               refreshSwatchSelection();
               bubblePropsPanel.classList.add('visible');
               ui.textContent = '⟡ Touche l\'océan pour déplacer · Double tap pour fermer';
@@ -194,6 +215,10 @@ export function initLegacyApp() {
               if (!selectedBubble) return;
               selectedBubble.r = parseInt(propsSizeRange.value);
               propsSizeVal.textContent = propsSizeRange.value + 'px';
+          });
+          propsHaloStyleSelect.addEventListener('change', () => {
+              if (!selectedBubble) return;
+              selectedBubble.haloStyle = propsHaloStyleSelect.value;
           });
           propsLayerSelect.addEventListener('change', () => {
               if (!selectedBubble) return;
@@ -255,6 +280,7 @@ export function initLegacyApp() {
           let fishLongPressTimer = null;
           let fishLongPressOrigin = null;
           let selectedSampleId = SAMPLE_LIBRARY[0].id;
+          let selectedHaloStyleId = HALO_STYLE_LIBRARY[0].id;
           let audioCtx = null;
           let masterGainNode = null;
           let heroVideoAudioCtx = null;
@@ -373,9 +399,9 @@ export function initLegacyApp() {
           let isFireflyVocalPlaying = false;
           let fireflyVocalQueue = Promise.resolve();
           const STARTING_BUBBLES = [
-              { sampleId: 'forêt-zen', layer: 'front', hue: 188, x: -240, y: -120, r: 72 },
-              { sampleId: 'ocean-deep', layer: 'below', hue: 235, x: 220, y: 170, r: 78 },
-              { sampleId: 'aurore', layer: 'above', hue: 318, x: 70, y: -255, r: 68 },
+              { sampleId: 'forêt-zen', layer: 'front', hue: 188, haloStyle: 'aurora', x: -240, y: -120, r: 72 },
+              { sampleId: 'ocean-deep', layer: 'below', hue: 235, haloStyle: 'pulse', x: 220, y: 170, r: 78 },
+              { sampleId: 'aurore', layer: 'above', hue: 318, haloStyle: 'stardust', x: 70, y: -255, r: 68 },
           ];
           let shipBreathEmitter = 0;
           let marineParticleEmitter = 0;
@@ -1887,12 +1913,18 @@ export function initLegacyApp() {
 
           function updateSampleHint() {
               const sample = SAMPLE_LIBRARY.find(s => s.id === selectedSampleId) || SAMPLE_LIBRARY[0];
-              sampleHint.textContent = `${sample.texture} · ${sample.name}`;
+              const haloStyle = HALO_STYLE_LIBRARY.find((style) => style.id === selectedHaloStyleId) || HALO_STYLE_LIBRARY[0];
+              sampleHint.textContent = `${sample.texture} · Halo « ${haloStyle.name} » : ${haloStyle.hint}`;
           }
           updateSampleHint();
 
           sampleSelect.addEventListener('change', () => {
               selectedSampleId = sampleSelect.value;
+              updateSampleHint();
+          });
+
+          bubbleHaloStyle.addEventListener('change', () => {
+              selectedHaloStyleId = bubbleHaloStyle.value;
               updateSampleHint();
           });
 
@@ -2917,7 +2949,7 @@ export function initLegacyApp() {
           dropBtn.addEventListener('click', () => {
               const sample = SAMPLE_LIBRARY.find(s => s.id === selectedSampleId);
               if (!sample) return;
-              const bubble = buildSoundBubble(sample, bubbleLayer.value);
+              const bubble = buildSoundBubble(sample, bubbleLayer.value, selectedHaloStyleId);
               BUBBLES.push(bubble);
               closeBubblePanel();
           });
@@ -2958,6 +2990,7 @@ export function initLegacyApp() {
               ship.vx = 0;
               ship.vy = 0;
               bubblePanel.classList.remove('hidden');
+              bubbleHaloStyle.value = selectedHaloStyleId;
               ui.textContent = 'Collection ouverte • Choisissez sample + profondeur';
               helperTips.textContent = 'Astuce : sélectionne un sample + une position, puis clique sur « Ajouter à la collection ».';
           }
@@ -3432,7 +3465,7 @@ export function initLegacyApp() {
               return;
           }
 
-          function buildSoundBubble(sample, layer = 'front') {
+          function buildSoundBubble(sample, layer = 'front', haloStyle = HALO_STYLE_LIBRARY[0].id) {
               const mouthDistance = 20;
               const dirX = Math.cos(ship.angle - Math.PI / 2);
               const dirY = Math.sin(ship.angle - Math.PI / 2);
@@ -3453,7 +3486,7 @@ export function initLegacyApp() {
                   id: `bubble-${bubbleIdSeed++}`,
                   x, y, r: 64, layer, depthOffset: spatial.depthOffset, isActive: false,
                   sound, label: sample.name, _sampleId: sample.id,
-                  currentVolume: 0, zoneMix: 0, resonance: 0, wasInZone: false, hue: 195,
+                  currentVolume: 0, zoneMix: 0, resonance: 0, wasInZone: false, hue: 195, haloStyle,
                   lastImpactAt: 0,
                   fishTouching: false,
                   vx: 0,
@@ -3475,6 +3508,7 @@ export function initLegacyApp() {
                   bubble.y = cfg.y;
                   bubble.r = cfg.r;
                   bubble.hue = cfg.hue;
+                  bubble.haloStyle = cfg.haloStyle || HALO_STYLE_LIBRARY[0].id;
                   BUBBLES.push(bubble);
               });
           }
@@ -4568,6 +4602,44 @@ export function initLegacyApp() {
                       ctx.beginPath();
                       ctx.arc(point.x, point.y, point.radius, 0, Math.PI * 2);
                       ctx.fill();
+                  }
+
+                  const nowTime = performance.now() * 0.001;
+                  const haloPulse = (Math.sin(nowTime * 2.8 + b.x * 0.01 + b.y * 0.012) + 1) * 0.5;
+                  const haloStyleId = b.haloStyle || HALO_STYLE_LIBRARY[0].id;
+                  if (haloStyleId === 'aurora') {
+                      const haloRadius = b.r * (1.28 + haloPulse * 0.16);
+                      const haloGrad = ctx.createRadialGradient(b.x, b.y, b.r * 0.2, b.x, b.y, haloRadius);
+                      haloGrad.addColorStop(0, `hsla(${bHue + 8}, 88%, 76%, ${0.08 + haloPulse * 0.07})`);
+                      haloGrad.addColorStop(0.58, `hsla(${bHue + 24}, 85%, 62%, ${0.15 + haloPulse * 0.1})`);
+                      haloGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                      ctx.fillStyle = haloGrad;
+                      ctx.beginPath();
+                      ctx.arc(b.x, b.y, haloRadius, 0, Math.PI * 2);
+                      ctx.fill();
+                  } else if (haloStyleId === 'stardust') {
+                      const orbitRadius = b.r + 10 + haloPulse * 6;
+                      for (let i = 0; i < 5; i++) {
+                          const angle = nowTime * (0.7 + i * 0.11) + (Math.PI * 2 * i) / 5;
+                          const sx = b.x + Math.cos(angle) * orbitRadius;
+                          const sy = b.y + Math.sin(angle) * orbitRadius * 0.88;
+                          const sparkleSize = 1.4 + ((i % 2) * 0.5) + haloPulse * 0.5;
+                          ctx.fillStyle = `hsla(${bHue + 32}, 96%, 84%, ${0.25 + haloPulse * 0.2})`;
+                          ctx.beginPath();
+                          ctx.arc(sx, sy, sparkleSize, 0, Math.PI * 2);
+                          ctx.fill();
+                      }
+                  } else if (haloStyleId === 'pulse') {
+                      for (let ring = 0; ring < 3; ring++) {
+                          const ringPhase = (nowTime * (0.42 + ring * 0.08) + ring * 0.34) % 1;
+                          const ringRadius = b.r + 8 + ring * 7 + ringPhase * 12;
+                          const ringAlpha = (1 - ringPhase) * (0.2 - ring * 0.04);
+                          ctx.strokeStyle = `hsla(${bHue - 10}, 92%, 78%, ${Math.max(0, ringAlpha)})`;
+                          ctx.lineWidth = 1.1;
+                          ctx.beginPath();
+                          ctx.arc(b.x, b.y, ringRadius, 0, Math.PI * 2);
+                          ctx.stroke();
+                      }
                   }
 
                   if (!isSurface) {
