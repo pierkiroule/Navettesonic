@@ -2691,17 +2691,6 @@ export function initLegacyApp() {
 
               if (isInteractionPaused) return;
 
-              // Detect double tap on a placed bubble
-              for (const b of BUBBLES) {
-                  if (Math.hypot(pos.x - b.x, pos.y - b.y) <= b.r + 12) {
-                      const isDoubleTap = now - lastBubbleTapTime < 380 && lastBubbleTapTarget === b;
-                      lastBubbleTapTime = now;
-                      lastBubbleTapTarget = b;
-                      if (isDoubleTap) { openBubblePropsPanel(b); return; }
-                      return; // single tap on bubble: absorb, no tether
-                  }
-              }
-
               // Fish double tap → open creation panel
               const fishTapDistance = Math.hypot(pos.x - ship.x, pos.y - ship.y);
               const now2 = now;
@@ -2715,6 +2704,17 @@ export function initLegacyApp() {
                       if (currentView !== 'experience' || isInteractionPaused || selectedBubble) return;
                       openBubblePanel();
                   }, FISH_LONG_PRESS_MS);
+              }
+
+              // Detect double tap on a placed bubble
+              for (const b of BUBBLES) {
+                  if (Math.hypot(pos.x - b.x, pos.y - b.y) <= b.r + 12) {
+                      const isDoubleTap = now - lastBubbleTapTime < 380 && lastBubbleTapTarget === b;
+                      lastBubbleTapTime = now;
+                      lastBubbleTapTarget = b;
+                      if (isDoubleTap) { openBubblePropsPanel(b); return; }
+                      return; // single tap on bubble: absorb, no tether
+                  }
               }
               isTethered = true;
               syncExperienceModeChips();
