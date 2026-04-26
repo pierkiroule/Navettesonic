@@ -53,6 +53,7 @@
         </div>
         <div id="helperTips">Garde le doigt (ou clic) appuyé dans l'océan : le poisson suit ton mouvement.</div>
         <div id="experienceModes" class="experience-mode-group" aria-label="Modes d'écoute">
+            <button id="soonTutoLink" class="soon-tuto-link" type="button" aria-haspopup="dialog" aria-controls="soonTutoModal">Tuto•°</button>
             <div id="echoRecorderPanel" aria-live="polite">
                 <button id="echoRecordToggleBtn" class="echo-rec-btn" type="button" aria-label="Le silence des yeux">👂</button>
                 <div class="echo-rec-meta">
@@ -62,6 +63,26 @@
                 </div>
             </div>
             <button id="traceListeningBtn" class="trace-listening-btn" type="button" aria-label="Tracer l'écoute">🪶</button>
+        </div>
+        <div id="soonTutoModal" class="soon-tuto-modal" role="dialog" aria-modal="true" aria-labelledby="soonTutoTitle" hidden>
+            <div class="soon-tuto-card">
+                <button id="soonTutoCloseBtn" class="soon-tuto-close-btn" type="button">Refermer</button>
+                <h2 id="soonTutoTitle">Tuto•° Soon•° 🐟</h2>
+                <p>Cette appli est une expérience artistique et poétique transnumériste. Ici, la performance se dilue dans l'océan de l'instant présent.</p>
+                <p>Contre-courant de l'accélération du monde, Soon•° propose un temps d'écoute sensible : composer sa traversée résonante, inventer un "échosystème" poétique, haïkuatique et échohypnotique.</p>
+                <p>Repères des menus :</p>
+                <ul>
+                    <li>💧 : l'accueil, pour revenir à la source de l'expérience.</li>
+                    <li>🐟 : Soon•° vivant, l'espace immersif où tu traverses le son.</li>
+                    <li>🫆 : ton profil-bulle, les traces et souvenirs de passage.</li>
+                </ul>
+                <p>Interactions dans Soon•° :</p>
+                <ul>
+                    <li>👂 active Le Silence des Yeux : une traversée d'écoute intérieure, lente et réceptive.</li>
+                    <li>🪶 active Tracer l'écoute : une écriture gestuelle de ta dérive sonore.</li>
+                </ul>
+                <p>Ancrage théorique : Hartmut Rosa (résonance), Bruno Latour (attachements, composition de mondes communs).</p>
+            </div>
         </div>
         <div id="traceCamControls" class="trace-cam-controls" aria-label="Contrôle de caméra tracé">
             <div class="trace-cam-orb">

@@ -45,6 +45,9 @@ export function initLegacyApp() {
           const ctx = canvas.getContext('2d');
           const ui = document.getElementById('ui');
           const helperTips = document.getElementById('helperTips');
+          const soonTutoLink = document.getElementById('soonTutoLink');
+          const soonTutoModal = document.getElementById('soonTutoModal');
+          const soonTutoCloseBtn = document.getElementById('soonTutoCloseBtn');
           const silenceDesYeuxOverlay = document.getElementById('silenceDesYeuxOverlay');
           const silenceDesYeuxTitle = document.getElementById('silenceDesYeuxTitle');
           const silenceDesYeuxCountdown = document.getElementById('silenceDesYeuxCountdown');
@@ -543,6 +546,7 @@ export function initLegacyApp() {
               else setActiveNav(target);
               if (target !== 'experience') {
                   isTethered = false;
+                  if (soonTutoModal) soonTutoModal.hidden = true;
                   closeBubblePanel();
                   hideSilenceOverlay();
                   if (silenceDesYeuxPrompt) silenceDesYeuxPrompt.hidden = true;
@@ -752,6 +756,19 @@ export function initLegacyApp() {
               });
           });
           bindTap(navProfile, () => showView('profile'));
+          bindTap(soonTutoLink, () => {
+              if (currentView !== 'experience' || !soonTutoModal) return;
+              soonTutoModal.hidden = false;
+          });
+          bindTap(soonTutoCloseBtn, () => {
+              if (!soonTutoModal) return;
+              soonTutoModal.hidden = true;
+          });
+          if (soonTutoModal) {
+              soonTutoModal.addEventListener('click', (event) => {
+                  if (event.target === soonTutoModal) soonTutoModal.hidden = true;
+              });
+          }
 
           function maskApiKey(key) {
               if (!key || key.length < 12) return key;
