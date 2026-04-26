@@ -4738,6 +4738,13 @@ export function initLegacyApp() {
               const reactiveMids = audioReactiveState.mids;
               const reactiveHighs = audioReactiveState.highs;
               const reactiveEnergy = audioReactiveState.energy;
+              const fishDepthVisuals = {
+                  1: { brightness: 1, saturation: 1, blur: 0 },
+                  2: { brightness: 0.8, saturation: 0.75, blur: 0.9 },
+                  3: { brightness: 0.62, saturation: 0.5, blur: 1.8 },
+              };
+              const fishDepthVisual = fishDepthVisuals[getFishDepthIndex()] || fishDepthVisuals[1];
+              ctx.filter = `saturate(${fishDepthVisual.saturation}) brightness(${fishDepthVisual.brightness}) blur(${fishDepthVisual.blur}px)`;
               const glide = Math.min(1, (Math.hypot(ship.vx, ship.vy) / ship.maxSpeed) + reactiveBass * AUDIO_REACTIVITY.fishVelocityBoost);
               const wag = Math.sin(swimT * 9.5) * (0.16 + glide * 0.22);
               const finMorph = Math.min(1, wingPresence * (0.72 + reactiveMids * 0.28));
