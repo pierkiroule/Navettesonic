@@ -300,11 +300,10 @@ export function initLegacyApp() {
           let activeArenaAudio = null;
           let routedMediaElementSources = new WeakMap();
           let routedMediaElementGainNodes = new WeakMap();
-          let hasPlayedFirstFishMoveMusic = false;
-          let isStartingFirstFishMoveMusic = false;
-          let firstFishMoveMusic = null;
-          let firstFishMoveFadeInterval = null;
-          const FIRST_FISH_MOVE_MUSIC_URL = 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/music/musicsoon.mp3';
+          let isStartingSoonTutoMusic = false;
+          let soonTutoMusic = null;
+          let soonTutoMusicFadeInterval = null;
+          const SOON_TUTO_MUSIC_URL = 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/music/musicsoon.mp3';
           const RECORDER_MAX_SECONDS = 60;
           const RECORDER_MAX_MILLIS = RECORDER_MAX_SECONDS * 1000;
           const SILENCE_COUNTDOWN_VALUES = ['5', '4', '3', '2', '1', '0•°'];
@@ -824,6 +823,7 @@ export function initLegacyApp() {
               if (target !== 'experience') {
                   isTethered = false;
                   if (soonTutoModal) soonTutoModal.hidden = true;
+                  fadeOutSoonTutoMusic(5000);
                   closeBubblePanel();
                   hideSilenceOverlay();
                   if (silenceDesYeuxPrompt) silenceDesYeuxPrompt.hidden = true;
@@ -957,7 +957,7 @@ export function initLegacyApp() {
           });
 
           bindTap(echoRecordToggleBtn, () => {
-              fadeOutFirstFishMoveMusic();
+              fadeOutSoonTutoMusic();
               if (recordingState === 'recording') {
                   stopEchoRecording(false);
                   return;
@@ -1091,14 +1091,19 @@ export function initLegacyApp() {
           bindTap(soonTutoLink, () => {
               if (currentView !== 'experience' || !soonTutoModal) return;
               soonTutoModal.hidden = false;
+              playSoonTutoMusic();
           });
           bindTap(soonTutoCloseBtn, () => {
               if (!soonTutoModal) return;
               soonTutoModal.hidden = true;
+              fadeOutSoonTutoMusic(5000);
           });
           if (soonTutoModal) {
               soonTutoModal.addEventListener('click', (event) => {
-                  if (event.target === soonTutoModal) soonTutoModal.hidden = true;
+                  if (event.target === soonTutoModal) {
+                      soonTutoModal.hidden = true;
+                      fadeOutSoonTutoMusic(5000);
+                  }
               });
           }
 
@@ -2823,7 +2828,6 @@ export function initLegacyApp() {
               }
               isTethered = true;
               syncExperienceModeChips();
-              triggerFirstFishMoveMusic();
           }
           function onMove(e) {
               if (currentView !== 'experience') return;
@@ -3038,17 +3042,18 @@ export function initLegacyApp() {
               return audioCtx;
           }
 
-          function triggerFirstFishMoveMusic() {
-              if (hasPlayedFirstFishMoveMusic || isStartingFirstFishMoveMusic) return;
-              isStartingFirstFishMoveMusic = true;
+          function playSoonTutoMusic() {
+              if (isStartingSoonTutoMusic) return;
+              isStartingSoonTutoMusic = true;
 
-              const music = firstFishMoveMusic || new Audio();
-              firstFishMoveMusic = music;
+              const music = soonTutoMusic || new Audio();
+              soonTutoMusic = music;
               music.preload = 'auto';
               music.crossOrigin = 'anonymous';
-              if (music.src !== FIRST_FISH_MOVE_MUSIC_URL) {
-                  music.src = FIRST_FISH_MOVE_MUSIC_URL;
+              if (music.src !== SOON_TUTO_MUSIC_URL) {
+                  music.src = SOON_TUTO_MUSIC_URL;
               }
+              music.loop = true;
               music.currentTime = 0;
               music.volume = 1;
               const context = ensureAudioContext();
@@ -3059,64 +3064,42 @@ export function initLegacyApp() {
                   } catch (_) {}
               }
 
-              if (firstFishMoveFadeInterval) {
-                  clearInterval(firstFishMoveFadeInterval);
-                  firstFishMoveFadeInterval = null;
+              if (soonTutoMusicFadeInterval) {
+                  clearInterval(soonTutoMusicFadeInterval);
+                  soonTutoMusicFadeInterval = null;
               }
 
-              const updateMusicFade = () => {
-                  if (!Number.isFinite(music.duration) || music.duration <= 0) return;
-                  const progress = Math.max(0, Math.min(1, music.currentTime / music.duration));
-                  music.volume = Math.max(0.1, 1 - progress * 0.9);
-              };
-
-              const stopFading = () => {
-                  if (firstFishMoveFadeInterval) {
-                      clearInterval(firstFishMoveFadeInterval);
-                      firstFishMoveFadeInterval = null;
-                  }
-                  music.volume = 0.1;
-              };
-
-              music.onended = stopFading;
-              music.onerror = () => {
-                  stopFading();
-                  isStartingFirstFishMoveMusic = false;
-              };
-
               music.play().then(() => {
-                  hasPlayedFirstFishMoveMusic = true;
-                  isStartingFirstFishMoveMusic = false;
-                  updateMusicFade();
-                  firstFishMoveFadeInterval = setInterval(updateMusicFade, 120);
+                  isStartingSoonTutoMusic = false;
               }).catch(() => {
-                  stopFading();
-                  isStartingFirstFishMoveMusic = false;
+                  isStartingSoonTutoMusic = false;
               });
           }
 
-          function fadeOutFirstFishMoveMusic(durationMs = 850) {
-              if (!firstFishMoveMusic) return;
-              const music = firstFishMoveMusic;
-              if (firstFishMoveFadeInterval) {
-                  clearInterval(firstFishMoveFadeInterval);
-                  firstFishMoveFadeInterval = null;
+          function fadeOutSoonTutoMusic(durationMs = 850) {
+              if (!soonTutoMusic) return;
+              const music = soonTutoMusic;
+              if (soonTutoMusicFadeInterval) {
+                  clearInterval(soonTutoMusicFadeInterval);
+                  soonTutoMusicFadeInterval = null;
               }
               const startVolume = Math.max(0, Math.min(1, music.volume));
               if (startVolume <= 0.001) {
                   music.volume = 0;
+                  music.pause();
                   return;
               }
               const startedAt = performance.now();
-              firstFishMoveFadeInterval = setInterval(() => {
+              soonTutoMusicFadeInterval = setInterval(() => {
                   const elapsed = performance.now() - startedAt;
                   const t = Math.max(0, Math.min(1, elapsed / Math.max(120, durationMs)));
                   const eased = 1 - Math.pow(1 - t, 2);
                   music.volume = Math.max(0, startVolume * (1 - eased));
                   if (t >= 1) {
-                      clearInterval(firstFishMoveFadeInterval);
-                      firstFishMoveFadeInterval = null;
+                      clearInterval(soonTutoMusicFadeInterval);
+                      soonTutoMusicFadeInterval = null;
                       music.volume = 0;
+                      music.pause();
                   }
               }, 32);
           }
