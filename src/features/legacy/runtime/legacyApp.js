@@ -487,9 +487,9 @@ export function initLegacyApp() {
               const localY = (-dx * sin) + (dy * cos);
 
               // Slightly stretched body core (matches the painted fish silhouette better than a circle).
-              const bodyCore = ((localX * localX) / (12.5 * 12.5)) + (((localY - 1.5) * (localY - 1.5)) / (18.5 * 18.5)) <= 1;
+              const bodyCore = ((localX * localX) / (14 * 14)) + (((localY - 1.5) * (localY - 1.5)) / (20.5 * 20.5)) <= 1;
               // Soft extension towards the lower belly to keep taps natural on mobile.
-              const bellyZone = ((localX * localX) / (9.5 * 9.5)) + (((localY - 9.5) * (localY - 9.5)) / (9 * 9)) <= 1;
+              const bellyZone = ((localX * localX) / (11 * 11)) + (((localY - 9.5) * (localY - 9.5)) / (10.5 * 10.5)) <= 1;
 
               return bodyCore || bellyZone;
           }
