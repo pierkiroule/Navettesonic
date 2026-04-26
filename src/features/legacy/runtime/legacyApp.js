@@ -248,6 +248,10 @@ export function initLegacyApp() {
           };
           let isInteractionPaused = false;
           let lastFishTap = { time: 0, x: 0, y: 0 };
+          const FISH_LONG_PRESS_MS = 520;
+          const FISH_LONG_PRESS_MOVE_TOLERANCE = 24;
+          let fishLongPressTimer = null;
+          let fishLongPressOrigin = null;
           let selectedSampleId = SAMPLE_LIBRARY[0].id;
           let audioCtx = null;
           let masterGainNode = null;
@@ -2475,6 +2479,7 @@ export function initLegacyApp() {
               if (isInteractiveTarget(e.target)) return;
               const pos = getMousePos(e);
               mouseWorld = pos;
+              cancelFishLongPress();
               ensureAllAudioRunning();
               if (isTraceRailAutopilot) {
                   const now = performance.now();
@@ -2545,6 +2550,12 @@ export function initLegacyApp() {
                   const isDoubleTap = now2 - lastFishTap.time < 330 && Math.hypot(pos.x - lastFishTap.x, pos.y - lastFishTap.y) < 40;
                   lastFishTap = { time: now2, x: pos.x, y: pos.y };
                   if (isDoubleTap) { openBubblePanel(); return; }
+                  fishLongPressOrigin = { x: pos.x, y: pos.y };
+                  fishLongPressTimer = window.setTimeout(() => {
+                      fishLongPressTimer = null;
+                      if (currentView !== 'experience' || isInteractionPaused || selectedBubble) return;
+                      openBubblePanel();
+                  }, FISH_LONG_PRESS_MS);
               }
               isTethered = true;
               triggerFirstFishMoveMusic();
@@ -2563,8 +2574,14 @@ export function initLegacyApp() {
                   selectedBubble.x = pos.x;
                   selectedBubble.y = pos.y;
               }
+              if (fishLongPressTimer && fishLongPressOrigin) {
+                  if (Math.hypot(pos.x - fishLongPressOrigin.x, pos.y - fishLongPressOrigin.y) > FISH_LONG_PRESS_MOVE_TOLERANCE) {
+                      cancelFishLongPress();
+                  }
+              }
           }
           function onEnd() {
+              cancelFishLongPress();
               if (isDrawingTraceRail) {
                   isDrawingTraceRail = false;
                   isTraceListeningMode = false;
@@ -2585,6 +2602,14 @@ export function initLegacyApp() {
               }
               isTethered = false;
               isDraggingBubble = false;
+          }
+
+          function cancelFishLongPress() {
+              if (fishLongPressTimer) {
+                  clearTimeout(fishLongPressTimer);
+                  fishLongPressTimer = null;
+              }
+              fishLongPressOrigin = null;
           }
 
           window.addEventListener('mousedown', onStart);
