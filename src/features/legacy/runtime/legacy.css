@@ -694,6 +694,66 @@
             flex-wrap: wrap;
             pointer-events: auto;
         }
+        .soon-tuto-link {
+            border: 1px solid rgba(158, 230, 255, 0.56);
+            border-radius: 999px;
+            padding: 8px 14px;
+            background: linear-gradient(180deg, rgba(24, 70, 112, 0.84), rgba(8, 34, 60, 0.9));
+            color: rgba(233, 249, 255, 0.96);
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            cursor: pointer;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.25);
+        }
+        .soon-tuto-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 260;
+            background: rgba(2, 9, 22, 0.75);
+            display: grid;
+            place-items: center;
+            padding: 16px;
+        }
+        .soon-tuto-modal[hidden] {
+            display: none !important;
+        }
+        .soon-tuto-card {
+            width: min(700px, 95vw);
+            max-height: min(84vh, 720px);
+            overflow: auto;
+            border-radius: 16px;
+            padding: 18px 16px 20px;
+            border: 1px solid rgba(168, 228, 255, 0.38);
+            background: linear-gradient(180deg, rgba(7, 24, 44, 0.96), rgba(3, 13, 28, 0.97));
+            box-shadow: 0 20px 56px rgba(0, 0, 0, 0.45);
+            color: rgba(220, 242, 255, 0.95);
+            line-height: 1.5;
+        }
+        .soon-tuto-card h2 {
+            margin: 0 0 10px;
+            font-size: 1.1rem;
+            letter-spacing: 0.03em;
+        }
+        .soon-tuto-card p {
+            margin: 10px 0;
+            font-size: 0.92rem;
+        }
+        .soon-tuto-card ul {
+            margin: 8px 0 10px;
+            padding-left: 18px;
+        }
+        .soon-tuto-close-btn {
+            float: right;
+            border: 1px solid rgba(171, 224, 255, 0.48);
+            border-radius: 999px;
+            padding: 7px 12px;
+            background: rgba(18, 57, 93, 0.8);
+            color: rgba(231, 249, 255, 0.96);
+            font-weight: 700;
+            cursor: pointer;
+            margin-left: 8px;
+        }
 
         #profileView {
             position: relative;
