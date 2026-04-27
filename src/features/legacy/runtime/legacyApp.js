@@ -52,16 +52,9 @@ export function initLegacyApp() {
           const silenceDesYeuxTitle = document.getElementById('silenceDesYeuxTitle');
           const silenceDesYeuxCountdown = document.getElementById('silenceDesYeuxCountdown');
           const silenceDesYeuxPoem = document.getElementById('silenceDesYeuxPoem');
-          const echoRecorderPanel = document.getElementById('echoRecorderPanel');
           const echoRecordToggleBtn = document.getElementById('echoRecordToggleBtn');
-          const echoRecordTimer = document.getElementById('echoRecordTimer');
-          const echoRecordStatus = document.getElementById('echoRecordStatus');
-          const echoRecordDownloadLink = document.getElementById('echoRecordDownloadLink');
           const traceListeningBtn = document.getElementById('traceListeningBtn');
           const traceCamControls = document.getElementById('traceCamControls');
-          const silenceDesYeuxPrompt = document.getElementById('silenceDesYeuxPrompt');
-          const silenceSaveNoBtn = document.getElementById('silenceSaveNoBtn');
-          const silenceSaveYesBtn = document.getElementById('silenceSaveYesBtn');
           const bubblePanel = document.getElementById('bubblePanel');
           const cancelBtn = document.getElementById('cancelBtn');
           const dropBtn = document.getElementById('dropBtn');
@@ -428,23 +421,9 @@ export function initLegacyApp() {
           let currentSession = null;
           let isAuthActionPending = false;
           let syncInFlightPromise = null;
-          let recordingState = 'idle';
-          let recordingTimerInterval = null;
-          let recordingAutoStopTimeout = null;
-          let recordingStartedAt = 0;
-          let recordingMediaDest = null;
-          let recordingMediaRecorder = null;
-          let recordingChunks = [];
-          let recordingMimeType = '';
-          let recordingFileExt = 'webm';
-          let recordingDownloadUrl = null;
-          let recordingFallbackNotice = '';
-          let latestRecordingBlob = null;
-          let latestRecordingMimeType = '';
           let silenceTransitionInProgress = false;
+          let silenceModeTimeout = null;
           let silenceImmersionLevel = 0;
-          let silenceSessionSaved = false;
-          const savedSilenceSessions = [];
           const SUPABASE_BUCKET = 'Soonbucket';
           const SUPABASE_LOCAL_KEYS = {
               url: 'soono.supabase.url',
@@ -875,7 +854,6 @@ export function initLegacyApp() {
                   fadeOutSoonTutoMusic(5000);
                   closeBubblePanel();
                   hideSilenceOverlay();
-                  if (silenceDesYeuxPrompt) silenceDesYeuxPrompt.hidden = true;
                   setSilenceImmersion(0);
               }
               if (heroVideo) {
@@ -938,10 +916,7 @@ export function initLegacyApp() {
           }
 
           function syncExperienceModeChips() {
-              const isSilenceModeActive =
-                  recordingState === 'recording' ||
-                  silenceTransitionInProgress ||
-                  silenceImmersionLevel > 0.02;
+              const isSilenceModeActive = silenceTransitionInProgress || silenceImmersionLevel > 0.02;
               const isTraceModeActive = isTraceListeningMode || isDrawingTraceRail;
               echoRecordToggleBtn?.classList.toggle('active', isSilenceModeActive);
               traceListeningBtn?.classList.toggle('active', isTraceModeActive);
@@ -1010,36 +985,8 @@ export function initLegacyApp() {
 
           bindTap(echoRecordToggleBtn, () => {
               fadeOutSoonTutoMusic();
-              if (recordingState === 'recording') {
-                  stopEchoRecording(false);
-                  return;
-              }
-              if (recordingState === 'finalizing' || silenceTransitionInProgress) return;
+              if (silenceTransitionInProgress) return;
               startSilenceDesYeuxSequence();
-          });
-
-          bindTap(silenceSaveNoBtn, () => {
-              if (silenceDesYeuxPrompt) silenceDesYeuxPrompt.hidden = true;
-              echoRecordStatus.textContent = 'Traversée non conservée.';
-          });
-
-          bindTap(silenceSaveYesBtn, () => {
-              if (latestRecordingBlob) {
-                  const ext = normalizeExtFromMime(latestRecordingMimeType, recordingFileExt);
-                  const filename = buildBalladeFilename(ext);
-                  const url = URL.createObjectURL(latestRecordingBlob);
-                  savedSilenceSessions.unshift({
-                      id: `silence-${Date.now()}`,
-                      label: `Traversée du ${new Date().toLocaleString('fr-FR')}`,
-                      url,
-                      filename,
-                      ext
-                  });
-                  renderSilenceSessions();
-              }
-              silenceSessionSaved = true;
-              if (silenceDesYeuxPrompt) silenceDesYeuxPrompt.hidden = true;
-              echoRecordStatus.textContent = 'Traversée synchronisée dans le profil.';
           });
 
           function syncHeroPlayButton() {
@@ -2130,8 +2077,8 @@ export function initLegacyApp() {
               const element = target instanceof Element ? target : target?.parentElement;
               if (!element) return false;
               return Boolean(element.closest(
-                  '#bubblePanel, #bubblePropsPanel, #echoRecorderPanel, #traceListeningBtn, #traceCamControls, ' +
-                  '#silenceDesYeuxPrompt, #silenceDesYeuxOverlay, #arenaTrianglePad, #bottomNav, ' +
+                  '#bubblePanel, #bubblePropsPanel, #traceListeningBtn, #traceCamControls, ' +
+                  '#silenceDesYeuxOverlay, #arenaTrianglePad, #bottomNav, ' +
                   '#homeView, #profileView, #echoHypnoseView'
               ));
           }
@@ -3328,126 +3275,6 @@ export function initLegacyApp() {
           }
 
 
-          function formatRecordingTime(msElapsed) {
-              const clamped = Math.min(RECORDER_MAX_MILLIS, Math.max(0, msElapsed));
-              const totalSeconds = Math.floor(clamped / 1000);
-              const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
-              const seconds = (totalSeconds % 60).toString().padStart(2, '0');
-              return `${minutes}:${seconds}`;
-          }
-
-          function wait(ms) {
-              return new Promise((resolve) => {
-                  setTimeout(resolve, ms);
-              });
-          }
-
-          function buildBalladeFilename(ext) {
-              const now = new Date();
-              const year = now.getFullYear();
-              const month = String(now.getMonth() + 1).padStart(2, '0');
-              const day = String(now.getDate()).padStart(2, '0');
-              const hours = String(now.getHours()).padStart(2, '0');
-              const mins = String(now.getMinutes()).padStart(2, '0');
-              const secs = String(now.getSeconds()).padStart(2, '0');
-              return `soon-ballade-${year}${month}${day}-${hours}${mins}${secs}.${ext}`;
-          }
-
-          function normalizeExtFromMime(mimeType, fallbackExt = 'webm') {
-              const mime = (mimeType || '').toLowerCase();
-              if (mime.includes('mpeg') || mime.includes('mp3')) return 'mp3';
-              if (mime.includes('ogg')) return 'ogg';
-              if (mime.includes('wav')) return 'wav';
-              if (mime.includes('webm')) return 'webm';
-              return fallbackExt;
-          }
-
-          function renderSilenceSessions() {
-              if (!silenceSessionList) return;
-              if (!savedSilenceSessions.length) {
-                  silenceSessionList.innerHTML = '<p class="collection-empty">Aucune traversée conservée pour le moment.</p>';
-                  return;
-              }
-              silenceSessionList.innerHTML = savedSilenceSessions.map((session) => `
-                  <div class="silence-session-item">
-                      <p>${session.label}</p>
-                      <a href="${session.url}" download="${session.filename}">Télécharger ${session.ext.toUpperCase()}</a>
-                  </div>
-              `).join('');
-          }
-
-          function detectRecorderFormat() {
-              const defaultFormat = { mimeType: '', ext: 'webm', fallbackNotice: 'Format conteneur par défaut du navigateur.' };
-              if (typeof window.MediaRecorder === 'undefined') return null;
-              const supportsMime = typeof MediaRecorder.isTypeSupported === 'function'
-                  ? (mime) => MediaRecorder.isTypeSupported(mime)
-                  : () => true;
-
-              const formats = [
-                  { mimeType: 'audio/webm;codecs=opus', ext: 'webm', fallbackNotice: 'MP3 indisponible sur ce navigateur : export en WebM/Opus.' },
-                  { mimeType: 'audio/ogg;codecs=opus', ext: 'ogg', fallbackNotice: 'MP3 indisponible sur ce navigateur : export en OGG/Opus.' },
-                  { mimeType: 'audio/wav', ext: 'wav', fallbackNotice: 'MP3 indisponible sur ce navigateur : export en WAV.' },
-                  { mimeType: 'audio/mpeg', ext: 'mp3', fallbackNotice: '' },
-                  { mimeType: 'audio/mp3', ext: 'mp3', fallbackNotice: '' },
-              ];
-
-              for (const format of formats) {
-                  if (supportsMime(format.mimeType)) return format;
-              }
-              return defaultFormat;
-          }
-
-          async function convertBlobToMp3(sourceBlob) {
-              if (!sourceBlob || !sourceBlob.size) return null;
-              const isAlreadyMp3 = /mpeg|mp3/i.test(sourceBlob.type || '');
-              if (isAlreadyMp3) return sourceBlob;
-              return null;
-          }
-
-          function updateEchoRecorderUi() {
-              if (!echoRecorderPanel || !echoRecordToggleBtn || !echoRecordStatus || !echoRecordTimer) return;
-              echoRecordToggleBtn.classList.toggle('recording', recordingState === 'recording');
-              echoRecordToggleBtn.classList.toggle('finalizing', recordingState === 'finalizing');
-              echoRecordToggleBtn.classList.toggle('hypnosis', recordingState === 'recording' || silenceTransitionInProgress);
-              echoRecordToggleBtn.disabled = recordingState === 'finalizing' || recordingState === 'unsupported' || silenceTransitionInProgress;
-              echoRecordToggleBtn.textContent = recordingState === 'recording' ? 'STOP' : '👂';
-
-              if (recordingState === 'idle') {
-                  if (!silenceTransitionInProgress) {
-                      echoRecordStatus.textContent = 'Prêt pour une traversée.';
-                  }
-              } else if (recordingState === 'recording') {
-                  const formatLabel = recordingFileExt.toUpperCase();
-                  echoRecordStatus.textContent = `Silence des Yeux en cours… (${formatLabel})`;
-              } else if (recordingState === 'finalizing') {
-                  echoRecordStatus.textContent = 'Finalisation…';
-              } else if (recordingState === 'ready') {
-                  const fallbackMsg = recordingFallbackNotice ? ` ${recordingFallbackNotice}` : '';
-                  echoRecordStatus.textContent = `Traversée prête à télécharger (${recordingFileExt.toUpperCase()}).${fallbackMsg}`;
-              } else if (recordingState === 'unsupported') {
-                  echoRecordStatus.textContent = 'Enregistrement indisponible sur ce navigateur.';
-              }
-
-              syncExperienceModeChips();
-          }
-
-          function clearRecordingTimers() {
-              if (recordingTimerInterval) {
-                  clearInterval(recordingTimerInterval);
-                  recordingTimerInterval = null;
-              }
-              if (recordingAutoStopTimeout) {
-                  clearTimeout(recordingAutoStopTimeout);
-                  recordingAutoStopTimeout = null;
-              }
-          }
-
-          function refreshRecordingTimer() {
-              if (!echoRecordTimer) return;
-              const elapsed = recordingState === 'recording' ? (Date.now() - recordingStartedAt) : 0;
-              echoRecordTimer.textContent = `${formatRecordingTime(elapsed)} / 01:00`;
-          }
-
           function setSilenceImmersion(level) {
               silenceImmersionLevel = Math.max(0, Math.min(1, level));
               if (experienceView) {
@@ -3467,201 +3294,37 @@ export function initLegacyApp() {
               if (silenceDesYeuxOverlay) silenceDesYeuxOverlay.hidden = true;
           }
 
+          function updateEchoRecorderUi() {
+              if (!echoRecordToggleBtn) return;
+              echoRecordToggleBtn.classList.toggle('hypnosis', silenceTransitionInProgress || silenceImmersionLevel > 0.02);
+              echoRecordToggleBtn.disabled = silenceTransitionInProgress;
+              echoRecordToggleBtn.textContent = '👂';
+              syncExperienceModeChips();
+          }
+
           async function startSilenceDesYeuxSequence() {
-              if (recordingState === 'recording' || recordingState === 'finalizing' || silenceTransitionInProgress) return;
+              if (silenceTransitionInProgress) return;
               silenceTransitionInProgress = true;
-              silenceSessionSaved = false;
-              if (silenceDesYeuxPrompt) silenceDesYeuxPrompt.hidden = true;
+              if (silenceModeTimeout) {
+                  clearTimeout(silenceModeTimeout);
+                  silenceModeTimeout = null;
+              }
               setSilenceImmersion(1);
               revealSilenceOverlay('Le Silence des Yeux est là…', '0•°', 'Traverse 60 secondes d’écoute sensible.');
-              echoRecordStatus.textContent = 'Préparation hypnotique…';
               updateEchoRecorderUi();
-              startEchoRecording();
-              if (recordingState !== 'recording') {
-                  hideSilenceOverlay();
-                  setSilenceImmersion(0);
-                  silenceTransitionInProgress = false;
-                  return;
-              }
               await wait(1200);
               hideSilenceOverlay();
               silenceTransitionInProgress = false;
               updateEchoRecorderUi();
-          }
-
-          function setRecordingDownload(blob) {
-              if (!echoRecordDownloadLink) return;
-              if (recordingDownloadUrl) {
-                  URL.revokeObjectURL(recordingDownloadUrl);
-                  recordingDownloadUrl = null;
-              }
-              if (!blob) {
-                  echoRecordDownloadLink.hidden = true;
-                  echoRecordDownloadLink.removeAttribute('href');
-                  return;
-              }
-              recordingDownloadUrl = URL.createObjectURL(blob);
-              echoRecordDownloadLink.href = recordingDownloadUrl;
-              echoRecordDownloadLink.download = buildBalladeFilename(recordingFileExt);
-              echoRecordDownloadLink.hidden = false;
-          }
-
-          function ensureRecordingDestination(context) {
-              if (!context || !masterGainNode) return null;
-              if (recordingMediaDest) return recordingMediaDest;
-              recordingMediaDest = context.createMediaStreamDestination();
-              masterGainNode.connect(recordingMediaDest);
-              return recordingMediaDest;
-          }
-
-          function stopEchoRecording(triggeredByAutoStop) {
-              if (recordingState !== 'recording' || !recordingMediaRecorder) return;
-              clearRecordingTimers();
-              recordingState = 'finalizing';
-              if (echoRecordTimer && triggeredByAutoStop) {
-                  echoRecordTimer.textContent = '01:00 / 01:00';
-              }
-              updateEchoRecorderUi();
-              try {
-                  recordingMediaRecorder.stop();
-              } catch (_) {
-                  recordingState = 'idle';
+              silenceModeTimeout = setTimeout(() => {
+                  setSilenceImmersion(0);
                   updateEchoRecorderUi();
-              }
-          }
-
-          function startEchoRecording() {
-              if (recordingState === 'recording' || recordingState === 'finalizing') return;
-              const context = ensureAudioContext();
-              ensureAllAudioRunning();
-              if (!context || !masterGainNode || typeof window.MediaRecorder === 'undefined') {
-                  recordingState = 'unsupported';
-                  updateEchoRecorderUi();
-                  return;
-              }
-
-              const mediaDest = ensureRecordingDestination(context);
-              if (!mediaDest || !mediaDest.stream) {
-                  recordingState = 'unsupported';
-                  updateEchoRecorderUi();
-                  return;
-              }
-
-              const format = detectRecorderFormat();
-              if (!format) {
-                  recordingState = 'unsupported';
-                  updateEchoRecorderUi();
-                  return;
-              }
-
-              recordingMimeType = format.mimeType || '';
-              recordingFileExt = format.ext;
-              recordingFallbackNotice = format.fallbackNotice;
-              recordingChunks = [];
-              latestRecordingBlob = null;
-              latestRecordingMimeType = '';
-              setRecordingDownload(null);
-
-              try {
-                  recordingMediaRecorder = recordingMimeType
-                      ? new MediaRecorder(mediaDest.stream, { mimeType: recordingMimeType })
-                      : new MediaRecorder(mediaDest.stream);
-              } catch (_) {
-                  recordingState = 'unsupported';
-                  updateEchoRecorderUi();
-                  return;
-              }
-
-              recordingMediaRecorder.ondataavailable = (event) => {
-                  if (event.data && event.data.size > 0) {
-                      recordingChunks.push(event.data);
-                  }
-              };
-
-              recordingMediaRecorder.onerror = () => {
-                  clearRecordingTimers();
-                  recordingState = 'unsupported';
-                  updateEchoRecorderUi();
-              };
-
-              recordingMediaRecorder.onstop = () => {
-                  const finalType = recordingMediaRecorder?.mimeType || recordingMimeType || undefined;
-                  const sourceBlob = recordingChunks.length ? new Blob(recordingChunks, finalType ? { type: finalType } : undefined) : null;
-                  recordingMediaRecorder = null;
-                  recordingChunks = [];
-                  if (!sourceBlob || sourceBlob.size === 0) {
-                      recordingState = 'idle';
-                      setSilenceImmersion(0);
-                      updateEchoRecorderUi();
-                      return;
-                  }
-                  recordingState = 'finalizing';
-                  updateEchoRecorderUi();
-                  (async () => {
-                      let deliveredBlob = sourceBlob;
-                      let deliveredMime = finalType || '';
-                      let deliveredExt = normalizeExtFromMime(finalType, recordingFileExt);
-                      try {
-                          const mp3Blob = await convertBlobToMp3(sourceBlob);
-                          if (mp3Blob && mp3Blob.size > 0) {
-                              deliveredBlob = mp3Blob;
-                              deliveredMime = 'audio/mpeg';
-                              deliveredExt = 'mp3';
-                              recordingFallbackNotice = '';
-                          } else {
-                              recordingFallbackNotice = 'Conversion MP3 indisponible : téléchargement au format source.';
-                          }
-                      } catch (_) {
-                          recordingFallbackNotice = 'Conversion MP3 échouée : téléchargement au format source.';
-                      }
-
-                      latestRecordingBlob = deliveredBlob;
-                      latestRecordingMimeType = deliveredMime;
-                      recordingFileExt = deliveredExt;
-                      setRecordingDownload(deliveredBlob);
-                      recordingState = 'ready';
-                      setSilenceImmersion(0);
-                      if (silenceDesYeuxPrompt && !silenceSessionSaved) {
-                          silenceDesYeuxPrompt.hidden = false;
-                      }
-                      updateEchoRecorderUi();
-                  })();
-              };
-
-              recordingStartedAt = Date.now();
-              recordingState = 'recording';
-              refreshRecordingTimer();
-              updateEchoRecorderUi();
-              recordingMediaRecorder.start(250);
-
-              recordingTimerInterval = setInterval(() => {
-                  const elapsed = Date.now() - recordingStartedAt;
-                  if (elapsed >= RECORDER_MAX_MILLIS) {
-                      echoRecordTimer.textContent = '01:00 / 01:00';
-                      stopEchoRecording(true);
-                      return;
-                  }
-                  refreshRecordingTimer();
-              }, 200);
-
-              recordingAutoStopTimeout = setTimeout(() => {
-                  stopEchoRecording(true);
+                  silenceModeTimeout = null;
               }, RECORDER_MAX_MILLIS);
           }
 
           updateEchoRecorderUi();
-          refreshRecordingTimer();
           hideSilenceOverlay();
-          renderSilenceSessions();
-
-          window.addEventListener('beforeunload', () => {
-              if (recordingDownloadUrl) {
-                  URL.revokeObjectURL(recordingDownloadUrl);
-              }
-              savedSilenceSessions.forEach((session) => {
-                  if (session?.url) URL.revokeObjectURL(session.url);
-              });
-          });
 
           function buildSyntheticBuffer(ctx, seconds = 3.4) {
               const sampleRate = ctx.sampleRate;
@@ -5051,7 +4714,7 @@ export function initLegacyApp() {
               } else if (canvas.style.filter) {
                   canvas.style.filter = '';
               }
-              const silenceVisualMode = silenceTransitionInProgress || recordingState === 'recording' || silenceImmersionLevel > 0.02;
+              const silenceVisualMode = silenceTransitionInProgress || silenceImmersionLevel > 0.02;
               const silenceGlow = silenceVisualMode ? Math.max(0.22, silenceImmersionLevel) : 0;
               const heavySilenceMode = silenceVisualMode && silenceImmersionLevel >= 0.66;
 
