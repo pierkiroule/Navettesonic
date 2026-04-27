@@ -293,6 +293,10 @@ export function initLegacyApp() {
           let selectedHaloStyleId = HALO_STYLE_LIBRARY[0].id;
           let audioCtx = null;
           let masterGainNode = null;
+          let masterDryGainNode = null;
+          let masterWetGainNode = null;
+          let masterDelayNode = null;
+          let masterDelayFeedbackGainNode = null;
           let heroVideoAudioCtx = null;
           let heroVideoSourceNode = null;
           let heroVideoAnalyserNode = null;
@@ -374,6 +378,8 @@ export function initLegacyApp() {
           const MAX_SURFACE_SPARKLES = 30;
           const RESONANCE_WAVES = [];
           const MAX_RESONANCE_WAVES = 14;
+          const STARFISH_RESONANCE_WAVES = [];
+          const MAX_STARFISH_RESONANCE_WAVES = 3;
           const BREATH_WAVES = [];
           const MAX_BREATH_WAVES = 9;
           const DRIFT_MOTES = [];
@@ -472,7 +478,10 @@ export function initLegacyApp() {
               targetVy: 0,
               driftChangeAt: 0,
               rotation: 0,
-              rotationSpeed: 0
+              rotationSpeed: 0,
+              spinVelocity: 0,
+              isSpinning: false,
+              collisionCooldownUntil: 0
           };
           const ARENA_MEMBRANE_SEGMENTS = Array.from({ length: ARENA_MEMBRANE_SEGMENTS_BASE }, () => ({ offset: 0, velocity: 0 }));
           let arenaMembraneActiveSegments = ARENA_MEMBRANE_SEGMENTS_BASE;
@@ -3232,7 +3241,23 @@ export function initLegacyApp() {
               audioCtx = new AudioContextClass();
               masterGainNode = audioCtx.createGain();
               masterGainNode.gain.value = 1;
-              masterGainNode.connect(audioCtx.destination);
+              masterDryGainNode = audioCtx.createGain();
+              masterWetGainNode = audioCtx.createGain();
+              masterDelayNode = audioCtx.createDelay(2.5);
+              masterDelayFeedbackGainNode = audioCtx.createGain();
+
+              masterDryGainNode.gain.value = 1;
+              masterWetGainNode.gain.value = 0;
+              masterDelayNode.delayTime.value = 0.34;
+              masterDelayFeedbackGainNode.gain.value = 0.35;
+
+              masterGainNode.connect(masterDryGainNode);
+              masterGainNode.connect(masterDelayNode);
+              masterDelayNode.connect(masterDelayFeedbackGainNode);
+              masterDelayFeedbackGainNode.connect(masterDelayNode);
+              masterDelayNode.connect(masterWetGainNode);
+              masterDryGainNode.connect(audioCtx.destination);
+              masterWetGainNode.connect(audioCtx.destination);
               return audioCtx;
           }
 
@@ -4029,6 +4054,8 @@ export function initLegacyApp() {
               updatePoetryEffects(speed);
               updateArenaFireflies();
               updateCompanionStarfish(now);
+              handleStarfishFishCollision(now);
+              updateStarfishResonanceWaves();
           }
 
           function updateWakeParticles(speed) {
@@ -4681,6 +4708,15 @@ export function initLegacyApp() {
               companionStarfish.x += companionStarfish.vx;
               companionStarfish.y += companionStarfish.vy;
               companionStarfish.rotation += companionStarfish.rotationSpeed;
+              if (companionStarfish.isSpinning) {
+                  companionStarfish.rotation += companionStarfish.spinVelocity;
+                  companionStarfish.spinVelocity *= 0.972;
+                  if (Math.abs(companionStarfish.spinVelocity) < 0.018) {
+                      companionStarfish.isSpinning = false;
+                      companionStarfish.spinVelocity = 0;
+                      emitStarfishResonanceWave(now);
+                  }
+              }
 
               const theta = Math.atan2(companionStarfish.y, companionStarfish.x);
               const dist = Math.hypot(companionStarfish.x, companionStarfish.y);
@@ -4698,6 +4734,74 @@ export function initLegacyApp() {
                   companionStarfish.targetVx -= normal.x * 0.25;
                   companionStarfish.targetVy -= normal.y * 0.25;
               }
+          }
+
+          function applyGlobalEchoDelayPulse(intensity = 1) {
+              if (!audioCtx || !masterWetGainNode || !masterDelayNode || !masterDelayFeedbackGainNode) return;
+              const now = audioCtx.currentTime;
+              const clamped = Math.max(0.2, Math.min(1.3, intensity));
+              const wetPeak = Math.min(0.78, 0.26 + clamped * 0.36);
+
+              masterDelayNode.delayTime.cancelScheduledValues(now);
+              masterDelayFeedbackGainNode.gain.cancelScheduledValues(now);
+              masterWetGainNode.gain.cancelScheduledValues(now);
+
+              masterDelayNode.delayTime.setValueAtTime(masterDelayNode.delayTime.value, now);
+              masterDelayNode.delayTime.linearRampToValueAtTime(0.42, now + 0.08);
+              masterDelayNode.delayTime.linearRampToValueAtTime(0.31, now + 1.6);
+
+              masterDelayFeedbackGainNode.gain.setValueAtTime(masterDelayFeedbackGainNode.gain.value, now);
+              masterDelayFeedbackGainNode.gain.linearRampToValueAtTime(0.62, now + 0.12);
+              masterDelayFeedbackGainNode.gain.linearRampToValueAtTime(0.28, now + 2.8);
+
+              masterWetGainNode.gain.setValueAtTime(masterWetGainNode.gain.value, now);
+              masterWetGainNode.gain.linearRampToValueAtTime(wetPeak, now + 0.12);
+              masterWetGainNode.gain.linearRampToValueAtTime(0.12, now + 2.5);
+              masterWetGainNode.gain.linearRampToValueAtTime(0, now + 4.2);
+          }
+
+          function emitStarfishResonanceWave(now) {
+              if (STARFISH_RESONANCE_WAVES.length >= MAX_STARFISH_RESONANCE_WAVES) STARFISH_RESONANCE_WAVES.shift();
+              STARFISH_RESONANCE_WAVES.push({
+                  x: companionStarfish.x,
+                  y: companionStarfish.y,
+                  radius: 46,
+                  speed: 22,
+                  alpha: 1,
+                  bornAt: now,
+                  audioApplied: false
+              });
+          }
+
+          function updateStarfishResonanceWaves() {
+              for (let i = STARFISH_RESONANCE_WAVES.length - 1; i >= 0; i -= 1) {
+                  const wave = STARFISH_RESONANCE_WAVES[i];
+                  wave.radius += wave.speed;
+                  wave.alpha *= 0.985;
+                  wave.speed *= 0.996;
+                  if (!wave.audioApplied) {
+                      const distFish = Math.hypot(ship.x - wave.x, ship.y - wave.y);
+                      if (distFish <= wave.radius) {
+                          wave.audioApplied = true;
+                          applyGlobalEchoDelayPulse(1);
+                      }
+                  }
+                  if (wave.alpha < 0.02 || wave.radius > ARENA_RADIUS * 2.2) {
+                      STARFISH_RESONANCE_WAVES.splice(i, 1);
+                  }
+              }
+          }
+
+          function handleStarfishFishCollision(now) {
+              const hitRadius = 58;
+              const dist = Math.hypot(ship.x - companionStarfish.x, ship.y - companionStarfish.y);
+              if (dist > hitRadius) return;
+              if (now < companionStarfish.collisionCooldownUntil) return;
+              companionStarfish.isSpinning = true;
+              companionStarfish.spinVelocity = (Math.random() > 0.5 ? 1 : -1) * (0.95 + Math.random() * 0.35);
+              companionStarfish.collisionCooldownUntil = now + 2600;
+              companionStarfish.targetVx *= 0.25;
+              companionStarfish.targetVy *= 0.25;
           }
 
           function drawCompanionStarfish(swimT, reactiveEnergy) {
@@ -4770,6 +4874,28 @@ export function initLegacyApp() {
                   ctx.fill();
               }
               ctx.restore();
+          }
+
+          function drawStarfishResonanceWaves() {
+              STARFISH_RESONANCE_WAVES.forEach((wave) => {
+                  const pulse = (Math.sin((performance.now() - wave.bornAt) * 0.01) + 1) * 0.5;
+                  const ringWidth = 8 + pulse * 8;
+                  const inner = ctx.createRadialGradient(wave.x, wave.y, Math.max(0, wave.radius - ringWidth * 1.8), wave.x, wave.y, wave.radius + ringWidth * 0.7);
+                  inner.addColorStop(0, `hsla(332, 98%, 72%, 0)`);
+                  inner.addColorStop(0.42, `hsla(326, 100%, 72%, ${0.28 * wave.alpha})`);
+                  inner.addColorStop(0.68, `hsla(320, 100%, 76%, ${0.54 * wave.alpha})`);
+                  inner.addColorStop(1, `hsla(316, 100%, 72%, 0)`);
+                  ctx.fillStyle = inner;
+                  ctx.beginPath();
+                  ctx.arc(wave.x, wave.y, wave.radius + ringWidth, 0, Math.PI * 2);
+                  ctx.fill();
+
+                  ctx.strokeStyle = `hsla(318, 100%, 82%, ${0.85 * wave.alpha})`;
+                  ctx.lineWidth = 2.6 + pulse * 1.8;
+                  ctx.beginPath();
+                  ctx.arc(wave.x, wave.y, wave.radius, 0, Math.PI * 2);
+                  ctx.stroke();
+              });
           }
 
           function drawSilenceCompassRing() {
@@ -5053,6 +5179,7 @@ export function initLegacyApp() {
                   drawArenaFireflies();
                   drawSurfaceSparkles();
                   drawResonanceWaves();
+                  drawStarfishResonanceWaves();
                   drawWakeParticles();
                   drawRipples();
                   drawTraceRailPath();
