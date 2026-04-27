@@ -3798,10 +3798,12 @@ export function initLegacyApp() {
                   mediaElement.volume = 1;
                   sourceNode = ctx.createMediaElementSource(mediaElement);
                   sourceHandle = {
+                      play: () => mediaElement.play(),
                       stop: () => {
                           mediaElement.pause();
                           mediaElement.currentTime = 0;
-                      }
+                      },
+                      mediaElement
                   };
               } else {
                   const source = ctx.createOscillator();
@@ -3830,10 +3832,7 @@ export function initLegacyApp() {
 
               if (sample.type === 'file' && sample.url) {
                   ensureAudioContext()?.resume().catch(() => {});
-                  const mediaElement = sourceNode.mediaElement;
-                  if (mediaElement) {
-                      mediaElement.play().catch(() => {});
-                  }
+                  sourceHandle?.play?.().catch(() => {});
               } else {
                   sourceNode.start();
               }
@@ -3844,6 +3843,11 @@ export function initLegacyApp() {
           function ensureBubbleAudioRunning(bubble) {
               if (!bubble.sound) return;
               if (!bubble.sound.isStarted) return;
+              const source = bubble.sound.source;
+              const mediaElement = source?.mediaElement;
+              if (!mediaElement) return;
+              if (!mediaElement.paused) return;
+              source.play?.().catch(() => {});
           }
 
           function ensureAllAudioRunning() {
