@@ -252,14 +252,14 @@ export function initLegacyApp() {
           let traceRailTargetIndex = 0;
           let traceRailDirection = 1;
           let traceExitConfirmUntil = 0;
-          const traceOverviewZoomMin = 0.12;
-          const traceOverviewZoomMax = 0.8;
+          const traceOverviewZoomMin = 0.06;
+          const traceOverviewZoomMax = 1.3;
           const traceCameraControl = {
               panX: 0,
               panY: 0,
               zoomScale: 1,
-              minZoomScale: 0.75,
-              maxZoomScale: 2.4
+              minZoomScale: 0.45,
+              maxZoomScale: 4
           };
           const traceCamMenuDrag = {
               active: false,
@@ -282,6 +282,7 @@ export function initLegacyApp() {
           };
           let fishLongPressTimer = null;
           let fishLongPressOrigin = null;
+          let activeTouchId = null;
           let fishDepthLayer = 'front';
           let fishDepthToastText = '';
           let fishDepthToastUntil = 0;
@@ -1979,12 +1980,42 @@ export function initLegacyApp() {
           window.addEventListener('resize', resize);
           resize();
 
+          function getTouchFromEventById(e, touchId) {
+              if (touchId == null) return null;
+              const touchLists = [e.touches, e.changedTouches];
+              for (const list of touchLists) {
+                  if (!list || !list.length) continue;
+                  for (let i = 0; i < list.length; i++) {
+                      const touch = list[i];
+                      if (touch?.identifier === touchId) return touch;
+                  }
+              }
+              return null;
+          }
+
+          function getEventClientXY(e) {
+              if (typeof e.clientX === 'number' && typeof e.clientY === 'number') {
+                  return { x: e.clientX, y: e.clientY };
+              }
+              const trackedTouch = getTouchFromEventById(e, activeTouchId);
+              if (trackedTouch) {
+                  return { x: trackedTouch.clientX, y: trackedTouch.clientY };
+              }
+              const fallbackTouch = e.touches?.[0] || e.changedTouches?.[0];
+              if (fallbackTouch) {
+                  return { x: fallbackTouch.clientX, y: fallbackTouch.clientY };
+              }
+              return { x: w / 2, y: h / 2 };
+          }
+
           function getMousePos(e) {
-              const sx = e.clientX ?? (e.touches && e.touches[0]?.clientX);
-              const sy = e.clientY ?? (e.touches && e.touches[0]?.clientY);
+              const pointer = getEventClientXY(e);
+              const rect = canvas.getBoundingClientRect();
+              const cx = rect.left + rect.width / 2;
+              const cy = rect.top + rect.height / 2;
               return {
-                  x: (sx - w / 2) / camera.zoom + camera.x,
-                  y: (sy - h / 2) / camera.zoom + camera.y
+                  x: (pointer.x - cx) / camera.zoom + camera.x,
+                  y: (pointer.y - cy) / camera.zoom + camera.y
               };
           }
 
@@ -2023,7 +2054,7 @@ export function initLegacyApp() {
           }
 
           function getTraceOverviewBaseZoom() {
-              return Math.max(traceOverviewZoomMin, Math.min(0.4, Math.min(w, h) / (ARENA_RADIUS * 2.2)));
+              return Math.max(traceOverviewZoomMin, Math.min(0.55, Math.min(w, h) / (ARENA_RADIUS * 2.05)));
           }
 
           function clampTraceZoomScale(nextScale) {
@@ -2048,11 +2079,11 @@ export function initLegacyApp() {
               const worldZoom = Math.max(traceOverviewZoomMin, Math.min(traceOverviewZoomMax, baseZoom * traceCameraControl.zoomScale));
               const panStep = Math.max(26, 44 / Math.max(0.3, worldZoom));
               if (action === 'zoom-in') {
-                  traceCameraControl.zoomScale = clampTraceZoomScale(traceCameraControl.zoomScale * 1.08);
+                  traceCameraControl.zoomScale = clampTraceZoomScale(traceCameraControl.zoomScale * 1.14);
                   return;
               }
               if (action === 'zoom-out') {
-                  traceCameraControl.zoomScale = clampTraceZoomScale(traceCameraControl.zoomScale / 1.08);
+                  traceCameraControl.zoomScale = clampTraceZoomScale(traceCameraControl.zoomScale / 1.14);
                   return;
               }
               if (action === 'up') {
@@ -2757,6 +2788,11 @@ export function initLegacyApp() {
           function onStart(e) {
               if (currentView !== 'experience') return;
               if (isInteractiveTarget(e.target)) return;
+              if (e.touches?.length) {
+                  activeTouchId = e.touches[0].identifier;
+              } else if (e.changedTouches?.length) {
+                  activeTouchId = e.changedTouches[0].identifier;
+              }
               const pos = getMousePos(e);
               mouseWorld = pos;
               cancelFishLongPress();
@@ -2849,7 +2885,13 @@ export function initLegacyApp() {
                   }
               }
           }
-          function onEnd() {
+          function onEnd(e) {
+              if (e?.changedTouches?.length && activeTouchId != null) {
+                  const touchStillActive = Array.from(e.touches || []).some((touch) => touch.identifier === activeTouchId);
+                  if (!touchStillActive) activeTouchId = null;
+              } else if (!e?.touches?.length) {
+                  activeTouchId = null;
+              }
               cancelFishLongPress();
               if (isDrawingTraceRail) {
                   setDrawingTraceRail(false);
