@@ -2132,9 +2132,10 @@ export function initLegacyApp() {
               const armBtn = traceCamControls.querySelector('[data-trace-cam-action="trace-arm"]');
               const launchBtn = traceCamControls.querySelector('[data-trace-cam-action="trace-launch"]');
               const stopBtn = traceCamControls.querySelector('[data-trace-cam-action="trace-stop"]');
+              const hasDraftTrace = traceRailPath.length > 1;
               const showArm = isTraceListeningMode && !isDrawingTraceRail && !isTraceRailAutopilot;
-              const showLaunch = isDrawingTraceRail && traceRailPath.length > 1;
-              const showStop = isTraceListeningMode || isDrawingTraceRail || isTraceRailAutopilot;
+              const showLaunch = isTraceListeningMode && !isDrawingTraceRail && hasDraftTrace;
+              const showStop = showLaunch || isTraceRailAutopilot;
               armBtn?.classList.toggle('trace-cam-btn--trace-flow-hidden', !showArm);
               launchBtn?.classList.toggle('trace-cam-btn--trace-flow-hidden', !showLaunch);
               stopBtn?.classList.toggle('trace-cam-btn--trace-flow-hidden', !showStop);
@@ -2147,21 +2148,15 @@ export function initLegacyApp() {
           }
 
           function finalizeTraceRailFromDraft() {
-              if (!isDrawingTraceRail) return;
-              setDrawingTraceRail(false);
+              if (traceRailPath.length < 2) return;
+              if (isDrawingTraceRail) setDrawingTraceRail(false);
               setTraceListeningMode(false);
-              if (traceRailPath.length > 1) {
-                  traceRailPath = buildSmoothedTraceRail(traceRailPath);
-                  isTraceRailAutopilot = true;
-                  traceRailTargetIndex = 0;
-                  traceRailDirection = 1;
-                  ui.textContent = 'Voyage sonore auto lancé : tracé plume Bézier validé.';
-                  helperTips.textContent = 'Traversée active. Étape 4/4 : appuie sur ⏹ pour stopper et quitter.';
-              } else {
-                  traceRailPath = [];
-                  ui.textContent = '';
-                  rotateHelperTip();
-              }
+              traceRailPath = buildSmoothedTraceRail(traceRailPath);
+              isTraceRailAutopilot = true;
+              traceRailTargetIndex = 0;
+              traceRailDirection = 1;
+              ui.textContent = 'Voyage sonore auto lancé : tracé plume Bézier validé.';
+              helperTips.textContent = 'Traversée active. Étape 4/4 : appuie sur ⏹ pour stopper et quitter.';
               updateTraceCamControlsVisibility();
           }
 
@@ -2198,7 +2193,7 @@ export function initLegacyApp() {
                   return;
               }
               if (action === 'trace-launch') {
-                  if (isDrawingTraceRail) finalizeTraceRailFromDraft();
+                  if (traceRailPath.length > 1) finalizeTraceRailFromDraft();
                   return;
               }
               if (action === 'trace-stop') {
@@ -3036,6 +3031,7 @@ export function initLegacyApp() {
               }
               cancelFishLongPress();
               if (isDrawingTraceRail) {
+                  setDrawingTraceRail(false);
                   ui.textContent = 'Tracé prêt. Étape 3/4 : appuie sur ✅ pour lancer.';
                   helperTips.textContent = 'Étape 4/4 : utilise ⏹ pour stopper et quitter le mode tracé.';
                   updateTraceFlowButtons();

@@ -434,11 +434,11 @@
         }
         .trace-cam-center {
             position: absolute;
-            top: 50%;
+            top: 36%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 60px;
-            height: 124px;
+            width: 56px;
+            height: 56px;
             border-radius: 12px;
             background: rgba(6, 22, 54, 0.28);
             border: 1px solid rgba(156, 226, 255, 0.35);
@@ -446,6 +446,16 @@
             display: grid;
             gap: 4px;
             padding: 6px;
+            pointer-events: auto;
+        }
+        .trace-cam-flow-actions {
+            position: absolute;
+            left: 50%;
+            bottom: calc(var(--bottom-nav-clearance) + 16px + env(safe-area-inset-bottom));
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 8px;
             pointer-events: auto;
         }
         .trace-cam-btn {
@@ -478,17 +488,17 @@
         }
         .trace-cam-btn--trace {
             position: static;
-            width: 100%;
-            min-height: 22px;
+            width: 38px;
+            height: 30px;
             border-radius: 7px;
-            font-size: 0.92rem;
+            font-size: 0.9rem;
             background: rgba(16, 63, 146, 0.72);
             border-color: rgba(199, 241, 255, 0.52);
         }
         .trace-cam-btn--trace-launch {
             position: static;
-            width: 100%;
-            min-height: 22px;
+            width: 38px;
+            height: 30px;
             border-radius: 7px;
             font-size: 0.86rem;
             background: rgba(18, 104, 122, 0.74);
@@ -496,8 +506,8 @@
         }
         .trace-cam-btn--trace-stop {
             position: static;
-            width: 100%;
-            min-height: 22px;
+            width: 38px;
+            height: 30px;
             border-radius: 7px;
             font-size: 0.8rem;
             background: rgba(106, 38, 56, 0.76);
@@ -536,7 +546,7 @@
             }
             .trace-cam-center {
                 width: 56px;
-                height: 116px;
+                height: 56px;
             }
         }
 
