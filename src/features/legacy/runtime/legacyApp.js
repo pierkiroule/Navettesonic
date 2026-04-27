@@ -3015,12 +3015,20 @@ export function initLegacyApp() {
           window.addEventListener('blur', onEnd);
 
           window.addEventListener('touchstart', (e) => {
+              if (shouldLockSceneInteractions()) {
+                  e.preventDefault();
+                  return;
+              }
               if (isInteractiveTarget(e.target)) return;
               e.preventDefault();
               onStart(e);
           }, { passive: false });
           window.addEventListener('touchmove', (e) => {
               if (currentView !== 'experience') return;
+              if (shouldLockSceneInteractions()) {
+                  e.preventDefault();
+                  return;
+              }
               if (isInteractiveTarget(e.target)) return;
               e.preventDefault();
               onMove(e);
@@ -3063,6 +3071,7 @@ export function initLegacyApp() {
                   event.preventDefault();
                   event.stopPropagation();
                   isTraceCamControlGestureActive = true;
+                  button.setPointerCapture?.(event.pointerId);
                   skipNextClick = true;
                   runAction();
                   stopRepeat(false);
@@ -3070,11 +3079,23 @@ export function initLegacyApp() {
                       repeatInterval = window.setInterval(runAction, 72);
                   }, 240);
               });
+              button.addEventListener('touchstart', (event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  isTraceCamControlGestureActive = true;
+              }, { passive: false });
+              button.addEventListener('touchend', () => {
+                  stopRepeat(true);
+              });
               button.addEventListener('pointerup', stopRepeat);
               button.addEventListener('pointerleave', stopRepeat);
               button.addEventListener('pointercancel', stopRepeat);
               button.addEventListener('lostpointercapture', stopRepeat);
           });
+          window.addEventListener('pointerup', () => { isTraceCamControlGestureActive = false; }, { passive: true });
+          window.addEventListener('pointercancel', () => { isTraceCamControlGestureActive = false; }, { passive: true });
+          window.addEventListener('touchend', () => { isTraceCamControlGestureActive = false; }, { passive: true });
+          window.addEventListener('touchcancel', () => { isTraceCamControlGestureActive = false; }, { passive: true });
           const traceCamDragZone = traceCamControls?.querySelector('[data-trace-cam-drag-zone]');
           const stopTraceCamMenuDrag = () => {
               traceCamMenuDrag.active = false;

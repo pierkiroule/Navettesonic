@@ -1161,7 +1161,10 @@
                 opacity: 0;
             }
         }
-        #canvas { display: block; }
+        #canvas {
+            display: block;
+            touch-action: none;
+        }
         #experienceView.silence-mode #helperTips,
         #experienceView.silence-mode #arenaTrianglePad,
         #experienceView.silence-mode #arenaTriangleStatus,
