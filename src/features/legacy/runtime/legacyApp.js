@@ -482,7 +482,9 @@ export function initLegacyApp() {
               rotation: 0,
               rotationSpeed: 0,
               spinVelocity: 0,
+              spinInitialVelocity: 0,
               isSpinning: false,
+              waveTriggeredThisSpin: false,
               collisionCooldownUntil: 0
           };
           const ARENA_MEMBRANE_SEGMENTS = Array.from({ length: ARENA_MEMBRANE_SEGMENTS_BASE }, () => ({ offset: 0, velocity: 0 }));
@@ -4712,11 +4714,17 @@ export function initLegacyApp() {
               companionStarfish.rotation += companionStarfish.rotationSpeed;
               if (companionStarfish.isSpinning) {
                   companionStarfish.rotation += companionStarfish.spinVelocity;
+                  if (
+                      !companionStarfish.waveTriggeredThisSpin
+                      && Math.abs(companionStarfish.spinVelocity) <= Math.abs(companionStarfish.spinInitialVelocity) * 0.5
+                  ) {
+                      companionStarfish.waveTriggeredThisSpin = true;
+                      emitStarfishResonanceWave(now);
+                  }
                   companionStarfish.spinVelocity *= 0.994;
                   if (Math.abs(companionStarfish.spinVelocity) < 0.006) {
                       companionStarfish.isSpinning = false;
                       companionStarfish.spinVelocity = 0;
-                      emitStarfishResonanceWave(now);
                   }
               }
 
@@ -4805,6 +4813,8 @@ export function initLegacyApp() {
               if (now < companionStarfish.collisionCooldownUntil) return;
               companionStarfish.isSpinning = true;
               companionStarfish.spinVelocity = (Math.random() > 0.5 ? 1 : -1) * (0.20 + Math.random() * 0.08);
+              companionStarfish.spinInitialVelocity = companionStarfish.spinVelocity;
+              companionStarfish.waveTriggeredThisSpin = false;
               companionStarfish.collisionCooldownUntil = now + 2600;
               companionStarfish.targetVx *= 0.25;
               companionStarfish.targetVy *= 0.25;
