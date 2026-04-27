@@ -256,7 +256,7 @@
         }
         #helperTips {
             position: absolute;
-            bottom: calc(env(safe-area-inset-bottom, 0px) + 86px);
+            bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-nav-clearance) + 14px);
             left: 50%;
             transform: translateX(-50%);
             width: min(92vw, 680px);
@@ -1185,7 +1185,7 @@
 
         #bubblePropsPanel {
             position: fixed;
-            bottom: 0;
+            bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-nav-clearance) - 18px);
             left: 50%;
             transform: translateX(-50%) translateY(100%);
             width: min(92vw, 480px);

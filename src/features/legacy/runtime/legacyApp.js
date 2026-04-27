@@ -115,6 +115,8 @@ export function initLegacyApp() {
 
           let selectedBubble = null;
           let bottomNavCollapsed = false;
+          const BOTTOM_NAV_AUTO_COLLAPSE_DELAY_MS = 5000;
+          let bottomNavAutoCollapseTimer = null;
           let isDraggingBubble = false;
           let lastBubbleTapTime = 0;
           let lastBubbleTapTarget = null;
@@ -179,7 +181,7 @@ export function initLegacyApp() {
               propsHaloStyleSelect.value = bubble.haloStyle || HALO_STYLE_LIBRARY[0].id;
               refreshSwatchSelection();
               bubblePropsPanel.classList.add('visible');
-              ui.textContent = '⟡ Touche l\'océan pour déplacer · Double tap pour fermer';
+              ui.textContent = '⟡ Touche l’océan pour déplacer · Couleur + suppression disponibles dans le panneau';
           }
 
           function closeBubblePropsPanel() {
@@ -808,6 +810,27 @@ export function initLegacyApp() {
                   bottomNavToggle.setAttribute('aria-expanded', bottomNavCollapsed ? 'false' : 'true');
                   bottomNavToggle.setAttribute('aria-label', bottomNavCollapsed ? 'Déplier le menu' : 'Réduire le menu');
               }
+              if (bottomNavCollapsed) clearBottomNavAutoCollapseTimer();
+              else scheduleBottomNavAutoCollapse();
+          }
+
+          function clearBottomNavAutoCollapseTimer() {
+              if (!bottomNavAutoCollapseTimer) return;
+              clearTimeout(bottomNavAutoCollapseTimer);
+              bottomNavAutoCollapseTimer = null;
+          }
+
+          function scheduleBottomNavAutoCollapse() {
+              clearBottomNavAutoCollapseTimer();
+              if (!bottomNav || bottomNavCollapsed || bottomNav.classList.contains('hidden-view')) return;
+              bottomNavAutoCollapseTimer = window.setTimeout(() => {
+                  setBottomNavCollapsed(true);
+              }, BOTTOM_NAV_AUTO_COLLAPSE_DELAY_MS);
+          }
+
+          function registerBottomNavActivity() {
+              if (bottomNavCollapsed) return;
+              scheduleBottomNavAutoCollapse();
           }
 
           function showView(target) {
@@ -845,6 +868,7 @@ export function initLegacyApp() {
               }
               syncExperienceModeChips();
               resize();
+              scheduleBottomNavAutoCollapse();
           }
 
           function rotateHelperTip(reset = false) {
@@ -1079,8 +1103,12 @@ export function initLegacyApp() {
           }
 
           bindTap(navHome, () => showView('home'));
-          bindTap(bottomNavToggle, () => setBottomNavCollapsed(!bottomNavCollapsed), { preventTouchDefault: true });
+          bindTap(bottomNavToggle, () => {
+              registerBottomNavActivity();
+              setBottomNavCollapsed(!bottomNavCollapsed);
+          }, { preventTouchDefault: true });
           bindTap(navSoon, () => {
+              registerBottomNavActivity();
               if (!requireRegisteredUserForExperience('navigation')) return;
               showView('experience');
               console.log('[legacyApp] navSoon -> showView("experience") called', {
@@ -1088,7 +1116,12 @@ export function initLegacyApp() {
                   experienceViewHidden: experienceView?.classList.contains('hidden-view')
               });
           });
-          bindTap(navProfile, () => showView('profile'));
+          bindTap(navProfile, () => {
+              registerBottomNavActivity();
+              showView('profile');
+          });
+          bottomNav?.addEventListener('pointerdown', registerBottomNavActivity, { passive: true });
+          bottomNav?.addEventListener('focusin', registerBottomNavActivity);
           bindTap(soonTutoLink, () => {
               if (currentView !== 'experience' || !soonTutoModal) return;
               soonTutoModal.hidden = false;
