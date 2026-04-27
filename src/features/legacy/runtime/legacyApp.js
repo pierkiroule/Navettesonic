@@ -254,6 +254,7 @@ export function initLegacyApp() {
           let traceRailTargetIndex = 0;
           let traceRailDirection = 1;
           let traceExitConfirmUntil = 0;
+          let isTraceCamControlGestureActive = false;
           const traceOverviewZoomMin = 0.06;
           const traceOverviewZoomMax = 1.3;
           const traceCameraControl = {
@@ -2052,28 +2053,51 @@ export function initLegacyApp() {
               };
           }
 
-          function buildSmoothedTraceRail(points) {
-              if (!Array.isArray(points) || points.length < 2) return points.slice();
-              const samplesPerSegment = 14;
-              const path = [];
+          function buildTraceBezierSegments(points, tension = 0.24) {
+              if (!Array.isArray(points) || points.length < 2) return [];
               const len = points.length;
+              const segments = [];
               for (let i = 0; i < len - 1; i++) {
                   const p0 = points[Math.max(0, i - 1)];
                   const p1 = points[i];
                   const p2 = points[i + 1];
                   const p3 = points[Math.min(len - 1, i + 2)];
-                  const c1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 };
-                  const c2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
-                  if (i === 0) path.push({ x: p1.x, y: p1.y });
+                  const c1 = {
+                      x: p1.x + (p2.x - p0.x) * tension,
+                      y: p1.y + (p2.y - p0.y) * tension
+                  };
+                  const c2 = {
+                      x: p2.x - (p3.x - p1.x) * tension,
+                      y: p2.y - (p3.y - p1.y) * tension
+                  };
+                  segments.push({ p1, p2, c1, c2 });
+              }
+              return segments;
+          }
+
+          function sampleTraceBezierSegments(segments, samplesPerSegment = 16) {
+              if (!Array.isArray(segments) || !segments.length) return [];
+              const path = [];
+              for (let i = 0; i < segments.length; i++) {
+                  const seg = segments[i];
+                  if (i === 0) path.push({ x: seg.p1.x, y: seg.p1.y });
                   for (let s = 0; s < samplesPerSegment; s++) {
                       const t = (s + 1) / samplesPerSegment;
                       const inv = 1 - t;
-                      const x = inv * inv * inv * p1.x + 3 * inv * inv * t * c1.x + 3 * inv * t * t * c2.x + t * t * t * p2.x;
-                      const y = inv * inv * inv * p1.y + 3 * inv * inv * t * c1.y + 3 * inv * t * t * c2.y + t * t * t * p2.y;
+                      const x = inv * inv * inv * seg.p1.x + 3 * inv * inv * t * seg.c1.x + 3 * inv * t * t * seg.c2.x + t * t * t * seg.p2.x;
+                      const y = inv * inv * inv * seg.p1.y + 3 * inv * inv * t * seg.c1.y + 3 * inv * t * t * seg.c2.y + t * t * t * seg.p2.y;
                       path.push({ x, y });
                   }
               }
               return path;
+          }
+
+          function buildSmoothedTraceRail(points) {
+              return sampleTraceBezierSegments(buildTraceBezierSegments(points, 0.24), 16);
+          }
+
+          function shouldLockSceneInteractions() {
+              return isTraceCamControlGestureActive;
           }
 
           function isInteractiveTarget(target) {
@@ -2106,7 +2130,47 @@ export function initLegacyApp() {
               if (!keepZoomScale) traceCameraControl.zoomScale = 1;
           }
 
+          function finalizeTraceRailFromDraft() {
+              if (!isDrawingTraceRail) return;
+              setDrawingTraceRail(false);
+              setTraceListeningMode(false);
+              if (traceRailPath.length > 1) {
+                  traceRailPath = buildSmoothedTraceRail(traceRailPath);
+                  isTraceRailAutopilot = true;
+                  traceRailTargetIndex = 0;
+                  traceRailDirection = 1;
+                  ui.textContent = 'Voyage sonore auto lancé : tracé plume Bézier validé.';
+                  helperTips.textContent = 'Rail plume actif : appuie 🪶 pour retracer ou retouche dans l’océan.';
+              } else {
+                  traceRailPath = [];
+                  ui.textContent = '';
+                  rotateHelperTip();
+              }
+              updateTraceCamControlsVisibility();
+          }
+
+          function handleTraceToggleAction() {
+              if (!(isTraceListeningMode || isDrawingTraceRail || isTraceRailAutopilot)) return;
+              if (isDrawingTraceRail) {
+                  finalizeTraceRailFromDraft();
+                  return;
+              }
+              isTraceRailAutopilot = false;
+              setTraceListeningMode(true);
+              setDrawingTraceRail(true);
+              traceExitConfirmUntil = 0;
+              const seedPoint = { x: ship.x, y: ship.y };
+              traceRailPath = [seedPoint];
+              ui.textContent = 'Tracé plume actif : pose des points, puis valide avec 🪶.';
+              helperTips.textContent = 'Mode plume Bézier : les poignées ajustent automatiquement angles et courbes.';
+              updateTraceCamControlsVisibility();
+          }
+
           function applyTraceCameraAction(action) {
+              if (action === 'trace-toggle') {
+                  handleTraceToggleAction();
+                  return;
+              }
               if (!(isTraceListeningMode || isDrawingTraceRail)) return;
               const baseZoom = getTraceOverviewBaseZoom();
               const worldZoom = Math.max(traceOverviewZoomMin, Math.min(traceOverviewZoomMax, baseZoom * traceCameraControl.zoomScale));
@@ -2820,6 +2884,7 @@ export function initLegacyApp() {
 
           function onStart(e) {
               if (currentView !== 'experience') return;
+              if (shouldLockSceneInteractions()) return;
               if (isInteractiveTarget(e.target)) return;
               if (e.touches?.length) {
                   activeTouchId = e.touches[0].identifier;
@@ -2900,6 +2965,7 @@ export function initLegacyApp() {
           }
           function onMove(e) {
               if (currentView !== 'experience') return;
+              if (shouldLockSceneInteractions()) return;
               const pos = getMousePos(e);
               mouseWorld = pos;
               if (isDrawingTraceRail) {
@@ -2919,6 +2985,7 @@ export function initLegacyApp() {
               }
           }
           function onEnd(e) {
+              if (shouldLockSceneInteractions()) return;
               if (e?.changedTouches?.length && activeTouchId != null) {
                   const touchStillActive = Array.from(e.touches || []).some((touch) => touch.identifier === activeTouchId);
                   if (!touchStillActive) activeTouchId = null;
@@ -2927,21 +2994,7 @@ export function initLegacyApp() {
               }
               cancelFishLongPress();
               if (isDrawingTraceRail) {
-                  setDrawingTraceRail(false);
-                  setTraceListeningMode(false);
-                  if (traceRailPath.length > 1) {
-                      traceRailPath = buildSmoothedTraceRail(traceRailPath);
-                      isTraceRailAutopilot = true;
-                      traceRailTargetIndex = 0;
-                      traceRailDirection = 1;
-                      ui.textContent = 'Voyage sonore auto lancé : aller-retour lissé.';
-                      helperTips.textContent = 'Rail actif : au dernier point, le poisson se retourne et revient.';
-                  } else {
-                      traceRailPath = [];
-                      ui.textContent = '';
-                      rotateHelperTip();
-                  }
-                  updateTraceCamControlsVisibility();
+                  finalizeTraceRailFromDraft();
               }
               isTethered = false;
               isDraggingBubble = false;
@@ -2981,7 +3034,10 @@ export function initLegacyApp() {
               let repeatInterval = null;
               let skipNextClick = false;
               const action = button.getAttribute('data-trace-cam-action');
-              const stopRepeat = () => {
+              const releaseControlLock = () => {
+                  isTraceCamControlGestureActive = false;
+              };
+              const stopRepeat = (releaseLock = true) => {
                   if (repeatTimer) {
                       clearTimeout(repeatTimer);
                       repeatTimer = null;
@@ -2990,6 +3046,7 @@ export function initLegacyApp() {
                       clearInterval(repeatInterval);
                       repeatInterval = null;
                   }
+                  if (releaseLock) releaseControlLock();
               };
               const runAction = () => {
                   if (!action) return;
@@ -3004,9 +3061,11 @@ export function initLegacyApp() {
               });
               button.addEventListener('pointerdown', (event) => {
                   event.preventDefault();
+                  event.stopPropagation();
+                  isTraceCamControlGestureActive = true;
                   skipNextClick = true;
                   runAction();
-                  stopRepeat();
+                  stopRepeat(false);
                   repeatTimer = window.setTimeout(() => {
                       repeatInterval = window.setInterval(runAction, 72);
                   }, 240);
@@ -3079,7 +3138,7 @@ export function initLegacyApp() {
                       traceExitConfirmUntil = 0;
                       resetTraceCameraControl();
                       ui.textContent = 'Mode Tracer l’écoute : vue d’ensemble + tracé lissé.';
-                      helperTips.textContent = 'Maintiens pour tracer · flèches sur le contour de l’arène, zoom discret + / − au centre.';
+                      helperTips.textContent = 'Maintiens pour tracer · flèches contour arène, zoom + / − et bouton 🪶 pour valider le tracé.';
                   } else if (!isDrawingTraceRail) {
                       traceExitConfirmUntil = 0;
                       resetTraceCameraControl();
@@ -4412,6 +4471,7 @@ export function initLegacyApp() {
               if (!traceRailPath.length) return;
               ctx.save();
               const isRailBeingDrawn = isDrawingTraceRail && !isTraceRailAutopilot;
+              const draftSegments = isRailBeingDrawn ? buildTraceBezierSegments(traceRailPath, 0.24) : [];
               ctx.strokeStyle = isRailBeingDrawn
                   ? 'rgba(160, 230, 255, 0.72)'
                   : (isTraceRailAutopilot ? 'rgba(146, 224, 255, 0.2)' : 'rgba(146, 224, 255, 0.16)');
@@ -4421,11 +4481,44 @@ export function initLegacyApp() {
               ctx.setLineDash(isRailBeingDrawn ? [] : [6, 10]);
               ctx.beginPath();
               ctx.moveTo(traceRailPath[0].x, traceRailPath[0].y);
-              for (let i = 1; i < traceRailPath.length; i++) {
-                  ctx.lineTo(traceRailPath[i].x, traceRailPath[i].y);
+              if (draftSegments.length) {
+                  for (const seg of draftSegments) {
+                      ctx.bezierCurveTo(seg.c1.x, seg.c1.y, seg.c2.x, seg.c2.y, seg.p2.x, seg.p2.y);
+                  }
+              } else {
+                  for (let i = 1; i < traceRailPath.length; i++) {
+                      ctx.lineTo(traceRailPath[i].x, traceRailPath[i].y);
+                  }
               }
               ctx.stroke();
               ctx.setLineDash([]);
+
+              if (draftSegments.length) {
+                  ctx.save();
+                  ctx.strokeStyle = 'rgba(174, 236, 255, 0.28)';
+                  ctx.lineWidth = 1.2;
+                  for (const seg of draftSegments) {
+                      ctx.beginPath();
+                      ctx.moveTo(seg.p1.x, seg.p1.y);
+                      ctx.lineTo(seg.c1.x, seg.c1.y);
+                      ctx.moveTo(seg.p2.x, seg.p2.y);
+                      ctx.lineTo(seg.c2.x, seg.c2.y);
+                      ctx.stroke();
+                  }
+                  ctx.fillStyle = 'rgba(202, 244, 255, 0.72)';
+                  for (const seg of draftSegments) {
+                      ctx.beginPath();
+                      ctx.arc(seg.p1.x, seg.p1.y, 2.4, 0, Math.PI * 2);
+                      ctx.fill();
+                  }
+                  const tail = draftSegments[draftSegments.length - 1];
+                  if (tail?.p2) {
+                      ctx.beginPath();
+                      ctx.arc(tail.p2.x, tail.p2.y, 2.4, 0, Math.PI * 2);
+                      ctx.fill();
+                  }
+                  ctx.restore();
+              }
 
               if (isTraceRailAutopilot) {
                   const marker = traceRailPath[Math.min(traceRailTargetIndex, traceRailPath.length - 1)];
