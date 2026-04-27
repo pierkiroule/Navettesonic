@@ -176,7 +176,7 @@ export function initLegacyApp() {
               selectedBubble = bubble;
               isTethered = false;
               if (bubble.hue === undefined) bubble.hue = 195;
-              propsBubbleName.textContent = bubble.label || 'Étoile sonore';
+              propsBubbleName.textContent = bubble.label || 'Bulle sonore';
               propsSampleSelect.value = bubble._sampleId || SAMPLE_LIBRARY[0].id;
               propsSizeRange.value = bubble.r;
               propsSizeVal.textContent = Math.round(bubble.r) + 'px';
@@ -187,7 +187,7 @@ export function initLegacyApp() {
               propsHaloStyleSelect.value = bubble.haloStyle || HALO_STYLE_LIBRARY[0].id;
               refreshSwatchSelection();
               bubblePropsPanel.classList.add('visible');
-              ui.textContent = '⟡ Touche l’océan pour déplacer l’étoile · Double-tap pour rééditer';
+              ui.textContent = '⟡ Touche l’océan pour déplacer · Double-tap pour rééditer';
           }
 
           function closeBubblePropsPanel() {
@@ -247,10 +247,6 @@ export function initLegacyApp() {
           });
           propsDeleteBtn.addEventListener('click', () => {
               if (!selectedBubble) return;
-              if (BUBBLES.length <= 3) {
-                  ui.textContent = 'Les 3 étoiles sont fixes: déplace-les ou ajuste leurs effets.';
-                  return;
-              }
               try { selectedBubble.sound?.source?.stop(); } catch (_) {}
               ARENA_FIREFLIES.forEach((firefly) => {
                   if (firefly.containedInBubbleId !== selectedBubble.id) return;
@@ -434,9 +430,9 @@ export function initLegacyApp() {
           let isFireflyVocalPlaying = false;
           let fireflyVocalQueue = Promise.resolve();
           const STARTING_BUBBLES = [
-              { sampleId: 'zen-gong', layer: 'front', hue: 38, haloStyle: 'aurora', x: -240, y: -120, r: 72, effectType: 'reverb', effectAmount: 0.48 },
-              { sampleId: 'ocean-deep', layer: 'below', hue: 208, haloStyle: 'pulse', x: 220, y: 170, r: 78, effectType: 'delay', effectAmount: 0.52 },
-              { sampleId: 'aurore', layer: 'above', hue: 318, haloStyle: 'stardust', x: 70, y: -255, r: 68, effectType: 'lowpass', effectAmount: 0.38 },
+              { sampleId: 'zen-gong', layer: 'front', hue: 38, haloStyle: 'aurora', x: -240, y: -120, r: 72, effectType: 'reverb', effectAmount: 0.48, isStarEmitter: true },
+              { sampleId: 'ocean-deep', layer: 'below', hue: 208, haloStyle: 'pulse', x: 220, y: 170, r: 78, effectType: 'delay', effectAmount: 0.52, isStarEmitter: true },
+              { sampleId: 'aurore', layer: 'above', hue: 318, haloStyle: 'stardust', x: 70, y: -255, r: 68, effectType: 'lowpass', effectAmount: 0.38, isStarEmitter: true },
           ];
           let shipBreathEmitter = 0;
           let marineParticleEmitter = 0;
@@ -3208,11 +3204,6 @@ export function initLegacyApp() {
 
           cancelBtn.addEventListener('click', closeBubblePanel);
           dropBtn.addEventListener('click', () => {
-              if (BUBBLES.length >= 3) {
-                  ui.textContent = '3 étoiles déjà présentes. Déplace-les ou édite-les en double-tap.';
-                  closeBubblePanel();
-                  return;
-              }
               const sample = SAMPLE_LIBRARY.find(s => s.id === selectedSampleId);
               if (!sample) return;
               const bubble = buildSoundBubble(sample, bubbleLayer.value, selectedHaloStyleId);
@@ -3711,6 +3702,7 @@ export function initLegacyApp() {
                   currentVolume: 0, zoneMix: 0, resonance: 0, wasInZone: false, hue: 195, haloStyle,
                   effectType: 'reverb',
                   effectAmount: 0.42,
+                  isStarEmitter: false,
                   lastImpactAt: 0,
                   fishTouching: false,
                   vx: 0,
@@ -3735,6 +3727,7 @@ export function initLegacyApp() {
                   bubble.haloStyle = cfg.haloStyle || HALO_STYLE_LIBRARY[0].id;
                   bubble.effectType = cfg.effectType || 'reverb';
                   bubble.effectAmount = Math.max(0, Math.min(1, Number.isFinite(cfg.effectAmount) ? cfg.effectAmount : 0.42));
+                  bubble.isStarEmitter = !!cfg.isStarEmitter;
                   applyBubbleFxSettings(bubble);
                   BUBBLES.push(bubble);
               });
@@ -3922,6 +3915,7 @@ export function initLegacyApp() {
 
                   BUBBLES.forEach((sourceBubble) => {
                       if (!sourceBubble || sourceBubble === targetBubble) return;
+                      if (!sourceBubble.isStarEmitter) return;
                       const dx = targetBubble.x - sourceBubble.x;
                       const dy = targetBubble.y - sourceBubble.y;
                       const dist = Math.hypot(dx, dy);
@@ -4988,24 +4982,51 @@ export function initLegacyApp() {
                   const isSurface = b.layer !== 'below';
                   const opacityBoost = b.isActive ? 1.2 : 1;
                   const bHue = b.hue ?? 195;
+                  const deformAmount = Math.min(0.38, b.deformAmount || 0);
+                  const deformAngle = b.deformAngle || 0;
+                  const ellipseRx = b.r * (1 - deformAmount * 0.2);
+                  const ellipseRy = b.r * (1 + deformAmount * 0.17);
                   const drawBubbleShape = (radiusOffset = 0) => {
-                      const outerRadius = Math.max(8, b.r + radiusOffset);
-                      const innerRadius = outerRadius * 0.44;
+                      const radius = b.r + radiusOffset;
+                      if (deformAmount > 0.01) {
+                          const scale = Math.max(0.2, radius / b.r);
+                          ctx.ellipse(
+                              b.x,
+                              b.y,
+                              Math.max(3, ellipseRx * scale),
+                              Math.max(3, ellipseRy * scale),
+                              deformAngle,
+                              0,
+                              Math.PI * 2
+                          );
+                          return;
+                      }
+                      ctx.arc(b.x, b.y, radius, 0, Math.PI * 2);
+                  };
+                  const drawStarEmitterOverlay = () => {
+                      if (!b.isStarEmitter) return;
+                      const outerRadius = Math.max(10, b.r * 0.52);
+                      const innerRadius = outerRadius * 0.46;
                       const points = 5;
-                      const spin = performance.now() * 0.00026 + ((b.id?.length || 0) * 0.2);
-                      ctx.moveTo(
-                          b.x + Math.cos(spin - Math.PI / 2) * outerRadius,
-                          b.y + Math.sin(spin - Math.PI / 2) * outerRadius
-                      );
-                      for (let i = 1; i < points * 2; i++) {
+                      const spin = performance.now() * 0.0008 + ((b.id?.length || 0) * 0.2);
+                      ctx.save();
+                      ctx.globalCompositeOperation = 'screen';
+                      ctx.strokeStyle = `hsla(${bHue + 20}, 92%, 88%, ${0.7 + (b.isActive ? 0.2 : 0)})`;
+                      ctx.lineWidth = 1.8;
+                      ctx.fillStyle = `hsla(${bHue + 32}, 90%, 72%, ${isSurface ? 0.24 : 0.14})`;
+                      ctx.beginPath();
+                      for (let i = 0; i < points * 2; i++) {
                           const angle = spin - Math.PI / 2 + i * (Math.PI / points);
                           const radius = i % 2 === 0 ? outerRadius : innerRadius;
-                          ctx.lineTo(
-                              b.x + Math.cos(angle) * radius,
-                              b.y + Math.sin(angle) * radius
-                          );
+                          const px = b.x + Math.cos(angle) * radius;
+                          const py = b.y + Math.sin(angle) * radius;
+                          if (i === 0) ctx.moveTo(px, py);
+                          else ctx.lineTo(px, py);
                       }
                       ctx.closePath();
+                      ctx.fill();
+                      ctx.stroke();
+                      ctx.restore();
                   };
                   ctx.save();
                   const trail = Array.isArray(b.motionTrail) ? b.motionTrail : [];
@@ -5088,6 +5109,7 @@ export function initLegacyApp() {
                   ctx.beginPath();
                   drawBubbleShape();
                   ctx.stroke();
+                  drawStarEmitterOverlay();
 
                   // Selection ring
                   if (b === selectedBubble) {
