@@ -311,6 +311,8 @@ export function initLegacyApp() {
           let isStartingSoonTutoMusic = false;
           let soonTutoMusic = null;
           let soonTutoMusicFadeInterval = null;
+          let echoDelayEffectUntil = 0;
+          let echoDelayEffectStartedAt = 0;
           const SOON_TUTO_MUSIC_URL = 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/music/musicsoon.mp3';
           const RECORDER_MAX_SECONDS = 60;
           const RECORDER_MAX_MILLIS = RECORDER_MAX_SECONDS * 1000;
@@ -4710,8 +4712,8 @@ export function initLegacyApp() {
               companionStarfish.rotation += companionStarfish.rotationSpeed;
               if (companionStarfish.isSpinning) {
                   companionStarfish.rotation += companionStarfish.spinVelocity;
-                  companionStarfish.spinVelocity *= 0.972;
-                  if (Math.abs(companionStarfish.spinVelocity) < 0.018) {
+                  companionStarfish.spinVelocity *= 0.994;
+                  if (Math.abs(companionStarfish.spinVelocity) < 0.006) {
                       companionStarfish.isSpinning = false;
                       companionStarfish.spinVelocity = 0;
                       emitStarfishResonanceWave(now);
@@ -4740,24 +4742,28 @@ export function initLegacyApp() {
               if (!audioCtx || !masterWetGainNode || !masterDelayNode || !masterDelayFeedbackGainNode) return;
               const now = audioCtx.currentTime;
               const clamped = Math.max(0.2, Math.min(1.3, intensity));
-              const wetPeak = Math.min(0.78, 0.26 + clamped * 0.36);
+              const wetPeak = Math.min(0.8, 0.32 + clamped * 0.38);
+              echoDelayEffectStartedAt = performance.now();
+              echoDelayEffectUntil = echoDelayEffectStartedAt + 10000;
 
               masterDelayNode.delayTime.cancelScheduledValues(now);
               masterDelayFeedbackGainNode.gain.cancelScheduledValues(now);
               masterWetGainNode.gain.cancelScheduledValues(now);
 
               masterDelayNode.delayTime.setValueAtTime(masterDelayNode.delayTime.value, now);
-              masterDelayNode.delayTime.linearRampToValueAtTime(0.42, now + 0.08);
-              masterDelayNode.delayTime.linearRampToValueAtTime(0.31, now + 1.6);
+              masterDelayNode.delayTime.linearRampToValueAtTime(0.46, now + 0.18);
+              masterDelayNode.delayTime.linearRampToValueAtTime(0.36, now + 6.5);
+              masterDelayNode.delayTime.linearRampToValueAtTime(0.29, now + 10);
 
               masterDelayFeedbackGainNode.gain.setValueAtTime(masterDelayFeedbackGainNode.gain.value, now);
-              masterDelayFeedbackGainNode.gain.linearRampToValueAtTime(0.62, now + 0.12);
-              masterDelayFeedbackGainNode.gain.linearRampToValueAtTime(0.28, now + 2.8);
+              masterDelayFeedbackGainNode.gain.linearRampToValueAtTime(0.67, now + 0.25);
+              masterDelayFeedbackGainNode.gain.linearRampToValueAtTime(0.42, now + 6.8);
+              masterDelayFeedbackGainNode.gain.linearRampToValueAtTime(0.24, now + 10);
 
               masterWetGainNode.gain.setValueAtTime(masterWetGainNode.gain.value, now);
-              masterWetGainNode.gain.linearRampToValueAtTime(wetPeak, now + 0.12);
-              masterWetGainNode.gain.linearRampToValueAtTime(0.12, now + 2.5);
-              masterWetGainNode.gain.linearRampToValueAtTime(0, now + 4.2);
+              masterWetGainNode.gain.linearRampToValueAtTime(wetPeak, now + 0.25);
+              masterWetGainNode.gain.linearRampToValueAtTime(0.28, now + 7.5);
+              masterWetGainNode.gain.linearRampToValueAtTime(0, now + 10);
           }
 
           function emitStarfishResonanceWave(now) {
@@ -4766,7 +4772,7 @@ export function initLegacyApp() {
                   x: companionStarfish.x,
                   y: companionStarfish.y,
                   radius: 46,
-                  speed: 22,
+                  speed: 5.2,
                   alpha: 1,
                   bornAt: now,
                   audioApplied: false
@@ -4777,8 +4783,8 @@ export function initLegacyApp() {
               for (let i = STARFISH_RESONANCE_WAVES.length - 1; i >= 0; i -= 1) {
                   const wave = STARFISH_RESONANCE_WAVES[i];
                   wave.radius += wave.speed;
-                  wave.alpha *= 0.985;
-                  wave.speed *= 0.996;
+                  wave.alpha *= 0.993;
+                  wave.speed *= 0.998;
                   if (!wave.audioApplied) {
                       const distFish = Math.hypot(ship.x - wave.x, ship.y - wave.y);
                       if (distFish <= wave.radius) {
@@ -4798,7 +4804,7 @@ export function initLegacyApp() {
               if (dist > hitRadius) return;
               if (now < companionStarfish.collisionCooldownUntil) return;
               companionStarfish.isSpinning = true;
-              companionStarfish.spinVelocity = (Math.random() > 0.5 ? 1 : -1) * (0.95 + Math.random() * 0.35);
+              companionStarfish.spinVelocity = (Math.random() > 0.5 ? 1 : -1) * (0.20 + Math.random() * 0.08);
               companionStarfish.collisionCooldownUntil = now + 2600;
               companionStarfish.targetVx *= 0.25;
               companionStarfish.targetVy *= 0.25;
@@ -5024,6 +5030,17 @@ export function initLegacyApp() {
               ctx.fillStyle = '#030308';
               ctx.fillRect(0, 0, w, h);
               if (currentView !== 'experience') return;
+              const now = performance.now();
+              const echoRemaining = Math.max(0, echoDelayEffectUntil - now);
+              if (echoRemaining > 0) {
+                  const total = Math.max(1, echoDelayEffectUntil - echoDelayEffectStartedAt);
+                  const progress = 1 - (echoRemaining / total);
+                  const wavePulse = (Math.sin(now * 0.014) + 1) * 0.5;
+                  const blurPx = 2.8 + (1 - progress) * 5.6 + wavePulse * 1.3;
+                  canvas.style.filter = `blur(${blurPx.toFixed(2)}px) saturate(1.16)`;
+              } else if (canvas.style.filter) {
+                  canvas.style.filter = '';
+              }
               const silenceVisualMode = silenceTransitionInProgress || recordingState === 'recording' || silenceImmersionLevel > 0.02;
               const silenceGlow = silenceVisualMode ? Math.max(0.22, silenceImmersionLevel) : 0;
               const heavySilenceMode = silenceVisualMode && silenceImmersionLevel >= 0.66;
