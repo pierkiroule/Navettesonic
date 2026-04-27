@@ -4702,7 +4702,7 @@ export function initLegacyApp() {
 
           function drawCompanionStarfish(swimT, reactiveEnergy) {
               const pulse = 1 + Math.sin(swimT * 2.3) * 0.05;
-              const armWave = Math.sin(swimT * 4.6) * 0.16;
+              const armWave = Math.sin(swimT * 1.05) * 0.18;
               const starScale = 3;
 
               ctx.save();
@@ -4732,11 +4732,15 @@ export function initLegacyApp() {
               for (let i = 0; i < 5; i += 1) {
                   const a = ((Math.PI * 2) / 5) * i - Math.PI / 2;
                   const nextA = ((Math.PI * 2) / 5) * (i + 1) - Math.PI / 2;
-                  const armLen = armLengths[i] + Math.sin(swimT * 3 + i * 0.9) * (0.65 + Math.abs(armWave) * 0.8);
-                  const rightTangent = a + Math.PI / 7.5;
-                  const leftTangent = nextA - Math.PI / 7.5;
-                  const tipX = Math.cos(a) * armLen;
-                  const tipY = Math.sin(a) * armLen;
+                  const armPhase = swimT * 0.95 + i * 1.1;
+                  const armBend = Math.sin(armPhase) * (0.85 + Math.abs(armWave) * 0.55);
+                  const armLen = armLengths[i] + armBend;
+                  const rightTangent = a + Math.PI / (7.5 + Math.sin(armPhase + 0.5) * 0.8);
+                  const leftTangent = nextA - Math.PI / (7.5 + Math.sin(armPhase + 1.1) * 0.8);
+                  const tipSwingX = Math.cos(a + Math.PI / 2) * Math.sin(armPhase) * 0.95;
+                  const tipSwingY = Math.sin(a + Math.PI / 2) * Math.sin(armPhase) * 0.95;
+                  const tipX = Math.cos(a) * armLen + tipSwingX;
+                  const tipY = Math.sin(a) * armLen + tipSwingY;
                   const valleyX = Math.cos((a + nextA) * 0.5) * 5.3;
                   const valleyY = Math.sin((a + nextA) * 0.5) * 5.3;
                   const ctrlOutX = Math.cos(rightTangent) * (armLen * 0.78);
@@ -4745,7 +4749,11 @@ export function initLegacyApp() {
                   const ctrlInY = Math.sin(leftTangent) * (armLen * 0.68);
                   if (i === 0) ctx.moveTo(tipX, tipY);
                   ctx.quadraticCurveTo(ctrlOutX, ctrlOutY, valleyX, valleyY);
-                  ctx.quadraticCurveTo(ctrlInX, ctrlInY, Math.cos(nextA) * armLengths[(i + 1) % 5], Math.sin(nextA) * armLengths[(i + 1) % 5]);
+                  const nextPhase = swimT * 0.95 + (i + 1) * 1.1;
+                  const nextLen = armLengths[(i + 1) % 5] + Math.sin(nextPhase) * (0.85 + Math.abs(armWave) * 0.55);
+                  const nextSwingX = Math.cos(nextA + Math.PI / 2) * Math.sin(nextPhase) * 0.95;
+                  const nextSwingY = Math.sin(nextA + Math.PI / 2) * Math.sin(nextPhase) * 0.95;
+                  ctx.quadraticCurveTo(ctrlInX, ctrlInY, Math.cos(nextA) * nextLen + nextSwingX, Math.sin(nextA) * nextLen + nextSwingY);
               }
               ctx.closePath();
               ctx.fill();
