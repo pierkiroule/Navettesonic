@@ -438,7 +438,7 @@
             left: 50%;
             transform: translate(-50%, -50%);
             width: 60px;
-            height: 80px;
+            height: 124px;
             border-radius: 12px;
             background: rgba(6, 22, 54, 0.28);
             border: 1px solid rgba(156, 226, 255, 0.35);
@@ -485,6 +485,27 @@
             background: rgba(16, 63, 146, 0.72);
             border-color: rgba(199, 241, 255, 0.52);
         }
+        .trace-cam-btn--trace-launch {
+            position: static;
+            width: 100%;
+            min-height: 22px;
+            border-radius: 7px;
+            font-size: 0.86rem;
+            background: rgba(18, 104, 122, 0.74);
+            border-color: rgba(181, 247, 233, 0.48);
+        }
+        .trace-cam-btn--trace-stop {
+            position: static;
+            width: 100%;
+            min-height: 22px;
+            border-radius: 7px;
+            font-size: 0.8rem;
+            background: rgba(106, 38, 56, 0.76);
+            border-color: rgba(255, 204, 214, 0.45);
+        }
+        .trace-cam-btn--trace-flow-hidden {
+            display: none;
+        }
         .trace-cam-btn:active {
             transform: scale(0.98);
             filter: brightness(1.07);
@@ -515,7 +536,7 @@
             }
             .trace-cam-center {
                 width: 56px;
-                height: 74px;
+                height: 116px;
             }
         }
 

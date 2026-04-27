@@ -926,11 +926,13 @@ export function initLegacyApp() {
           function setTraceListeningMode(nextState) {
               isTraceListeningMode = Boolean(nextState);
               applyExperienceUiModeState();
+              updateTraceFlowButtons();
           }
 
           function setDrawingTraceRail(nextState) {
               isDrawingTraceRail = Boolean(nextState);
               applyExperienceUiModeState();
+              updateTraceFlowButtons();
           }
 
           function bindTap(button, handler, options = {}) {
@@ -2120,8 +2122,22 @@ export function initLegacyApp() {
 
           function updateTraceCamControlsVisibility() {
               if (!traceCamControls) return;
-              const shouldShow = currentView === 'experience' && (isTraceListeningMode || isDrawingTraceRail);
+              const shouldShow = currentView === 'experience' && (isTraceListeningMode || isDrawingTraceRail || isTraceRailAutopilot);
               traceCamControls.classList.toggle('visible', shouldShow);
+              updateTraceFlowButtons();
+          }
+
+          function updateTraceFlowButtons() {
+              if (!traceCamControls) return;
+              const armBtn = traceCamControls.querySelector('[data-trace-cam-action="trace-arm"]');
+              const launchBtn = traceCamControls.querySelector('[data-trace-cam-action="trace-launch"]');
+              const stopBtn = traceCamControls.querySelector('[data-trace-cam-action="trace-stop"]');
+              const showArm = isTraceListeningMode && !isDrawingTraceRail && !isTraceRailAutopilot;
+              const showLaunch = isDrawingTraceRail && traceRailPath.length > 1;
+              const showStop = isTraceListeningMode || isDrawingTraceRail || isTraceRailAutopilot;
+              armBtn?.classList.toggle('trace-cam-btn--trace-flow-hidden', !showArm);
+              launchBtn?.classList.toggle('trace-cam-btn--trace-flow-hidden', !showLaunch);
+              stopBtn?.classList.toggle('trace-cam-btn--trace-flow-hidden', !showStop);
           }
 
           function resetTraceCameraControl(keepZoomScale = false) {
@@ -2140,7 +2156,7 @@ export function initLegacyApp() {
                   traceRailTargetIndex = 0;
                   traceRailDirection = 1;
                   ui.textContent = 'Voyage sonore auto lancé : tracé plume Bézier validé.';
-                  helperTips.textContent = 'Rail plume actif : appuie 🪶 pour retracer ou retouche dans l’océan.';
+                  helperTips.textContent = 'Traversée active. Étape 4/4 : appuie sur ⏹ pour stopper et quitter.';
               } else {
                   traceRailPath = [];
                   ui.textContent = '';
@@ -2149,29 +2165,47 @@ export function initLegacyApp() {
               updateTraceCamControlsVisibility();
           }
 
-          function handleTraceToggleAction() {
-              if (!(isTraceListeningMode || isDrawingTraceRail || isTraceRailAutopilot)) return;
-              if (isDrawingTraceRail) {
-                  finalizeTraceRailFromDraft();
-                  return;
-              }
+          function armTraceFlow() {
               isTraceRailAutopilot = false;
               setTraceListeningMode(true);
-              setDrawingTraceRail(true);
+              setDrawingTraceRail(false);
               traceExitConfirmUntil = 0;
-              const seedPoint = { x: ship.x, y: ship.y };
-              traceRailPath = [seedPoint];
-              ui.textContent = 'Tracé plume actif : pose des points, puis valide avec 🪶.';
-              helperTips.textContent = 'Mode plume Bézier : les poignées ajustent automatiquement angles et courbes.';
+              traceRailPath = [];
+              traceRailTargetIndex = 0;
+              traceRailDirection = 1;
+              ui.textContent = 'Mode tracé activé : touche l’océan pour dessiner.';
+              helperTips.textContent = 'Étape 2/4 : trace ton chemin. Étape 3 : valide avec ✅.';
+              updateTraceCamControlsVisibility();
+          }
+
+          function stopTraceFlow() {
+              isTraceRailAutopilot = false;
+              setDrawingTraceRail(false);
+              setTraceListeningMode(false);
+              traceRailPath = [];
+              traceRailTargetIndex = 0;
+              traceRailDirection = 1;
+              traceExitConfirmUntil = 0;
+              resetTraceCameraControl();
+              ui.textContent = '';
+              rotateHelperTip();
               updateTraceCamControlsVisibility();
           }
 
           function applyTraceCameraAction(action) {
-              if (action === 'trace-toggle') {
-                  handleTraceToggleAction();
+              if (action === 'trace-arm') {
+                  armTraceFlow();
                   return;
               }
-              if (!(isTraceListeningMode || isDrawingTraceRail)) return;
+              if (action === 'trace-launch') {
+                  if (isDrawingTraceRail) finalizeTraceRailFromDraft();
+                  return;
+              }
+              if (action === 'trace-stop') {
+                  stopTraceFlow();
+                  return;
+              }
+              if (!(isTraceListeningMode || isDrawingTraceRail || isTraceRailAutopilot)) return;
               const baseZoom = getTraceOverviewBaseZoom();
               const worldZoom = Math.max(traceOverviewZoomMin, Math.min(traceOverviewZoomMax, baseZoom * traceCameraControl.zoomScale));
               const panStep = Math.max(26, 44 / Math.max(0.3, worldZoom));
@@ -2918,10 +2952,18 @@ export function initLegacyApp() {
               }
               if (isTraceListeningMode) {
                   setDrawingTraceRail(true);
-                  traceRailPath = [pos];
+                  if (!traceRailPath.length) {
+                      traceRailPath = [pos];
+                  } else {
+                      const last = traceRailPath[traceRailPath.length - 1];
+                      if (!last || Math.hypot(pos.x - last.x, pos.y - last.y) > 10) {
+                          traceRailPath.push(pos);
+                      }
+                  }
                   traceExitConfirmUntil = 0;
                   isTethered = false;
-                  ui.textContent = 'Trace ton rail sonore… relâche pour lancer le voyage auto';
+                  ui.textContent = 'Trace en cours… Étape 3/4 : valide avec ✅ pour lancer la traversée.';
+                  helperTips.textContent = 'Ajoute des points en glissant, puis appuie sur ✅.';
                   updateTraceCamControlsVisibility();
                   return;
               }
@@ -2994,7 +3036,9 @@ export function initLegacyApp() {
               }
               cancelFishLongPress();
               if (isDrawingTraceRail) {
-                  finalizeTraceRailFromDraft();
+                  ui.textContent = 'Tracé prêt. Étape 3/4 : appuie sur ✅ pour lancer.';
+                  helperTips.textContent = 'Étape 4/4 : utilise ⏹ pour stopper et quitter le mode tracé.';
+                  updateTraceFlowButtons();
               }
               isTethered = false;
               isDraggingBubble = false;
@@ -3150,24 +3194,12 @@ export function initLegacyApp() {
               closeBubblePanel();
           });
           traceListeningBtn?.addEventListener('click', () => {
-              setTraceListeningMode(!isTraceListeningMode);
-                  if (isTraceListeningMode) {
-                      isTraceRailAutopilot = false;
-                      traceRailPath = [];
-                      traceRailTargetIndex = 0;
-                      traceRailDirection = 1;
-                      traceExitConfirmUntil = 0;
-                      resetTraceCameraControl();
-                      ui.textContent = 'Mode Tracer l’écoute : vue d’ensemble + tracé lissé.';
-                      helperTips.textContent = 'Maintiens pour tracer · flèches contour arène, zoom + / − et bouton 🪶 pour valider le tracé.';
-                  } else if (!isDrawingTraceRail) {
-                      traceExitConfirmUntil = 0;
-                      resetTraceCameraControl();
-                      ui.textContent = '';
-                      rotateHelperTip();
-                  }
-                  updateTraceCamControlsVisibility();
-              });
+              if (isTraceListeningMode || isDrawingTraceRail || isTraceRailAutopilot) {
+                  stopTraceFlow();
+              } else {
+                  armTraceFlow();
+              }
+          });
           function openBubblePanel() {
               isInteractionPaused = true;
               isTethered = false;
