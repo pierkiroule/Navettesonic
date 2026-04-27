@@ -4654,6 +4654,90 @@ export function initLegacyApp() {
               ctx.restore();
           }
 
+          function drawCompanionStarfish(swimT, reactiveEnergy) {
+              const orbitAngle = swimT * 0.9 + Math.sin(swimT * 0.7) * 0.24;
+              const orbitRadiusX = 44;
+              const orbitRadiusY = 28;
+              const starX = Math.cos(orbitAngle) * orbitRadiusX;
+              const starY = -6 + Math.sin(orbitAngle * 1.2) * orbitRadiusY;
+              const pulse = 1 + Math.sin(swimT * 2.3) * 0.05;
+              const armWave = Math.sin(swimT * 4.6) * 0.16;
+              const starRotate = Math.sin(swimT * 1.6) * 0.24;
+
+              ctx.save();
+              ctx.translate(starX, starY);
+              ctx.rotate(starRotate);
+              ctx.scale(pulse, pulse);
+
+              const glow = ctx.createRadialGradient(0, 1, 0, 0, 1, 17 + reactiveEnergy * 6);
+              glow.addColorStop(0, `rgba(255, 188, 172, ${0.28 + reactiveEnergy * 0.25})`);
+              glow.addColorStop(0.6, `rgba(255, 148, 168, ${0.10 + reactiveEnergy * 0.12})`);
+              glow.addColorStop(1, 'rgba(255, 148, 168, 0)');
+              ctx.fillStyle = glow;
+              ctx.beginPath();
+              ctx.ellipse(0, 1, 17, 14, 0, 0, Math.PI * 2);
+              ctx.fill();
+
+              const bodyGrad = ctx.createRadialGradient(-2, -4, 2, 0, 1, 16);
+              bodyGrad.addColorStop(0, 'hsla(18, 98%, 88%, 0.96)');
+              bodyGrad.addColorStop(0.56, 'hsla(8, 88%, 72%, 0.94)');
+              bodyGrad.addColorStop(1, 'hsla(338, 84%, 64%, 0.92)');
+              ctx.fillStyle = bodyGrad;
+              ctx.shadowBlur = 8;
+              ctx.shadowColor = 'rgba(255, 182, 176, 0.45)';
+
+              const armLengths = [12.4, 11.1, 12.8, 10.9, 12.2];
+              ctx.beginPath();
+              for (let i = 0; i < 5; i += 1) {
+                  const a = ((Math.PI * 2) / 5) * i - Math.PI / 2;
+                  const nextA = ((Math.PI * 2) / 5) * (i + 1) - Math.PI / 2;
+                  const armLen = armLengths[i] + Math.sin(swimT * 3 + i * 0.9) * (0.65 + Math.abs(armWave) * 0.8);
+                  const rightTangent = a + Math.PI / 7.5;
+                  const leftTangent = nextA - Math.PI / 7.5;
+                  const tipX = Math.cos(a) * armLen;
+                  const tipY = Math.sin(a) * armLen;
+                  const valleyX = Math.cos((a + nextA) * 0.5) * 5.3;
+                  const valleyY = Math.sin((a + nextA) * 0.5) * 5.3;
+                  const ctrlOutX = Math.cos(rightTangent) * (armLen * 0.78);
+                  const ctrlOutY = Math.sin(rightTangent) * (armLen * 0.78);
+                  const ctrlInX = Math.cos(leftTangent) * (armLen * 0.68);
+                  const ctrlInY = Math.sin(leftTangent) * (armLen * 0.68);
+                  if (i === 0) ctx.moveTo(tipX, tipY);
+                  ctx.quadraticCurveTo(ctrlOutX, ctrlOutY, valleyX, valleyY);
+                  ctx.quadraticCurveTo(ctrlInX, ctrlInY, Math.cos(nextA) * armLengths[(i + 1) % 5], Math.sin(nextA) * armLengths[(i + 1) % 5]);
+              }
+              ctx.closePath();
+              ctx.fill();
+
+              ctx.strokeStyle = 'hsla(0, 92%, 94%, 0.42)';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+
+              ctx.shadowBlur = 0;
+              ctx.fillStyle = 'rgba(120, 26, 40, 0.86)';
+              ctx.beginPath();
+              ctx.ellipse(-2.8, -0.8, 1.15, 1.35, -0.1, 0, Math.PI * 2);
+              ctx.ellipse(2.8, -0.8, 1.15, 1.35, 0.1, 0, Math.PI * 2);
+              ctx.fill();
+
+              ctx.strokeStyle = 'rgba(112, 32, 54, 0.78)';
+              ctx.lineWidth = 0.9;
+              ctx.lineCap = 'round';
+              ctx.beginPath();
+              ctx.moveTo(-1.8, 2.2);
+              ctx.quadraticCurveTo(0, 3.6 + Math.sin(swimT * 1.8) * 0.45, 1.8, 2.2);
+              ctx.stroke();
+
+              ctx.fillStyle = 'rgba(255, 240, 232, 0.82)';
+              for (let i = 0; i < 5; i += 1) {
+                  const a = ((Math.PI * 2) / 5) * i - Math.PI / 2;
+                  ctx.beginPath();
+                  ctx.arc(Math.cos(a) * 5.5, Math.sin(a) * 5.5, 0.7, 0, Math.PI * 2);
+                  ctx.fill();
+              }
+              ctx.restore();
+          }
+
           function drawSilenceCompassRing() {
               const nearestBubbleData = getNearestBubbleForShip();
               const pulse = (Math.sin(performance.now() * 0.008) + 1) * 0.5;
@@ -5144,6 +5228,7 @@ export function initLegacyApp() {
               ctx.arc(-5.6, -12.6, 0.52, 0, Math.PI * 2);
               ctx.arc(6.8, -12.6, 0.52, 0, Math.PI * 2);
               ctx.fill();
+              drawCompanionStarfish(swimT, reactiveEnergy);
               ctx.restore();
 
               if (fishDepthToastUntil > performance.now()) {
