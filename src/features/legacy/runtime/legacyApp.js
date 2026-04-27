@@ -78,6 +78,9 @@ export function initLegacyApp() {
           const propsSizeVal = document.getElementById('propsSizeVal');
           const colorSwatches = document.getElementById('colorSwatches');
           const propsLayerSelect = document.getElementById('propsLayerSelect');
+          const propsFxTypeSelect = document.getElementById('propsFxTypeSelect');
+          const propsFxAmountRange = document.getElementById('propsFxAmountRange');
+          const propsFxAmountVal = document.getElementById('propsFxAmountVal');
           const propsHaloStyleSelect = document.getElementById('propsHaloStyleSelect');
           const propsDeleteBtn = document.getElementById('propsDeleteBtn');
           const propsCloseBtn = document.getElementById('propsCloseBtn');
@@ -173,15 +176,18 @@ export function initLegacyApp() {
               selectedBubble = bubble;
               isTethered = false;
               if (bubble.hue === undefined) bubble.hue = 195;
-              propsBubbleName.textContent = bubble.label || 'Bulle sonore';
+              propsBubbleName.textContent = bubble.label || 'Étoile sonore';
               propsSampleSelect.value = bubble._sampleId || SAMPLE_LIBRARY[0].id;
               propsSizeRange.value = bubble.r;
               propsSizeVal.textContent = Math.round(bubble.r) + 'px';
               propsLayerSelect.value = bubble.layer;
+              propsFxTypeSelect.value = bubble.effectType || 'reverb';
+              propsFxAmountRange.value = Math.round((bubble.effectAmount ?? 0.42) * 100);
+              propsFxAmountVal.textContent = `${propsFxAmountRange.value}%`;
               propsHaloStyleSelect.value = bubble.haloStyle || HALO_STYLE_LIBRARY[0].id;
               refreshSwatchSelection();
               bubblePropsPanel.classList.add('visible');
-              ui.textContent = '⟡ Touche l’océan pour déplacer · Couleur + suppression disponibles dans le panneau';
+              ui.textContent = '⟡ Touche l’océan pour déplacer l’étoile · Double-tap pour rééditer';
           }
 
           function closeBubblePropsPanel() {
@@ -197,6 +203,7 @@ export function initLegacyApp() {
                   try { bubble.sound.source.stop(); } catch (_) {}
               }
               bubble.sound = createBinauralSound(sample);
+              applyBubbleFxSettings(bubble);
               bubble.label = sample.name;
               bubble._sampleId = sample.id;
               bubble.lastImpactAt = 0;
@@ -227,8 +234,23 @@ export function initLegacyApp() {
               selectedBubble.layer = propsLayerSelect.value;
               selectedBubble.depthOffset = spatial.depthOffset;
           });
+          propsFxTypeSelect.addEventListener('change', () => {
+              if (!selectedBubble) return;
+              selectedBubble.effectType = propsFxTypeSelect.value;
+              applyBubbleFxSettings(selectedBubble);
+          });
+          propsFxAmountRange.addEventListener('input', () => {
+              if (!selectedBubble) return;
+              selectedBubble.effectAmount = parseInt(propsFxAmountRange.value, 10) / 100;
+              propsFxAmountVal.textContent = `${propsFxAmountRange.value}%`;
+              applyBubbleFxSettings(selectedBubble);
+          });
           propsDeleteBtn.addEventListener('click', () => {
               if (!selectedBubble) return;
+              if (BUBBLES.length <= 3) {
+                  ui.textContent = 'Les 3 étoiles sont fixes: déplace-les ou ajuste leurs effets.';
+                  return;
+              }
               try { selectedBubble.sound?.source?.stop(); } catch (_) {}
               ARENA_FIREFLIES.forEach((firefly) => {
                   if (firefly.containedInBubbleId !== selectedBubble.id) return;
@@ -384,6 +406,9 @@ export function initLegacyApp() {
           const DOLPHIN_FISH_COLLIDER_RADIUS = 24;
           const BUBBLE_PUSH_DAMPING = 0.92;
           const BUBBLE_PUSH_COUPLING = 0.34;
+          const STAR_EFFECT_RADIUS = 360;
+          const STAR_EFFECT_FALLOFF_POWER = 1.65;
+          const STAR_EFFECT_MAX_WET = 1.2;
           const BUBBLE_TRAIL_MAX_POINTS = 10;
           const DOLPHIN_REBOUND_MULTIPLIER = 3;
           const DOLPHIN_DRAG_DAMPING_BOOST = 0.05;
@@ -409,9 +434,9 @@ export function initLegacyApp() {
           let isFireflyVocalPlaying = false;
           let fireflyVocalQueue = Promise.resolve();
           const STARTING_BUBBLES = [
-              { sampleId: 'forêt-zen', layer: 'front', hue: 188, haloStyle: 'aurora', x: -240, y: -120, r: 72 },
-              { sampleId: 'ocean-deep', layer: 'below', hue: 235, haloStyle: 'pulse', x: 220, y: 170, r: 78 },
-              { sampleId: 'aurore', layer: 'above', hue: 318, haloStyle: 'stardust', x: 70, y: -255, r: 68 },
+              { sampleId: 'zen-gong', layer: 'front', hue: 38, haloStyle: 'aurora', x: -240, y: -120, r: 72, effectType: 'reverb', effectAmount: 0.48 },
+              { sampleId: 'ocean-deep', layer: 'below', hue: 208, haloStyle: 'pulse', x: 220, y: 170, r: 78, effectType: 'delay', effectAmount: 0.52 },
+              { sampleId: 'aurore', layer: 'above', hue: 318, haloStyle: 'stardust', x: 70, y: -255, r: 68, effectType: 'lowpass', effectAmount: 0.38 },
           ];
           let shipBreathEmitter = 0;
           let marineParticleEmitter = 0;
@@ -3183,9 +3208,15 @@ export function initLegacyApp() {
 
           cancelBtn.addEventListener('click', closeBubblePanel);
           dropBtn.addEventListener('click', () => {
+              if (BUBBLES.length >= 3) {
+                  ui.textContent = '3 étoiles déjà présentes. Déplace-les ou édite-les en double-tap.';
+                  closeBubblePanel();
+                  return;
+              }
               const sample = SAMPLE_LIBRARY.find(s => s.id === selectedSampleId);
               if (!sample) return;
               const bubble = buildSoundBubble(sample, bubbleLayer.value, selectedHaloStyleId);
+              applyBubbleFxSettings(bubble);
               BUBBLES.push(bubble);
               closeBubblePanel();
           });
@@ -3678,6 +3709,8 @@ export function initLegacyApp() {
                   x, y, r: 64, layer, depthOffset: spatial.depthOffset, isActive: false,
                   sound, label: sample.name, _sampleId: sample.id,
                   currentVolume: 0, zoneMix: 0, resonance: 0, wasInZone: false, hue: 195, haloStyle,
+                  effectType: 'reverb',
+                  effectAmount: 0.42,
                   lastImpactAt: 0,
                   fishTouching: false,
                   vx: 0,
@@ -3700,8 +3733,28 @@ export function initLegacyApp() {
                   bubble.r = cfg.r;
                   bubble.hue = cfg.hue;
                   bubble.haloStyle = cfg.haloStyle || HALO_STYLE_LIBRARY[0].id;
+                  bubble.effectType = cfg.effectType || 'reverb';
+                  bubble.effectAmount = Math.max(0, Math.min(1, Number.isFinite(cfg.effectAmount) ? cfg.effectAmount : 0.42));
+                  applyBubbleFxSettings(bubble);
                   BUBBLES.push(bubble);
               });
+          }
+
+          let sharedReverbBuffer = null;
+          function getSharedReverbBuffer(ctx) {
+              if (sharedReverbBuffer) return sharedReverbBuffer;
+              const seconds = 1.8;
+              const length = Math.floor(ctx.sampleRate * seconds);
+              const impulse = ctx.createBuffer(2, length, ctx.sampleRate);
+              for (let channel = 0; channel < impulse.numberOfChannels; channel++) {
+                  const data = impulse.getChannelData(channel);
+                  for (let i = 0; i < length; i++) {
+                      const decay = Math.pow(1 - (i / length), 2.4);
+                      data[i] = (Math.random() * 2 - 1) * decay * 0.8;
+                  }
+              }
+              sharedReverbBuffer = impulse;
+              return sharedReverbBuffer;
           }
 
           function createBinauralSound(sample) {
@@ -3737,6 +3790,28 @@ export function initLegacyApp() {
 
               const textureGain = ctx.createGain();
               textureGain.gain.value = sample.gain ?? 0.24;
+              const dryGain = ctx.createGain();
+              const wetMixGain = ctx.createGain();
+              const reverbGain = ctx.createGain();
+              const delayGain = ctx.createGain();
+              const lowpassGain = ctx.createGain();
+              dryGain.gain.value = 1;
+              wetMixGain.gain.value = 1;
+              reverbGain.gain.value = 0;
+              delayGain.gain.value = 0;
+              lowpassGain.gain.value = 0;
+
+              const reverbConvolver = ctx.createConvolver();
+              reverbConvolver.normalize = true;
+              reverbConvolver.buffer = getSharedReverbBuffer(ctx);
+              const delayNode = ctx.createDelay(1.4);
+              delayNode.delayTime.value = 0.28;
+              const delayFeedback = ctx.createGain();
+              delayFeedback.gain.value = 0.34;
+              const lowpassFx = ctx.createBiquadFilter();
+              lowpassFx.type = 'lowpass';
+              lowpassFx.frequency.value = sample.baseCutoff ?? 4200;
+              lowpassFx.Q.value = 0.8;
 
               let source;
               if (sample.type === 'noise') {
@@ -3760,14 +3835,131 @@ export function initLegacyApp() {
               textureGain.connect(distanceGain);
               textureGain.connect(analyser);
               distanceGain.connect(toneFilter);
-              toneFilter.connect(panner);
+              toneFilter.connect(dryGain);
+              dryGain.connect(panner);
+              toneFilter.connect(reverbConvolver);
+              reverbConvolver.connect(reverbGain);
+              reverbGain.connect(wetMixGain);
+              toneFilter.connect(delayNode);
+              delayNode.connect(delayFeedback);
+              delayFeedback.connect(delayNode);
+              delayNode.connect(delayGain);
+              delayGain.connect(wetMixGain);
+              toneFilter.connect(lowpassFx);
+              lowpassFx.connect(lowpassGain);
+              lowpassGain.connect(wetMixGain);
+              wetMixGain.connect(panner);
               distanceGain.connect(resonantFilter);
               resonantFilter.connect(resonantGain);
               resonantGain.connect(panner);
               panner.connect(masterGainNode);
               source.start();
 
-              return { source, distanceGain, toneFilter, resonantFilter, resonantGain, panner, analyser, analyserData, isStarted: true };
+              return {
+                  source, distanceGain, toneFilter, resonantFilter, resonantGain, panner, analyser, analyserData,
+                  dryGain, wetMixGain, reverbGain, delayGain, lowpassGain, reverbConvolver, delayNode, delayFeedback, lowpassFx, isStarted: true
+              };
+          }
+
+          function applyBubbleFxSettings(bubble) {
+              if (!bubble?.sound) return;
+              const fxType = bubble.effectType || 'reverb';
+              const mix = Math.max(0, Math.min(1, Number.isFinite(bubble.effectAmount) ? bubble.effectAmount : 0.42));
+              bubble.baseFxProfile = buildFxProfile(fxType, mix);
+              applyFxProfileToSound(bubble.sound, bubble.baseFxProfile);
+          }
+
+          function buildFxProfile(fxType, mixAmount) {
+              const mix = Math.max(0, Math.min(1, Number.isFinite(mixAmount) ? mixAmount : 0.42));
+              const profile = {
+                  reverb: 0,
+                  delay: 0,
+                  lowpass: 0,
+                  delayFeedback: 0.18 + mix * 0.58,
+                  delayTime: 0.12 + mix * 0.62,
+                  lowpassFrequency: 640 + (1 - mix) * 5200,
+                  lowpassQ: 0.6 + mix * 8
+              };
+              if (fxType === 'delay') profile.delay = mix;
+              else if (fxType === 'lowpass') profile.lowpass = mix;
+              else profile.reverb = mix;
+              return profile;
+          }
+
+          function applyFxProfileToSound(sound, profile) {
+              if (!sound || !profile) return;
+              const reverb = Math.max(0, profile.reverb || 0);
+              const delay = Math.max(0, profile.delay || 0);
+              const lowpass = Math.max(0, profile.lowpass || 0);
+              const wetSum = Math.min(STAR_EFFECT_MAX_WET, reverb + delay + lowpass);
+              sound.dryGain.gain.value = Math.max(0.2, 1 - wetSum * 0.72);
+              sound.reverbGain.gain.value = reverb;
+              sound.delayGain.gain.value = delay;
+              sound.lowpassGain.gain.value = lowpass;
+              sound.delayFeedback.gain.value = Math.max(0.05, profile.delayFeedback ?? 0.3);
+              sound.delayNode.delayTime.value = Math.max(0.06, profile.delayTime ?? 0.2);
+              sound.lowpassFx.frequency.value = Math.max(180, profile.lowpassFrequency ?? 2200);
+              sound.lowpassFx.Q.value = Math.max(0.2, profile.lowpassQ ?? 0.9);
+          }
+
+          function applySpatialStarFxFields() {
+              BUBBLES.forEach((targetBubble) => {
+                  if (!targetBubble?.sound) return;
+                  const baseProfile = targetBubble.baseFxProfile || buildFxProfile(targetBubble.effectType, targetBubble.effectAmount);
+                  const mergedProfile = {
+                      reverb: baseProfile.reverb,
+                      delay: baseProfile.delay,
+                      lowpass: baseProfile.lowpass,
+                      delayFeedback: baseProfile.delayFeedback,
+                      delayTime: baseProfile.delayTime,
+                      lowpassFrequency: baseProfile.lowpassFrequency,
+                      lowpassQ: baseProfile.lowpassQ
+                  };
+                  let delayWeight = 1;
+                  let lowpassWeight = 1;
+                  let lowpassFreqWeighted = mergedProfile.lowpassFrequency;
+                  let lowpassQWeighted = mergedProfile.lowpassQ;
+
+                  BUBBLES.forEach((sourceBubble) => {
+                      if (!sourceBubble || sourceBubble === targetBubble) return;
+                      const dx = targetBubble.x - sourceBubble.x;
+                      const dy = targetBubble.y - sourceBubble.y;
+                      const dist = Math.hypot(dx, dy);
+                      if (dist >= STAR_EFFECT_RADIUS) return;
+                      const proximity = Math.pow(1 - dist / STAR_EFFECT_RADIUS, STAR_EFFECT_FALLOFF_POWER);
+                      const sourceFxMix = Math.max(0, Math.min(1, Number.isFinite(sourceBubble.effectAmount) ? sourceBubble.effectAmount : 0.42));
+                      const fieldStrength = proximity * sourceFxMix;
+                      if (fieldStrength <= 0.0001) return;
+                      const sourceProfile = buildFxProfile(sourceBubble.effectType, sourceFxMix);
+
+                      mergedProfile.reverb += sourceProfile.reverb * fieldStrength;
+                      mergedProfile.delay += sourceProfile.delay * fieldStrength;
+                      mergedProfile.lowpass += sourceProfile.lowpass * fieldStrength;
+
+                      if (sourceProfile.delay > 0) {
+                          const w = sourceProfile.delay * fieldStrength;
+                          delayWeight += w;
+                          mergedProfile.delayFeedback += sourceProfile.delayFeedback * w;
+                          mergedProfile.delayTime += sourceProfile.delayTime * w;
+                      }
+                      if (sourceProfile.lowpass > 0) {
+                          const w = sourceProfile.lowpass * fieldStrength;
+                          lowpassWeight += w;
+                          lowpassFreqWeighted += sourceProfile.lowpassFrequency * w;
+                          lowpassQWeighted += sourceProfile.lowpassQ * w;
+                      }
+                  });
+
+                  mergedProfile.reverb = Math.min(STAR_EFFECT_MAX_WET, mergedProfile.reverb);
+                  mergedProfile.delay = Math.min(STAR_EFFECT_MAX_WET, mergedProfile.delay);
+                  mergedProfile.lowpass = Math.min(STAR_EFFECT_MAX_WET, mergedProfile.lowpass);
+                  mergedProfile.delayFeedback /= delayWeight;
+                  mergedProfile.delayTime /= delayWeight;
+                  mergedProfile.lowpassFrequency = lowpassFreqWeighted / lowpassWeight;
+                  mergedProfile.lowpassQ = lowpassQWeighted / lowpassWeight;
+
+                  applyFxProfileToSound(targetBubble.sound, mergedProfile);
+              });
           }
 
           function ensureBubbleAudioRunning(bubble) {
@@ -3913,6 +4105,7 @@ export function initLegacyApp() {
                       b.wasShipInsideBody = insideBubbleBody;
                   }
               });
+              applySpatialStarFxFields();
 
               if (enteredBubble) {
                   depositOldestAttachedFireflyIntoBubble(enteredBubble, now);
@@ -4795,26 +4988,24 @@ export function initLegacyApp() {
                   const isSurface = b.layer !== 'below';
                   const opacityBoost = b.isActive ? 1.2 : 1;
                   const bHue = b.hue ?? 195;
-                  const deformAmount = Math.min(0.38, b.deformAmount || 0);
-                  const deformAngle = b.deformAngle || 0;
-                  const ellipseRx = b.r * (1 - deformAmount * 0.2);
-                  const ellipseRy = b.r * (1 + deformAmount * 0.17);
                   const drawBubbleShape = (radiusOffset = 0) => {
-                      const radius = b.r + radiusOffset;
-                      if (deformAmount > 0.01) {
-                          const scale = Math.max(0.2, radius / b.r);
-                          ctx.ellipse(
-                              b.x,
-                              b.y,
-                              Math.max(3, ellipseRx * scale),
-                              Math.max(3, ellipseRy * scale),
-                              deformAngle,
-                              0,
-                              Math.PI * 2
+                      const outerRadius = Math.max(8, b.r + radiusOffset);
+                      const innerRadius = outerRadius * 0.44;
+                      const points = 5;
+                      const spin = performance.now() * 0.00026 + ((b.id?.length || 0) * 0.2);
+                      ctx.moveTo(
+                          b.x + Math.cos(spin - Math.PI / 2) * outerRadius,
+                          b.y + Math.sin(spin - Math.PI / 2) * outerRadius
+                      );
+                      for (let i = 1; i < points * 2; i++) {
+                          const angle = spin - Math.PI / 2 + i * (Math.PI / points);
+                          const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                          ctx.lineTo(
+                              b.x + Math.cos(angle) * radius,
+                              b.y + Math.sin(angle) * radius
                           );
-                          return;
                       }
-                      ctx.arc(b.x, b.y, radius, 0, Math.PI * 2);
+                      ctx.closePath();
                   };
                   ctx.save();
                   const trail = Array.isArray(b.motionTrail) ? b.motionTrail : [];

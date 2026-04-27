@@ -192,11 +192,24 @@
                     </select>
                 </div>
                 <div class="props-section">
+                    <span class="props-label">Effet audio</span>
+                    <select class="props-select" id="propsFxTypeSelect">
+                        <option value="reverb">Reverb</option>
+                        <option value="delay">Delay</option>
+                        <option value="lowpass">Lowpass</option>
+                    </select>
+                </div>
+                <div class="props-section">
+                    <span class="props-label">Intensité effet</span>
+                    <input type="range" class="props-slider" id="propsFxAmountRange" min="0" max="100" step="1" value="42">
+                    <span class="props-size-val" id="propsFxAmountVal">42%</span>
+                </div>
+                <div class="props-section">
                     <span class="props-label">Halo animé</span>
                     <select class="props-select" id="propsHaloStyleSelect"></select>
                 </div>
-                <div class="props-drag-hint">⟡ Touche l'océan pour déplacer la bulle</div>
-                <button class="props-delete-btn" id="propsDeleteBtn" type="button">Supprimer cette bulle</button>
+                <div class="props-drag-hint">⟡ Touche l'océan pour déplacer l'étoile</div>
+                <button class="props-delete-btn" id="propsDeleteBtn" type="button">Supprimer cette étoile</button>
             </div>
         </div>
         <div id="silenceDesYeuxPrompt" class="silence-prompt" hidden>
