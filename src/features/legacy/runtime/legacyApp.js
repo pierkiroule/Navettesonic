@@ -24,7 +24,12 @@ export function initLegacyApp() {
               { id: 'tonnerre-doux', name: 'Tonnerre Doux', texture: 'Tonnerre lointain qui roule et s\'efface', type: 'noise', freq: 0, lfo: 0.03, gain: 0.20, baseCutoff: 560, resonanceFreq: 95, resonanceQ: 1.9 },
               { id: 'vent-desert', name: 'Vent Désert', texture: 'Vent chaud sur les dunes de sable', type: 'noise', freq: 0, lfo: 0.06, gain: 0.16, baseCutoff: 1350, resonanceFreq: 210, resonanceQ: 1.05 },
               { id: 'aurore', name: 'Aurore', texture: 'Drone éthéré de l\'aurore boréale', type: 'sine', freq: 528, lfo: 0.034, lfoDepth: 0.016, gain: 0.18, baseCutoff: 6000, resonanceFreq: 740, resonanceQ: 1.6 },
-              { id: 'rosee-foret', name: 'Rosée Forêt', texture: 'Fraîcheur cristalline d\'un matin de forêt', type: 'triangle', freq: 370, lfo: 0.12, lfoDepth: 0.014, gain: 0.19, baseCutoff: 4900, resonanceFreq: 620, resonanceQ: 1.3 }
+              { id: 'rosee-foret', name: 'Rosée Forêt', texture: 'Fraîcheur cristalline d\'un matin de forêt', type: 'triangle', freq: 370, lfo: 0.12, lfoDepth: 0.014, gain: 0.19, baseCutoff: 4900, resonanceFreq: 620, resonanceQ: 1.3 },
+              { id: 'drill-bubble', name: 'Drill', texture: 'Drill externe Soonbucket', type: 'file', url: 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles/drill.mp3', gain: 0.23, baseCutoff: 5600, resonanceFreq: 760, resonanceQ: 1.05 },
+              { id: 'scani-bubble', name: 'Scani', texture: 'Scani externe Soonbucket', type: 'file', url: 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles/Scani.mp3', gain: 0.23, baseCutoff: 5600, resonanceFreq: 760, resonanceQ: 1.05 },
+              { id: 'tech-bubble', name: 'Tech', texture: 'Tech externe Soonbucket', type: 'file', url: 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles/Tech.mp3', gain: 0.23, baseCutoff: 5600, resonanceFreq: 760, resonanceQ: 1.05 },
+              { id: 'sax-bubble', name: 'Sax', texture: 'Sax externe Soonbucket', type: 'file', url: 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles/Sax.mp3', gain: 0.23, baseCutoff: 5600, resonanceFreq: 760, resonanceQ: 1.05 },
+              { id: 'baladhaikua-bubble', name: 'Baladhaikua', texture: 'Baladhaikua externe Soonbucket', type: 'file', url: 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles/Baladhaikua.mp3', gain: 0.23, baseCutoff: 5600, resonanceFreq: 760, resonanceQ: 1.05 }
           ];
 
           const homeView = document.getElementById('homeView');
@@ -417,9 +422,11 @@ export function initLegacyApp() {
           let isFireflyVocalPlaying = false;
           let fireflyVocalQueue = Promise.resolve();
           const STARTING_BUBBLES = [
-              { sampleId: 'forêt-zen', layer: 'front', hue: 188, haloStyle: 'aurora', x: -240, y: -120, r: 72 },
-              { sampleId: 'ocean-deep', layer: 'below', hue: 235, haloStyle: 'pulse', x: 220, y: 170, r: 78 },
-              { sampleId: 'aurore', layer: 'above', hue: 318, haloStyle: 'stardust', x: 70, y: -255, r: 68 },
+              { sampleId: 'drill-bubble', layer: 'front', hue: 188, haloStyle: 'aurora', x: -240, y: -120, r: 72 },
+              { sampleId: 'scani-bubble', layer: 'below', hue: 235, haloStyle: 'pulse', x: 220, y: 170, r: 78 },
+              { sampleId: 'tech-bubble', layer: 'above', hue: 318, haloStyle: 'stardust', x: 70, y: -255, r: 68 },
+              { sampleId: 'sax-bubble', layer: 'front', hue: 42, haloStyle: 'pulse', x: 255, y: -95, r: 70 },
+              { sampleId: 'baladhaikua-bubble', layer: 'below', hue: 278, haloStyle: 'aurora', x: -165, y: 235, r: 74 },
           ];
           let shipBreathEmitter = 0;
           let marineParticleEmitter = 0;
@@ -3778,13 +3785,32 @@ export function initLegacyApp() {
               const textureGain = ctx.createGain();
               textureGain.gain.value = sample.gain ?? 0.24;
 
-              let source;
+              let sourceNode;
+              let sourceHandle = null;
               if (sample.type === 'noise') {
-                  source = ctx.createBufferSource();
+                  const source = ctx.createBufferSource();
                   source.buffer = buildSyntheticBuffer(ctx);
                   source.loop = true;
+                  sourceNode = source;
+                  sourceHandle = source;
+              } else if (sample.type === 'file' && sample.url) {
+                  const mediaElement = new Audio(sample.url);
+                  mediaElement.crossOrigin = 'anonymous';
+                  mediaElement.loop = true;
+                  mediaElement.preload = 'auto';
+                  mediaElement.playsInline = true;
+                  mediaElement.volume = 1;
+                  sourceNode = ctx.createMediaElementSource(mediaElement);
+                  sourceHandle = {
+                      play: () => mediaElement.play(),
+                      stop: () => {
+                          mediaElement.pause();
+                          mediaElement.currentTime = 0;
+                      },
+                      mediaElement
+                  };
               } else {
-                  source = ctx.createOscillator();
+                  const source = ctx.createOscillator();
                   source.type = sample.type;
                   source.frequency.value = sample.freq;
                   const lfo = ctx.createOscillator();
@@ -3794,9 +3820,11 @@ export function initLegacyApp() {
                   lfo.connect(lfoGain);
                   lfoGain.connect(source.frequency);
                   lfo.start();
+                  sourceNode = source;
+                  sourceHandle = source;
               }
 
-              source.connect(textureGain);
+              sourceNode.connect(textureGain);
               textureGain.connect(distanceGain);
               textureGain.connect(analyser);
               distanceGain.connect(toneFilter);
@@ -3805,14 +3833,25 @@ export function initLegacyApp() {
               resonantFilter.connect(resonantGain);
               resonantGain.connect(panner);
               panner.connect(masterGainNode);
-              source.start();
 
-              return { source, distanceGain, toneFilter, resonantFilter, resonantGain, panner, analyser, analyserData, isStarted: true };
+              if (sample.type === 'file' && sample.url) {
+                  ensureAudioContext()?.resume().catch(() => {});
+                  sourceHandle?.play?.().catch(() => {});
+              } else {
+                  sourceNode.start();
+              }
+
+              return { source: sourceHandle, distanceGain, toneFilter, resonantFilter, resonantGain, panner, analyser, analyserData, isStarted: true };
           }
 
           function ensureBubbleAudioRunning(bubble) {
               if (!bubble.sound) return;
               if (!bubble.sound.isStarted) return;
+              const source = bubble.sound.source;
+              const mediaElement = source?.mediaElement;
+              if (!mediaElement) return;
+              if (!mediaElement.paused) return;
+              source.play?.().catch(() => {});
           }
 
           function ensureAllAudioRunning() {
