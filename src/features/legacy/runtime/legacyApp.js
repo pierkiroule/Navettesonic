@@ -28,7 +28,8 @@ export function initLegacyApp() {
               { id: 'drill-bubble', name: 'Drill', texture: 'Drill externe Soonbucket', type: 'file', url: 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles/drill.mp3', gain: 0.23, baseCutoff: 5600, resonanceFreq: 760, resonanceQ: 1.05 },
               { id: 'scani-bubble', name: 'Scani', texture: 'Scani externe Soonbucket', type: 'file', url: 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles/Scani.mp3', gain: 0.23, baseCutoff: 5600, resonanceFreq: 760, resonanceQ: 1.05 },
               { id: 'tech-bubble', name: 'Tech', texture: 'Tech externe Soonbucket', type: 'file', url: 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles/Tech.mp3', gain: 0.23, baseCutoff: 5600, resonanceFreq: 760, resonanceQ: 1.05 },
-              { id: 'sax-bubble', name: 'Sax', texture: 'Sax externe Soonbucket', type: 'file', url: 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles/Sax.mp3', gain: 0.23, baseCutoff: 5600, resonanceFreq: 760, resonanceQ: 1.05 }
+              { id: 'sax-bubble', name: 'Sax', texture: 'Sax externe Soonbucket', type: 'file', url: 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles/Sax.mp3', gain: 0.23, baseCutoff: 5600, resonanceFreq: 760, resonanceQ: 1.05 },
+              { id: 'baladhaikua-bubble', name: 'Baladhaikua', texture: 'Baladhaikua externe Soonbucket', type: 'file', url: 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles/Baladhaikua.mp3', gain: 0.23, baseCutoff: 5600, resonanceFreq: 760, resonanceQ: 1.05 }
           ];
 
           const homeView = document.getElementById('homeView');
@@ -425,6 +426,7 @@ export function initLegacyApp() {
               { sampleId: 'scani-bubble', layer: 'below', hue: 235, haloStyle: 'pulse', x: 220, y: 170, r: 78 },
               { sampleId: 'tech-bubble', layer: 'above', hue: 318, haloStyle: 'stardust', x: 70, y: -255, r: 68 },
               { sampleId: 'sax-bubble', layer: 'front', hue: 42, haloStyle: 'pulse', x: 255, y: -95, r: 70 },
+              { sampleId: 'baladhaikua-bubble', layer: 'above', hue: 148, haloStyle: 'aurora', x: -75, y: 245, r: 74 },
           ];
           let shipBreathEmitter = 0;
           let marineParticleEmitter = 0;
