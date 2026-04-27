@@ -26,7 +26,8 @@ export function initLegacyApp() {
               { id: 'aurore', name: 'Aurore', texture: 'Drone éthéré de l\'aurore boréale', type: 'sine', freq: 528, lfo: 0.034, lfoDepth: 0.016, gain: 0.18, baseCutoff: 6000, resonanceFreq: 740, resonanceQ: 1.6 },
               { id: 'rosee-foret', name: 'Rosée Forêt', texture: 'Fraîcheur cristalline d\'un matin de forêt', type: 'triangle', freq: 370, lfo: 0.12, lfoDepth: 0.014, gain: 0.19, baseCutoff: 4900, resonanceFreq: 620, resonanceQ: 1.3 },
               { id: 'drill-bubble', name: 'Drill', texture: 'Drill externe Soonbucket', type: 'file', url: 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles/drill.mp3', gain: 0.23, baseCutoff: 5600, resonanceFreq: 760, resonanceQ: 1.05 },
-              { id: 'scani-bubble', name: 'Scani', texture: 'Scani externe Soonbucket', type: 'file', url: 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles/Scani.mp3', gain: 0.23, baseCutoff: 5600, resonanceFreq: 760, resonanceQ: 1.05 }
+              { id: 'scani-bubble', name: 'Scani', texture: 'Scani externe Soonbucket', type: 'file', url: 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles/Scani.mp3', gain: 0.23, baseCutoff: 5600, resonanceFreq: 760, resonanceQ: 1.05 },
+              { id: 'tech-bubble', name: 'Tech', texture: 'Tech externe Soonbucket', type: 'file', url: 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles/Tech.mp3', gain: 0.23, baseCutoff: 5600, resonanceFreq: 760, resonanceQ: 1.05 }
           ];
 
           const homeView = document.getElementById('homeView');
