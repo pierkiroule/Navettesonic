@@ -766,8 +766,10 @@
             z-index: 260;
             background: rgba(2, 9, 22, 0.75);
             display: grid;
-            place-items: center;
+            place-items: start center;
             padding: 16px;
+            overflow-y: auto;
+            overscroll-behavior: contain;
         }
         .soon-tuto-modal[hidden] {
             display: none !important;
@@ -776,6 +778,8 @@
             width: min(700px, 95vw);
             max-height: min(84vh, 720px);
             overflow: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
             border-radius: 16px;
             padding: 18px 16px 20px;
             border: 1px solid rgba(168, 228, 255, 0.38);
@@ -783,6 +787,15 @@
             box-shadow: 0 20px 56px rgba(0, 0, 0, 0.45);
             color: rgba(220, 242, 255, 0.95);
             line-height: 1.5;
+        }
+        @media (max-width: 720px) {
+            .soon-tuto-modal {
+                padding: 10px;
+            }
+            .soon-tuto-card {
+                width: 100%;
+                max-height: calc(100dvh - 20px);
+            }
         }
         .soon-tuto-card h2 {
             margin: 0 0 10px;
