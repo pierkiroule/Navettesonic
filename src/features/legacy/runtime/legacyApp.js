@@ -430,9 +430,15 @@ export function initLegacyApp() {
           let isFireflyVocalPlaying = false;
           let fireflyVocalQueue = Promise.resolve();
           const STARTING_BUBBLES = [
-              { sampleId: 'zen-gong', layer: 'front', hue: 38, haloStyle: 'aurora', x: -240, y: -120, r: 72, effectType: 'reverb', effectAmount: 0.48, isStarEmitter: true },
-              { sampleId: 'ocean-deep', layer: 'below', hue: 208, haloStyle: 'pulse', x: 220, y: 170, r: 78, effectType: 'delay', effectAmount: 0.52, isStarEmitter: true },
-              { sampleId: 'aurore', layer: 'above', hue: 318, haloStyle: 'stardust', x: 70, y: -255, r: 68, effectType: 'lowpass', effectAmount: 0.38, isStarEmitter: true },
+              { sampleId: 'zen-gong', layer: 'front', hue: 188, haloStyle: 'aurora', x: -240, y: -120, r: 72 },
+              { sampleId: 'ocean-deep', layer: 'below', hue: 208, haloStyle: 'pulse', x: 220, y: 170, r: 78 },
+              { sampleId: 'aurore', layer: 'above', hue: 318, haloStyle: 'stardust', x: 70, y: -255, r: 68 },
+          ];
+          const STAR_EFFECTORS = [];
+          const STARTING_STAR_EFFECTORS = [
+              { id: 'star-reverb', x: -110, y: -36, layer: 'front', hue: 46, effectType: 'reverb', effectAmount: 0.58, radius: 24 },
+              { id: 'star-delay', x: 156, y: 84, layer: 'front', hue: 212, effectType: 'delay', effectAmount: 0.62, radius: 24 },
+              { id: 'star-lowpass', x: 32, y: -182, layer: 'above', hue: 324, effectType: 'lowpass', effectAmount: 0.52, radius: 24 },
           ];
           let shipBreathEmitter = 0;
           let marineParticleEmitter = 0;
@@ -615,6 +621,49 @@ export function initLegacyApp() {
                   bubble.deformAmount = Math.max(bubble.deformAmount || 0, Math.min(0.38, 0.12 + pushImpulse * 0.035));
                   bubble.deformAngle = Math.atan2(ny, nx);
                   bubble.lastImpactAt = now;
+              });
+          }
+
+          function resolveFishStarEffectorCollisions() {
+              const shipSpeed = Math.hypot(ship.vx, ship.vy);
+              STAR_EFFECTORS.forEach((star) => {
+                  if (!star) return;
+                  const dx = star.x - ship.x;
+                  const dy = star.y - ship.y;
+                  const dist = Math.hypot(dx, dy);
+                  const minDist = DOLPHIN_FISH_COLLIDER_RADIUS + (star.radius || 24);
+                  if (dist >= minDist) return;
+                  const nx = dist > 0.001 ? (dx / dist) : Math.cos(ship.angle - Math.PI / 2);
+                  const ny = dist > 0.001 ? (dy / dist) : Math.sin(ship.angle - Math.PI / 2);
+                  const overlap = minDist - dist;
+                  star.x += nx * overlap * 0.94;
+                  star.y += ny * overlap * 0.94;
+                  star.vx = (star.vx || 0) + nx * (shipSpeed * 0.18 + overlap * 0.05) + ship.vx * 0.06;
+                  star.vy = (star.vy || 0) + ny * (shipSpeed * 0.18 + overlap * 0.05) + ship.vy * 0.06;
+              });
+          }
+
+          function updateStarEffectorsMotion() {
+              STAR_EFFECTORS.forEach((star) => {
+                  if (!star) return;
+                  star.vx = (star.vx || 0) * 0.93;
+                  star.vy = (star.vy || 0) * 0.93;
+                  star.x += star.vx;
+                  star.y += star.vy;
+                  const theta = Math.atan2(star.y, star.x);
+                  const starDistance = Math.hypot(star.x, star.y);
+                  const arenaRadius = sampleArenaRadius(theta) - (star.radius || 24) - 8;
+                  if (starDistance > arenaRadius) {
+                      const normal = sampleArenaNormal(theta);
+                      const penetration = starDistance - arenaRadius;
+                      star.x -= normal.x * penetration;
+                      star.y -= normal.y * penetration;
+                      const outward = (star.vx || 0) * normal.x + (star.vy || 0) * normal.y;
+                      if (outward > 0) {
+                          star.vx -= normal.x * outward * 1.25;
+                          star.vy -= normal.y * outward * 1.25;
+                      }
+                  }
               });
           }
 
@@ -3702,7 +3751,6 @@ export function initLegacyApp() {
                   currentVolume: 0, zoneMix: 0, resonance: 0, wasInZone: false, hue: 195, haloStyle,
                   effectType: 'reverb',
                   effectAmount: 0.42,
-                  isStarEmitter: false,
                   lastImpactAt: 0,
                   fishTouching: false,
                   vx: 0,
@@ -3727,9 +3775,33 @@ export function initLegacyApp() {
                   bubble.haloStyle = cfg.haloStyle || HALO_STYLE_LIBRARY[0].id;
                   bubble.effectType = cfg.effectType || 'reverb';
                   bubble.effectAmount = Math.max(0, Math.min(1, Number.isFinite(cfg.effectAmount) ? cfg.effectAmount : 0.42));
-                  bubble.isStarEmitter = !!cfg.isStarEmitter;
                   applyBubbleFxSettings(bubble);
                   BUBBLES.push(bubble);
+              });
+          }
+
+          function buildStarEffector(cfg) {
+              const layer = cfg?.layer || 'front';
+              const spatial = layerToSpatial(layer);
+              return {
+                  id: cfg?.id || `star-effector-${Math.random().toString(36).slice(2, 8)}`,
+                  x: Number.isFinite(cfg?.x) ? cfg.x : 0,
+                  y: Number.isFinite(cfg?.y) ? cfg.y : 0,
+                  vx: 0,
+                  vy: 0,
+                  layer,
+                  depthOffset: spatial.depthOffset,
+                  hue: Number.isFinite(cfg?.hue) ? cfg.hue : 42,
+                  effectType: cfg?.effectType || 'reverb',
+                  effectAmount: Math.max(0, Math.min(1, Number.isFinite(cfg?.effectAmount) ? cfg.effectAmount : 0.48)),
+                  radius: Number.isFinite(cfg?.radius) ? cfg.radius : 24
+              };
+          }
+
+          function placeInitialStarEffectors() {
+              if (STAR_EFFECTORS.length) return;
+              STARTING_STAR_EFFECTORS.forEach((cfg) => {
+                  STAR_EFFECTORS.push(buildStarEffector(cfg));
               });
           }
 
@@ -3913,18 +3985,18 @@ export function initLegacyApp() {
                   let lowpassFreqWeighted = mergedProfile.lowpassFrequency;
                   let lowpassQWeighted = mergedProfile.lowpassQ;
 
-                  BUBBLES.forEach((sourceBubble) => {
-                      if (!sourceBubble || sourceBubble === targetBubble) return;
-                      if (!sourceBubble.isStarEmitter) return;
-                      const dx = targetBubble.x - sourceBubble.x;
-                      const dy = targetBubble.y - sourceBubble.y;
-                      const dist = Math.hypot(dx, dy);
+                  STAR_EFFECTORS.forEach((star) => {
+                      if (!star) return;
+                      const dx = targetBubble.x - star.x;
+                      const dy = targetBubble.y - star.y;
+                      const dz = (targetBubble.depthOffset ?? 0) - (star.depthOffset ?? 0);
+                      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
                       if (dist >= STAR_EFFECT_RADIUS) return;
                       const proximity = Math.pow(1 - dist / STAR_EFFECT_RADIUS, STAR_EFFECT_FALLOFF_POWER);
-                      const sourceFxMix = Math.max(0, Math.min(1, Number.isFinite(sourceBubble.effectAmount) ? sourceBubble.effectAmount : 0.42));
+                      const sourceFxMix = Math.max(0, Math.min(1, Number.isFinite(star.effectAmount) ? star.effectAmount : 0.42));
                       const fieldStrength = proximity * sourceFxMix;
                       if (fieldStrength <= 0.0001) return;
-                      const sourceProfile = buildFxProfile(sourceBubble.effectType, sourceFxMix);
+                      const sourceProfile = buildFxProfile(star.effectType, sourceFxMix);
 
                       mergedProfile.reverb += sourceProfile.reverb * fieldStrength;
                       mergedProfile.delay += sourceProfile.delay * fieldStrength;
@@ -4140,6 +4212,8 @@ export function initLegacyApp() {
               ship.x += ship.vx;
               ship.y += ship.vy;
               resolveFishBubbleCollisions(isDolphinNavigationActive);
+              resolveFishStarEffectorCollisions();
+              updateStarEffectorsMotion();
               updateBubbleKinetics(isDolphinNavigationActive);
 
               ship.trail.push({ x: ship.x, y: ship.y });
@@ -5003,31 +5077,6 @@ export function initLegacyApp() {
                       }
                       ctx.arc(b.x, b.y, radius, 0, Math.PI * 2);
                   };
-                  const drawStarEmitterOverlay = () => {
-                      if (!b.isStarEmitter) return;
-                      const outerRadius = Math.max(10, b.r * 0.52);
-                      const innerRadius = outerRadius * 0.46;
-                      const points = 5;
-                      const spin = performance.now() * 0.0008 + ((b.id?.length || 0) * 0.2);
-                      ctx.save();
-                      ctx.globalCompositeOperation = 'screen';
-                      ctx.strokeStyle = `hsla(${bHue + 20}, 92%, 88%, ${0.7 + (b.isActive ? 0.2 : 0)})`;
-                      ctx.lineWidth = 1.8;
-                      ctx.fillStyle = `hsla(${bHue + 32}, 90%, 72%, ${isSurface ? 0.24 : 0.14})`;
-                      ctx.beginPath();
-                      for (let i = 0; i < points * 2; i++) {
-                          const angle = spin - Math.PI / 2 + i * (Math.PI / points);
-                          const radius = i % 2 === 0 ? outerRadius : innerRadius;
-                          const px = b.x + Math.cos(angle) * radius;
-                          const py = b.y + Math.sin(angle) * radius;
-                          if (i === 0) ctx.moveTo(px, py);
-                          else ctx.lineTo(px, py);
-                      }
-                      ctx.closePath();
-                      ctx.fill();
-                      ctx.stroke();
-                      ctx.restore();
-                  };
                   ctx.save();
                   const trail = Array.isArray(b.motionTrail) ? b.motionTrail : [];
                   for (let i = 0; i < trail.length; i++) {
@@ -5109,7 +5158,6 @@ export function initLegacyApp() {
                   ctx.beginPath();
                   drawBubbleShape();
                   ctx.stroke();
-                  drawStarEmitterOverlay();
 
                   // Selection ring
                   if (b === selectedBubble) {
@@ -5140,8 +5188,42 @@ export function initLegacyApp() {
                   ctx.restore();
               };
 
+              const drawStarEffector = (star) => {
+                  if (!star) return;
+                  const starHue = star.hue ?? 44;
+                  const radius = star.radius || 24;
+                  const spin = performance.now() * 0.001 + (star.id ? star.id.length * 0.24 : 0);
+                  ctx.save();
+                  const halo = ctx.createRadialGradient(star.x, star.y, radius * 0.3, star.x, star.y, radius * 2.8);
+                  halo.addColorStop(0, `hsla(${starHue}, 92%, 78%, 0.26)`);
+                  halo.addColorStop(1, 'rgba(0,0,0,0)');
+                  ctx.fillStyle = halo;
+                  ctx.beginPath();
+                  ctx.arc(star.x, star.y, radius * 2.8, 0, Math.PI * 2);
+                  ctx.fill();
+
+                  ctx.globalCompositeOperation = 'screen';
+                  ctx.lineWidth = 1.8;
+                  ctx.strokeStyle = `hsla(${starHue + 12}, 96%, 88%, 0.86)`;
+                  ctx.fillStyle = `hsla(${starHue}, 90%, 70%, 0.42)`;
+                  ctx.beginPath();
+                  for (let i = 0; i < 10; i++) {
+                      const angle = spin - Math.PI / 2 + i * (Math.PI / 5);
+                      const r = i % 2 === 0 ? radius : radius * 0.46;
+                      const px = star.x + Math.cos(angle) * r;
+                      const py = star.y + Math.sin(angle) * r;
+                      if (i === 0) ctx.moveTo(px, py);
+                      else ctx.lineTo(px, py);
+                  }
+                  ctx.closePath();
+                  ctx.fill();
+                  ctx.stroke();
+                  ctx.restore();
+              };
+
               if (!heavySilenceMode) {
                   BUBBLES.filter((b) => b.layer === 'below').forEach(drawBubble);
+                  STAR_EFFECTORS.filter((star) => star.layer === 'below').forEach(drawStarEffector);
                   drawBreathWaves();
                   drawDriftMotes();
                   drawMarineParticles();
@@ -5382,6 +5464,7 @@ export function initLegacyApp() {
 
               if (!heavySilenceMode) {
                   BUBBLES.filter((b) => b.layer !== 'below').forEach(drawBubble);
+                  STAR_EFFECTORS.filter((star) => star.layer !== 'below').forEach(drawStarEffector);
               }
               ctx.restore();
               if (!heavySilenceMode) {
@@ -5510,6 +5593,7 @@ export function initLegacyApp() {
           }
 
           placeInitialArenaBubbles();
+          placeInitialStarEffectors();
           showView('home');
           setBottomNavCollapsed(false);
           loop();
