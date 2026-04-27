@@ -463,6 +463,17 @@ export function initLegacyApp() {
               stiffness: 0.0026, damping: 0.93, turnEase: 0.06, maxSpeed: 3.1,
               wakeEmitter: 0, rippleEmitter: 0
           };
+          const companionStarfish = {
+              x: -260,
+              y: 180,
+              vx: 0,
+              vy: 0,
+              targetVx: 0,
+              targetVy: 0,
+              driftChangeAt: 0,
+              rotation: 0,
+              rotationSpeed: 0
+          };
           const ARENA_MEMBRANE_SEGMENTS = Array.from({ length: ARENA_MEMBRANE_SEGMENTS_BASE }, () => ({ offset: 0, velocity: 0 }));
           let arenaMembraneActiveSegments = ARENA_MEMBRANE_SEGMENTS_BASE;
           let lastArenaImpactAt = 0;
@@ -4017,6 +4028,7 @@ export function initLegacyApp() {
               updateResonanceWaves();
               updatePoetryEffects(speed);
               updateArenaFireflies();
+              updateCompanionStarfish(now);
           }
 
           function updateWakeParticles(speed) {
@@ -4654,20 +4666,49 @@ export function initLegacyApp() {
               ctx.restore();
           }
 
+          function updateCompanionStarfish(now) {
+              if (now >= companionStarfish.driftChangeAt) {
+                  const heading = Math.random() * Math.PI * 2;
+                  const speed = 0.18 + Math.random() * 0.38;
+                  companionStarfish.targetVx = Math.cos(heading) * speed;
+                  companionStarfish.targetVy = Math.sin(heading) * speed;
+                  companionStarfish.rotationSpeed = (Math.random() - 0.5) * 0.01;
+                  companionStarfish.driftChangeAt = now + 1500 + Math.random() * 2500;
+              }
+
+              companionStarfish.vx += (companionStarfish.targetVx - companionStarfish.vx) * 0.02;
+              companionStarfish.vy += (companionStarfish.targetVy - companionStarfish.vy) * 0.02;
+              companionStarfish.x += companionStarfish.vx;
+              companionStarfish.y += companionStarfish.vy;
+              companionStarfish.rotation += companionStarfish.rotationSpeed;
+
+              const theta = Math.atan2(companionStarfish.y, companionStarfish.x);
+              const dist = Math.hypot(companionStarfish.x, companionStarfish.y);
+              const localArenaRadius = sampleArenaRadius(theta) - 90;
+              if (dist > localArenaRadius) {
+                  const normal = sampleArenaNormal(theta);
+                  const penetration = dist - localArenaRadius;
+                  companionStarfish.x -= normal.x * (penetration + 0.8);
+                  companionStarfish.y -= normal.y * (penetration + 0.8);
+                  const vn = companionStarfish.vx * normal.x + companionStarfish.vy * normal.y;
+                  if (vn > 0) {
+                      companionStarfish.vx -= normal.x * vn * 1.5;
+                      companionStarfish.vy -= normal.y * vn * 1.5;
+                  }
+                  companionStarfish.targetVx -= normal.x * 0.25;
+                  companionStarfish.targetVy -= normal.y * 0.25;
+              }
+          }
+
           function drawCompanionStarfish(swimT, reactiveEnergy) {
-              const orbitAngle = swimT * 0.9 + Math.sin(swimT * 0.7) * 0.24;
-              const orbitRadiusX = 44;
-              const orbitRadiusY = 28;
-              const starX = Math.cos(orbitAngle) * orbitRadiusX;
-              const starY = -6 + Math.sin(orbitAngle * 1.2) * orbitRadiusY;
               const pulse = 1 + Math.sin(swimT * 2.3) * 0.05;
               const armWave = Math.sin(swimT * 4.6) * 0.16;
-              const starRotate = Math.sin(swimT * 1.6) * 0.24;
+              const starScale = 3;
 
               ctx.save();
-              ctx.translate(starX, starY);
-              ctx.rotate(starRotate);
-              ctx.scale(pulse, pulse);
+              ctx.translate(companionStarfish.x, companionStarfish.y);
+              ctx.rotate(companionStarfish.rotation + Math.sin(swimT * 1.6) * 0.1);
+              ctx.scale(pulse * starScale, pulse * starScale);
 
               const glow = ctx.createRadialGradient(0, 1, 0, 0, 1, 17 + reactiveEnergy * 6);
               glow.addColorStop(0, `rgba(255, 188, 172, ${0.28 + reactiveEnergy * 0.25})`);
@@ -4711,21 +4752,6 @@ export function initLegacyApp() {
 
               ctx.strokeStyle = 'hsla(0, 92%, 94%, 0.42)';
               ctx.lineWidth = 1;
-              ctx.stroke();
-
-              ctx.shadowBlur = 0;
-              ctx.fillStyle = 'rgba(120, 26, 40, 0.86)';
-              ctx.beginPath();
-              ctx.ellipse(-2.8, -0.8, 1.15, 1.35, -0.1, 0, Math.PI * 2);
-              ctx.ellipse(2.8, -0.8, 1.15, 1.35, 0.1, 0, Math.PI * 2);
-              ctx.fill();
-
-              ctx.strokeStyle = 'rgba(112, 32, 54, 0.78)';
-              ctx.lineWidth = 0.9;
-              ctx.lineCap = 'round';
-              ctx.beginPath();
-              ctx.moveTo(-1.8, 2.2);
-              ctx.quadraticCurveTo(0, 3.6 + Math.sin(swimT * 1.8) * 0.45, 1.8, 2.2);
               ctx.stroke();
 
               ctx.fillStyle = 'rgba(255, 240, 232, 0.82)';
@@ -5024,6 +5050,7 @@ export function initLegacyApp() {
                   drawTraceRailPath();
                   drawLuminousTrail();
               }
+              drawCompanionStarfish(performance.now() * 0.001, audioReactiveState.energy);
 
               const nearestBubbleData = getNearestBubbleForShip();
               const bubbleProximity = nearestBubbleData ? nearestBubbleData.distanceRatio : 0;
@@ -5228,7 +5255,6 @@ export function initLegacyApp() {
               ctx.arc(-5.6, -12.6, 0.52, 0, Math.PI * 2);
               ctx.arc(6.8, -12.6, 0.52, 0, Math.PI * 2);
               ctx.fill();
-              drawCompanionStarfish(swimT, reactiveEnergy);
               ctx.restore();
 
               if (fishDepthToastUntil > performance.now()) {
