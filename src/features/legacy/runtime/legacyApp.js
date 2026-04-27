@@ -420,9 +420,9 @@ export function initLegacyApp() {
           let isFireflyVocalPlaying = false;
           let fireflyVocalQueue = Promise.resolve();
           const STARTING_BUBBLES = [
-              { sampleId: 'forêt-zen', layer: 'front', hue: 188, haloStyle: 'aurora', x: -240, y: -120, r: 72 },
-              { sampleId: 'ocean-deep', layer: 'below', hue: 235, haloStyle: 'pulse', x: 220, y: 170, r: 78 },
-              { sampleId: 'aurore', layer: 'above', hue: 318, haloStyle: 'stardust', x: 70, y: -255, r: 68 },
+              { sampleId: 'drill-bubble', layer: 'front', hue: 188, haloStyle: 'aurora', x: -240, y: -120, r: 72 },
+              { sampleId: 'scani-bubble', layer: 'below', hue: 235, haloStyle: 'pulse', x: 220, y: 170, r: 78 },
+              { sampleId: 'tech-bubble', layer: 'above', hue: 318, haloStyle: 'stardust', x: 70, y: -255, r: 68 },
           ];
           let shipBreathEmitter = 0;
           let marineParticleEmitter = 0;
