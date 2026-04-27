@@ -415,6 +415,7 @@
         .trace-cam-controls {
             position: fixed;
             inset: 0;
+            --trace-cam-arena-ring: clamp(120px, min(39vw, 39vh), 320px);
             z-index: 167;
             display: none;
             touch-action: none;
@@ -480,26 +481,29 @@
             filter: brightness(1.07);
         }
         .trace-cam-btn--up {
-            top: max(12px, env(safe-area-inset-top));
+            top: calc(50% - var(--trace-cam-arena-ring));
             left: 50%;
-            transform: translateX(-50%);
+            transform: translate(-50%, -50%);
         }
         .trace-cam-btn--right {
-            right: max(12px, env(safe-area-inset-right));
+            right: calc(50% - var(--trace-cam-arena-ring));
             top: 50%;
-            transform: translateY(-50%);
+            transform: translate(50%, -50%);
         }
         .trace-cam-btn--down {
-            bottom: calc(var(--bottom-nav-clearance) + 12px + env(safe-area-inset-bottom));
+            top: calc(50% + var(--trace-cam-arena-ring));
             left: 50%;
-            transform: translateX(-50%);
+            transform: translate(-50%, -50%);
         }
         .trace-cam-btn--left {
-            left: max(12px, env(safe-area-inset-left));
+            left: calc(50% - var(--trace-cam-arena-ring));
             top: 50%;
-            transform: translateY(-50%);
+            transform: translate(-50%, -50%);
         }
         @media (max-width: 860px) {
+            .trace-cam-controls {
+                --trace-cam-arena-ring: clamp(108px, min(36vw, 34vh), 250px);
+            }
             .trace-cam-center {
                 width: 52px;
                 height: 52px;

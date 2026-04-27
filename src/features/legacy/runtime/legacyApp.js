@@ -3079,7 +3079,7 @@ export function initLegacyApp() {
                       traceExitConfirmUntil = 0;
                       resetTraceCameraControl();
                       ui.textContent = 'Mode Tracer l’écoute : vue d’ensemble + tracé lissé.';
-                      helperTips.textContent = 'Maintiens pour tracer · flèches réparties sur les côtés, zoom discret + / − au centre.';
+                      helperTips.textContent = 'Maintiens pour tracer · flèches sur le contour de l’arène, zoom discret + / − au centre.';
                   } else if (!isDrawingTraceRail) {
                       traceExitConfirmUntil = 0;
                       resetTraceCameraControl();
