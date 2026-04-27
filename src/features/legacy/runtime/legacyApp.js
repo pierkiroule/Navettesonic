@@ -5192,32 +5192,50 @@ export function initLegacyApp() {
                   if (!star) return;
                   const starHue = star.hue ?? 44;
                   const radius = star.radius || 24;
-                  const spin = performance.now() * 0.001 + (star.id ? star.id.length * 0.24 : 0);
+                  const nowTime = performance.now() * 0.001;
+                  const phase = nowTime * 1.65 + (star.id ? star.id.length * 0.27 : 0);
+                  const elastic = 1 + Math.sin(phase) * 0.22;
+                  const cloudRadius = radius * (1.9 + elastic * 0.55);
+                  const pointCount = 72;
+                  const baseOpacity = 0.3;
+                  const pseudoRand = (seed) => {
+                      const s = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
+                      return s - Math.floor(s);
+                  };
                   ctx.save();
-                  const halo = ctx.createRadialGradient(star.x, star.y, radius * 0.3, star.x, star.y, radius * 2.8);
-                  halo.addColorStop(0, `hsla(${starHue}, 92%, 78%, 0.26)`);
+                  const halo = ctx.createRadialGradient(star.x, star.y, radius * 0.25, star.x, star.y, cloudRadius * 1.35);
+                  halo.addColorStop(0, `hsla(${starHue}, 90%, 76%, ${baseOpacity * 0.95})`);
+                  halo.addColorStop(0.58, `hsla(${starHue + 10}, 86%, 70%, ${baseOpacity * 0.42})`);
                   halo.addColorStop(1, 'rgba(0,0,0,0)');
                   ctx.fillStyle = halo;
                   ctx.beginPath();
-                  ctx.arc(star.x, star.y, radius * 2.8, 0, Math.PI * 2);
+                  ctx.arc(star.x, star.y, cloudRadius * 1.3, 0, Math.PI * 2);
                   ctx.fill();
 
                   ctx.globalCompositeOperation = 'screen';
-                  ctx.lineWidth = 1.8;
-                  ctx.strokeStyle = `hsla(${starHue + 12}, 96%, 88%, 0.86)`;
-                  ctx.fillStyle = `hsla(${starHue}, 90%, 70%, 0.42)`;
-                  ctx.beginPath();
-                  for (let i = 0; i < 10; i++) {
-                      const angle = spin - Math.PI / 2 + i * (Math.PI / 5);
-                      const r = i % 2 === 0 ? radius : radius * 0.46;
-                      const px = star.x + Math.cos(angle) * r;
-                      const py = star.y + Math.sin(angle) * r;
-                      if (i === 0) ctx.moveTo(px, py);
-                      else ctx.lineTo(px, py);
+                  for (let i = 0; i < pointCount; i++) {
+                      const seed = (i + 1) * 0.731 + (star.id ? star.id.length * 0.17 : 0);
+                      const angle = pseudoRand(seed) * Math.PI * 2 + nowTime * (0.25 + pseudoRand(seed + 0.31) * 0.45);
+                      const radial = Math.pow(pseudoRand(seed + 1.77), 0.72);
+                      const radialPulse = 1 + Math.sin(phase * (0.8 + pseudoRand(seed + 2.19) * 0.6) + i * 0.24) * 0.18;
+                      const dist = radial * cloudRadius * radialPulse;
+                      const px = star.x + Math.cos(angle) * dist;
+                      const py = star.y + Math.sin(angle) * dist * (0.88 + pseudoRand(seed + 0.9) * 0.3);
+                      const pointSize = 0.7 + pseudoRand(seed + 0.53) * 2.8;
+                      const alpha = baseOpacity * (0.24 + (1 - radial) * 0.88);
+                      ctx.fillStyle = `hsla(${starHue + pseudoRand(seed + 3.11) * 24}, 92%, 78%, ${alpha})`;
+                      ctx.beginPath();
+                      ctx.arc(px, py, pointSize, 0, Math.PI * 2);
+                      ctx.fill();
                   }
-                  ctx.closePath();
+
+                  const core = ctx.createRadialGradient(star.x, star.y, radius * 0.1, star.x, star.y, radius * 0.95 * elastic);
+                  core.addColorStop(0, `hsla(${starHue + 8}, 96%, 86%, ${baseOpacity})`);
+                  core.addColorStop(1, 'rgba(0,0,0,0)');
+                  ctx.fillStyle = core;
+                  ctx.beginPath();
+                  ctx.arc(star.x, star.y, radius * 0.95 * elastic, 0, Math.PI * 2);
                   ctx.fill();
-                  ctx.stroke();
                   ctx.restore();
               };
 
