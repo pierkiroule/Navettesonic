@@ -954,7 +954,7 @@
         #profileView {
             position: relative;
             color: #e6f4ff;
-            padding: 26px 18px calc(var(--bottom-nav-clearance) + 12px);
+            padding: 26px 18px calc(var(--bottom-nav-clearance) + 72px + env(safe-area-inset-bottom));
             overflow: auto;
             touch-action: pan-y;
             -webkit-overflow-scrolling: touch;
