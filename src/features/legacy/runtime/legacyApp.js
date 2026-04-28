@@ -3191,7 +3191,7 @@ export function initLegacyApp() {
           });
           traceSpeedRange?.addEventListener('input', () => {
               const next = Number.parseFloat(traceSpeedRange.value);
-              traceRailSpeedMultiplier = Number.isFinite(next) ? Math.max(0.4, Math.min(2, next)) : 1;
+              traceRailSpeedMultiplier = Number.isFinite(next) ? Math.max(0.4, Math.min(5, next)) : 1;
               if (traceSpeedValue) traceSpeedValue.textContent = `${Math.round(traceRailSpeedMultiplier * 100)}%`;
           });
           window.addEventListener('pointerup', () => { isTraceCamControlGestureActive = false; }, { passive: true });
