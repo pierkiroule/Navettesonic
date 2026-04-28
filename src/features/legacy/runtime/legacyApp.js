@@ -106,6 +106,7 @@ export function initLegacyApp() {
           const authStatus = document.getElementById('authStatus');
           const authSessionInfo = document.getElementById('authSessionInfo');
           const createArenaBtn = document.getElementById('createArenaBtn');
+          const inviteArenaBtn = document.getElementById('inviteArenaBtn');
           const joinArenaBtn = document.getElementById('joinArenaBtn');
           const arenaInviteCodeInput = document.getElementById('arenaInviteCodeInput');
           const arenaSessionStatus = document.getElementById('arenaSessionStatus');
@@ -438,6 +439,7 @@ export function initLegacyApp() {
           let currentArenaId = 'default';
           let currentArenaInviteCode = '';
           let currentArenaParticipants = 1;
+          let currentArenaRole = null;
           let syncedArenaId = null;
           let arenaRealtimeChannel = null;
           let isApplyingRemoteArenaSyncEvent = false;
@@ -911,6 +913,35 @@ export function initLegacyApp() {
               renderArenaSessionBadge();
           }
 
+          function refreshArenaInviteButton() {
+              if (!inviteArenaBtn) return;
+              const canInvite = !!currentSession?.user?.id && currentArenaRole === 'owner' && currentArenaId && currentArenaId !== 'default';
+              inviteArenaBtn.hidden = !canInvite;
+              inviteArenaBtn.disabled = !canInvite;
+          }
+
+          async function refreshCurrentArenaRole(arenaId = currentArenaId) {
+              const client = buildSupabaseClient();
+              if (!client || !currentSession?.user?.id || !arenaId || arenaId === 'default') {
+                  currentArenaRole = null;
+                  refreshArenaInviteButton();
+                  return;
+              }
+              const { data, error } = await client
+                  .from('soon_arena_members')
+                  .select('role')
+                  .eq('arena_id', arenaId)
+                  .eq('user_id', currentSession.user.id)
+                  .maybeSingle();
+              if (error) {
+                  currentArenaRole = null;
+                  refreshArenaInviteButton();
+                  return;
+              }
+              currentArenaRole = data?.role || null;
+              refreshArenaInviteButton();
+          }
+
           async function setCurrentArena(arenaId, inviteCode = '') {
               currentArenaId = arenaId || 'default';
               currentArenaInviteCode = inviteCode || '';
@@ -918,6 +949,7 @@ export function initLegacyApp() {
                   experienceView.dataset.arenaId = currentArenaId;
               }
               await activateArenaSync(currentArenaId);
+              await refreshCurrentArenaRole(currentArenaId);
           }
 
           function showView(target) {
@@ -1903,6 +1935,7 @@ export function initLegacyApp() {
                   if (authSignOutBtn) authSignOutBtn.disabled = true;
               }
               updateExperienceAccessUi();
+              refreshArenaInviteButton();
           }
 
           function getSavedProfileIdentity() {
@@ -2071,6 +2104,7 @@ export function initLegacyApp() {
                   currentArenaInviteCode = '';
                   currentArenaParticipants = 1;
                   currentArenaId = 'default';
+                  currentArenaRole = null;
                   if (experienceView) delete experienceView.dataset.arenaId;
                   renderArenaSessionBadge();
                   refreshAuthUi('Déconnecté.');
@@ -2200,6 +2234,40 @@ export function initLegacyApp() {
               if (currentView !== 'experience') showView('experience');
           }
 
+          async function createArenaInviteFromProfile() {
+              if (!currentSession?.user?.id) {
+                  setArenaSessionStatus('Connecte-toi pour inviter des membres.', true);
+                  return;
+              }
+              if (!currentArenaId || currentArenaId === 'default') {
+                  setArenaSessionStatus('Crée ou rejoins une arène avant d’inviter.', true);
+                  return;
+              }
+              if (currentArenaRole !== 'owner') {
+                  setArenaSessionStatus('Seul le propriétaire peut inviter.', true);
+                  return;
+              }
+              const client = buildSupabaseClient();
+              if (!client) return;
+
+              const token = (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`).replace(/-/g, '');
+              const { error } = await client.from('soon_arena_invites').insert({
+                  arena_id: currentArenaId,
+                  token,
+                  invited_by_user_id: currentSession.user.id,
+              });
+              if (error) {
+                  if (isArenaPermissionDeniedError(error)) {
+                      setArenaSessionStatus('Droit refusé (RLS) pour créer l’invitation.', true);
+                  } else {
+                      setArenaSessionStatus(`Invitation impossible: ${error.message}`, true);
+                  }
+                  return;
+              }
+              if (arenaInviteCodeInput) arenaInviteCodeInput.value = token;
+              setArenaSessionStatus(`Invitation créée ✅ Token: ${token}`);
+          }
+
           async function restoreSession() {
               const client = buildSupabaseClient();
               if (!client) return;
@@ -2209,6 +2277,7 @@ export function initLegacyApp() {
                   currentArenaInviteCode = '';
                   currentArenaParticipants = 1;
                   currentArenaId = 'default';
+                  currentArenaRole = null;
                   if (experienceView) delete experienceView.dataset.arenaId;
                   renderArenaSessionBadge();
               }
@@ -2255,6 +2324,7 @@ export function initLegacyApp() {
           bindPress(authSignUpBtn, signUpWithEmail);
           bindPress(authSignOutBtn, signOutSession);
           bindPress(createArenaBtn, createArenaFromProfile);
+          bindPress(inviteArenaBtn, createArenaInviteFromProfile);
           bindPress(joinArenaBtn, joinArenaFromProfile);
           arenaInviteCodeInput?.addEventListener('input', () => {
               const normalized = normalizeInviteCode(arenaInviteCodeInput.value);
@@ -2268,6 +2338,7 @@ export function initLegacyApp() {
           renderStoreCatalog();
           renderSessionHistory();
           renderArenaSessionBadge();
+          refreshArenaInviteButton();
           restoreSession();
 
           SAMPLE_LIBRARY.forEach(sample => {
