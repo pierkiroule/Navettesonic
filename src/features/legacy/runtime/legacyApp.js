@@ -2142,6 +2142,7 @@ export function initLegacyApp() {
               if (!element) return false;
               return Boolean(element.closest(
                   '#bubblePanel, #bubblePropsPanel, #echoRecorderPanel, #traceListeningBtn, #traceCamControls, ' +
+                  '#tracePlaybackControls, ' +
                   '#silenceDesYeuxPrompt, #silenceDesYeuxOverlay, #arenaTrianglePad, #bottomNav, ' +
                   '#homeView, #profileView, #echoHypnoseView'
               ));
