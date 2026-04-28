@@ -2161,14 +2161,10 @@ export function initLegacyApp() {
           function updateTraceFlowButtons() {
               if (!traceCamControls) return;
               const armBtn = traceCamControls.querySelector('[data-trace-cam-action="trace-arm"]');
-              const launchBtn = traceCamControls.querySelector('[data-trace-cam-action="trace-launch"]');
               const stopBtn = traceCamControls.querySelector('[data-trace-cam-action="trace-stop"]');
-              const hasDraftTrace = traceRailPath.length > 1;
               const showArm = isTraceListeningMode && !isDrawingTraceRail && !isTraceRailAutopilot;
-              const showLaunch = isTraceListeningMode && !isDrawingTraceRail && hasDraftTrace;
-              const showStop = showLaunch || isTraceRailAutopilot;
+              const showStop = isTraceListeningMode || isDrawingTraceRail || isTraceRailAutopilot;
               armBtn?.classList.toggle('trace-cam-btn--trace-flow-hidden', !showArm);
-              launchBtn?.classList.toggle('trace-cam-btn--trace-flow-hidden', !showLaunch);
               stopBtn?.classList.toggle('trace-cam-btn--trace-flow-hidden', !showStop);
           }
 
@@ -2186,8 +2182,8 @@ export function initLegacyApp() {
               isTraceRailAutopilot = true;
               traceRailTargetIndex = 0;
               traceRailDirection = 1;
-              ui.textContent = 'Voyage sonore auto lancé : tracé plume Bézier validé.';
-              helperTips.textContent = 'Traversée active. Étape 4/4 : appuie sur ⏹ pour stopper et quitter.';
+              ui.textContent = 'Voyage sonore auto lancé ✨';
+              helperTips.textContent = 'Traversée active. Appuie sur ⏹ pour arrêter.';
               updateTraceCamControlsVisibility();
           }
 
@@ -2199,8 +2195,8 @@ export function initLegacyApp() {
               traceRailPath = [];
               traceRailTargetIndex = 0;
               traceRailDirection = 1;
-              ui.textContent = 'Mode tracé activé : touche l’océan pour dessiner.';
-              helperTips.textContent = 'Étape 2/4 : trace ton chemin. Étape 3 : valide avec ✅.';
+              ui.textContent = 'Mode 🪶 actif : dessine une trajectoire dans l’océan.';
+              helperTips.textContent = 'Glisse le doigt pour tracer puis relâche pour lancer automatiquement.';
               updateTraceCamControlsVisibility();
           }
 
@@ -2988,8 +2984,8 @@ export function initLegacyApp() {
                   }
                   traceExitConfirmUntil = 0;
                   isTethered = false;
-                  ui.textContent = 'Trace en cours… Étape 3/4 : valide avec ✅ pour lancer la traversée.';
-                  helperTips.textContent = 'Ajoute des points en glissant, puis appuie sur ✅.';
+                  ui.textContent = 'Trace en cours… relâche pour lancer.';
+                  helperTips.textContent = 'Geste simple mobile : un seul tracé au doigt.';
                   updateTraceCamControlsVisibility();
                   return;
               }
@@ -3063,9 +3059,13 @@ export function initLegacyApp() {
               cancelFishLongPress();
               if (isDrawingTraceRail) {
                   setDrawingTraceRail(false);
-                  ui.textContent = 'Tracé prêt. Étape 3/4 : appuie sur ✅ pour lancer.';
-                  helperTips.textContent = 'Étape 4/4 : utilise ⏹ pour stopper et quitter le mode tracé.';
-                  updateTraceFlowButtons();
+                  if (traceRailPath.length > 1) {
+                      finalizeTraceRailFromDraft();
+                  } else {
+                      ui.textContent = 'Trace trop courte : recommence avec un glissé plus long.';
+                      helperTips.textContent = 'Maintiens 🪶 puis trace au doigt pour lancer le voyage.';
+                      updateTraceFlowButtons();
+                  }
               }
               isTethered = false;
               isDraggingBubble = false;
