@@ -64,6 +64,7 @@ export function initLegacyApp() {
           const echoRecordDownloadLink = document.getElementById('echoRecordDownloadLink');
           const traceListeningBtn = document.getElementById('traceListeningBtn');
           const traceCamControls = document.getElementById('traceCamControls');
+          const tracePlaybackControls = document.getElementById('tracePlaybackControls');
           const silenceDesYeuxPrompt = document.getElementById('silenceDesYeuxPrompt');
           const silenceSaveNoBtn = document.getElementById('silenceSaveNoBtn');
           const silenceSaveYesBtn = document.getElementById('silenceSaveYesBtn');
@@ -255,6 +256,7 @@ export function initLegacyApp() {
           let isTraceListeningMode = false;
           let isDrawingTraceRail = false;
           let isTraceRailAutopilot = false;
+          let isTraceRailPaused = false;
           let traceRailPath = [];
           let traceRailTargetIndex = 0;
           let traceRailDirection = 1;
@@ -899,6 +901,8 @@ export function initLegacyApp() {
                   releaseInitialFirefliesFromBubble(null, performance.now());
               }
               syncExperienceModeChips();
+              updateTraceCamControlsVisibility();
+              updateTracePlaybackControlsVisibility();
               resize();
               scheduleBottomNavAutoCollapse();
           }
@@ -2144,7 +2148,7 @@ export function initLegacyApp() {
           }
 
           function getTraceOverviewBaseZoom() {
-              return Math.max(traceOverviewZoomMin, Math.min(0.55, Math.min(w, h) / (ARENA_RADIUS * 2.05)));
+              return Math.max(traceOverviewZoomMin, Math.min(0.72, Math.min(w, h) / (ARENA_RADIUS * 1.8)));
           }
 
           function clampTraceZoomScale(nextScale) {
@@ -2153,9 +2157,17 @@ export function initLegacyApp() {
 
           function updateTraceCamControlsVisibility() {
               if (!traceCamControls) return;
-              const shouldShow = currentView === 'experience' && (isTraceListeningMode || isDrawingTraceRail || isTraceRailAutopilot);
+              const shouldShow = currentView === 'experience' && (isTraceListeningMode || isDrawingTraceRail);
               traceCamControls.classList.toggle('visible', shouldShow);
               updateTraceFlowButtons();
+          }
+
+          function updateTracePlaybackControlsVisibility() {
+              if (!tracePlaybackControls) return;
+              const shouldShow = currentView === 'experience' && isTraceRailAutopilot;
+              tracePlaybackControls.classList.toggle('visible', shouldShow);
+              tracePlaybackControls.querySelector('[data-trace-playback-action="play"]')?.classList.toggle('trace-playback-btn--hidden', !isTraceRailPaused);
+              tracePlaybackControls.querySelector('[data-trace-playback-action="pause"]')?.classList.toggle('trace-playback-btn--hidden', isTraceRailPaused);
           }
 
           function updateTraceFlowButtons() {
@@ -2163,7 +2175,7 @@ export function initLegacyApp() {
               const armBtn = traceCamControls.querySelector('[data-trace-cam-action="trace-arm"]');
               const stopBtn = traceCamControls.querySelector('[data-trace-cam-action="trace-stop"]');
               const showArm = isTraceListeningMode && !isDrawingTraceRail && !isTraceRailAutopilot;
-              const showStop = isTraceListeningMode || isDrawingTraceRail || isTraceRailAutopilot;
+              const showStop = isTraceRailAutopilot;
               armBtn?.classList.toggle('trace-cam-btn--trace-flow-hidden', !showArm);
               stopBtn?.classList.toggle('trace-cam-btn--trace-flow-hidden', !showStop);
           }
@@ -2180,11 +2192,13 @@ export function initLegacyApp() {
               setTraceListeningMode(false);
               traceRailPath = buildSmoothedTraceRail(traceRailPath);
               isTraceRailAutopilot = true;
+              isTraceRailPaused = false;
               traceRailTargetIndex = 0;
               traceRailDirection = 1;
               ui.textContent = 'Voyage sonore auto lancé ✨';
-              helperTips.textContent = 'Traversée active. Appuie sur ⏹ pour arrêter.';
+              helperTips.textContent = 'Traversée active. Utilise ▶ ⏸ ⏹ en bas de l’écran.';
               updateTraceCamControlsVisibility();
+              updateTracePlaybackControlsVisibility();
           }
 
           function armTraceFlow() {
@@ -2195,9 +2209,11 @@ export function initLegacyApp() {
               traceRailPath = [];
               traceRailTargetIndex = 0;
               traceRailDirection = 1;
+              isTraceRailPaused = false;
               ui.textContent = 'Mode 🪶 actif : dessine une trajectoire dans l’océan.';
               helperTips.textContent = 'Glisse le doigt pour tracer puis relâche pour lancer automatiquement.';
               updateTraceCamControlsVisibility();
+              updateTracePlaybackControlsVisibility();
           }
 
           function stopTraceFlow() {
@@ -2208,10 +2224,12 @@ export function initLegacyApp() {
               traceRailTargetIndex = 0;
               traceRailDirection = 1;
               traceExitConfirmUntil = 0;
+              isTraceRailPaused = false;
               resetTraceCameraControl();
               ui.textContent = '';
               rotateHelperTip();
               updateTraceCamControlsVisibility();
+              updateTracePlaybackControlsVisibility();
           }
 
           function applyTraceCameraAction(action) {
@@ -2952,24 +2970,7 @@ export function initLegacyApp() {
               cancelFishLongPress();
               ensureAllAudioRunning();
               if (isTraceRailAutopilot) {
-                  const now = performance.now();
-                  if (now <= traceExitConfirmUntil) {
-                      isTraceRailAutopilot = false;
-                      setTraceListeningMode(false);
-                      setDrawingTraceRail(false);
-                      traceRailPath = [];
-                      traceRailTargetIndex = 0;
-                      traceRailDirection = 1;
-                      traceExitConfirmUntil = 0;
-                      resetTraceCameraControl();
-                      ui.textContent = 'Mode normal réactivé.';
-                      rotateHelperTip();
-                      updateTraceCamControlsVisibility();
-                  } else {
-                      traceExitConfirmUntil = now + 1400;
-                      ui.textContent = 'Auto-voyage actif. Retape pour quitter "Tracer l’écoute".';
-                      helperTips.textContent = 'Confirmation sortie : touche encore une fois l’océan.';
-                  }
+                  ui.textContent = 'Traversée en cours : contrôle avec ▶ ⏸ ⏹ en bas.';
                   return;
               }
               if (isTraceListeningMode) {
@@ -3163,6 +3164,27 @@ export function initLegacyApp() {
               button.addEventListener('pointercancel', stopRepeat);
               button.addEventListener('lostpointercapture', stopRepeat);
           });
+          const tracePlaybackButtons = tracePlaybackControls?.querySelectorAll('[data-trace-playback-action]');
+          tracePlaybackButtons?.forEach((button) => {
+              button.addEventListener('click', () => {
+                  const action = button.getAttribute('data-trace-playback-action');
+                  if (action === 'play') {
+                      isTraceRailPaused = false;
+                      ui.textContent = 'Traversée reprise.';
+                      helperTips.textContent = 'Voyage actif. Appuie sur ⏸ pour mettre en pause.';
+                  } else if (action === 'pause') {
+                      isTraceRailPaused = true;
+                      ship.vx *= 0.72;
+                      ship.vy *= 0.72;
+                      ui.textContent = 'Traversée en pause.';
+                      helperTips.textContent = 'Pause active. Appuie sur ▶ pour reprendre.';
+                  } else if (action === 'stop') {
+                      stopTraceFlow();
+                      return;
+                  }
+                  updateTracePlaybackControlsVisibility();
+              });
+          });
           window.addEventListener('pointerup', () => { isTraceCamControlGestureActive = false; }, { passive: true });
           window.addEventListener('pointercancel', () => { isTraceCamControlGestureActive = false; }, { passive: true });
           window.addEventListener('touchend', () => { isTraceCamControlGestureActive = false; }, { passive: true });
@@ -3211,6 +3233,7 @@ export function initLegacyApp() {
           });
           updateTraceCamMenuDragPosition();
           updateTraceCamControlsVisibility();
+          updateTracePlaybackControlsVisibility();
 
           cancelBtn.addEventListener('click', closeBubblePanel);
           dropBtn.addEventListener('click', () => {
@@ -3887,13 +3910,7 @@ export function initLegacyApp() {
               const now = performance.now();
               updateArenaMembranePerfBudget(now);
               updateArenaMembraneDynamics();
-              if (traceExitConfirmUntil && performance.now() > traceExitConfirmUntil) {
-                  traceExitConfirmUntil = 0;
-                  if (isTraceRailAutopilot) {
-                      ui.textContent = 'Voyage sonore auto lancé : aller-retour lissé.';
-                  }
-              }
-              if (isTraceRailAutopilot && traceRailPath.length > 1 && !isInteractionPaused) {
+              if (isTraceRailAutopilot && !isTraceRailPaused && traceRailPath.length > 1 && !isInteractionPaused) {
                   const target = traceRailPath[Math.min(traceRailTargetIndex, traceRailPath.length - 1)];
                   const dx = target.x - ship.x;
                   const dy = target.y - ship.y;

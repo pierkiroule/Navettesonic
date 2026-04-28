@@ -506,6 +506,42 @@
                 height: 42px;
             }
         }
+        .trace-playback-controls {
+            position: fixed;
+            left: 50%;
+            bottom: calc(var(--bottom-nav-clearance) + 16px + env(safe-area-inset-bottom));
+            transform: translateX(-50%);
+            z-index: 168;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            pointer-events: auto;
+        }
+        .trace-playback-controls.visible {
+            display: flex;
+        }
+        .trace-playback-btn {
+            border: 1px solid rgba(153, 222, 255, 0.6);
+            border-radius: 10px;
+            width: 52px;
+            height: 42px;
+            background: linear-gradient(180deg, rgba(18, 81, 180, 0.9), rgba(14, 59, 143, 0.88));
+            color: rgba(235, 250, 255, 0.98);
+            font-size: 1.04rem;
+            font-weight: 700;
+            cursor: pointer;
+            touch-action: manipulation;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .trace-playback-btn--stop {
+            background: rgba(106, 38, 56, 0.88);
+            border-color: rgba(255, 204, 214, 0.52);
+        }
+        .trace-playback-btn--hidden {
+            display: none;
+        }
 
         #arenaTrianglePad {
             position: absolute;
