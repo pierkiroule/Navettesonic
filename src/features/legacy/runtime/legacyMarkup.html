@@ -212,16 +212,6 @@
     </section>
 
     <section id="profileView" class="view hidden-view">
-        <button
-            id="multiplayerBurgerBtn"
-            class="profile-multi-burger-btn"
-            type="button"
-            aria-controls="multiplayerDrawer"
-            aria-expanded="false"
-            aria-label="Ouvrir le menu multijoueur"
-        >
-            ☰ Multi
-        </button>
         <div class="profile-bubbles" aria-hidden="true">
             <span class="profile-bubble profile-bubble--1"></span>
             <span class="profile-bubble profile-bubble--2"></span>
@@ -289,6 +279,20 @@
                 </div>
             </article>
 
+            <article class="card profile-auth-card profile-multi-section">
+                <h3>Gestion multiutilisateur</h3>
+                <p>Crée une arène partagée, invite tes proches, ou rejoins une session existante.</p>
+                <div class="stack">
+                    <div class="auth-row">
+                        <button id="createArenaBtn" type="button">Créer mon arène</button>
+                        <button id="joinArenaBtn" type="button">Rejoindre</button>
+                    </div>
+                    <label class="field-label" for="arenaInviteCodeInput">Code d'invitation</label>
+                    <input id="arenaInviteCodeInput" type="text" maxlength="8" placeholder="ABC-123">
+                    <p id="arenaSessionStatus" class="status"></p>
+                </div>
+            </article>
+
             <article id="profileEditPanel" class="card profile-edit-panel" hidden>
                 <h3>Éditer ton profil</h3>
                 <div class="stack">
@@ -320,25 +324,6 @@
             </div>
         </div>
 
-        <aside id="multiplayerDrawer" class="profile-multi-drawer" hidden>
-            <div id="multiplayerDrawerBackdrop" class="profile-multi-drawer-backdrop" aria-hidden="true"></div>
-            <article class="card profile-auth-card profile-multi-panel" role="dialog" aria-modal="true" aria-label="Menu multijoueur">
-                <div class="profile-multi-panel-head">
-                    <h3>Arène multi</h3>
-                    <button id="multiplayerDrawerCloseBtn" class="profile-multi-close-btn" type="button" aria-label="Fermer le menu multijoueur">✕</button>
-                </div>
-                <p>Crée une arène partagée ou rejoins une arène existante avec un code.</p>
-                <div class="stack">
-                    <div class="auth-row">
-                        <button id="createArenaBtn" type="button">Créer mon arène</button>
-                        <button id="joinArenaBtn" type="button">Rejoindre</button>
-                    </div>
-                    <label class="field-label" for="arenaInviteCodeInput">Code d'invitation</label>
-                    <input id="arenaInviteCodeInput" type="text" maxlength="8" placeholder="ABC-123">
-                    <p id="arenaSessionStatus" class="status"></p>
-                </div>
-            </article>
-        </aside>
     </section>
 
     <nav id="bottomNav" class="bottom-nav hidden-view" aria-label="Navigation principale">
