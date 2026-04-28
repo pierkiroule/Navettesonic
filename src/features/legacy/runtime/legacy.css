@@ -954,7 +954,7 @@
         #profileView {
             position: relative;
             color: #e6f4ff;
-            padding: 26px 18px calc(var(--bottom-nav-clearance) + 12px);
+            padding: 26px 18px calc(var(--bottom-nav-clearance) + 20px + env(safe-area-inset-bottom));
             overflow: auto;
             touch-action: pan-y;
             -webkit-overflow-scrolling: touch;
@@ -963,6 +963,10 @@
                 radial-gradient(circle at 18% 16%, rgba(93, 182, 255, 0.16), transparent 43%),
                 radial-gradient(circle at 82% 82%, rgba(112, 238, 255, 0.12), transparent 48%),
                 #030308;
+        }
+        .profile-multi-section {
+            border-color: rgba(126, 216, 255, 0.28);
+            background: linear-gradient(155deg, rgba(10, 27, 44, 0.92), rgba(6, 18, 32, 0.88));
         }
         .profile-bubbles {
             position: absolute;
