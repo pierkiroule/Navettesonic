@@ -145,6 +145,7 @@ export function initLegacyApp() {
               sw.addEventListener('click', () => {
                   if (!selectedBubble) return;
                   selectedBubble.hue = c.hue;
+                  pushBubblePatchToDb(selectedBubble, { hue: c.hue });
                   refreshSwatchSelection();
               });
               colorSwatches.appendChild(sw);
@@ -215,36 +216,34 @@ export function initLegacyApp() {
           propsSampleSelect.addEventListener('change', () => {
               if (!selectedBubble) return;
               const sample = SAMPLE_LIBRARY.find(s => s.id === propsSampleSelect.value);
-              if (sample) rebuildBubbleSound(selectedBubble, sample);
+              if (sample) {
+                  rebuildBubbleSound(selectedBubble, sample);
+                  pushBubblePatchToDb(selectedBubble, { sample_id: sample.id, label: sample.name });
+              }
           });
           propsSizeRange.addEventListener('input', () => {
               if (!selectedBubble) return;
               selectedBubble.r = parseInt(propsSizeRange.value);
               propsSizeVal.textContent = propsSizeRange.value + 'px';
+              pushBubblePatchToDb(selectedBubble, { radius: selectedBubble.r });
           });
           propsHaloStyleSelect.addEventListener('change', () => {
               if (!selectedBubble) return;
               selectedBubble.haloStyle = propsHaloStyleSelect.value;
+              pushBubblePatchToDb(selectedBubble, { halo_style: selectedBubble.haloStyle });
           });
           propsLayerSelect.addEventListener('change', () => {
               if (!selectedBubble) return;
               const spatial = layerToSpatial(propsLayerSelect.value);
               selectedBubble.layer = propsLayerSelect.value;
               selectedBubble.depthOffset = spatial.depthOffset;
+              pushBubblePatchToDb(selectedBubble, { layer: selectedBubble.layer });
           });
-          propsDeleteBtn.addEventListener('click', () => {
+          propsDeleteBtn.addEventListener('click', async () => {
               if (!selectedBubble) return;
-              try { selectedBubble.sound?.source?.stop(); } catch (_) {}
-              ARENA_FIREFLIES.forEach((firefly) => {
-                  if (firefly.containedInBubbleId !== selectedBubble.id) return;
-                  firefly.containedInBubbleId = null;
-                  firefly.triangleVertexIndex = -1;
-                  firefly.linkedCooldownUntil = performance.now() + 1200;
-                  firefly.nextDestinyAt = performance.now() + 900 + Math.random() * 900;
-              });
-              const idx = BUBBLES.indexOf(selectedBubble);
-              if (idx !== -1) BUBBLES.splice(idx, 1);
-              closeBubblePropsPanel();
+              const bubbleToDelete = selectedBubble;
+              removeBubbleFromArenaById(bubbleToDelete.id);
+              await deleteBubbleInDb(bubbleToDelete);
           });
           propsCloseBtn.addEventListener('click', closeBubblePropsPanel);
 
@@ -431,6 +430,14 @@ export function initLegacyApp() {
           let shipBreathEmitter = 0;
           let marineParticleEmitter = 0;
           let bubbleIdSeed = 1;
+          let currentArenaId = 'default';
+          let syncedArenaId = null;
+          let arenaRealtimeChannel = null;
+          let isApplyingRemoteArenaSyncEvent = false;
+          let isHydratingArenaBubbles = false;
+          const BUBBLE_UPDATE_THROTTLE_MS = 70;
+          const bubbleUpdateThrottleTimers = new Map();
+          const bubblePendingPatchById = new Map();
           let supabaseClient = null;
           let currentSession = null;
           let isAuthActionPending = false;
@@ -865,6 +872,10 @@ export function initLegacyApp() {
               scheduleBottomNavAutoCollapse();
           }
 
+          function resolveArenaId() {
+              return experienceView?.dataset?.arenaId || currentSession?.user?.id || 'default';
+          }
+
           function showView(target) {
               console.log('[legacyApp] showView called', { target, currentViewBefore: currentView });
               currentView = target;
@@ -877,6 +888,8 @@ export function initLegacyApp() {
               else if (target === 'echohypnose') setActiveNav('echohypnose');
               else setActiveNav(target);
               if (target !== 'experience') {
+                  unsubscribeArenaRealtimeChannel();
+                  syncedArenaId = null;
                   isTethered = false;
                   if (soonTutoModal) soonTutoModal.hidden = true;
                   fadeOutSoonTutoMusic(5000);
@@ -895,6 +908,13 @@ export function initLegacyApp() {
                   }
               }
               if (target === 'experience') {
+                  const nextArenaId = resolveArenaId();
+                  if (nextArenaId !== syncedArenaId) {
+                      activateArenaSync(nextArenaId).catch((error) => {
+                          console.warn('[legacyApp] arena sync activation failed', error);
+                      });
+                      syncedArenaId = nextArenaId;
+                  }
                   rotateHelperTip(true);
                   releaseInitialFirefliesFromBubble(null, performance.now());
               }
@@ -1277,6 +1297,15 @@ export function initLegacyApp() {
                   };
                   refreshAuthUi(statusByEvent[event] || 'Session active.');
                   syncSessionAndProfile({ silent: true });
+                  if (currentView === 'experience') {
+                      const nextArenaId = resolveArenaId();
+                      if (nextArenaId !== syncedArenaId) {
+                          activateArenaSync(nextArenaId).catch((error) => {
+                              console.warn('[legacyApp] arena sync reactivation failed', error);
+                          });
+                          syncedArenaId = nextArenaId;
+                      }
+                  }
               });
               return supabaseClient;
           }
@@ -3045,6 +3074,7 @@ export function initLegacyApp() {
               if (isDraggingBubble && selectedBubble) {
                   selectedBubble.x = pos.x;
                   selectedBubble.y = pos.y;
+                  pushBubblePatchToDb(selectedBubble, { x: selectedBubble.x, y: selectedBubble.y });
               }
               if (fishLongPressTimer && fishLongPressOrigin) {
                   if (Math.hypot(pos.x - fishLongPressOrigin.x, pos.y - fishLongPressOrigin.y) > FISH_LONG_PRESS_MOVE_TOLERANCE) {
@@ -3213,11 +3243,20 @@ export function initLegacyApp() {
           updateTraceCamControlsVisibility();
 
           cancelBtn.addEventListener('click', closeBubblePanel);
-          dropBtn.addEventListener('click', () => {
+          dropBtn.addEventListener('click', async () => {
               const sample = SAMPLE_LIBRARY.find(s => s.id === selectedSampleId);
               if (!sample) return;
               const bubble = buildSoundBubble(sample, bubbleLayer.value, selectedHaloStyleId);
-              BUBBLES.push(bubble);
+              const client = buildSupabaseClient();
+              if (!client) {
+                  BUBBLES.push(bubble);
+              } else {
+                  const payload = bubbleToDbPayload(bubble);
+                  const { error } = await client.from('soon_arena_bubbles').insert(payload);
+                  if (error) {
+                      console.warn('[legacyApp] failed to insert soon_arena_bubbles row', error);
+                  }
+              }
               closeBubblePanel();
           });
           traceListeningBtn?.addEventListener('click', () => {
@@ -3662,6 +3701,8 @@ export function initLegacyApp() {
           renderSilenceSessions();
 
           window.addEventListener('beforeunload', () => {
+              unsubscribeArenaRealtimeChannel();
+              BUBBLES.forEach((bubble) => clearBubbleUpdateThrottleForId(bubble.id));
               if (recordingDownloadUrl) {
                   URL.revokeObjectURL(recordingDownloadUrl);
               }
@@ -3735,6 +3776,204 @@ export function initLegacyApp() {
                   trianglePlaybackLockUntil: 0,
                   isTrianglePlaybackActive: false
               };
+          }
+
+          function clearBubbleUpdateThrottleForId(bubbleId) {
+              const timer = bubbleUpdateThrottleTimers.get(bubbleId);
+              if (timer) {
+                  clearTimeout(timer);
+                  bubbleUpdateThrottleTimers.delete(bubbleId);
+              }
+              bubblePendingPatchById.delete(bubbleId);
+          }
+
+          function cleanupBubbleAudioAndLinks(bubble) {
+              if (!bubble) return;
+              try { bubble.sound?.source?.stop(); } catch (_) {}
+              ARENA_FIREFLIES.forEach((firefly) => {
+                  if (firefly.containedInBubbleId !== bubble.id) return;
+                  firefly.containedInBubbleId = null;
+                  firefly.triangleVertexIndex = -1;
+                  firefly.linkedCooldownUntil = performance.now() + 1200;
+                  firefly.nextDestinyAt = performance.now() + 900 + Math.random() * 900;
+              });
+              clearBubbleUpdateThrottleForId(bubble.id);
+          }
+
+          function removeBubbleFromArenaById(bubbleId) {
+              const index = BUBBLES.findIndex((bubble) => bubble.id === bubbleId);
+              if (index === -1) return;
+              const bubble = BUBBLES[index];
+              cleanupBubbleAudioAndLinks(bubble);
+              BUBBLES.splice(index, 1);
+              if (selectedBubble?.id === bubbleId) {
+                  closeBubblePropsPanel();
+              }
+          }
+
+          function getSampleById(sampleId) {
+              return SAMPLE_LIBRARY.find((sample) => sample.id === sampleId) || SAMPLE_LIBRARY[0];
+          }
+
+          function bubbleToDbPayload(bubble, extra = {}) {
+              return {
+                  id: bubble.id,
+                  arena_id: currentArenaId,
+                  x: bubble.x,
+                  y: bubble.y,
+                  radius: bubble.r,
+                  hue: bubble.hue ?? 195,
+                  layer: bubble.layer || 'front',
+                  halo_style: bubble.haloStyle || HALO_STYLE_LIBRARY[0].id,
+                  sample_id: bubble._sampleId || SAMPLE_LIBRARY[0].id,
+                  label: bubble.label || 'Bulle sonore',
+                  ...extra,
+              };
+          }
+
+          function applyDbRowToBubble(bubble, row = {}) {
+              bubble.x = Number.isFinite(row.x) ? row.x : bubble.x;
+              bubble.y = Number.isFinite(row.y) ? row.y : bubble.y;
+              bubble.r = Number.isFinite(row.radius) ? row.radius : (Number.isFinite(row.r) ? row.r : bubble.r);
+              bubble.hue = Number.isFinite(row.hue) ? row.hue : (bubble.hue ?? 195);
+              bubble.layer = row.layer || bubble.layer || 'front';
+              const spatial = layerToSpatial(bubble.layer);
+              bubble.depthOffset = spatial.depthOffset;
+              bubble.haloStyle = row.halo_style || row.haloStyle || bubble.haloStyle || HALO_STYLE_LIBRARY[0].id;
+              const sampleIdFromRow = row.sample_id || row.sampleId;
+              if (sampleIdFromRow && sampleIdFromRow !== bubble._sampleId) {
+                  const sample = getSampleById(sampleIdFromRow);
+                  rebuildBubbleSound(bubble, sample);
+              } else if (row.label) {
+                  bubble.label = row.label;
+              }
+          }
+
+          function hydrateBubbleFromDbRow(row) {
+              const sample = getSampleById(row.sample_id || row.sampleId);
+              const bubble = buildSoundBubble(sample, row.layer || 'front', row.halo_style || row.haloStyle || HALO_STYLE_LIBRARY[0].id);
+              bubble.id = row.id || `bubble-${bubbleIdSeed++}`;
+              applyDbRowToBubble(bubble, row);
+              return bubble;
+          }
+
+          async function pushBubblePatchToDb(bubble, partialPatch = {}, immediate = false) {
+              if (isApplyingRemoteArenaSyncEvent || isHydratingArenaBubbles) return;
+              if (!bubble?.id) return;
+              const client = buildSupabaseClient();
+              if (!client) return;
+              const bubbleId = bubble.id;
+              const nextPatch = { ...(bubblePendingPatchById.get(bubbleId) || {}), ...partialPatch };
+              bubblePendingPatchById.set(bubbleId, nextPatch);
+              if (immediate) {
+                  const patch = bubblePendingPatchById.get(bubbleId) || nextPatch;
+                  const timer = bubbleUpdateThrottleTimers.get(bubbleId);
+                  if (timer) {
+                      clearTimeout(timer);
+                      bubbleUpdateThrottleTimers.delete(bubbleId);
+                  }
+                  bubblePendingPatchById.delete(bubbleId);
+                  await client.from('soon_arena_bubbles').update(patch).eq('id', bubbleId).eq('arena_id', currentArenaId);
+                  return;
+              }
+              if (bubbleUpdateThrottleTimers.has(bubbleId)) return;
+              const timer = window.setTimeout(async () => {
+                  bubbleUpdateThrottleTimers.delete(bubbleId);
+                  const patch = bubblePendingPatchById.get(bubbleId);
+                  bubblePendingPatchById.delete(bubbleId);
+                  if (!patch || !Object.keys(patch).length) return;
+                  await client.from('soon_arena_bubbles').update(patch).eq('id', bubbleId).eq('arena_id', currentArenaId);
+              }, BUBBLE_UPDATE_THROTTLE_MS);
+              bubbleUpdateThrottleTimers.set(bubbleId, timer);
+          }
+
+          async function deleteBubbleInDb(bubble) {
+              if (isApplyingRemoteArenaSyncEvent || isHydratingArenaBubbles) return;
+              if (!bubble?.id) return;
+              const client = buildSupabaseClient();
+              if (!client) return;
+              clearBubbleUpdateThrottleForId(bubble.id);
+              await client.from('soon_arena_bubbles').delete().eq('id', bubble.id).eq('arena_id', currentArenaId);
+          }
+
+          async function hydrateArenaBubblesFromDb() {
+              const client = buildSupabaseClient();
+              if (!client) {
+                  if (!BUBBLES.length) placeInitialArenaBubbles();
+                  return;
+              }
+              isHydratingArenaBubbles = true;
+              try {
+                  const { data, error } = await client
+                      .from('soon_arena_bubbles')
+                      .select('*')
+                      .eq('arena_id', currentArenaId);
+                  if (error) {
+                      console.warn('[legacyApp] soon_arena_bubbles initial fetch failed', error);
+                      if (!BUBBLES.length) placeInitialArenaBubbles();
+                      return;
+                  }
+                  BUBBLES.slice().forEach((bubble) => cleanupBubbleAudioAndLinks(bubble));
+                  BUBBLES.length = 0;
+                  (data || []).forEach((row) => BUBBLES.push(hydrateBubbleFromDbRow(row)));
+                  if (!BUBBLES.length) placeInitialArenaBubbles();
+              } finally {
+                  isHydratingArenaBubbles = false;
+              }
+          }
+
+          function bindArenaRealtimeChannel() {
+              const client = buildSupabaseClient();
+              if (!client) return;
+              if (arenaRealtimeChannel) {
+                  arenaRealtimeChannel.unsubscribe();
+                  arenaRealtimeChannel = null;
+              }
+              arenaRealtimeChannel = client
+                  .channel(`arena:${currentArenaId}`)
+                  .on('postgres_changes', {
+                      event: '*',
+                      schema: 'public',
+                      table: 'soon_arena_bubbles',
+                      filter: `arena_id=eq.${currentArenaId}`,
+                  }, ({ eventType, new: newRow, old: oldRow }) => {
+                      isApplyingRemoteArenaSyncEvent = true;
+                      try {
+                          if (eventType === 'INSERT' && newRow) {
+                              const existing = BUBBLES.find((bubble) => bubble.id === newRow.id);
+                              if (existing) {
+                                  applyDbRowToBubble(existing, newRow);
+                              } else {
+                                  BUBBLES.push(hydrateBubbleFromDbRow(newRow));
+                              }
+                              return;
+                          }
+                          if (eventType === 'UPDATE' && newRow) {
+                              const bubble = BUBBLES.find((item) => item.id === newRow.id);
+                              if (bubble) applyDbRowToBubble(bubble, newRow);
+                              return;
+                          }
+                          if (eventType === 'DELETE') {
+                              const deletedId = oldRow?.id;
+                              if (deletedId) removeBubbleFromArenaById(deletedId);
+                          }
+                      } finally {
+                          isApplyingRemoteArenaSyncEvent = false;
+                      }
+                  })
+                  .subscribe();
+          }
+
+          function unsubscribeArenaRealtimeChannel() {
+              if (!arenaRealtimeChannel) return;
+              arenaRealtimeChannel.unsubscribe();
+              arenaRealtimeChannel = null;
+          }
+
+          async function activateArenaSync(arenaId = currentArenaId) {
+              currentArenaId = arenaId || 'default';
+              await hydrateArenaBubblesFromDb();
+              bindArenaRealtimeChannel();
           }
 
           function placeInitialArenaBubbles() {
@@ -5608,7 +5847,6 @@ export function initLegacyApp() {
               requestAnimationFrame(loop);
           }
 
-          placeInitialArenaBubbles();
           showView('home');
           setBottomNavCollapsed(false);
           loop();
