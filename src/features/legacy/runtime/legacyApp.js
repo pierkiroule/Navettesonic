@@ -445,6 +445,8 @@ export function initLegacyApp() {
           const BUBBLE_UPDATE_THROTTLE_MS = 70;
           const bubbleUpdateThrottleTimers = new Map();
           const bubblePendingPatchById = new Map();
+          const bubbleLastKnownVersionById = new Map();
+          const bubbleBufferedRemotePatchById = new Map();
           let supabaseClient = null;
           let currentSession = null;
           let isAuthActionPending = false;
@@ -3323,8 +3325,17 @@ export function initLegacyApp() {
                   helperTips.textContent = 'Étape 4/4 : utilise ⏹ pour stopper et quitter le mode tracé.';
                   updateTraceFlowButtons();
               }
+              const draggedBubbleId = isDraggingBubble && selectedBubble?.id ? selectedBubble.id : null;
               isTethered = false;
               isDraggingBubble = false;
+              if (draggedBubbleId) {
+                  const bufferedRow = bubbleBufferedRemotePatchById.get(draggedBubbleId);
+                  bubbleBufferedRemotePatchById.delete(draggedBubbleId);
+                  if (bufferedRow) {
+                      const bubble = BUBBLES.find((item) => item.id === draggedBubbleId);
+                      if (bubble) applyDbRowToBubble(bubble, bufferedRow);
+                  }
+              }
               syncExperienceModeChips();
           }
 
@@ -4013,6 +4024,23 @@ export function initLegacyApp() {
               bubblePendingPatchById.delete(bubbleId);
           }
 
+          function getRowVersion(row) {
+              return Number.isFinite(Number(row?.version)) ? Number(row.version) : 0;
+          }
+
+          function getKnownBubbleVersion(bubbleId) {
+              if (!bubbleId) return 0;
+              return Number.isFinite(Number(bubbleLastKnownVersionById.get(bubbleId)))
+                  ? Number(bubbleLastKnownVersionById.get(bubbleId))
+                  : 0;
+          }
+
+          function setKnownBubbleVersion(bubbleId, version) {
+              if (!bubbleId) return;
+              const normalizedVersion = Number.isFinite(Number(version)) ? Number(version) : 0;
+              bubbleLastKnownVersionById.set(bubbleId, normalizedVersion);
+          }
+
           function cleanupBubbleAudioAndLinks(bubble) {
               if (!bubble) return;
               try { bubble.sound?.source?.stop(); } catch (_) {}
@@ -4032,6 +4060,8 @@ export function initLegacyApp() {
               const bubble = BUBBLES[index];
               cleanupBubbleAudioAndLinks(bubble);
               BUBBLES.splice(index, 1);
+              bubbleLastKnownVersionById.delete(bubbleId);
+              bubbleBufferedRemotePatchById.delete(bubbleId);
               if (selectedBubble?.id === bubbleId) {
                   closeBubblePropsPanel();
               }
@@ -4073,6 +4103,8 @@ export function initLegacyApp() {
               } else if (row.label) {
                   bubble.label = row.label;
               }
+              bubble._version = getRowVersion(row);
+              setKnownBubbleVersion(bubble.id, bubble._version);
           }
 
           function hydrateBubbleFromDbRow(row) {
@@ -4089,7 +4121,13 @@ export function initLegacyApp() {
               const client = buildSupabaseClient();
               if (!client) return;
               const bubbleId = bubble.id;
-              const nextPatch = { ...(bubblePendingPatchById.get(bubbleId) || {}), ...partialPatch };
+              const updaterUserId = currentSession?.user?.id || null;
+              const nextPatch = {
+                  ...(bubblePendingPatchById.get(bubbleId) || {}),
+                  ...partialPatch,
+                  updated_by_user_id: updaterUserId,
+                  updated_at: new Date().toISOString(),
+              };
               bubblePendingPatchById.set(bubbleId, nextPatch);
               if (immediate) {
                   const patch = bubblePendingPatchById.get(bubbleId) || nextPatch;
@@ -4141,6 +4179,8 @@ export function initLegacyApp() {
                   }
                   BUBBLES.slice().forEach((bubble) => cleanupBubbleAudioAndLinks(bubble));
                   BUBBLES.length = 0;
+                  bubbleLastKnownVersionById.clear();
+                  bubbleBufferedRemotePatchById.clear();
                   (data || []).forEach((row) => BUBBLES.push(hydrateBubbleFromDbRow(row)));
                   if (!BUBBLES.length) placeInitialArenaBubbles();
               } finally {
@@ -4166,6 +4206,8 @@ export function initLegacyApp() {
                       isApplyingRemoteArenaSyncEvent = true;
                       try {
                           if (eventType === 'INSERT' && newRow) {
+                              const incomingVersion = getRowVersion(newRow);
+                              if (incomingVersion < getKnownBubbleVersion(newRow.id)) return;
                               const existing = BUBBLES.find((bubble) => bubble.id === newRow.id);
                               if (existing) {
                                   applyDbRowToBubble(existing, newRow);
@@ -4175,6 +4217,12 @@ export function initLegacyApp() {
                               return;
                           }
                           if (eventType === 'UPDATE' && newRow) {
+                              const incomingVersion = getRowVersion(newRow);
+                              if (incomingVersion < getKnownBubbleVersion(newRow.id)) return;
+                              if (isDraggingBubble && selectedBubble?.id === newRow.id) {
+                                  bubbleBufferedRemotePatchById.set(newRow.id, newRow);
+                                  return;
+                              }
                               const bubble = BUBBLES.find((item) => item.id === newRow.id);
                               if (bubble) applyDbRowToBubble(bubble, newRow);
                               return;
