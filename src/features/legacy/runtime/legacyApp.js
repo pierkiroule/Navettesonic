@@ -950,6 +950,9 @@ export function initLegacyApp() {
               }
               await activateArenaSync(currentArenaId);
               await refreshCurrentArenaRole(currentArenaId);
+              if (arenaInviteCodeInput && currentArenaRole === 'owner' && currentArenaInviteCode) {
+                  arenaInviteCodeInput.value = currentArenaInviteCode;
+              }
           }
 
           function showView(target) {
@@ -1895,7 +1898,10 @@ export function initLegacyApp() {
                   await syncSessionHistoryFromSupabase();
                   renderStoreCatalog();
                   renderSessionHistory();
-                  await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: true });
+                  const ensuredArena = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: true });
+                  if (ensuredArena?.arena?.invite_code && currentArenaRole === 'owner') {
+                      setArenaSessionStatus(`Arène active ✅ Code: ${ensuredArena.arena.invite_code}`);
+                  }
                   if (!options.silent) {
                       setAuthStatus('Profil + session synchronisés ✅');
                   }
