@@ -509,9 +509,9 @@
         .trace-playback-controls {
             position: fixed;
             left: 50%;
-            bottom: calc(var(--bottom-nav-clearance) + 34px + env(safe-area-inset-bottom));
+            bottom: calc(var(--bottom-nav-clearance) + 72px + env(safe-area-inset-bottom));
             transform: translateX(-50%);
-            z-index: 220;
+            z-index: 280;
             display: none;
             align-items: center;
             gap: 10px;
