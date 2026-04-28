@@ -1793,9 +1793,11 @@ export function initLegacyApp() {
 
           function isSupabaseMissingRelationError(error) {
               if (!error) return false;
-              if (error.code === 'PGRST204' || error.code === '42P01') return true;
+              if (error.code === '42P01') return true;
               const message = `${error.message || ''} ${error.details || ''}`.toLowerCase();
-              return message.includes('could not find the table') || message.includes('relation') && message.includes('does not exist');
+              if (message.includes('could not find the table')) return true;
+              if (message.includes('relation') && message.includes('does not exist')) return true;
+              return false;
           }
 
           async function syncSessionHistoryFromSupabase() {
