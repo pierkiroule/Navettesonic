@@ -105,6 +105,11 @@ export function initLegacyApp() {
           const authSignOutBtn = document.getElementById('authSignOutBtn');
           const authStatus = document.getElementById('authStatus');
           const authSessionInfo = document.getElementById('authSessionInfo');
+          const createArenaBtn = document.getElementById('createArenaBtn');
+          const joinArenaBtn = document.getElementById('joinArenaBtn');
+          const arenaInviteCodeInput = document.getElementById('arenaInviteCodeInput');
+          const arenaSessionStatus = document.getElementById('arenaSessionStatus');
+          const arenaSessionBadge = document.getElementById('arenaSessionBadge');
           const profileDisplayName = document.getElementById('profileDisplayName');
           const profileBioText = document.getElementById('profileBioText');
           const profileEditBtn = document.getElementById('profileEditBtn');
@@ -431,6 +436,8 @@ export function initLegacyApp() {
           let marineParticleEmitter = 0;
           let bubbleIdSeed = 1;
           let currentArenaId = 'default';
+          let currentArenaInviteCode = '';
+          let currentArenaParticipants = 1;
           let syncedArenaId = null;
           let arenaRealtimeChannel = null;
           let isApplyingRemoteArenaSyncEvent = false;
@@ -873,7 +880,42 @@ export function initLegacyApp() {
           }
 
           function resolveArenaId() {
-              return experienceView?.dataset?.arenaId || currentSession?.user?.id || 'default';
+              const explicitArenaId = experienceView?.dataset?.arenaId;
+              if (explicitArenaId) return explicitArenaId;
+              if (currentArenaId && currentArenaId !== 'default') return currentArenaId;
+              return currentSession?.user?.id || 'default';
+          }
+
+          async function refreshArenaParticipantCount(arenaId = currentArenaId) {
+              const client = buildSupabaseClient();
+              if (!client || !arenaId || arenaId === 'default') {
+                  currentArenaParticipants = 1;
+                  renderArenaSessionBadge();
+                  return;
+              }
+              const { count, error } = await client
+                  .from('soon_arena_members')
+                  .select('user_id', { count: 'exact', head: true })
+                  .eq('arena_id', arenaId);
+              if (error) {
+                  if (isArenaPermissionDeniedError(error)) {
+                      setArenaSessionStatus('Droit refusé (RLS) pour lire les participants.', true);
+                  }
+                  currentArenaParticipants = 1;
+                  renderArenaSessionBadge();
+                  return;
+              }
+              currentArenaParticipants = Math.max(1, count || 1);
+              renderArenaSessionBadge();
+          }
+
+          async function setCurrentArena(arenaId, inviteCode = '') {
+              currentArenaId = arenaId || 'default';
+              currentArenaInviteCode = inviteCode || '';
+              if (experienceView) {
+                  experienceView.dataset.arenaId = currentArenaId;
+              }
+              await activateArenaSync(currentArenaId);
           }
 
           function showView(target) {
@@ -1216,6 +1258,50 @@ export function initLegacyApp() {
               if (!authStatus) return;
               authStatus.textContent = message;
               authStatus.style.color = isError ? 'rgba(255, 148, 148, 0.95)' : 'rgba(146, 247, 210, 0.95)';
+          }
+
+          function setArenaSessionStatus(message, isError = false) {
+              if (!arenaSessionStatus) return;
+              arenaSessionStatus.textContent = message;
+              arenaSessionStatus.style.color = isError ? 'rgba(255, 148, 148, 0.95)' : 'rgba(146, 247, 210, 0.95)';
+          }
+
+          function renderArenaSessionBadge() {
+              if (!arenaSessionBadge) return;
+              const shortArenaId = currentArenaId && currentArenaId !== 'default'
+                  ? String(currentArenaId).slice(0, 8)
+                  : 'solo';
+              const arenaLabel = currentArenaInviteCode || shortArenaId;
+              const participantCount = Math.max(1, Number.isFinite(currentArenaParticipants) ? Math.round(currentArenaParticipants) : 1);
+              const participantLabel = participantCount > 1 ? 'participants' : 'participant';
+              arenaSessionBadge.textContent = `Arène: ${arenaLabel} · ${participantCount} ${participantLabel}`;
+          }
+
+          function isArenaPermissionDeniedError(error) {
+              if (!error) return false;
+              if (error.code === '42501') return true;
+              const message = `${error.message || ''} ${error.details || ''}`.toLowerCase();
+              return message.includes('row-level security') || message.includes('permission denied') || message.includes('policy');
+          }
+
+          function normalizeInviteCode(rawCode) {
+              return (rawCode || '')
+                  .toString()
+                  .trim()
+                  .toUpperCase()
+                  .replace(/[^A-Z0-9]/g, '')
+                  .slice(0, 6)
+                  .replace(/^(.{3})(.{0,3}).*$/, (_, a, b) => b ? `${a}-${b}` : a);
+          }
+
+          function generateReadableInviteCode() {
+              const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+              let code = '';
+              for (let i = 0; i < 6; i += 1) {
+                  const index = Math.floor(Math.random() * alphabet.length);
+                  code += alphabet[index];
+              }
+              return `${code.slice(0, 3)}-${code.slice(3, 6)}`;
           }
 
           function setDbConnectionStatus(message, isError = false) {
@@ -1980,6 +2066,11 @@ export function initLegacyApp() {
                       return;
                   }
                   currentSession = null;
+                  currentArenaInviteCode = '';
+                  currentArenaParticipants = 1;
+                  currentArenaId = 'default';
+                  if (experienceView) delete experienceView.dataset.arenaId;
+                  renderArenaSessionBadge();
                   refreshAuthUi('Déconnecté.');
                   renderStoreCatalog();
                   renderSessionHistory();
@@ -1988,11 +2079,137 @@ export function initLegacyApp() {
               }
           }
 
+          async function createArenaFromProfile() {
+              if (!currentSession?.user?.id) {
+                  setArenaSessionStatus('Connecte-toi pour créer une arène.', true);
+                  setAuthStatus('Connexion requise pour créer une arène.', true);
+                  return;
+              }
+              const client = buildSupabaseClient();
+              if (!client) return;
+
+              setArenaSessionStatus('Création de ton arène…');
+              let attempt = 0;
+              let createdArena = null;
+              while (attempt < 4 && !createdArena) {
+                  attempt += 1;
+                  const inviteCode = generateReadableInviteCode();
+                  const { data, error } = await client
+                      .from('soon_arenas')
+                      .insert({
+                          owner_user_id: currentSession.user.id,
+                          invite_code: inviteCode,
+                          title: `Arène de ${getSavedProfileIdentity().displayName}`
+                      })
+                      .select('id, invite_code')
+                      .single();
+                  if (error) {
+                      if (error.code === '23505') continue;
+                      if (isArenaPermissionDeniedError(error)) {
+                          setArenaSessionStatus('Droit refusé (RLS) pendant la création de l’arène.', true);
+                      } else {
+                          setArenaSessionStatus(`Création impossible: ${error.message}`, true);
+                      }
+                      return;
+                  }
+                  createdArena = data;
+              }
+
+              if (!createdArena?.id) {
+                  setArenaSessionStatus('Impossible de générer un code unique, réessaie.', true);
+                  return;
+              }
+
+              const ownerMembership = await client.from('soon_arena_members').insert({
+                  arena_id: createdArena.id,
+                  user_id: currentSession.user.id,
+                  role: 'owner'
+              });
+              if (ownerMembership.error) {
+                  if (isArenaPermissionDeniedError(ownerMembership.error)) {
+                      setArenaSessionStatus('Droit refusé (RLS) pour ajouter le propriétaire.', true);
+                  } else {
+                      setArenaSessionStatus(`Création incomplète: ${ownerMembership.error.message}`, true);
+                  }
+                  return;
+              }
+
+              if (arenaInviteCodeInput) arenaInviteCodeInput.value = createdArena.invite_code;
+              await setCurrentArena(createdArena.id, createdArena.invite_code);
+              setArenaSessionStatus(`Arène créée ✅ Code: ${createdArena.invite_code}`);
+              if (currentView !== 'experience') showView('experience');
+          }
+
+          async function joinArenaFromProfile() {
+              if (!currentSession?.user?.id) {
+                  setArenaSessionStatus('Connecte-toi pour rejoindre une arène.', true);
+                  setAuthStatus('Connexion requise pour rejoindre une arène.', true);
+                  return;
+              }
+              const client = buildSupabaseClient();
+              if (!client) return;
+              const inviteCode = normalizeInviteCode(arenaInviteCodeInput?.value || '');
+              if (!inviteCode || inviteCode.length < 7) {
+                  setArenaSessionStatus('Code invalide: entre un code au format ABC-123.', true);
+                  return;
+              }
+              if (arenaInviteCodeInput) arenaInviteCodeInput.value = inviteCode;
+
+              setArenaSessionStatus('Recherche de l’arène…');
+              const { data: arenaRow, error: arenaLookupError } = await client
+                  .from('soon_arenas')
+                  .select('*')
+                  .eq('invite_code', inviteCode)
+                  .maybeSingle();
+
+              if (arenaLookupError) {
+                  if (isArenaPermissionDeniedError(arenaLookupError)) {
+                      setArenaSessionStatus('Droit refusé (RLS) pendant la recherche d’arène.', true);
+                  } else {
+                      setArenaSessionStatus(`Recherche impossible: ${arenaLookupError.message}`, true);
+                  }
+                  return;
+              }
+              if (!arenaRow?.id) {
+                  setArenaSessionStatus('Code invalide: aucune arène trouvée.', true);
+                  return;
+              }
+              if (arenaRow.is_closed || arenaRow.closed_at || arenaRow.status === 'closed') {
+                  setArenaSessionStatus('Cette arène est fermée.', true);
+                  return;
+              }
+
+              const { error: joinError } = await client.from('soon_arena_members').insert({
+                  arena_id: arenaRow.id,
+                  user_id: currentSession.user.id,
+                  role: 'editor'
+              });
+              if (joinError && joinError.code !== '23505') {
+                  if (isArenaPermissionDeniedError(joinError)) {
+                      setArenaSessionStatus('Droit refusé (RLS) pour rejoindre cette arène.', true);
+                  } else {
+                      setArenaSessionStatus(`Rejoint impossible: ${joinError.message}`, true);
+                  }
+                  return;
+              }
+
+              await setCurrentArena(arenaRow.id, arenaRow.invite_code || inviteCode);
+              setArenaSessionStatus(`Arène rejointe ✅ ${arenaRow.invite_code || inviteCode}`);
+              if (currentView !== 'experience') showView('experience');
+          }
+
           async function restoreSession() {
               const client = buildSupabaseClient();
               if (!client) return;
               const { data } = await client.auth.getSession();
               currentSession = data?.session || null;
+              if (!currentSession?.user) {
+                  currentArenaInviteCode = '';
+                  currentArenaParticipants = 1;
+                  currentArenaId = 'default';
+                  if (experienceView) delete experienceView.dataset.arenaId;
+                  renderArenaSessionBadge();
+              }
               refreshAuthUi(currentSession ? 'Session restaurée.' : 'Pas de session active.');
               await syncSessionAndProfile({ silent: true });
               await fetchSooncutVocalsFromBucket();
@@ -2035,11 +2252,20 @@ export function initLegacyApp() {
           bindPress(authSignInBtn, signInWithEmail);
           bindPress(authSignUpBtn, signUpWithEmail);
           bindPress(authSignOutBtn, signOutSession);
+          bindPress(createArenaBtn, createArenaFromProfile);
+          bindPress(joinArenaBtn, joinArenaFromProfile);
+          arenaInviteCodeInput?.addEventListener('input', () => {
+              const normalized = normalizeInviteCode(arenaInviteCodeInput.value);
+              if (arenaInviteCodeInput.value !== normalized) {
+                  arenaInviteCodeInput.value = normalized;
+              }
+          });
           bindTap(profileEditBtn, openProfileEditPanel);
           bindTap(profileCancelBtn, closeProfileEditPanel);
           bindTap(profileSaveBtn, saveProfileIdentity);
           renderStoreCatalog();
           renderSessionHistory();
+          renderArenaSessionBadge();
           restoreSession();
 
           SAMPLE_LIBRARY.forEach(sample => {
@@ -3974,6 +4200,7 @@ export function initLegacyApp() {
               currentArenaId = arenaId || 'default';
               await hydrateArenaBubblesFromDb();
               bindArenaRealtimeChannel();
+              await refreshArenaParticipantCount(currentArenaId);
           }
 
           function placeInitialArenaBubbles() {

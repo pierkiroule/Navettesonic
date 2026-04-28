@@ -214,6 +214,22 @@
             font-size: 0.9rem;
             letter-spacing: 0.14em;
         }
+        .arena-session-badge {
+            position: absolute;
+            top: 64px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 102;
+            pointer-events: none;
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(166, 233, 255, 0.35);
+            background: rgba(3, 16, 28, 0.66);
+            color: rgba(216, 245, 255, 0.9);
+            font-size: 0.76rem;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+        }
         #silenceDesYeuxOverlay {
             position: absolute;
             inset: 0;

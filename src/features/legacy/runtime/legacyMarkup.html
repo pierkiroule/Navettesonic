@@ -46,6 +46,7 @@
 
     <section id="experienceView" class="view hidden-view">
         <div id="ui"></div>
+        <div id="arenaSessionBadge" class="arena-session-badge" aria-live="polite">Arène: solo · 1 participant</div>
         <div id="silenceDesYeuxOverlay" aria-live="polite" aria-atomic="true" hidden>
             <p id="silenceDesYeuxTitle" class="silence-title">Le Silence des Yeux approche…</p>
             <p id="silenceDesYeuxCountdown" class="silence-countdown">5</p>
@@ -275,6 +276,20 @@
                     <p id="authStatus" class="status"></p>
                     <p id="authSessionInfo" class="muted"></p>
                     <button id="authSignOutBtn" type="button" class="auth-signout-btn" hidden>Se déconnecter</button>
+                </div>
+            </article>
+
+            <article class="card profile-auth-card">
+                <h3>Arène multi</h3>
+                <p>Crée une arène partagée ou rejoins une arène existante avec un code.</p>
+                <div class="stack">
+                    <div class="auth-row">
+                        <button id="createArenaBtn" type="button">Créer mon arène</button>
+                        <button id="joinArenaBtn" type="button">Rejoindre</button>
+                    </div>
+                    <label class="field-label" for="arenaInviteCodeInput">Code d'invitation</label>
+                    <input id="arenaInviteCodeInput" type="text" maxlength="8" placeholder="ABC-123">
+                    <p id="arenaSessionStatus" class="status"></p>
                 </div>
             </article>
 
