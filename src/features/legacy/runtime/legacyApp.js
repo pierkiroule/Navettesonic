@@ -3407,7 +3407,7 @@ export function initLegacyApp() {
               if (draggedBubbleId) {
                   const bufferedRow = bubbleBufferedRemotePatchById.get(draggedBubbleId);
                   bubbleBufferedRemotePatchById.delete(draggedBubbleId);
-                  if (bufferedRow) {
+                  if (bufferedRow && !isBubbleRowObsolete(bufferedRow)) {
                       const bubble = BUBBLES.find((item) => item.id === draggedBubbleId);
                       if (bubble) applyDbRowToBubble(bubble, bufferedRow);
                   }
@@ -4116,6 +4116,12 @@ export function initLegacyApp() {
               bubbleLastKnownVersionById.set(bubbleId, normalizedVersion);
           }
 
+          function isBubbleRowObsolete(row) {
+              if (!row?.id) return false;
+              const incomingVersion = getRowVersion(row);
+              return incomingVersion < getKnownBubbleVersion(row.id);
+          }
+
           function cleanupBubbleAudioAndLinks(bubble) {
               if (!bubble) return;
               try { bubble.sound?.source?.stop(); } catch (_) {}
@@ -4281,8 +4287,7 @@ export function initLegacyApp() {
                       isApplyingRemoteArenaSyncEvent = true;
                       try {
                           if (eventType === 'INSERT' && newRow) {
-                              const incomingVersion = getRowVersion(newRow);
-                              if (incomingVersion < getKnownBubbleVersion(newRow.id)) return;
+                              if (isBubbleRowObsolete(newRow)) return;
                               const existing = BUBBLES.find((bubble) => bubble.id === newRow.id);
                               if (existing) {
                                   applyDbRowToBubble(existing, newRow);
@@ -4292,10 +4297,12 @@ export function initLegacyApp() {
                               return;
                           }
                           if (eventType === 'UPDATE' && newRow) {
-                              const incomingVersion = getRowVersion(newRow);
-                              if (incomingVersion < getKnownBubbleVersion(newRow.id)) return;
+                              if (isBubbleRowObsolete(newRow)) return;
                               if (isDraggingBubble && selectedBubble?.id === newRow.id) {
-                                  bubbleBufferedRemotePatchById.set(newRow.id, newRow);
+                                  const bufferedRow = bubbleBufferedRemotePatchById.get(newRow.id);
+                                  if (!bufferedRow || getRowVersion(newRow) >= getRowVersion(bufferedRow)) {
+                                      bubbleBufferedRemotePatchById.set(newRow.id, newRow);
+                                  }
                                   return;
                               }
                               const bubble = BUBBLES.find((item) => item.id === newRow.id);
