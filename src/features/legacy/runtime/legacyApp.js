@@ -110,6 +110,10 @@ export function initLegacyApp() {
           const arenaInviteCodeInput = document.getElementById('arenaInviteCodeInput');
           const arenaSessionStatus = document.getElementById('arenaSessionStatus');
           const arenaSessionBadge = document.getElementById('arenaSessionBadge');
+          const multiplayerBurgerBtn = document.getElementById('multiplayerBurgerBtn');
+          const multiplayerDrawer = document.getElementById('multiplayerDrawer');
+          const multiplayerDrawerCloseBtn = document.getElementById('multiplayerDrawerCloseBtn');
+          const multiplayerDrawerBackdrop = document.getElementById('multiplayerDrawerBackdrop');
           const profileDisplayName = document.getElementById('profileDisplayName');
           const profileBioText = document.getElementById('profileBioText');
           const profileEditBtn = document.getElementById('profileEditBtn');
@@ -130,6 +134,7 @@ export function initLegacyApp() {
           let isDraggingBubble = false;
           let lastBubbleTapTime = 0;
           let lastBubbleTapTarget = null;
+          let multiplayerDrawerOpen = false;
 
           const HALO_STYLE_LIBRARY = [
               { id: 'aurora', name: 'Aurore liquide', hint: 'Voile doux qui respire.' },
@@ -920,6 +925,17 @@ export function initLegacyApp() {
               await activateArenaSync(currentArenaId);
           }
 
+          function setMultiplayerDrawerOpen(open) {
+              multiplayerDrawerOpen = Boolean(open);
+              if (multiplayerDrawer) multiplayerDrawer.hidden = !multiplayerDrawerOpen;
+              if (multiplayerBurgerBtn) {
+                  multiplayerBurgerBtn.setAttribute('aria-expanded', multiplayerDrawerOpen ? 'true' : 'false');
+              }
+              if (profileView) {
+                  profileView.classList.toggle('profile-multi-drawer-open', multiplayerDrawerOpen);
+              }
+          }
+
           function showView(target) {
               console.log('[legacyApp] showView called', { target, currentViewBefore: currentView });
               currentView = target;
@@ -941,6 +957,9 @@ export function initLegacyApp() {
                   hideSilenceOverlay();
                   if (silenceDesYeuxPrompt) silenceDesYeuxPrompt.hidden = true;
                   setSilenceImmersion(0);
+              }
+              if (target !== 'profile') {
+                  setMultiplayerDrawerOpen(false);
               }
               if (heroVideo) {
                   if (target === 'home') {
@@ -2256,6 +2275,9 @@ export function initLegacyApp() {
           bindPress(authSignOutBtn, signOutSession);
           bindPress(createArenaBtn, createArenaFromProfile);
           bindPress(joinArenaBtn, joinArenaFromProfile);
+          bindPress(multiplayerBurgerBtn, () => setMultiplayerDrawerOpen(!multiplayerDrawerOpen));
+          bindPress(multiplayerDrawerCloseBtn, () => setMultiplayerDrawerOpen(false));
+          bindPress(multiplayerDrawerBackdrop, () => setMultiplayerDrawerOpen(false));
           arenaInviteCodeInput?.addEventListener('input', () => {
               const normalized = normalizeInviteCode(arenaInviteCodeInput.value);
               if (arenaInviteCodeInput.value !== normalized) {

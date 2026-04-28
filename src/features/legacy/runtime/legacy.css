@@ -964,6 +964,62 @@
                 radial-gradient(circle at 82% 82%, rgba(112, 238, 255, 0.12), transparent 48%),
                 #030308;
         }
+        .profile-multi-burger-btn {
+            position: fixed;
+            top: 18px;
+            right: 18px;
+            z-index: 40;
+            border: 1px solid rgba(148, 214, 255, 0.35);
+            border-radius: 999px;
+            padding: 9px 14px;
+            background: rgba(11, 27, 47, 0.92);
+            color: #d6eeff;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            cursor: pointer;
+            box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+        }
+        .profile-multi-drawer {
+            position: fixed;
+            inset: 0;
+            z-index: 280;
+        }
+        .profile-multi-drawer-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(2, 8, 16, 0.62);
+            backdrop-filter: blur(3px);
+        }
+        .profile-multi-panel {
+            position: absolute;
+            top: 0;
+            right: 0;
+            height: 100%;
+            width: min(92vw, 390px);
+            border-radius: 0;
+            border-left: 1px solid rgba(173, 228, 255, 0.2);
+            border-top: none;
+            border-right: none;
+            border-bottom: none;
+            padding: 20px 14px calc(var(--bottom-nav-clearance) + 20px + env(safe-area-inset-bottom));
+            overflow-y: auto;
+        }
+        .profile-multi-panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .profile-multi-close-btn {
+            border: 1px solid rgba(171, 224, 255, 0.5) !important;
+            border-radius: 999px !important;
+            width: 34px;
+            height: 34px;
+            padding: 0 !important;
+            background: rgba(18, 57, 93, 0.75) !important;
+            color: rgba(231, 249, 255, 0.96) !important;
+            line-height: 1;
+        }
         .profile-bubbles {
             position: absolute;
             inset: 0;
