@@ -3353,6 +3353,7 @@ export function initLegacyApp() {
           window.addEventListener('blur', onEnd);
 
           window.addEventListener('touchstart', (e) => {
+              if (currentView !== 'experience') return;
               if (shouldLockSceneInteractions()) {
                   e.preventDefault();
                   return;
