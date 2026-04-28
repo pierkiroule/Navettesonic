@@ -72,3 +72,26 @@ Le profil est simplifié autour de 3 besoins : auth (connexion/inscription/sessi
 
 - `public.user_profile_collections` (RLS): synchronise les expériences achetées.
 - `public.echohypnose_session_history` (RLS): stocke l’historique horodaté des sessions achetées.
+
+### Gestion multiutilisateur (arènes partagées)
+
+L’interface affiche la section **Gestion multiutilisateur** avec :
+
+- Création d’arène
+- Rejoindre via code (`ABC-123`)
+- Invitation d’un proche depuis une arène active
+
+Si le message suivant apparaît :
+
+> `Arène indisponible: tables Supabase manquantes. Lance les migrations puis réessaie.`
+
+cela signifie que les migrations SQL de `supabase/migrations/` n’ont pas encore été appliquées sur votre projet Supabase cible.
+
+#### Commandes de correction (local)
+
+```bash
+supabase link --project-ref <SUPABASE_PROJECT_ID>
+supabase db push
+```
+
+Puis rechargez l’application et réessayez **Créer mon arène** ou **Rejoindre**.
