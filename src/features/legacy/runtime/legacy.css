@@ -952,7 +952,8 @@
         }
 
         #profileView {
-            position: relative;
+            position: absolute;
+            inset: 0;
             color: #e6f4ff;
             box-sizing: border-box;
             width: 100%;
@@ -1000,8 +1001,6 @@
             z-index: 1;
             width: min(980px, 100%);
             margin: 0 auto;
-        }
-        .profile-wrap {
             touch-action: pan-y pinch-zoom;
         }
         .profile-wrap button,
