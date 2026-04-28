@@ -126,9 +126,16 @@
             </div>
         </div>
         <div id="tracePlaybackControls" class="trace-playback-controls" aria-label="Contrôles de traversée">
-            <button type="button" class="trace-playback-btn" data-trace-playback-action="play" aria-label="Reprendre la traversée">▶</button>
-            <button type="button" class="trace-playback-btn" data-trace-playback-action="pause" aria-label="Mettre la traversée en pause">⏸</button>
-            <button type="button" class="trace-playback-btn trace-playback-btn--stop" data-trace-playback-action="stop" aria-label="Stopper la traversée">⏹</button>
+            <div class="trace-playback-speed">
+                <label for="traceSpeedRange" class="trace-playback-speed-label">Vitesse poisson</label>
+                <input id="traceSpeedRange" class="trace-playback-speed-range" type="range" min="0.4" max="2" step="0.05" value="1" aria-label="Régler la vitesse de traversée">
+                <span id="traceSpeedValue" class="trace-playback-speed-value">100%</span>
+            </div>
+            <div class="trace-playback-buttons">
+                <button type="button" class="trace-playback-btn" data-trace-playback-action="play" aria-label="Reprendre la traversée">▶</button>
+                <button type="button" class="trace-playback-btn" data-trace-playback-action="pause" aria-label="Mettre la traversée en pause">⏸</button>
+                <button type="button" class="trace-playback-btn trace-playback-btn--stop" data-trace-playback-action="stop" aria-label="Stopper la traversée">⏹</button>
+            </div>
         </div>
         <div id="arenaTrianglePad" aria-label="Lucioles Sooncut"></div>
         <div id="arenaTriangleStatus">Lucioles Sooncut : le poisson peut en porter 6, pousse les bulles de son niveau, et dépose automatiquement une luciole dans chaque bulle traversée d’un autre niveau (max 3 par bulle).</div>

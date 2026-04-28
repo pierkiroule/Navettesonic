@@ -65,6 +65,8 @@ export function initLegacyApp() {
           const traceListeningBtn = document.getElementById('traceListeningBtn');
           const traceCamControls = document.getElementById('traceCamControls');
           const tracePlaybackControls = document.getElementById('tracePlaybackControls');
+          const traceSpeedRange = document.getElementById('traceSpeedRange');
+          const traceSpeedValue = document.getElementById('traceSpeedValue');
           const silenceDesYeuxPrompt = document.getElementById('silenceDesYeuxPrompt');
           const silenceSaveNoBtn = document.getElementById('silenceSaveNoBtn');
           const silenceSaveYesBtn = document.getElementById('silenceSaveYesBtn');
@@ -257,6 +259,7 @@ export function initLegacyApp() {
           let isDrawingTraceRail = false;
           let isTraceRailAutopilot = false;
           let isTraceRailPaused = false;
+          let traceRailSpeedMultiplier = 1;
           let traceRailPath = [];
           let traceRailTargetIndex = 0;
           let traceRailDirection = 1;
@@ -3186,6 +3189,11 @@ export function initLegacyApp() {
                   updateTracePlaybackControlsVisibility();
               });
           });
+          traceSpeedRange?.addEventListener('input', () => {
+              const next = Number.parseFloat(traceSpeedRange.value);
+              traceRailSpeedMultiplier = Number.isFinite(next) ? Math.max(0.4, Math.min(2, next)) : 1;
+              if (traceSpeedValue) traceSpeedValue.textContent = `${Math.round(traceRailSpeedMultiplier * 100)}%`;
+          });
           window.addEventListener('pointerup', () => { isTraceCamControlGestureActive = false; }, { passive: true });
           window.addEventListener('pointercancel', () => { isTraceCamControlGestureActive = false; }, { passive: true });
           window.addEventListener('touchend', () => { isTraceCamControlGestureActive = false; }, { passive: true });
@@ -3916,7 +3924,7 @@ export function initLegacyApp() {
                   const dx = target.x - ship.x;
                   const dy = target.y - ship.y;
                   const dist = Math.hypot(dx, dy);
-                  if (dist < 20) {
+                  if (dist < (18 + traceRailSpeedMultiplier * 6)) {
                       if (traceRailTargetIndex >= traceRailPath.length - 1) {
                           traceRailDirection = -1;
                       } else if (traceRailTargetIndex <= 0) {
@@ -3925,8 +3933,9 @@ export function initLegacyApp() {
                       traceRailTargetIndex += traceRailDirection;
                       traceRailTargetIndex = Math.max(0, Math.min(traceRailPath.length - 1, traceRailTargetIndex));
                   } else if (dist > 0.001) {
-                      ship.vx += (dx / dist) * 0.36;
-                      ship.vy += (dy / dist) * 0.36;
+                      const speedImpulse = 0.36 * traceRailSpeedMultiplier;
+                      ship.vx += (dx / dist) * speedImpulse;
+                      ship.vy += (dy / dist) * speedImpulse;
                   }
               }
               if (isTethered && !isInteractionPaused) {

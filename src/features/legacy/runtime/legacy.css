@@ -513,12 +513,42 @@
             transform: translateX(-50%);
             z-index: 280;
             display: none;
-            align-items: center;
-            gap: 10px;
+            align-items: stretch;
+            gap: 8px;
             pointer-events: auto;
+            width: min(88vw, 260px);
         }
         .trace-playback-controls.visible {
             display: flex;
+            flex-direction: column;
+        }
+        .trace-playback-speed {
+            display: grid;
+            gap: 4px;
+            padding: 8px 10px;
+            border-radius: 12px;
+            background: rgba(6, 22, 54, 0.72);
+            border: 1px solid rgba(156, 226, 255, 0.32);
+            box-shadow: 0 8px 24px rgba(1, 8, 22, 0.36);
+        }
+        .trace-playback-speed-label {
+            font-size: 0.72rem;
+            color: rgba(216, 246, 255, 0.88);
+            letter-spacing: 0.02em;
+        }
+        .trace-playback-speed-range {
+            width: 100%;
+            touch-action: pan-x;
+        }
+        .trace-playback-speed-value {
+            justify-self: end;
+            font-size: 0.7rem;
+            color: rgba(193, 241, 255, 0.84);
+        }
+        .trace-playback-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
         }
         .trace-playback-btn {
             border: 1px solid rgba(153, 222, 255, 0.6);
