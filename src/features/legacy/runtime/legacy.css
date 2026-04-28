@@ -983,6 +983,10 @@
             position: fixed;
             inset: 0;
             z-index: 280;
+            display: grid;
+            place-items: center;
+            padding: 20px;
+            box-sizing: border-box;
         }
         .profile-multi-drawer-backdrop {
             position: absolute;
@@ -991,18 +995,14 @@
             backdrop-filter: blur(3px);
         }
         .profile-multi-panel {
-            position: absolute;
-            top: 0;
-            right: 0;
-            height: 100%;
-            width: min(92vw, 390px);
-            border-radius: 0;
-            border-left: 1px solid rgba(173, 228, 255, 0.2);
-            border-top: none;
-            border-right: none;
-            border-bottom: none;
-            padding: 20px 14px calc(var(--bottom-nav-clearance) + 20px + env(safe-area-inset-bottom));
+            position: relative;
+            width: min(92vw, 430px);
+            max-height: min(80vh, 640px);
+            border-radius: 18px;
+            border: 1px solid rgba(173, 228, 255, 0.2);
+            padding: 20px 14px 20px;
             overflow-y: auto;
+            z-index: 1;
         }
         .profile-multi-panel-head {
             display: flex;
