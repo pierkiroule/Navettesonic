@@ -5590,6 +5590,45 @@ export function initLegacyApp() {
                   ctx.fillStyle = bloom;
                   ctx.fillRect(0, 0, w, h);
               }
+
+              const now = performance.now() * 0.001;
+              const depthIndex = getFishDepthIndex();
+              const depthStrength = Math.max(0, Math.min(1, (depthIndex - 1) / 2));
+              const causticAlpha = 0.045 + depthStrength * 0.07 + audioGlow * 0.18;
+              const stripeStep = Math.max(16, Math.min(34, w * 0.026));
+              const stripeCount = Math.ceil((w + h) / stripeStep) + 6;
+              const driftX = (now * 24) % stripeStep;
+              const driftY = Math.sin(now * 0.8) * 12;
+
+              ctx.save();
+              ctx.globalCompositeOperation = 'screen';
+              for (let i = -3; i < stripeCount; i++) {
+                  const x = i * stripeStep + driftX;
+                  const pulse = (Math.sin(now * 1.9 + i * 0.65) + 1) * 0.5;
+                  const width = 1 + pulse * 2.4 + depthStrength * 1.3;
+                  const alpha = causticAlpha * (0.42 + pulse * 0.58);
+                  ctx.strokeStyle = `rgba(174, 236, 255, ${alpha})`;
+                  ctx.lineWidth = width;
+                  ctx.beginPath();
+                  ctx.moveTo(x, -24 + driftY);
+                  ctx.lineTo(x - h * 0.28, h + 24 + driftY);
+                  ctx.stroke();
+              }
+              ctx.restore();
+
+              const veil = ctx.createRadialGradient(
+                  w * 0.5,
+                  h * (0.45 + depthStrength * 0.04),
+                  h * (0.08 + depthStrength * 0.04),
+                  w * 0.5,
+                  h * 0.52,
+                  h * 0.82,
+              );
+              veil.addColorStop(0, `rgba(188, 240, 255, ${0.02 + depthStrength * 0.05})`);
+              veil.addColorStop(0.45, `rgba(34, 92, 148, ${0.06 + depthStrength * 0.06})`);
+              veil.addColorStop(1, `rgba(6, 18, 34, ${0.2 + depthStrength * 0.24})`);
+              ctx.fillStyle = veil;
+              ctx.fillRect(0, 0, w, h);
           }
 
           function drawArenaResonanceVeil() {
