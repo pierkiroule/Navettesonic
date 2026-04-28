@@ -3311,6 +3311,11 @@ export function initLegacyApp() {
               }
           }
           function onEnd(e) {
+              if (currentView !== 'experience') {
+                  activeTouchId = null;
+                  cancelFishLongPress();
+                  return;
+              }
               if (shouldLockSceneInteractions()) return;
               if (e?.changedTouches?.length && activeTouchId != null) {
                   const touchStillActive = Array.from(e.touches || []).some((touch) => touch.identifier === activeTouchId);
@@ -3352,8 +3357,7 @@ export function initLegacyApp() {
           window.addEventListener('mouseup', onEnd);
           window.addEventListener('blur', onEnd);
 
-          window.addEventListener('touchstart', (e) => {
-              if (currentView !== 'experience') return;
+          experienceView?.addEventListener('touchstart', (e) => {
               if (shouldLockSceneInteractions()) {
                   e.preventDefault();
                   return;
@@ -3362,8 +3366,7 @@ export function initLegacyApp() {
               e.preventDefault();
               onStart(e);
           }, { passive: false });
-          window.addEventListener('touchmove', (e) => {
-              if (currentView !== 'experience') return;
+          experienceView?.addEventListener('touchmove', (e) => {
               if (shouldLockSceneInteractions()) {
                   e.preventDefault();
                   return;
