@@ -1318,6 +1318,22 @@ export function initLegacyApp() {
               return message.includes('row-level security') || message.includes('permission denied') || message.includes('policy');
           }
 
+          function isSupabaseMissingFunctionError(error) {
+              if (!error) return false;
+              if (error.code === 'PGRST202' || error.code === '42883') return true;
+              const message = `${error.message || ''} ${error.details || ''}`.toLowerCase();
+              return message.includes('function') && message.includes('not found');
+          }
+
+          function mapArenaInviteRpcErrorToStatus(error) {
+              if (!error) return null;
+              const message = `${error.message || ''} ${error.details || ''}`.toLowerCase();
+              if (message.includes('invalid invite token')) return 'Code invalide: aucune invitation trouvée.';
+              if (message.includes('invite expired')) return 'Invitation expirée: demande un nouveau code.';
+              if (message.includes('invite quota reached')) return 'Invitation saturée: demande un nouveau code.';
+              return null;
+          }
+
           function normalizeInviteCode(rawCode) {
               return (rawCode || '')
                   .toString()
@@ -2141,6 +2157,10 @@ export function initLegacyApp() {
                       .single();
                   if (error) {
                       if (error.code === '23505') continue;
+                      if (isSupabaseMissingRelationError(error)) {
+                          setArenaSessionStatus('Arène indisponible: tables Supabase manquantes. Lance les migrations puis réessaie.', true);
+                          return;
+                      }
                       if (isArenaPermissionDeniedError(error)) {
                           setArenaSessionStatus('Droit refusé (RLS) pendant la création de l’arène.', true);
                       } else {
@@ -2162,6 +2182,10 @@ export function initLegacyApp() {
                   role: 'owner'
               });
               if (ownerMembership.error) {
+                  if (isSupabaseMissingRelationError(ownerMembership.error)) {
+                      setArenaSessionStatus('Arène indisponible: tables Supabase manquantes. Lance les migrations puis réessaie.', true);
+                      return;
+                  }
                   if (isArenaPermissionDeniedError(ownerMembership.error)) {
                       setArenaSessionStatus('Droit refusé (RLS) pour ajouter le propriétaire.', true);
                   } else {
@@ -2192,6 +2216,25 @@ export function initLegacyApp() {
               if (arenaInviteCodeInput) arenaInviteCodeInput.value = inviteCode;
 
               setArenaSessionStatus('Recherche de l’arène…');
+              const { data: rpcArenaId, error: rpcJoinError } = await client.rpc('accept_arena_invite', { p_token: inviteCode });
+              if (!rpcJoinError && rpcArenaId) {
+                  await setCurrentArena(rpcArenaId, inviteCode);
+                  setArenaSessionStatus(`Arène rejointe ✅ ${inviteCode}`);
+                  if (currentView !== 'experience') showView('experience');
+                  return;
+              }
+              if (rpcJoinError && !isSupabaseMissingFunctionError(rpcJoinError)) {
+                  const rpcUserMessage = mapArenaInviteRpcErrorToStatus(rpcJoinError);
+                  if (rpcUserMessage) {
+                      setArenaSessionStatus(rpcUserMessage, true);
+                      return;
+                  }
+                  if (isArenaPermissionDeniedError(rpcJoinError)) {
+                      setArenaSessionStatus('Droit refusé (RLS) pendant l’acceptation du code.', true);
+                      return;
+                  }
+              }
+
               const { data: arenaRow, error: arenaLookupError } = await client
                   .from('soon_arenas')
                   .select('*')
@@ -2199,6 +2242,10 @@ export function initLegacyApp() {
                   .maybeSingle();
 
               if (arenaLookupError) {
+                  if (isSupabaseMissingRelationError(arenaLookupError)) {
+                      setArenaSessionStatus('Arène indisponible: tables Supabase manquantes. Lance les migrations puis réessaie.', true);
+                      return;
+                  }
                   if (isArenaPermissionDeniedError(arenaLookupError)) {
                       setArenaSessionStatus('Droit refusé (RLS) pendant la recherche d’arène.', true);
                   } else {
@@ -2221,6 +2268,10 @@ export function initLegacyApp() {
                   role: 'editor'
               });
               if (joinError && joinError.code !== '23505') {
+                  if (isSupabaseMissingRelationError(joinError)) {
+                      setArenaSessionStatus('Arène indisponible: tables Supabase manquantes. Lance les migrations puis réessaie.', true);
+                      return;
+                  }
                   if (isArenaPermissionDeniedError(joinError)) {
                       setArenaSessionStatus('Droit refusé (RLS) pour rejoindre cette arène.', true);
                   } else {
