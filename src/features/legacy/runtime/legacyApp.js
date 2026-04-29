@@ -111,6 +111,7 @@ export function initLegacyApp() {
           const arenaInviteCodeInput = document.getElementById('arenaInviteCodeInput');
           const arenaSessionStatus = document.getElementById('arenaSessionStatus');
           const arenaSessionBadge = document.getElementById('arenaSessionBadge');
+          const arenaDebugLog = document.getElementById('arenaDebugLog');
           const profileDisplayName = document.getElementById('profileDisplayName');
           const profileBioText = document.getElementById('profileBioText');
           const profileEditBtn = document.getElementById('profileEditBtn');
@@ -919,6 +920,7 @@ export function initLegacyApp() {
                   .select('user_id', { count: 'exact', head: true })
                   .eq('arena_id', arenaId);
               if (error) {
+                  logArenaProfileDiagnostic('createInvite.insert_error', { arenaId: currentArenaId, code: error.code || null, message: error.message || null }, true);
                   if (isArenaPermissionDeniedError(error)) {
                       setArenaSessionStatus('Droit refusé (RLS) pour lire les participants.', true);
                   }
@@ -1296,6 +1298,26 @@ export function initLegacyApp() {
           function maskApiKey(key) {
               if (!key || key.length < 12) return key;
               return `${key.slice(0, 10)}…${key.slice(-4)}`;
+          }
+
+
+
+          function logArenaProfileDiagnostic(step, payload = {}, isError = false) {
+              const stamp = new Date().toISOString();
+              const entry = { stamp, step, ...payload };
+              const line = `[${stamp}] ${step} ${JSON.stringify(payload)}`;
+              if (isError) {
+                  console.warn('[arena-profile]', entry);
+              } else {
+                  console.info('[arena-profile]', entry);
+              }
+              if (arenaDebugLog) {
+                  const previous = arenaDebugLog.textContent && arenaDebugLog.textContent !== 'Aucun diagnostic pour le moment.'
+                      ? `${arenaDebugLog.textContent}
+`
+                      : '';
+                  arenaDebugLog.textContent = `${previous}${line}`.slice(-4000);
+              }
           }
 
           function setSupabaseStatus(message, isError = false) {
@@ -2389,11 +2411,13 @@ export function initLegacyApp() {
               }
               setArenaSessionStatus('Préparation de ton arène…');
               const schema = await verifySoonbaseSchema({ silent: true });
+              logArenaProfileDiagnostic('createArena.schema_check', { ok: schema.ok, missing: schema.missing });
               if (!schema.ok) {
                   setArenaSessionStatus(`Soonbase incomplète: ${schema.missing.join(', ')}. Lance "supabase db push".`, true);
                   return;
               }
               const ensured = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: false });
+              logArenaProfileDiagnostic('createArena.ensure', { created: Boolean(ensured?.created), arenaId: ensured?.arena?.id || null, inviteCode: ensured?.arena?.invite_code || null });
               if (!ensured?.arena?.id) return;
               if (arenaInviteCodeInput) arenaInviteCodeInput.value = ensured.arena.invite_code || '';
               if (ensured.created) {
@@ -2421,11 +2445,13 @@ export function initLegacyApp() {
 
               setArenaSessionStatus('Recherche de l’arène…');
               const schema = await verifySoonbaseSchema({ silent: true });
+              logArenaProfileDiagnostic('joinArena.schema_check', { ok: schema.ok, missing: schema.missing, inviteCode });
               if (!schema.ok) {
                   setArenaSessionStatus(`Soonbase incomplète: ${schema.missing.join(', ')}. Lance "supabase db push".`, true);
                   return;
               }
               const { data: rpcArenaId, error: rpcJoinError } = await client.rpc('accept_arena_invite', { p_token: inviteCode });
+              logArenaProfileDiagnostic('joinArena.rpc_result', { inviteCode, rpcArenaId: rpcArenaId || null, rpcError: rpcJoinError?.message || null }, Boolean(rpcJoinError));
               if (!rpcJoinError && rpcArenaId) {
                   await setCurrentArena(rpcArenaId, inviteCode);
                   setArenaSessionStatus(`Arène rejointe ✅ ${inviteCode}`);
@@ -2477,6 +2503,7 @@ export function initLegacyApp() {
                   role: 'editor'
               });
               if (joinError && joinError.code !== '23505') {
+                  logArenaProfileDiagnostic('joinArena.members_insert_error', { inviteCode, code: joinError.code || null, message: joinError.message || null }, true);
                   if (isSupabaseMissingRelationError(joinError)) {
                       setArenaSessionStatus('Arène indisponible: tables Supabase manquantes. Lance les migrations puis réessaie.', true);
                       return;
@@ -2490,6 +2517,7 @@ export function initLegacyApp() {
               }
 
               await setCurrentArena(arenaRow.id, arenaRow.invite_code || inviteCode);
+              logArenaProfileDiagnostic('joinArena.success', { arenaId: arenaRow.id, inviteCode: arenaRow.invite_code || inviteCode });
               setArenaSessionStatus(`Arène rejointe ✅ ${arenaRow.invite_code || inviteCode}`);
               if (currentView !== 'experience') showView('experience');
           }
@@ -2514,6 +2542,7 @@ export function initLegacyApp() {
               if (!client) return;
 
               const schema = await verifySoonbaseSchema({ silent: true });
+              logArenaProfileDiagnostic('createInvite.schema_check', { ok: schema.ok, missing: schema.missing, arenaId: currentArenaId });
               if (!schema.ok) {
                   setArenaSessionStatus(`Soonbase incomplète: ${schema.missing.join(', ')}. Lance "supabase db push".`, true);
                   return;
@@ -2531,6 +2560,7 @@ export function initLegacyApp() {
                   return;
               }
               if (arenaInviteCodeInput) arenaInviteCodeInput.value = token;
+              logArenaProfileDiagnostic('createInvite.success', { arenaId: currentArenaId, token });
               setArenaSessionStatus(`Invitation créée ✅ Token: ${token}`);
           }
 
