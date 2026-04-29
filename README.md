@@ -66,6 +66,21 @@ Le job valide d’abord les secrets, puis :
 2. `supabase migration list` (test de connectivité)
 3. `supabase db push` (si `dry_run=false`)
 
+### Re-déploiement Vercel + resynchronisation base (procédure manuelle)
+
+Si vous devez forcer un redeploy Vercel **et** resynchroniser la base Supabase:
+
+```bash
+# 1) Lier le projet Supabase puis pousser les migrations
+supabase link --project-ref <SUPABASE_PROJECT_ID>
+supabase db push
+
+# 2) Déclencher un nouveau déploiement Vercel en production
+vercel --prod
+```
+
+Option recommandée en CI: exécuter d'abord `supabase db push` puis `vercel --prod` dans le même pipeline pour garantir que le schéma est à jour avant le build/runtime.
+
 ### Synchronisation profil ↔ Supabase
 
 Le profil est simplifié autour de 3 besoins : auth (connexion/inscription/session), achat d’expériences Échohypnose (simulé), et historique horodaté.
