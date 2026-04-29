@@ -248,8 +248,10 @@ export function initLegacyApp() {
           propsDeleteBtn.addEventListener('click', async () => {
               if (!selectedBubble) return;
               const bubbleToDelete = selectedBubble;
-              removeBubbleFromArenaById(bubbleToDelete.id);
-              await deleteBubbleInDb(bubbleToDelete);
+              const wasDeleted = await deleteBubbleInDb(bubbleToDelete);
+              if (wasDeleted) {
+                  removeBubbleFromArenaById(bubbleToDelete.id);
+              }
           });
           propsCloseBtn.addEventListener('click', closeBubblePropsPanel);
 
@@ -1801,6 +1803,67 @@ export function initLegacyApp() {
               if (message.includes('could not find the table')) return true;
               if (message.includes('relation') && message.includes('does not exist')) return true;
               return false;
+          }
+
+          function isSupabaseSessionInvalidError(error) {
+              if (!error) return false;
+              if (error.code === 'PGRST301') return true;
+              const message = `${error.message || ''} ${error.details || ''}`.toLowerCase();
+              return message.includes('jwt') || message.includes('session') || message.includes('token');
+          }
+
+          function mapArenaBubbleWriteErrorLabel(error) {
+              if (isArenaPermissionDeniedError(error)) return 'Écriture refusée (RLS)';
+              if (isSupabaseMissingRelationError(error)) return 'Table arène manquante (migration)';
+              if (isSupabaseSessionInvalidError(error)) return 'Connexion/session invalide';
+              return `Écriture arène impossible: ${error?.message || 'erreur inconnue'}`;
+          }
+
+          async function insertArenaBubbleRow(client, payload, context = {}) {
+              const result = await client.from('soon_arena_bubbles').insert(payload);
+              if (result.error) {
+                  console.warn('[legacyApp] soon_arena_bubbles write failed', {
+                      action: context.action || 'insert',
+                      arena_id: context.arena_id || currentArenaId,
+                      bubble_id: context.bubble_id || payload?.id || null,
+                      error: result.error,
+                  });
+              }
+              return result;
+          }
+
+          async function updateArenaBubbleRow(client, bubbleId, patch, context = {}) {
+              const result = await client
+                  .from('soon_arena_bubbles')
+                  .update(patch)
+                  .eq('id', bubbleId)
+                  .eq('arena_id', currentArenaId);
+              if (result.error) {
+                  console.warn('[legacyApp] soon_arena_bubbles write failed', {
+                      action: context.action || 'update',
+                      arena_id: context.arena_id || currentArenaId,
+                      bubble_id: context.bubble_id || bubbleId || null,
+                      error: result.error,
+                  });
+              }
+              return result;
+          }
+
+          async function deleteArenaBubbleRow(client, bubbleId, context = {}) {
+              const result = await client
+                  .from('soon_arena_bubbles')
+                  .delete()
+                  .eq('id', bubbleId)
+                  .eq('arena_id', currentArenaId);
+              if (result.error) {
+                  console.warn('[legacyApp] soon_arena_bubbles write failed', {
+                      action: context.action || 'delete',
+                      arena_id: context.arena_id || currentArenaId,
+                      bubble_id: context.bubble_id || bubbleId || null,
+                      error: result.error,
+                  });
+              }
+              return result;
           }
 
           async function syncSessionHistoryFromSupabase() {
@@ -3667,9 +3730,16 @@ export function initLegacyApp() {
                   BUBBLES.push(bubble);
               } else {
                   const payload = bubbleToDbPayload(bubble);
-                  const { error } = await client.from('soon_arena_bubbles').insert(payload);
+                  const { error } = await insertArenaBubbleRow(client, payload, {
+                      action: 'drop-create',
+                      arena_id: currentArenaId,
+                      bubble_id: bubble.id,
+                  });
                   if (error) {
-                      console.warn('[legacyApp] failed to insert soon_arena_bubbles row', error);
+                      const userMessage = mapArenaBubbleWriteErrorLabel(error);
+                      setArenaSessionStatus(userMessage, true);
+                      setAuthStatus(userMessage, true);
+                      return;
                   }
               }
               closeBubblePanel();
@@ -4321,7 +4391,16 @@ export function initLegacyApp() {
                       bubbleUpdateThrottleTimers.delete(bubbleId);
                   }
                   bubblePendingPatchById.delete(bubbleId);
-                  await client.from('soon_arena_bubbles').update(patch).eq('id', bubbleId).eq('arena_id', currentArenaId);
+                  const { error } = await updateArenaBubbleRow(client, bubbleId, patch, {
+                      action: 'patch-immediate',
+                      arena_id: currentArenaId,
+                      bubble_id: bubbleId,
+                  });
+                  if (error) {
+                      const userMessage = mapArenaBubbleWriteErrorLabel(error);
+                      setArenaSessionStatus(userMessage, true);
+                      setAuthStatus(userMessage, true);
+                  }
                   return;
               }
               if (bubbleUpdateThrottleTimers.has(bubbleId)) return;
@@ -4330,18 +4409,38 @@ export function initLegacyApp() {
                   const patch = bubblePendingPatchById.get(bubbleId);
                   bubblePendingPatchById.delete(bubbleId);
                   if (!patch || !Object.keys(patch).length) return;
-                  await client.from('soon_arena_bubbles').update(patch).eq('id', bubbleId).eq('arena_id', currentArenaId);
+                  const { error } = await updateArenaBubbleRow(client, bubbleId, patch, {
+                      action: 'patch-throttled',
+                      arena_id: currentArenaId,
+                      bubble_id: bubbleId,
+                  });
+                  if (error) {
+                      const userMessage = mapArenaBubbleWriteErrorLabel(error);
+                      setArenaSessionStatus(userMessage, true);
+                      setAuthStatus(userMessage, true);
+                  }
               }, BUBBLE_UPDATE_THROTTLE_MS);
               bubbleUpdateThrottleTimers.set(bubbleId, timer);
           }
 
           async function deleteBubbleInDb(bubble) {
               if (isApplyingRemoteArenaSyncEvent || isHydratingArenaBubbles) return;
-              if (!bubble?.id) return;
+              if (!bubble?.id) return false;
               const client = buildSupabaseClient();
-              if (!client) return;
+              if (!client) return true;
               clearBubbleUpdateThrottleForId(bubble.id);
-              await client.from('soon_arena_bubbles').delete().eq('id', bubble.id).eq('arena_id', currentArenaId);
+              const { error } = await deleteArenaBubbleRow(client, bubble.id, {
+                  action: 'delete',
+                  arena_id: currentArenaId,
+                  bubble_id: bubble.id,
+              });
+              if (error) {
+                  const userMessage = mapArenaBubbleWriteErrorLabel(error);
+                  setArenaSessionStatus(userMessage, true);
+                  setAuthStatus(userMessage, true);
+                  return false;
+              }
+              return true;
           }
 
           async function hydrateArenaBubblesFromDb() {
