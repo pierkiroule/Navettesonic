@@ -2444,8 +2444,11 @@ export function initLegacyApp() {
               const schema = await verifySoonbaseSchema({ silent: true });
               logArenaProfileDiagnostic('createArena.schema_check', { ok: schema.ok, missing: schema.missing });
               if (!schema.ok) {
-                  setArenaSessionStatus(`Soonbase incomplète: ${schema.missing.join(', ')}. Lance "supabase db push".`, true);
-                  return;
+                  console.warn('[legacyApp] createArena continues despite schema warning', {
+                      missing: schema.missing,
+                      details: schema.details,
+                  });
+                  setArenaSessionStatus('Diagnostic Soonbase incertain: tentative de création quand même…', true);
               }
               const ensured = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: false });
               logArenaProfileDiagnostic('createArena.ensure', { created: Boolean(ensured?.created), arenaId: ensured?.arena?.id || null, inviteCode: ensured?.arena?.invite_code || null });
@@ -2478,8 +2481,12 @@ export function initLegacyApp() {
               const schema = await verifySoonbaseSchema({ silent: true });
               logArenaProfileDiagnostic('joinArena.schema_check', { ok: schema.ok, missing: schema.missing, inviteCode });
               if (!schema.ok) {
-                  setArenaSessionStatus(`Soonbase incomplète: ${schema.missing.join(', ')}. Lance "supabase db push".`, true);
-                  return;
+                  console.warn('[legacyApp] joinArena continues despite schema warning', {
+                      inviteCode,
+                      missing: schema.missing,
+                      details: schema.details,
+                  });
+                  setArenaSessionStatus('Diagnostic Soonbase incertain: tentative de jointure quand même…', true);
               }
               const { data: rpcArenaId, error: rpcJoinError } = await client.rpc('accept_arena_invite', { p_token: inviteCode });
               logArenaProfileDiagnostic('joinArena.rpc_result', { inviteCode, rpcArenaId: rpcArenaId || null, rpcError: rpcJoinError?.message || null }, Boolean(rpcJoinError));
@@ -2575,8 +2582,12 @@ export function initLegacyApp() {
               const schema = await verifySoonbaseSchema({ silent: true });
               logArenaProfileDiagnostic('createInvite.schema_check', { ok: schema.ok, missing: schema.missing, arenaId: currentArenaId });
               if (!schema.ok) {
-                  setArenaSessionStatus(`Soonbase incomplète: ${schema.missing.join(', ')}. Lance "supabase db push".`, true);
-                  return;
+                  console.warn('[legacyApp] createInvite continues despite schema warning', {
+                      arenaId: currentArenaId,
+                      missing: schema.missing,
+                      details: schema.details,
+                  });
+                  setArenaSessionStatus('Diagnostic Soonbase incertain: tentative d’invitation quand même…', true);
               }
 
               const token = (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`).replace(/-/g, '');
