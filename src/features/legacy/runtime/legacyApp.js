@@ -886,16 +886,29 @@ export function initLegacyApp() {
               scheduleBottomNavAutoCollapse();
           }
 
+          function isValidDbArenaId(arenaId) {
+              if (!arenaId || arenaId === 'default') return false;
+              const normalized = String(arenaId).trim();
+              if (!normalized) return false;
+              const uuidLike = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(normalized);
+              const numericLike = /^\d+$/.test(normalized);
+              return uuidLike || numericLike;
+          }
+
+          function canSyncArenaWithDb(arenaId = currentArenaId) {
+              return Boolean(currentSession?.user?.id) && isValidDbArenaId(arenaId);
+          }
+
           function resolveArenaId() {
               const explicitArenaId = experienceView?.dataset?.arenaId;
-              if (explicitArenaId) return explicitArenaId;
-              if (currentArenaId && currentArenaId !== 'default') return currentArenaId;
-              return currentSession?.user?.id || 'default';
+              if (explicitArenaId && canSyncArenaWithDb(explicitArenaId)) return explicitArenaId;
+              if (currentArenaId && canSyncArenaWithDb(currentArenaId)) return currentArenaId;
+              return 'default';
           }
 
           async function refreshArenaParticipantCount(arenaId = currentArenaId) {
               const client = buildSupabaseClient();
-              if (!client || !arenaId || arenaId === 'default') {
+              if (!client || !canSyncArenaWithDb(arenaId)) {
                   currentArenaParticipants = 1;
                   renderArenaSessionBadge();
                   return;
@@ -918,14 +931,14 @@ export function initLegacyApp() {
 
           function refreshArenaInviteButton() {
               if (!inviteArenaBtn) return;
-              const canInvite = !!currentSession?.user?.id && currentArenaRole === 'owner' && currentArenaId && currentArenaId !== 'default';
+              const canInvite = canSyncArenaWithDb(currentArenaId) && currentArenaRole === 'owner';
               inviteArenaBtn.hidden = !canInvite;
               inviteArenaBtn.disabled = !canInvite;
           }
 
           async function refreshCurrentArenaRole(arenaId = currentArenaId) {
               const client = buildSupabaseClient();
-              if (!client || !currentSession?.user?.id || !arenaId || arenaId === 'default') {
+              if (!client || !canSyncArenaWithDb(arenaId)) {
                   currentArenaRole = null;
                   refreshArenaInviteButton();
                   return;
@@ -1304,19 +1317,24 @@ export function initLegacyApp() {
 
           function setArenaSessionStatus(message, isError = false) {
               if (!arenaSessionStatus) return;
-              arenaSessionStatus.textContent = message;
+              const finalMessage = !currentSession?.user?.id
+                  ? 'Mode local (non synchronisé)'
+                  : message;
+              arenaSessionStatus.textContent = finalMessage;
               arenaSessionStatus.style.color = isError ? 'rgba(255, 148, 148, 0.95)' : 'rgba(146, 247, 210, 0.95)';
           }
 
           function renderArenaSessionBadge() {
               if (!arenaSessionBadge) return;
+              const isLocalOnlyMode = !currentSession?.user?.id;
               const shortArenaId = currentArenaId && currentArenaId !== 'default'
                   ? String(currentArenaId).slice(0, 8)
                   : 'solo';
-              const arenaLabel = currentArenaInviteCode || shortArenaId;
+              const arenaLabel = isLocalOnlyMode ? 'local' : (currentArenaInviteCode || shortArenaId);
               const participantCount = Math.max(1, Number.isFinite(currentArenaParticipants) ? Math.round(currentArenaParticipants) : 1);
               const participantLabel = participantCount > 1 ? 'participants' : 'participant';
-              arenaSessionBadge.textContent = `Arène: ${arenaLabel} · ${participantCount} ${participantLabel}`;
+              const syncLabel = isLocalOnlyMode ? ' · Mode local (non synchronisé)' : '';
+              arenaSessionBadge.textContent = `Arène: ${arenaLabel} · ${participantCount} ${participantLabel}${syncLabel}`;
           }
 
           function isArenaPermissionDeniedError(error) {
@@ -3729,7 +3747,7 @@ export function initLegacyApp() {
               if (!sample) return;
               const bubble = buildSoundBubble(sample, bubbleLayer.value, selectedHaloStyleId);
               const client = buildSupabaseClient();
-              if (!client) {
+              if (!client || !canSyncArenaWithDb(currentArenaId)) {
                   BUBBLES.push(bubble);
               } else {
                   const payload = bubbleToDbPayload(bubble);
@@ -4386,7 +4404,7 @@ export function initLegacyApp() {
               if (isApplyingRemoteArenaSyncEvent || isHydratingArenaBubbles) return;
               if (!bubble?.id) return;
               const client = buildSupabaseClient();
-              if (!client) return;
+              if (!client || !canSyncArenaWithDb(currentArenaId)) return;
               const bubbleId = bubble.id;
               const updaterUserId = currentSession?.user?.id || null;
               const arenaIdAtSchedule = currentArenaId;
@@ -4452,7 +4470,7 @@ export function initLegacyApp() {
               if (isApplyingRemoteArenaSyncEvent || isHydratingArenaBubbles) return;
               if (!bubble?.id) return false;
               const client = buildSupabaseClient();
-              if (!client) return true;
+              if (!client || !canSyncArenaWithDb(currentArenaId)) return true;
               clearBubbleUpdateThrottleForId(bubble.id);
               const { error } = await deleteArenaBubbleRow(client, bubble.id, {
                   action: 'delete',
@@ -4470,7 +4488,7 @@ export function initLegacyApp() {
 
           async function hydrateArenaBubblesFromDb() {
               const client = buildSupabaseClient();
-              if (!client) {
+              if (!client || !canSyncArenaWithDb(currentArenaId)) {
                   if (!BUBBLES.length) placeInitialArenaBubbles();
                   return;
               }
@@ -4498,7 +4516,7 @@ export function initLegacyApp() {
 
           function bindArenaRealtimeChannel() {
               const client = buildSupabaseClient();
-              if (!client) return;
+              if (!client || !canSyncArenaWithDb(currentArenaId)) return;
               if (arenaRealtimeChannel) {
                   arenaRealtimeChannel.unsubscribe();
                   arenaRealtimeChannel = null;
@@ -4558,7 +4576,8 @@ export function initLegacyApp() {
               clearPendingBubbleWritesForOtherArena(nextArenaId);
               currentArenaId = nextArenaId;
               await hydrateArenaBubblesFromDb();
-              bindArenaRealtimeChannel();
+              if (canSyncArenaWithDb(currentArenaId)) bindArenaRealtimeChannel();
+              else unsubscribeArenaRealtimeChannel();
               await refreshArenaParticipantCount(currentArenaId);
           }
 
