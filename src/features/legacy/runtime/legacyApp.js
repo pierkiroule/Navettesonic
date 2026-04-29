@@ -454,6 +454,7 @@ export function initLegacyApp() {
           const bubbleLastKnownVersionById = new Map();
           const bubbleBufferedRemotePatchById = new Map();
           let supabaseClient = null;
+          let supabaseClientSignature = '';
           let currentSession = null;
           let isAuthActionPending = false;
           let syncInFlightPromise = null;
@@ -1475,6 +1476,7 @@ export function initLegacyApp() {
               const cfg = getSupabaseConfig();
               const url = supabaseUrlInput?.value?.trim() || cfg.url || DEFAULT_SUPABASE_URL;
               const key = supabaseKeyInput?.value?.trim() || cfg.key;
+              const nextSignature = `${url}::${key ? 'with-key' : 'no-key'}`;
               if (!url || !key) {
                   setSupabaseStatus('Ajoute URL + clé publishable Supabase.', true);
                   setDbConnectionStatus('Base Supabase non connectée (variables Vercel manquantes).', true);
@@ -1486,11 +1488,15 @@ export function initLegacyApp() {
                   setDbConnectionStatus('Base Supabase non connectée (SDK introuvable).', true);
                   return null;
               }
-              if (supabaseClient) {
+              if (supabaseClient && supabaseClientSignature === nextSignature) {
                   setDbConnectionStatus('Base Supabase connectée ✅');
                   return supabaseClient;
               }
+              if (supabaseClient && supabaseClientSignature !== nextSignature) {
+                  console.info('[legacyApp] Supabase client reinitialized due to config change', { url });
+              }
               supabaseClient = window.supabase.createClient(url, key);
+              supabaseClientSignature = nextSignature;
               setDbConnectionStatus('Base Supabase connectée ✅');
               supabaseClient.auth.onAuthStateChange((event, session) => {
                   currentSession = session;
@@ -1536,13 +1542,31 @@ export function initLegacyApp() {
               for (const check of checks) {
                   const { error } = await client.from(check.table).select(check.columns).limit(1);
                   if (error) {
+                      console.error('[legacyApp] soonbase schema table check failed', {
+                          table: check.table,
+                          columns: check.columns,
+                          code: error.code || null,
+                          message: error.message || null,
+                          details: error.details || null,
+                          hint: error.hint || null,
+                      });
                       details.push(`${check.table}: ${error.message || 'erreur inconnue'}`);
-                      if (isSupabaseMissingRelationError(error) || (error.message || '').toLowerCase().includes('column')) {
+                      if (isSupabaseMissingRelationError(error) || isSupabaseMissingColumnError(error)) {
                           missing.push(check.table);
                       }
                   }
               }
               const rpcProbe = await client.rpc('accept_arena_invite', { p_token: '__schema_probe__' });
+              if (rpcProbe?.error && !isSupabaseMissingFunctionError(rpcProbe.error)) {
+                  console.error('[legacyApp] soonbase schema rpc probe failed', {
+                      rpc: 'accept_arena_invite',
+                      code: rpcProbe.error.code || null,
+                      message: rpcProbe.error.message || null,
+                      details: rpcProbe.error.details || null,
+                      hint: rpcProbe.error.hint || null,
+                  });
+                  details.push(`accept_arena_invite: ${rpcProbe.error.message || 'erreur RPC'}`);
+              }
               if (rpcProbe?.error && isSupabaseMissingFunctionError(rpcProbe.error)) {
                   missing.push('function accept_arena_invite(text)');
                   details.push(`accept_arena_invite: ${rpcProbe.error.message || 'fonction manquante'}`);
@@ -1912,6 +1936,13 @@ export function initLegacyApp() {
               if (message.includes('could not find the table')) return true;
               if (message.includes('relation') && message.includes('does not exist')) return true;
               return false;
+          }
+
+          function isSupabaseMissingColumnError(error) {
+              if (!error) return false;
+              if (error.code === '42703') return true;
+              const message = `${error.message || ''} ${error.details || ''}`.toLowerCase();
+              return message.includes('column') && message.includes('does not exist');
           }
 
           function isSupabaseSessionInvalidError(error) {
@@ -2601,6 +2632,8 @@ export function initLegacyApp() {
                   localStorage.setItem(SUPABASE_LOCAL_KEYS.key, key);
                   setSupabaseStatus(`Configuration sauvegardée localement (${maskApiKey(key)}).`);
                   supabaseClient = null;
+                  supabaseClientSignature = '';
+                  soonbaseSchemaHealth = { checkedAt: 0, ok: false, missing: [], details: [] };
                   restoreSession();
               });
 
