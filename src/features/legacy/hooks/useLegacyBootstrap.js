@@ -1,24 +1,23 @@
 import { useEffect } from 'react';
-import * as supabase from '@supabase/supabase-js';
+
+let legacyBootPromise = null;
+
+async function ensureLegacyBootstrapped() {
+  if (!legacyBootPromise) {
+    legacyBootPromise = import('../runtime/legacyApp.js').then(({ initLegacyApp }) => {
+      initLegacyApp();
+    });
+  }
+
+  return legacyBootPromise;
+}
 
 export function useLegacyBootstrap() {
   useEffect(() => {
-    let cancelled = false;
+    ensureLegacyBootstrapped().catch((error) => {
+      console.error('Legacy bootstrap failed:', error);
+    });
 
-    const boot = async () => {
-      if (!window.supabase || typeof window.supabase.createClient !== 'function') {
-        window.supabase = supabase;
-      }
-      const { initLegacyApp } = await import('../runtime/legacyApp.js');
-      if (!cancelled) {
-        initLegacyApp();
-      }
-    };
-
-    boot();
-
-    return () => {
-      cancelled = true;
-    };
+    return undefined;
   }, []);
 }
