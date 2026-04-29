@@ -1327,14 +1327,13 @@ export function initLegacyApp() {
           function renderArenaSessionBadge() {
               if (!arenaSessionBadge) return;
               const isLocalOnlyMode = !currentSession?.user?.id;
-              const shortArenaId = currentArenaId && currentArenaId !== 'default'
-                  ? String(currentArenaId).slice(0, 8)
-                  : 'solo';
-              const arenaLabel = isLocalOnlyMode ? 'local' : (currentArenaInviteCode || shortArenaId);
+              const arenaLabel = isLocalOnlyMode
+                  ? 'local'
+                  : (currentArenaInviteCode || 'code non généré');
               const participantCount = Math.max(1, Number.isFinite(currentArenaParticipants) ? Math.round(currentArenaParticipants) : 1);
               const participantLabel = participantCount > 1 ? 'participants' : 'participant';
               const syncLabel = isLocalOnlyMode ? ' · Mode local (non synchronisé)' : '';
-              arenaSessionBadge.textContent = `Arène: ${arenaLabel} · ${participantCount} ${participantLabel}${syncLabel}`;
+              arenaSessionBadge.textContent = `Arène partagée: ${arenaLabel} · ${participantCount} ${participantLabel}${syncLabel}`;
           }
 
           function isArenaPermissionDeniedError(error) {
