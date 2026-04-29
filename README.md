@@ -107,3 +107,14 @@ supabase db push
 ```
 
 Puis rechargez l’application et réessayez **Créer mon arène** ou **Rejoindre**.
+
+
+#### Vérification post-migration (Soonbase)
+
+Après `supabase db push`, vous pouvez vérifier la structure attendue avec:
+
+```bash
+supabase db query < supabase/scripts/verify_soonbase_schema.sql
+```
+
+Le résultat doit indiquer aucune table/colonne manquante et RPC `accept_arena_invite` présente.
