@@ -456,6 +456,7 @@ export function initLegacyApp() {
           let currentSession = null;
           let isAuthActionPending = false;
           let syncInFlightPromise = null;
+          let soonbaseSchemaHealth = { checkedAt: 0, ok: false, missing: [], details: [] };
           let recordingState = 'idle';
           let recordingTimerInterval = null;
           let recordingAutoStopTimeout = null;
@@ -1493,6 +1494,49 @@ export function initLegacyApp() {
               return supabaseClient;
           }
 
+
+
+          async function verifySoonbaseSchema({ force = false, silent = false } = {}) {
+              const client = buildSupabaseClient();
+              if (!client) return { ok: false, missing: ['client'], details: [] };
+              const now = Date.now();
+              if (!force && soonbaseSchemaHealth.checkedAt && (now - soonbaseSchemaHealth.checkedAt) < 120000) {
+                  return soonbaseSchemaHealth;
+              }
+              const checks = [
+                  { table: 'soon_arenas', columns: 'id, owner_user_id, invite_code, is_active' },
+                  { table: 'soon_arena_members', columns: 'arena_id, user_id, role' },
+                  { table: 'soon_arena_bubbles', columns: 'id, arena_id, created_by_user_id, sample_id' },
+                  { table: 'soon_arena_invites', columns: 'id, arena_id, token, invited_by_user_id, expires_at, max_acceptances, accepted_count' },
+              ];
+              const missing = [];
+              const details = [];
+              for (const check of checks) {
+                  const { error } = await client.from(check.table).select(check.columns).limit(1);
+                  if (error) {
+                      details.push(`${check.table}: ${error.message || 'erreur inconnue'}`);
+                      if (isSupabaseMissingRelationError(error) || (error.message || '').toLowerCase().includes('column')) {
+                          missing.push(check.table);
+                      }
+                  }
+              }
+              const rpcProbe = await client.rpc('accept_arena_invite', { p_token: '__schema_probe__' });
+              if (rpcProbe?.error && isSupabaseMissingFunctionError(rpcProbe.error)) {
+                  missing.push('function accept_arena_invite(text)');
+                  details.push(`accept_arena_invite: ${rpcProbe.error.message || 'fonction manquante'}`);
+              }
+              const result = { ok: missing.length === 0, missing: Array.from(new Set(missing)), details, checkedAt: now };
+              soonbaseSchemaHealth = result;
+              if (!silent) {
+                  if (result.ok) {
+                      setArenaSessionStatus('Soonbase validée ✅ Schéma arène synchronisé avec l’app.');
+                  } else {
+                      setArenaSessionStatus(`Soonbase incomplète: ${result.missing.join(', ')}. Lance "supabase db push".`, true);
+                  }
+              }
+              return result;
+          }
+
           async function testSupabaseConnection() {
               const client = buildSupabaseClient();
               if (!client) return;
@@ -1503,6 +1547,7 @@ export function initLegacyApp() {
                   return;
               }
               setSupabaseStatus(`Connecté à ${SUPABASE_BUCKET} avec ${maskApiKey(supabaseKeyInput.value.trim())}.`);
+              await verifySoonbaseSchema({ force: true, silent: false });
               await fetchSooncutVocalsFromBucket();
           }
 
@@ -2343,6 +2388,11 @@ export function initLegacyApp() {
                   return;
               }
               setArenaSessionStatus('Préparation de ton arène…');
+              const schema = await verifySoonbaseSchema({ silent: true });
+              if (!schema.ok) {
+                  setArenaSessionStatus(`Soonbase incomplète: ${schema.missing.join(', ')}. Lance "supabase db push".`, true);
+                  return;
+              }
               const ensured = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: false });
               if (!ensured?.arena?.id) return;
               if (arenaInviteCodeInput) arenaInviteCodeInput.value = ensured.arena.invite_code || '';
@@ -2370,6 +2420,11 @@ export function initLegacyApp() {
               if (arenaInviteCodeInput) arenaInviteCodeInput.value = inviteCode;
 
               setArenaSessionStatus('Recherche de l’arène…');
+              const schema = await verifySoonbaseSchema({ silent: true });
+              if (!schema.ok) {
+                  setArenaSessionStatus(`Soonbase incomplète: ${schema.missing.join(', ')}. Lance "supabase db push".`, true);
+                  return;
+              }
               const { data: rpcArenaId, error: rpcJoinError } = await client.rpc('accept_arena_invite', { p_token: inviteCode });
               if (!rpcJoinError && rpcArenaId) {
                   await setCurrentArena(rpcArenaId, inviteCode);
@@ -2458,13 +2513,9 @@ export function initLegacyApp() {
               const client = buildSupabaseClient();
               if (!client) return;
 
-              const schemaProbe = await client
-                  .from('soon_arena_invites')
-                  .select('arena_id, token, invited_by_user_id')
-                  .limit(1);
-              if (schemaProbe.error) {
-                  const schemaMessage = mapArenaInviteInsertErrorToStatus(schemaProbe.error);
-                  setArenaSessionStatus(schemaMessage || 'Vérification du schéma invite impossible.', true);
+              const schema = await verifySoonbaseSchema({ silent: true });
+              if (!schema.ok) {
+                  setArenaSessionStatus(`Soonbase incomplète: ${schema.missing.join(', ')}. Lance "supabase db push".`, true);
                   return;
               }
 
