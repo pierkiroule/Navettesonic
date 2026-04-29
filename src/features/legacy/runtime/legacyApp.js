@@ -111,6 +111,7 @@ export function initLegacyApp() {
           const arenaInviteCodeInput = document.getElementById('arenaInviteCodeInput');
           const arenaSessionStatus = document.getElementById('arenaSessionStatus');
           const arenaSessionBadge = document.getElementById('arenaSessionBadge');
+          const arenaDebugLog = document.getElementById('arenaDebugLog');
           const profileDisplayName = document.getElementById('profileDisplayName');
           const profileBioText = document.getElementById('profileBioText');
           const profileEditBtn = document.getElementById('profileEditBtn');
@@ -456,6 +457,7 @@ export function initLegacyApp() {
           let currentSession = null;
           let isAuthActionPending = false;
           let syncInFlightPromise = null;
+          let soonbaseSchemaHealth = { checkedAt: 0, ok: false, missing: [], details: [] };
           let recordingState = 'idle';
           let recordingTimerInterval = null;
           let recordingAutoStopTimeout = null;
@@ -918,6 +920,7 @@ export function initLegacyApp() {
                   .select('user_id', { count: 'exact', head: true })
                   .eq('arena_id', arenaId);
               if (error) {
+                  logArenaProfileDiagnostic('createInvite.insert_error', { arenaId: currentArenaId, code: error.code || null, message: error.message || null }, true);
                   if (isArenaPermissionDeniedError(error)) {
                       setArenaSessionStatus('Droit refusé (RLS) pour lire les participants.', true);
                   }
@@ -1297,6 +1300,26 @@ export function initLegacyApp() {
               return `${key.slice(0, 10)}…${key.slice(-4)}`;
           }
 
+
+
+          function logArenaProfileDiagnostic(step, payload = {}, isError = false) {
+              const stamp = new Date().toISOString();
+              const entry = { stamp, step, ...payload };
+              const line = `[${stamp}] ${step} ${JSON.stringify(payload)}`;
+              if (isError) {
+                  console.warn('[arena-profile]', entry);
+              } else {
+                  console.info('[arena-profile]', entry);
+              }
+              if (arenaDebugLog) {
+                  const previous = arenaDebugLog.textContent && arenaDebugLog.textContent !== 'Aucun diagnostic pour le moment.'
+                      ? `${arenaDebugLog.textContent}
+`
+                      : '';
+                  arenaDebugLog.textContent = `${previous}${line}`.slice(-4000);
+              }
+          }
+
           function setSupabaseStatus(message, isError = false) {
               if (!supabaseStatus) return;
               supabaseStatus.textContent = message;
@@ -1327,14 +1350,13 @@ export function initLegacyApp() {
           function renderArenaSessionBadge() {
               if (!arenaSessionBadge) return;
               const isLocalOnlyMode = !currentSession?.user?.id;
-              const shortArenaId = currentArenaId && currentArenaId !== 'default'
-                  ? String(currentArenaId).slice(0, 8)
-                  : 'solo';
-              const arenaLabel = isLocalOnlyMode ? 'local' : (currentArenaInviteCode || shortArenaId);
+              const arenaLabel = isLocalOnlyMode
+                  ? 'local'
+                  : (currentArenaInviteCode || 'code non généré');
               const participantCount = Math.max(1, Number.isFinite(currentArenaParticipants) ? Math.round(currentArenaParticipants) : 1);
               const participantLabel = participantCount > 1 ? 'participants' : 'participant';
               const syncLabel = isLocalOnlyMode ? ' · Mode local (non synchronisé)' : '';
-              arenaSessionBadge.textContent = `Arène: ${arenaLabel} · ${participantCount} ${participantLabel}${syncLabel}`;
+              arenaSessionBadge.textContent = `Arène partagée: ${arenaLabel} · ${participantCount} ${participantLabel}${syncLabel}`;
           }
 
           function isArenaPermissionDeniedError(error) {
@@ -1494,6 +1516,49 @@ export function initLegacyApp() {
               return supabaseClient;
           }
 
+
+
+          async function verifySoonbaseSchema({ force = false, silent = false } = {}) {
+              const client = buildSupabaseClient();
+              if (!client) return { ok: false, missing: ['client'], details: [] };
+              const now = Date.now();
+              if (!force && soonbaseSchemaHealth.checkedAt && (now - soonbaseSchemaHealth.checkedAt) < 120000) {
+                  return soonbaseSchemaHealth;
+              }
+              const checks = [
+                  { table: 'soon_arenas', columns: 'id, owner_user_id, invite_code, is_active' },
+                  { table: 'soon_arena_members', columns: 'arena_id, user_id, role' },
+                  { table: 'soon_arena_bubbles', columns: 'id, arena_id, created_by_user_id, sample_id' },
+                  { table: 'soon_arena_invites', columns: 'id, arena_id, token, invited_by_user_id, expires_at, max_acceptances, accepted_count' },
+              ];
+              const missing = [];
+              const details = [];
+              for (const check of checks) {
+                  const { error } = await client.from(check.table).select(check.columns).limit(1);
+                  if (error) {
+                      details.push(`${check.table}: ${error.message || 'erreur inconnue'}`);
+                      if (isSupabaseMissingRelationError(error) || (error.message || '').toLowerCase().includes('column')) {
+                          missing.push(check.table);
+                      }
+                  }
+              }
+              const rpcProbe = await client.rpc('accept_arena_invite', { p_token: '__schema_probe__' });
+              if (rpcProbe?.error && isSupabaseMissingFunctionError(rpcProbe.error)) {
+                  missing.push('function accept_arena_invite(text)');
+                  details.push(`accept_arena_invite: ${rpcProbe.error.message || 'fonction manquante'}`);
+              }
+              const result = { ok: missing.length === 0, missing: Array.from(new Set(missing)), details, checkedAt: now };
+              soonbaseSchemaHealth = result;
+              if (!silent) {
+                  if (result.ok) {
+                      setArenaSessionStatus('Soonbase validée ✅ Schéma arène synchronisé avec l’app.');
+                  } else {
+                      setArenaSessionStatus(`Soonbase incomplète: ${result.missing.join(', ')}. Lance "supabase db push".`, true);
+                  }
+              }
+              return result;
+          }
+
           async function testSupabaseConnection() {
               const client = buildSupabaseClient();
               if (!client) return;
@@ -1504,6 +1569,7 @@ export function initLegacyApp() {
                   return;
               }
               setSupabaseStatus(`Connecté à ${SUPABASE_BUCKET} avec ${maskApiKey(supabaseKeyInput.value.trim())}.`);
+              await verifySoonbaseSchema({ force: true, silent: false });
               await fetchSooncutVocalsFromBucket();
           }
 
@@ -2344,7 +2410,14 @@ export function initLegacyApp() {
                   return;
               }
               setArenaSessionStatus('Préparation de ton arène…');
+              const schema = await verifySoonbaseSchema({ silent: true });
+              logArenaProfileDiagnostic('createArena.schema_check', { ok: schema.ok, missing: schema.missing });
+              if (!schema.ok) {
+                  setArenaSessionStatus(`Soonbase incomplète: ${schema.missing.join(', ')}. Lance "supabase db push".`, true);
+                  return;
+              }
               const ensured = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: false });
+              logArenaProfileDiagnostic('createArena.ensure', { created: Boolean(ensured?.created), arenaId: ensured?.arena?.id || null, inviteCode: ensured?.arena?.invite_code || null });
               if (!ensured?.arena?.id) return;
               if (arenaInviteCodeInput) arenaInviteCodeInput.value = ensured.arena.invite_code || '';
               if (ensured.created) {
@@ -2371,7 +2444,14 @@ export function initLegacyApp() {
               if (arenaInviteCodeInput) arenaInviteCodeInput.value = inviteCode;
 
               setArenaSessionStatus('Recherche de l’arène…');
+              const schema = await verifySoonbaseSchema({ silent: true });
+              logArenaProfileDiagnostic('joinArena.schema_check', { ok: schema.ok, missing: schema.missing, inviteCode });
+              if (!schema.ok) {
+                  setArenaSessionStatus(`Soonbase incomplète: ${schema.missing.join(', ')}. Lance "supabase db push".`, true);
+                  return;
+              }
               const { data: rpcArenaId, error: rpcJoinError } = await client.rpc('accept_arena_invite', { p_token: inviteCode });
+              logArenaProfileDiagnostic('joinArena.rpc_result', { inviteCode, rpcArenaId: rpcArenaId || null, rpcError: rpcJoinError?.message || null }, Boolean(rpcJoinError));
               if (!rpcJoinError && rpcArenaId) {
                   await setCurrentArena(rpcArenaId, inviteCode);
                   setArenaSessionStatus(`Arène rejointe ✅ ${inviteCode}`);
@@ -2423,6 +2503,7 @@ export function initLegacyApp() {
                   role: 'editor'
               });
               if (joinError && joinError.code !== '23505') {
+                  logArenaProfileDiagnostic('joinArena.members_insert_error', { inviteCode, code: joinError.code || null, message: joinError.message || null }, true);
                   if (isSupabaseMissingRelationError(joinError)) {
                       setArenaSessionStatus('Arène indisponible: tables Supabase manquantes. Lance les migrations puis réessaie.', true);
                       return;
@@ -2436,6 +2517,7 @@ export function initLegacyApp() {
               }
 
               await setCurrentArena(arenaRow.id, arenaRow.invite_code || inviteCode);
+              logArenaProfileDiagnostic('joinArena.success', { arenaId: arenaRow.id, inviteCode: arenaRow.invite_code || inviteCode });
               setArenaSessionStatus(`Arène rejointe ✅ ${arenaRow.invite_code || inviteCode}`);
               if (currentView !== 'experience') showView('experience');
           }
@@ -2459,13 +2541,10 @@ export function initLegacyApp() {
               const client = buildSupabaseClient();
               if (!client) return;
 
-              const schemaProbe = await client
-                  .from('soon_arena_invites')
-                  .select('arena_id, token, invited_by_user_id')
-                  .limit(1);
-              if (schemaProbe.error) {
-                  const schemaMessage = mapArenaInviteInsertErrorToStatus(schemaProbe.error);
-                  setArenaSessionStatus(schemaMessage || 'Vérification du schéma invite impossible.', true);
+              const schema = await verifySoonbaseSchema({ silent: true });
+              logArenaProfileDiagnostic('createInvite.schema_check', { ok: schema.ok, missing: schema.missing, arenaId: currentArenaId });
+              if (!schema.ok) {
+                  setArenaSessionStatus(`Soonbase incomplète: ${schema.missing.join(', ')}. Lance "supabase db push".`, true);
                   return;
               }
 
@@ -2481,6 +2560,7 @@ export function initLegacyApp() {
                   return;
               }
               if (arenaInviteCodeInput) arenaInviteCodeInput.value = token;
+              logArenaProfileDiagnostic('createInvite.success', { arenaId: currentArenaId, token });
               setArenaSessionStatus(`Invitation créée ✅ Token: ${token}`);
           }
 

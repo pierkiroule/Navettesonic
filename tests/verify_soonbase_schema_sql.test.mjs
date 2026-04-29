@@ -1,0 +1,22 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+
+const sql = fs.readFileSync("supabase/scripts/verify_soonbase_schema.sql", "utf8");
+
+test("verify script checks required tables", () => {
+  for (const table of ["soon_arenas", "soon_arena_members", "soon_arena_bubbles", "soon_arena_invites"]) {
+    assert.match(sql, new RegExp(table));
+  }
+});
+
+test("verify script checks RPC accept_arena_invite", () => {
+  assert.match(sql, /accept_arena_invite/);
+});
+
+
+test("verify script checks critical columns used by front", () => {
+  for (const col of ["invite_code", "owner_user_id", "created_by_user_id", "invited_by_user_id"]) {
+    assert.match(sql, new RegExp(col));
+  }
+});

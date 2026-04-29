@@ -77,6 +77,18 @@ Le profil est simplifié autour de 3 besoins : auth (connexion/inscription/sessi
 
 L’interface affiche la section **Gestion multiutilisateur** avec :
 
+#### Mode simple (sans se soucier des IDs techniques)
+
+Le multiutilisateur repose sur un **code court** (ex: `ABC-123`).
+L’ID Supabase (UUID) de l’arène est interne et ne doit pas être utilisé côté utilisateur.
+
+1. **Hôte**: clique **Partager mon arène**.
+2. **Hôte**: partage uniquement le **code d’invitation** affiché.
+3. **Invité**: clique **Rejoindre**, colle le code, valide.
+
+Astuce UI: le badge affiche `Arène partagée: ...`. Si aucun code n’est prêt, il affiche `code non généré`.
+
+
 - Création d’arène
 - Rejoindre via code (`ABC-123`)
 - Invitation d’un proche depuis une arène active
@@ -95,3 +107,14 @@ supabase db push
 ```
 
 Puis rechargez l’application et réessayez **Créer mon arène** ou **Rejoindre**.
+
+
+#### Vérification post-migration (Soonbase)
+
+Après `supabase db push`, vous pouvez vérifier la structure attendue avec:
+
+```bash
+supabase db query < supabase/scripts/verify_soonbase_schema.sql
+```
+
+Le résultat doit indiquer aucune table/colonne manquante et RPC `accept_arena_invite` présente.
