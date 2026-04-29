@@ -1360,6 +1360,28 @@ export function initLegacyApp() {
               return null;
           }
 
+          function mapArenaInviteInsertErrorToStatus(error) {
+              if (!error) return null;
+              const errorCode = error.code ? ` (code: ${error.code})` : '';
+              if (isArenaPermissionDeniedError(error)) {
+                  return `Droit refusé (RLS) pour créer l’invitation.${errorCode}`;
+              }
+              const message = `${error.message || ''} ${error.details || ''}`.toLowerCase();
+              if (message.includes('duplicate key') || error.code === '23505') {
+                  return `Invitation déjà existante: régénère un token.${errorCode}`;
+              }
+              if (message.includes('violates foreign key') || error.code === '23503') {
+                  return `Invitation invalide: arène introuvable ou incohérente.${errorCode}`;
+              }
+              if (message.includes('null value') || error.code === '23502') {
+                  return `Invitation invalide: colonnes obligatoires manquantes.${errorCode}`;
+              }
+              if (message.includes('column') && message.includes('does not exist')) {
+                  return `Schéma soon_arena_invites invalide: colonne manquante.${errorCode}`;
+              }
+              return `Invitation impossible: ${error.message || 'erreur SQL inconnue'}${errorCode}`;
+          }
+
           function normalizeInviteCode(rawCode) {
               return (rawCode || '')
                   .toString()
@@ -2437,6 +2459,16 @@ export function initLegacyApp() {
               const client = buildSupabaseClient();
               if (!client) return;
 
+              const schemaProbe = await client
+                  .from('soon_arena_invites')
+                  .select('arena_id, token, invited_by_user_id')
+                  .limit(1);
+              if (schemaProbe.error) {
+                  const schemaMessage = mapArenaInviteInsertErrorToStatus(schemaProbe.error);
+                  setArenaSessionStatus(schemaMessage || 'Vérification du schéma invite impossible.', true);
+                  return;
+              }
+
               const token = (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`).replace(/-/g, '');
               const { error } = await client.from('soon_arena_invites').insert({
                   arena_id: currentArenaId,
@@ -2444,11 +2476,8 @@ export function initLegacyApp() {
                   invited_by_user_id: currentSession.user.id,
               });
               if (error) {
-                  if (isArenaPermissionDeniedError(error)) {
-                      setArenaSessionStatus('Droit refusé (RLS) pour créer l’invitation.', true);
-                  } else {
-                      setArenaSessionStatus(`Invitation impossible: ${error.message}`, true);
-                  }
+                  const userMessage = mapArenaInviteInsertErrorToStatus(error);
+                  setArenaSessionStatus(userMessage || `Invitation impossible: ${error.message}`, true);
                   return;
               }
               if (arenaInviteCodeInput) arenaInviteCodeInput.value = token;
