@@ -13,3 +13,10 @@ test("verify script checks required tables", () => {
 test("verify script checks RPC accept_arena_invite", () => {
   assert.match(sql, /accept_arena_invite/);
 });
+
+
+test("verify script checks critical columns used by front", () => {
+  for (const col of ["invite_code", "owner_user_id", "created_by_user_id", "invited_by_user_id"]) {
+    assert.match(sql, new RegExp(col));
+  }
+});
