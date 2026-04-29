@@ -449,6 +449,7 @@ export function initLegacyApp() {
           const BUBBLE_UPDATE_THROTTLE_MS = 70;
           const bubbleUpdateThrottleTimers = new Map();
           const bubblePendingPatchById = new Map();
+          const bubblePendingPatchArenaById = new Map();
           const bubbleLastKnownVersionById = new Map();
           const bubbleBufferedRemotePatchById = new Map();
           let supabaseClient = null;
@@ -945,7 +946,9 @@ export function initLegacyApp() {
           }
 
           async function setCurrentArena(arenaId, inviteCode = '') {
-              currentArenaId = arenaId || 'default';
+              const nextArenaId = arenaId || 'default';
+              clearPendingBubbleWritesForOtherArena(nextArenaId);
+              currentArenaId = nextArenaId;
               currentArenaInviteCode = inviteCode || '';
               if (experienceView) {
                   experienceView.dataset.arenaId = currentArenaId;
@@ -1837,7 +1840,7 @@ export function initLegacyApp() {
                   .from('soon_arena_bubbles')
                   .update(patch)
                   .eq('id', bubbleId)
-                  .eq('arena_id', currentArenaId);
+                  .eq('arena_id', context?.arena_id || currentArenaId);
               if (result.error) {
                   console.warn('[legacyApp] soon_arena_bubbles write failed', {
                       action: context.action || 'update',
@@ -1854,7 +1857,7 @@ export function initLegacyApp() {
                   .from('soon_arena_bubbles')
                   .delete()
                   .eq('id', bubbleId)
-                  .eq('arena_id', currentArenaId);
+                  .eq('arena_id', context?.arena_id || currentArenaId);
               if (result.error) {
                   console.warn('[legacyApp] soon_arena_bubbles write failed', {
                       action: context.action || 'delete',
@@ -4270,6 +4273,16 @@ export function initLegacyApp() {
                   bubbleUpdateThrottleTimers.delete(bubbleId);
               }
               bubblePendingPatchById.delete(bubbleId);
+              bubblePendingPatchArenaById.delete(bubbleId);
+          }
+
+          function clearPendingBubbleWritesForOtherArena(activeArenaId) {
+              for (const bubbleId of bubblePendingPatchById.keys()) {
+                  const arenaIdAtSchedule = bubblePendingPatchArenaById.get(bubbleId);
+                  if (arenaIdAtSchedule && arenaIdAtSchedule !== activeArenaId) {
+                      clearBubbleUpdateThrottleForId(bubbleId);
+                  }
+              }
           }
 
           function getRowVersion(row) {
@@ -4376,6 +4389,7 @@ export function initLegacyApp() {
               if (!client) return;
               const bubbleId = bubble.id;
               const updaterUserId = currentSession?.user?.id || null;
+              const arenaIdAtSchedule = currentArenaId;
               const nextPatch = {
                   ...(bubblePendingPatchById.get(bubbleId) || {}),
                   ...partialPatch,
@@ -4383,17 +4397,23 @@ export function initLegacyApp() {
                   updated_at: new Date().toISOString(),
               };
               bubblePendingPatchById.set(bubbleId, nextPatch);
+              bubblePendingPatchArenaById.set(bubbleId, arenaIdAtSchedule);
               if (immediate) {
                   const patch = bubblePendingPatchById.get(bubbleId) || nextPatch;
+                  const scheduledArenaId = bubblePendingPatchArenaById.get(bubbleId) || arenaIdAtSchedule;
                   const timer = bubbleUpdateThrottleTimers.get(bubbleId);
                   if (timer) {
                       clearTimeout(timer);
                       bubbleUpdateThrottleTimers.delete(bubbleId);
                   }
                   bubblePendingPatchById.delete(bubbleId);
+                  bubblePendingPatchArenaById.delete(bubbleId);
+                  if (currentArenaId !== scheduledArenaId) {
+                      console.warn('[legacyApp] Bubble patch immediate arena drift detected', { bubbleId, currentArenaId, arenaIdAtSchedule: scheduledArenaId });
+                  }
                   const { error } = await updateArenaBubbleRow(client, bubbleId, patch, {
                       action: 'patch-immediate',
-                      arena_id: currentArenaId,
+                      arena_id: scheduledArenaId,
                       bubble_id: bubbleId,
                   });
                   if (error) {
@@ -4407,11 +4427,16 @@ export function initLegacyApp() {
               const timer = window.setTimeout(async () => {
                   bubbleUpdateThrottleTimers.delete(bubbleId);
                   const patch = bubblePendingPatchById.get(bubbleId);
+                  const scheduledArenaId = bubblePendingPatchArenaById.get(bubbleId) || arenaIdAtSchedule;
                   bubblePendingPatchById.delete(bubbleId);
+                  bubblePendingPatchArenaById.delete(bubbleId);
                   if (!patch || !Object.keys(patch).length) return;
+                  if (currentArenaId !== scheduledArenaId) {
+                      console.warn('[legacyApp] Bubble patch throttled arena drift detected', { bubbleId, currentArenaId, arenaIdAtSchedule: scheduledArenaId });
+                  }
                   const { error } = await updateArenaBubbleRow(client, bubbleId, patch, {
                       action: 'patch-throttled',
-                      arena_id: currentArenaId,
+                      arena_id: scheduledArenaId,
                       bubble_id: bubbleId,
                   });
                   if (error) {
@@ -4529,7 +4554,9 @@ export function initLegacyApp() {
           }
 
           async function activateArenaSync(arenaId = currentArenaId) {
-              currentArenaId = arenaId || 'default';
+              const nextArenaId = arenaId || 'default';
+              clearPendingBubbleWritesForOtherArena(nextArenaId);
+              currentArenaId = nextArenaId;
               await hydrateArenaBubblesFromDb();
               bindArenaRealtimeChannel();
               await refreshArenaParticipantCount(currentArenaId);
