@@ -396,8 +396,6 @@ export function initLegacyApp() {
               stiffness: 0.0026, damping: 0.93, turnEase: 0.06, maxSpeed: 3.1,
               wakeEmitter: 0, rippleEmitter: 0
           };
-          const GUEST_FISH_COUNT_DEFAULT = 3;
-          const guestFishSchool = [];
           const companionStarfish = {
               x: -260,
               y: 180,
@@ -422,32 +420,24 @@ export function initLegacyApp() {
           let fpsSampleAt = frameLastAt;
           const camera = { x: 0, y: 0, targetX: 0, targetY: 0, ease: 0.05, zoom: 1, targetZoom: 1, zoomEase: 0.08 };
 
-          function ensureGuestFishSchool() {
-              if (guestFishSchool.length) return;
-              for (let index = 0; index < GUEST_FISH_COUNT_DEFAULT; index++) {
-                  const orbitPhase = (index / GUEST_FISH_COUNT_DEFAULT) * Math.PI * 2;
-                  const orbitRadius = 88 + index * 18 + Math.random() * 12;
-                  guestFishSchool.push({
-                      id: `sim-guest-${index + 1}`,
-                      x: ship.x + Math.cos(orbitPhase) * orbitRadius,
-                      y: ship.y + Math.sin(orbitPhase) * orbitRadius,
-                      vx: 0,
-                      vy: 0,
-                      angle: orbitPhase + Math.PI * 0.5,
-                      orbitRadius,
-                      orbitSpeed: 0.00022 + Math.random() * 0.00024,
-                      orbitPhase,
-                      scale: 0.36 + Math.random() * 0.08,
-                      color: 'hsla(334, 86%, 80%, 0.82)',
-                      opacity: 0.62 + Math.random() * 0.2
-                  });
-              }
-          }
-
           function getVisibleGuestFish() {
-              // TODO: merge Supabase arena presence here when real guest presence is available
-              ensureGuestFishSchool();
-              return guestFishSchool;
+              return BUBBLES
+                  .filter((bubble) => bubble?.created_by && bubble.created_by !== currentSession?.user?.id)
+                  .map((bubble) => {
+                      const idLabel = bubble.playerNumber
+                          ? `Joueur ${bubble.playerNumber}`
+                          : (bubble.created_by || '').slice(0, 8);
+                      const phaseSeed = Number((bubble.playerNumber || 1) * 0.6);
+                      return {
+                          id: idLabel,
+                          x: Number.isFinite(bubble.x) ? bubble.x : 0,
+                          y: Number.isFinite(bubble.y) ? bubble.y : 0,
+                          angle: Math.sin(performance.now() * 0.0012 + phaseSeed) * 0.1,
+                          scale: 0.5,
+                          color: 'rgba(205, 239, 255, 0.86)',
+                          opacity: 0.9,
+                      };
+                  });
           }
 
           function normalizeAngle(theta) {
@@ -3220,24 +3210,8 @@ export function initLegacyApp() {
               };
           }
 
-          function updateGuestFishSchool(now) {
-              const visibleGuestFish = getVisibleGuestFish();
-              const nowMs = Number.isFinite(now) ? now : performance.now();
-              visibleGuestFish.forEach((fish, index) => {
-                  const basePhase = fish.orbitPhase + nowMs * fish.orbitSpeed;
-                  const radiusBreath = fish.orbitRadius + Math.sin(nowMs * 0.00045 + index * 1.7) * 12;
-                  const targetX = ship.x + Math.cos(basePhase) * radiusBreath + Math.sin(nowMs * 0.0012 + index) * 10;
-                  const targetY = ship.y + Math.sin(basePhase) * radiusBreath + Math.cos(nowMs * 0.00105 + index * 0.8) * 8;
-                  fish.vx += (targetX - fish.x) * 0.008;
-                  fish.vy += (targetY - fish.y) * 0.008;
-                  fish.vx *= 0.9;
-                  fish.vy *= 0.9;
-                  fish.x += fish.vx;
-                  fish.y += fish.vy;
-                  if (Math.abs(fish.vx) + Math.abs(fish.vy) > 0.0008) {
-                      fish.angle = Math.atan2(fish.vy, fish.vx) + Math.PI / 2;
-                  }
-              });
+          function updateGuestFishSchool() {
+              return;
           }
 
           function drawGuestFish(renderCtx, fish) {
