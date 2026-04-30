@@ -421,6 +421,7 @@ export function initLegacyApp() {
           let fpsSmoothed = 60;
           let fpsSampleAt = frameLastAt;
           const camera = { x: 0, y: 0, targetX: 0, targetY: 0, ease: 0.05, zoom: 1, targetZoom: 1, zoomEase: 0.08 };
+          let claimedGuestFishNumber = null;
 
           function ensureGuestFishSchool() {
               if (guestFishSchool.length) return;
@@ -448,6 +449,17 @@ export function initLegacyApp() {
               // TODO: merge Supabase arena presence here when real guest presence is available
               ensureGuestFishSchool();
               return guestFishSchool;
+          }
+
+          function isInviteeGuestFishMode() {
+              return currentArenaRole === 'editor' && Number.isFinite(Number(claimedGuestFishNumber));
+          }
+
+          function getClaimedGuestFish() {
+              if (!isInviteeGuestFishMode()) return null;
+              ensureGuestFishSchool();
+              const index = Math.max(0, Number(claimedGuestFishNumber) - 1) % guestFishSchool.length;
+              return guestFishSchool[index] || null;
           }
 
           function normalizeAngle(theta) {
@@ -896,6 +908,7 @@ export function initLegacyApp() {
               }
               await activateArenaSync(currentArenaId);
               await refreshCurrentArenaRole(currentArenaId);
+              if (currentArenaRole !== 'editor') claimedGuestFishNumber = null;
               if (arenaInviteCodeInput && currentArenaRole === 'owner' && currentArenaInviteCode) {
                   arenaInviteCodeInput.value = currentArenaInviteCode;
               }
@@ -2479,6 +2492,7 @@ export function initLegacyApp() {
               const rpcArenaId = joinResult?.arena_id || null;
               logArenaProfileDiagnostic('joinArena.rpc_result', { inviteCode, rpcArenaId, rpcError: rpcJoinError?.message || null }, Boolean(rpcJoinError));
               if (!rpcJoinError && rpcArenaId) {
+                  claimedGuestFishNumber = Number.isFinite(Number(joinResult?.player_number)) ? Number(joinResult.player_number) : null;
                   await setCurrentArena(rpcArenaId, inviteCode);
                   setArenaSessionStatus(`Arène rejointe ✅ ${inviteCode} · ${joinResult?.label || ''}`.trim());
                   if (currentView !== 'experience') showView('experience');
@@ -6287,7 +6301,10 @@ export function initLegacyApp() {
                   drawLuminousTrail();
               }
               drawCompanionStarfish(performance.now() * 0.001, audioReactiveState.energy);
-              getVisibleGuestFish().forEach((fish) => drawGuestFish(ctx, fish));
+              const claimedGuestFish = getClaimedGuestFish();
+              getVisibleGuestFish()
+                  .filter((fish) => !claimedGuestFish || fish.id !== claimedGuestFish.id)
+                  .forEach((fish) => drawGuestFish(ctx, fish));
 
               const nearestBubbleData = getNearestBubbleForShip();
               const bubbleProximity = nearestBubbleData ? nearestBubbleData.distanceRatio : 0;
@@ -6298,9 +6315,18 @@ export function initLegacyApp() {
               audioReactiveState.wingPresence += (wingTarget - audioReactiveState.wingPresence) * 0.16;
               const wingPresence = Math.max(0, Math.min(1, audioReactiveState.wingPresence));
 
-              ctx.save();
-              ctx.translate(ship.x, ship.y);
-              ctx.rotate(ship.angle + Math.PI / 2);
+              if (claimedGuestFish) {
+                  claimedGuestFish.x = ship.x;
+                  claimedGuestFish.y = ship.y;
+                  claimedGuestFish.angle = ship.angle + Math.PI / 2;
+                  claimedGuestFish.scale = 0.5;
+                  claimedGuestFish.opacity = 0.9;
+                  drawGuestFish(ctx, claimedGuestFish);
+              }
+              if (!claimedGuestFish) {
+                  ctx.save();
+                  ctx.translate(ship.x, ship.y);
+                  ctx.rotate(ship.angle + Math.PI / 2);
               const swimT = performance.now() * 0.001;
               const reactiveBass = audioReactiveState.bass;
               const reactiveMids = audioReactiveState.mids;
@@ -6369,6 +6395,7 @@ export function initLegacyApp() {
               ctx.stroke();
 
               ctx.restore();
+              }
 
               // --- PECTORAL FINS / AUDIO WINGS ---
               if (wingPresence < 0.08) {
