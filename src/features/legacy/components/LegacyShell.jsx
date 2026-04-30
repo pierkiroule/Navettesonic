@@ -1,11 +1,14 @@
-import legacyMarkup from '../runtime/legacyMarkup.html?raw';
 import '../runtime/legacy.css';
-import { useLegacyBootstrap } from '../hooks/useLegacyBootstrap';
+import LegacyMarkup from './LegacyMarkup';
+import LegacyRuntimeBootstrap from './LegacyRuntimeBootstrap';
 
 function LegacyShell() {
-  useLegacyBootstrap();
-
-  return <div dangerouslySetInnerHTML={{ __html: legacyMarkup }} />;
+  return (
+    <>
+      <LegacyRuntimeBootstrap />
+      <LegacyMarkup />
+    </>
+  );
 }
 
 export default LegacyShell;

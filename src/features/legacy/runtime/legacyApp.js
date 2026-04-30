@@ -1,129 +1,32 @@
+import { SAMPLE_LIBRARY } from './constants/sampleLibrary';
+import { BUBBLE_COLORS, HALO_STYLE_LIBRARY } from './constants/uiConstants';
+import { collectLegacyDomRefs } from './domRefs';
+
 export function initLegacyApp() {
   const experienceRoot = document.getElementById('experienceView');
   if (!experienceRoot) return;
   if (experienceRoot.dataset.legacyBooted === 'true') return;
   experienceRoot.dataset.legacyBooted = 'true';
 
-          const SAMPLE_LIBRARY = [
-              { id: 'zen-gong', name: 'Zen Gong', texture: 'Gong profond et respirant', type: 'triangle', freq: 132, lfo: 0.06, lfoDepth: 0.018, gain: 0.28, baseCutoff: 3400, resonanceFreq: 420, resonanceQ: 1.5 },
-              { id: 'harp-mist', name: 'Harp Mist', texture: 'Harpes douces dans la brume', type: 'sine', freq: 262, lfo: 0.14, lfoDepth: 0.02, gain: 0.25, baseCutoff: 4200, resonanceFreq: 520, resonanceQ: 1.35 },
-              { id: 'tibetan-bowl', name: 'Tibetan Bowl', texture: 'Bol tibétain chaud et stable', type: 'triangle', freq: 196, lfo: 0.08, lfoDepth: 0.016, gain: 0.27, baseCutoff: 3600, resonanceFreq: 480, resonanceQ: 1.8 },
-              { id: 'forest-breath', name: 'Forest Breath', texture: 'Souffle de forêt feutré', type: 'noise', freq: 0, lfo: 0.08, gain: 0.17, baseCutoff: 2600, resonanceFreq: 360, resonanceQ: 1.1 },
-              { id: 'river-flow', name: 'River Flow', texture: 'Ruissellement lent et soyeux', type: 'noise', freq: 0, lfo: 0.12, gain: 0.15, baseCutoff: 2100, resonanceFreq: 300, resonanceQ: 0.95 },
-              { id: 'lotus-drift', name: 'Lotus Drift', texture: 'Nappe méditative veloutée', type: 'sine', freq: 174, lfo: 0.05, lfoDepth: 0.014, gain: 0.24, baseCutoff: 3300, resonanceFreq: 440, resonanceQ: 1.25 },
-              { id: 'moon-choir', name: 'Moon Choir', texture: 'Chœur aérien apaisé', type: 'triangle', freq: 220, lfo: 0.09, lfoDepth: 0.017, gain: 0.22, baseCutoff: 3900, resonanceFreq: 540, resonanceQ: 1.4 },
-              { id: 'bamboo-wind', name: 'Bamboo Wind', texture: 'Vent léger entre les bambous', type: 'noise', freq: 0, lfo: 0.1, gain: 0.14, baseCutoff: 1900, resonanceFreq: 280, resonanceQ: 0.9 },
-              { id: 'temple-halo', name: 'Temple Halo', texture: 'Halo de temple lumineux', type: 'sine', freq: 294, lfo: 0.13, lfoDepth: 0.018, gain: 0.2, baseCutoff: 4400, resonanceFreq: 610, resonanceQ: 1.5 },
-              { id: 'dawn-birds', name: 'Dawn Birds', texture: 'Nature matinale très douce', type: 'triangle', freq: 330, lfo: 0.18, lfoDepth: 0.012, gain: 0.18, baseCutoff: 4700, resonanceFreq: 660, resonanceQ: 1.2 },
-              { id: 'ocean-deep', name: 'Ocean Deep', texture: 'Grondement sombre des abysses', type: 'noise', freq: 0, lfo: 0.04, gain: 0.21, baseCutoff: 680, resonanceFreq: 120, resonanceQ: 2.2 },
-              { id: 'pluie-douce', name: 'Pluie Douce', texture: 'Pluie fine sur les feuilles', type: 'noise', freq: 0, lfo: 0.26, gain: 0.16, baseCutoff: 3500, resonanceFreq: 520, resonanceQ: 0.85 },
-              { id: 'baleine-bleue', name: 'Baleine Bleue', texture: 'Chant grave et lointain de baleine', type: 'sine', freq: 82, lfo: 0.022, lfoDepth: 0.030, gain: 0.28, baseCutoff: 1800, resonanceFreq: 160, resonanceQ: 2.4 },
-              { id: 'grotte-silence', name: 'Grotte Silence', texture: 'Gouttes d\'eau dans la grotte', type: 'triangle', freq: 148, lfo: 0.03, lfoDepth: 0.011, gain: 0.22, baseCutoff: 2200, resonanceFreq: 260, resonanceQ: 2.8 },
-              { id: 'crickets-nuit', name: 'Crickets Nuit', texture: 'Grillons sous les étoiles d\'été', type: 'triangle', freq: 432, lfo: 0.40, lfoDepth: 0.008, gain: 0.14, baseCutoff: 5200, resonanceFreq: 780, resonanceQ: 1.1 },
-              { id: 'cascade-lointaine', name: 'Cascade Lointaine', texture: 'Murmure d\'une cascade dans le brouillard', type: 'noise', freq: 0, lfo: 0.19, gain: 0.17, baseCutoff: 5400, resonanceFreq: 680, resonanceQ: 0.78 },
-              { id: 'tonnerre-doux', name: 'Tonnerre Doux', texture: 'Tonnerre lointain qui roule et s\'efface', type: 'noise', freq: 0, lfo: 0.03, gain: 0.20, baseCutoff: 560, resonanceFreq: 95, resonanceQ: 1.9 },
-              { id: 'vent-desert', name: 'Vent Désert', texture: 'Vent chaud sur les dunes de sable', type: 'noise', freq: 0, lfo: 0.06, gain: 0.16, baseCutoff: 1350, resonanceFreq: 210, resonanceQ: 1.05 },
-              { id: 'aurore', name: 'Aurore', texture: 'Drone éthéré de l\'aurore boréale', type: 'sine', freq: 528, lfo: 0.034, lfoDepth: 0.016, gain: 0.18, baseCutoff: 6000, resonanceFreq: 740, resonanceQ: 1.6 },
-              { id: 'rosee-foret', name: 'Rosée Forêt', texture: 'Fraîcheur cristalline d\'un matin de forêt', type: 'triangle', freq: 370, lfo: 0.12, lfoDepth: 0.014, gain: 0.19, baseCutoff: 4900, resonanceFreq: 620, resonanceQ: 1.3 },
-              { id: 'drill-bubble', name: 'Drill', texture: 'Drill externe Soonbucket', type: 'file', url: 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles/drill.mp3', gain: 0.23, baseCutoff: 5600, resonanceFreq: 760, resonanceQ: 1.05 },
-              { id: 'scani-bubble', name: 'Scani', texture: 'Scani externe Soonbucket', type: 'file', url: 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles/Scani.mp3', gain: 0.23, baseCutoff: 5600, resonanceFreq: 760, resonanceQ: 1.05 },
-              { id: 'tech-bubble', name: 'Tech', texture: 'Tech externe Soonbucket', type: 'file', url: 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles/Tech.mp3', gain: 0.23, baseCutoff: 5600, resonanceFreq: 760, resonanceQ: 1.05 },
-              { id: 'sax-bubble', name: 'Sax', texture: 'Sax externe Soonbucket', type: 'file', url: 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles/Sax.mp3', gain: 0.23, baseCutoff: 5600, resonanceFreq: 760, resonanceQ: 1.05 },
-              { id: 'baladhaikua-bubble', name: 'Baladhaikua', texture: 'Baladhaikua externe Soonbucket', type: 'file', url: 'https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles/Baladhaikua.mp3', gain: 0.23, baseCutoff: 5600, resonanceFreq: 760, resonanceQ: 1.05 }
-          ];
-
-          const homeView = document.getElementById('homeView');
-          const experienceView = document.getElementById('experienceView');
-          const echoHypnoseView = document.getElementById('echoHypnoseView');
-          const profileView = document.getElementById('profileView');
-          const bottomNav = document.getElementById('bottomNav');
-          const bottomNavToggle = document.getElementById('bottomNavToggle');
-          const navHome = document.getElementById('navHome');
-          const navSoon = document.getElementById('navSoon');
-          const navProfile = document.getElementById('navProfile');
-          const enterExperienceBtn = document.getElementById('enterExperienceBtn');
-          const heroVideo = document.getElementById('heroVideo');
-          const heroVideoShell = document.getElementById('heroVideoShell');
-          const heroPlayBtn = document.getElementById('heroPlayBtn');
-
-          const canvas = document.getElementById('canvas');
-          const ctx = canvas.getContext('2d');
-          const ui = document.getElementById('ui');
-          const helperTips = document.getElementById('helperTips');
-          const soonTutoLink = document.getElementById('soonTutoLink');
-          const soonTutoModal = document.getElementById('soonTutoModal');
-          const soonTutoCloseBtn = document.getElementById('soonTutoCloseBtn');
-          const silenceDesYeuxOverlay = document.getElementById('silenceDesYeuxOverlay');
-          const silenceDesYeuxTitle = document.getElementById('silenceDesYeuxTitle');
-          const silenceDesYeuxCountdown = document.getElementById('silenceDesYeuxCountdown');
-          const silenceDesYeuxPoem = document.getElementById('silenceDesYeuxPoem');
-          const echoRecorderPanel = document.getElementById('echoRecorderPanel');
-          const echoRecordToggleBtn = document.getElementById('echoRecordToggleBtn');
-          const echoRecordTimer = document.getElementById('echoRecordTimer');
-          const echoRecordStatus = document.getElementById('echoRecordStatus');
-          const echoRecordDownloadLink = document.getElementById('echoRecordDownloadLink');
-          const traceListeningBtn = document.getElementById('traceListeningBtn');
-          const traceCamControls = document.getElementById('traceCamControls');
-          const silenceDesYeuxPrompt = document.getElementById('silenceDesYeuxPrompt');
-          const silenceSaveNoBtn = document.getElementById('silenceSaveNoBtn');
-          const silenceSaveYesBtn = document.getElementById('silenceSaveYesBtn');
-          const bubblePanel = document.getElementById('bubblePanel');
-          const cancelBtn = document.getElementById('cancelBtn');
-          const dropBtn = document.getElementById('dropBtn');
-          const bubbleLayer = document.getElementById('bubbleLayer');
-          const bubbleHaloStyle = document.getElementById('bubbleHaloStyle');
-          const sampleSelect = document.getElementById('sampleSelect');
-          const sampleHint = document.getElementById('sampleHint');
-          const arenaTrianglePad = document.getElementById('arenaTrianglePad');
-          const arenaTriangleStatus = document.getElementById('arenaTriangleStatus');
-          const bubblePropsPanel = document.getElementById('bubblePropsPanel');
-          const propsBubbleName = document.getElementById('propsBubbleName');
-          const propsSampleSelect = document.getElementById('propsSampleSelect');
-          const propsSizeRange = document.getElementById('propsSizeRange');
-          const propsSizeVal = document.getElementById('propsSizeVal');
-          const colorSwatches = document.getElementById('colorSwatches');
-          const propsLayerSelect = document.getElementById('propsLayerSelect');
-          const propsHaloStyleSelect = document.getElementById('propsHaloStyleSelect');
-          const propsDeleteBtn = document.getElementById('propsDeleteBtn');
-          const propsCloseBtn = document.getElementById('propsCloseBtn');
-          const supabaseUrlInput = document.getElementById('supabaseUrlInput');
-          const supabaseKeyInput = document.getElementById('supabaseKeyInput');
-          const supabaseSaveConfigBtn = document.getElementById('supabaseSaveConfigBtn');
-          const supabaseTestBtn = document.getElementById('supabaseTestBtn');
-          const supabaseFileInput = document.getElementById('supabaseFileInput');
-          const supabaseUploadBtn = document.getElementById('supabaseUploadBtn');
-          const supabaseProbeUrlInput = document.getElementById('supabaseProbeUrlInput');
-          const supabaseProbeBtn = document.getElementById('supabaseProbeBtn');
-          const supabaseStatus = document.getElementById('supabaseStatus');
-          const supabaseUploadedLink = document.getElementById('supabaseUploadedLink');
-          const supabaseProbeStatus = document.getElementById('supabaseProbeStatus');
-          const authEmailInput = document.getElementById('authEmailInput');
-          const authPasswordInput = document.getElementById('authPasswordInput');
-          const authCredentialsBlock = document.getElementById('authCredentialsBlock');
-          const authSignInBtn = document.getElementById('authSignInBtn');
-          const authSignUpBtn = document.getElementById('authSignUpBtn');
-          const authSignOutBtn = document.getElementById('authSignOutBtn');
-          const authStatus = document.getElementById('authStatus');
-          const authSessionInfo = document.getElementById('authSessionInfo');
-          const createArenaBtn = document.getElementById('createArenaBtn');
-          const inviteArenaBtn = document.getElementById('inviteArenaBtn');
-          const joinArenaBtn = document.getElementById('joinArenaBtn');
-          const arenaInviteCodeInput = document.getElementById('arenaInviteCodeInput');
-          const arenaSessionStatus = document.getElementById('arenaSessionStatus');
-          const arenaSessionBadge = document.getElementById('arenaSessionBadge');
-          const arenaDebugLog = document.getElementById('arenaDebugLog');
-          const profileDisplayName = document.getElementById('profileDisplayName');
-          const profileBioText = document.getElementById('profileBioText');
-          const profileEditBtn = document.getElementById('profileEditBtn');
-          const profileEditPanel = document.getElementById('profileEditPanel');
-          const profileNameInput = document.getElementById('profileNameInput');
-          const profileBioInput = document.getElementById('profileBioInput');
-          const profileSaveBtn = document.getElementById('profileSaveBtn');
-          const profileCancelBtn = document.getElementById('profileCancelBtn');
-          const dbConnectionStatus = document.getElementById('dbConnectionStatus');
-          const storeCatalog = document.getElementById('storeCatalog');
-          const sessionHistoryList = document.getElementById('sessionHistoryListLegacy');
-          const silenceSessionList = document.getElementById('silenceSessionList');
+          const {
+            homeView, experienceView, echoHypnoseView, profileView, bottomNav, bottomNavToggle,
+            navHome, navSoon, navProfile, enterExperienceBtn, heroVideo, heroVideoShell, heroPlayBtn,
+            canvas, ctx, ui, helperTips, soonTutoLink, soonTutoModal, soonTutoCloseBtn,
+            silenceDesYeuxOverlay, silenceDesYeuxTitle, silenceDesYeuxCountdown, silenceDesYeuxPoem,
+            echoRecorderPanel, echoRecordToggleBtn, echoRecordTimer, echoRecordStatus, echoRecordDownloadLink,
+            traceListeningBtn, traceCamControls, silenceDesYeuxPrompt, silenceSaveNoBtn, silenceSaveYesBtn,
+            bubblePanel, cancelBtn, dropBtn, bubbleLayer, bubbleHaloStyle, sampleSelect, sampleHint,
+            arenaTrianglePad, arenaTriangleStatus, bubblePropsPanel, propsBubbleName, propsSampleSelect,
+            propsSizeRange, propsSizeVal, colorSwatches, propsLayerSelect, propsHaloStyleSelect,
+            propsDeleteBtn, propsCloseBtn, supabaseUrlInput, supabaseKeyInput, supabaseSaveConfigBtn,
+            supabaseTestBtn, supabaseFileInput, supabaseUploadBtn, supabaseProbeUrlInput, supabaseProbeBtn,
+            supabaseStatus, supabaseUploadedLink, supabaseProbeStatus, authEmailInput, authPasswordInput,
+            authCredentialsBlock, authSignInBtn, authSignUpBtn, authSignOutBtn, authStatus, authSessionInfo,
+            createArenaBtn, inviteArenaBtn, joinArenaBtn, arenaInviteCodeInput, arenaSessionStatus,
+            arenaSessionBadge, arenaDebugLog, profileDisplayName, profileBioText, profileEditBtn,
+            profileEditPanel, profileNameInput, profileBioInput, profileSaveBtn, profileCancelBtn,
+            dbConnectionStatus, storeCatalog, sessionHistoryList, silenceSessionList,
+          } = collectLegacyDomRefs();
 
           let selectedBubble = null;
           let bottomNavCollapsed = false;
@@ -133,16 +36,6 @@ export function initLegacyApp() {
           let lastBubbleTapTime = 0;
           let lastBubbleTapTarget = null;
 
-          const HALO_STYLE_LIBRARY = [
-              { id: 'aurora', name: 'Aurore liquide', hint: 'Voile doux qui respire.' },
-              { id: 'stardust', name: 'Poussière stellaire', hint: 'Petites étincelles orbitantes.' },
-              { id: 'pulse', name: 'Pulsation poétique', hint: 'Anneaux concentriques hypnotiques.' },
-          ];
-
-          const BUBBLE_COLORS = [
-              { hue: 195 }, { hue: 230 }, { hue: 265 }, { hue: 315 },
-              { hue: 15 },  { hue: 45 },  { hue: 140 }, { hue: 175 },
-          ];
           BUBBLE_COLORS.forEach((c, idx) => {
               const sw = document.createElement('button');
               sw.type = 'button';
