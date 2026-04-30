@@ -19,6 +19,29 @@ Application Soon•° migrée sur une base **React + Vite** avec conservation du
 - `src/features/legacy/runtime/legacy.css` : styles historiques.
 - `src/features/legacy/runtime/legacyApp.js` : logique historique encapsulée (`initLegacyApp`).
 
+
+## Objectif d'architecture (React multifichiers)
+
+La cible est une application **100% React structurée par features**, où le runtime legacy est uniquement transitoire.
+
+- Audit détaillé: `docs/architecture-audit.md`
+- Règle projet: toute nouvelle logique doit être ajoutée en composants/hooks/services React, pas dans `legacyApp.js`.
+
+Structure cible:
+
+```
+src/
+  app/
+  features/
+    arena/
+    auth/
+    profile/
+    echohypnose/
+  integrations/
+    supabase/
+  shared/
+```
+
 ## Démarrage
 
 ```bash
