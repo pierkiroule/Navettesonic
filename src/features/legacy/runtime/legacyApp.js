@@ -2553,78 +2553,21 @@ export function initLegacyApp() {
                   setArenaSessionStatus('Connecte-toi pour inviter des membres.', true);
                   return;
               }
-              if (!currentArenaId || currentArenaId === 'default') {
-                  const ensured = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: true });
-                  if (!ensured?.arena?.id) {
-                      setArenaSessionStatus('Crée ou rejoins une arène avant d’inviter.', true);
-                      return;
-                  }
-              }
-              if (currentArenaRole !== 'owner') {
-                  setArenaSessionStatus('Seul le propriétaire peut inviter.', true);
+              const ensured = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: true });
+              if (!ensured?.arena?.id) {
+                  setArenaSessionStatus('Impossible de préparer ton arène pour l’invitation.', true);
                   return;
               }
-              const client = buildSupabaseClient();
-              if (!client) return;
-
-              const schema = await verifySoonbaseSchema({ silent: true });
-              logArenaProfileDiagnostic('createInvite.schema_check', { ok: schema.ok, missing: schema.missing, arenaId: currentArenaId });
-              if (!schema.ok) {
-                  console.warn('[legacyApp] createInvite continues despite schema warning', {
-                      arenaId: currentArenaId,
-                      missing: schema.missing,
-                      details: schema.details,
-                  });
-                  setArenaSessionStatus('Diagnostic Soonbase incertain: tentative d’invitation quand même…', true);
-              }
-
-              const token = (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`).replace(/-/g, '');
-              const inviteInsertPayload = {
-                  arena_id: currentArenaId,
-                  token,
-                  invited_by_user_id: currentSession.user.id,
-              };
-              let { error } = await client.from('soon_arena_invites').insert(inviteInsertPayload);
-              const missingColumnMatch = error?.code === 'PGRST204'
-                  ? `${error.message || ''}`.match(/Could not find the '([^']+)' column/i)
-                  : null;
-              const missingColumn = missingColumnMatch?.[1] || null;
-              if (missingColumn === 'invited_by_user_id') {
-                  logArenaProfileDiagnostic('createInvite.retry_without_invited_by_user_id', {
-                      arenaId: currentArenaId,
-                      token,
-                      code: error.code,
-                      message: error.message || null,
-                  }, true);
-                  ({ error } = await client.from('soon_arena_invites').insert({
-                      arena_id: currentArenaId,
-                      token,
-                  }));
-              }
-              if (error && error.code === 'PGRST204' && missingColumn === 'token') {
-                  const fallbackInviteCode = currentArenaInviteCode || '';
-                  logArenaProfileDiagnostic('createInvite.fallback_to_arena_invite_code', {
-                      arenaId: currentArenaId,
-                      fallbackInviteCode,
-                      code: error.code,
-                      message: error.message || null,
-                  }, true);
-                  if (fallbackInviteCode) {
-                      if (arenaInviteCodeInput) arenaInviteCodeInput.value = fallbackInviteCode;
-                      renderArenaInvitePreview(fallbackInviteCode);
-                      setArenaSessionStatus(`Invitation générée via code d’arène ✅ ${fallbackInviteCode}`);
-                      return;
-                  }
-              }
-              if (error) {
-                  const userMessage = mapArenaInviteInsertErrorToStatus(error);
-                  setArenaSessionStatus(userMessage || `Invitation impossible: ${error.message}`, true);
+              const inviteCode = normalizeInviteCode(ensured.arena.invite_code || currentArenaInviteCode || '');
+              if (!inviteCode) {
+                  setArenaSessionStatus('Code d’invitation introuvable pour cette arène.', true);
                   return;
               }
-              if (arenaInviteCodeInput) arenaInviteCodeInput.value = token;
-              renderArenaInvitePreview(token);
-              logArenaProfileDiagnostic('createInvite.success', { arenaId: currentArenaId, token });
-              setArenaSessionStatus(`Invitation créée ✅ Token: ${token}`);
+              await setCurrentArena(ensured.arena.id, inviteCode);
+              if (arenaInviteCodeInput) arenaInviteCodeInput.value = inviteCode;
+              renderArenaInvitePreview(inviteCode);
+              logArenaProfileDiagnostic('inviteCode.ready', { arenaId: ensured.arena.id, inviteCode });
+              setArenaSessionStatus(`Code d’invitation prêt ✅ ${inviteCode}`);
           }
 
           async function restoreSession() {
@@ -2681,10 +2624,13 @@ export function initLegacyApp() {
           }
           initSupabaseProfileCard();
           renderProfileIdentity();
+          if (createArenaBtn) {
+              createArenaBtn.hidden = true;
+              createArenaBtn.disabled = true;
+          }
           bindPress(authSignInBtn, signInWithEmail);
           bindPress(authSignUpBtn, signUpWithEmail);
           bindPress(authSignOutBtn, signOutSession);
-          bindPress(createArenaBtn, createArenaFromProfile);
           bindPress(inviteArenaBtn, createArenaInviteFromProfile);
           bindPress(arenaCopyInviteBtn, copyArenaInviteToClipboard);
           bindPress(arenaShareInviteBtn, shareArenaInvite);
