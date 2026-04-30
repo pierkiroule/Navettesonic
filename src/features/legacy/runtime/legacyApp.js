@@ -1930,6 +1930,41 @@ export function initLegacyApp() {
               return { data: row || null, error: null };
           }
 
+          async function ensureGuestBubbleForArena(client, arenaId) {
+              if (!client || !arenaId || !currentSession?.user?.id) return { ok: false, error: new Error('missing context') };
+              const userId = currentSession.user.id;
+              const { data: existingBubble, error: existingBubbleError } = await client
+                  .from('soon_arena_bubbles')
+                  .select('id')
+                  .eq('arena_id', arenaId)
+                  .eq('created_by_user_id', userId)
+                  .limit(1)
+                  .maybeSingle();
+              if (existingBubbleError) return { ok: false, error: existingBubbleError };
+              if (existingBubble?.id) return { ok: true, created: false };
+
+              const guestBubblePayload = {
+                  arena_id: arenaId,
+                  created_by_user_id: userId,
+                  sample_id: SAMPLE_LIBRARY[0]?.id || 'unknown-sample',
+                  label: `Invité ${String(userId).slice(0, 6)}`,
+                  x: 0.5,
+                  y: 0.5,
+                  radius: 56,
+                  hue: 205,
+                  layer: 'front',
+                  halo_style: HALO_STYLE_LIBRARY[0]?.id || 'aura-soft',
+              };
+              const { error: createBubbleError } = await insertArenaBubbleRow(client, guestBubblePayload, {
+                  action: 'join-fallback-create-bubble',
+                  arena_id: arenaId,
+              });
+              if (createBubbleError && createBubbleError.code !== '23505') {
+                  return { ok: false, error: createBubbleError };
+              }
+              return { ok: true, created: true };
+          }
+
           function canCurrentUserControlBubble(bubble) {
               if (!bubble || !currentSession?.user?.id) return false;
               return bubble.created_by === currentSession.user.id || bubble.created_by_user_id === currentSession.user.id;
@@ -2533,6 +2568,14 @@ export function initLegacyApp() {
               }
 
               await setCurrentArena(arenaRow.id, arenaRow.invite_code || inviteCode);
+              const guestBubbleResult = await ensureGuestBubbleForArena(client, arenaRow.id);
+              if (!guestBubbleResult.ok) {
+                  logArenaProfileDiagnostic('joinArena.ensure_guest_bubble_error', {
+                      arenaId: arenaRow.id,
+                      code: guestBubbleResult.error?.code || null,
+                      message: guestBubbleResult.error?.message || null,
+                  }, true);
+              }
               logArenaProfileDiagnostic('joinArena.success', { arenaId: arenaRow.id, inviteCode: arenaRow.invite_code || inviteCode });
               setArenaSessionStatus(`Arène rejointe ✅ ${arenaRow.invite_code || inviteCode}`);
               if (currentView !== 'experience') showView('experience');
