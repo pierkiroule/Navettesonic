@@ -3277,6 +3277,17 @@ export function initLegacyApp() {
               renderCtx.bezierCurveTo(5, 19, 4, 14, 0, 10);
               renderCtx.fill();
 
+              const fishLabel = String(fish.id || 'guest').slice(0, 24);
+              renderCtx.globalCompositeOperation = 'source-over';
+              renderCtx.globalAlpha = 0.95;
+              renderCtx.font = '700 11px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+              renderCtx.textAlign = 'center';
+              renderCtx.textBaseline = 'middle';
+              renderCtx.fillStyle = 'rgba(16, 8, 25, 0.65)';
+              renderCtx.fillRect(-26, -34, 52, 15);
+              renderCtx.fillStyle = 'rgba(245, 233, 255, 0.96)';
+              renderCtx.fillText(fishLabel, 0, -26, 50);
+
               renderCtx.restore();
           }
 
