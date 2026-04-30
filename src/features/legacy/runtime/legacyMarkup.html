@@ -290,6 +290,16 @@
                     </div>
                     <label class="field-label" for="arenaInviteCodeInput">Code d'invitation</label>
                     <input id="arenaInviteCodeInput" type="text" maxlength="8" placeholder="ABC-123">
+                    <section id="arenaInvitePreview" class="arena-invite-preview" hidden>
+                        <p class="arena-invite-kicker">Aperçu à partager</p>
+                        <h4 id="arenaInvitePreviewTitle">Rejoins mon arène Soon ✨</h4>
+                        <p id="arenaInvitePreviewText" class="muted">Utilise ce code pour me rejoindre :</p>
+                        <p id="arenaInvitePreviewCode" class="arena-invite-code">---</p>
+                        <div class="arena-share-row">
+                            <button id="arenaCopyInviteBtn" type="button">Copier l’invitation</button>
+                            <button id="arenaShareInviteBtn" type="button">Partager…</button>
+                        </div>
+                    </section>
                     <p id="arenaSessionStatus" class="status"></p>
                     <details id="arenaDebugPanel" class="muted">
                         <summary>Diagnostic multiutilisateur</summary>

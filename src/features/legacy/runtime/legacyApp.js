@@ -23,6 +23,7 @@ export function initLegacyApp() {
             supabaseStatus, supabaseUploadedLink, supabaseProbeStatus, authEmailInput, authPasswordInput,
             authCredentialsBlock, authSignInBtn, authSignUpBtn, authSignOutBtn, authStatus, authSessionInfo,
             createArenaBtn, inviteArenaBtn, joinArenaBtn, arenaInviteCodeInput, arenaSessionStatus,
+            arenaInvitePreview, arenaInvitePreviewCode, arenaCopyInviteBtn, arenaShareInviteBtn,
             arenaSessionBadge, arenaDebugLog, profileDisplayName, profileBioText, profileEditBtn,
             profileEditPanel, profileNameInput, profileBioInput, profileSaveBtn, profileCancelBtn,
             dbConnectionStatus, storeCatalog, sessionHistoryList, silenceSessionList,
@@ -1318,6 +1319,52 @@ export function initLegacyApp() {
               return `${code.slice(0, 3)}-${code.slice(3, 6)}`;
           }
 
+          function buildArenaInviteShareText(code) {
+              const safeCode = normalizeInviteCode(code || currentArenaInviteCode || '');
+              return `Rejoins mon arène Soon ✨\nCode: ${safeCode}\nOuvre Soon, onglet Profil > Rejoindre, puis colle le code.`;
+          }
+
+          function renderArenaInvitePreview(rawCode) {
+              const code = normalizeInviteCode(rawCode || currentArenaInviteCode || '');
+              if (!arenaInvitePreview) return;
+              const hasCode = Boolean(code);
+              arenaInvitePreview.hidden = !hasCode;
+              if (!hasCode) return;
+              if (arenaInvitePreviewCode) arenaInvitePreviewCode.textContent = code;
+          }
+
+          async function copyArenaInviteToClipboard() {
+              const code = normalizeInviteCode(arenaInviteCodeInput?.value || currentArenaInviteCode || '');
+              if (!code) {
+                  setArenaSessionStatus('Aucun code à copier pour le moment.', true);
+                  return;
+              }
+              const text = buildArenaInviteShareText(code);
+              try {
+                  await navigator.clipboard.writeText(text);
+                  setArenaSessionStatus(`Invitation copiée ✅ ${code}`);
+              } catch (err) {
+                  setArenaSessionStatus('Copie impossible automatiquement: copie le code affiché manuellement.', true);
+              }
+          }
+
+          async function shareArenaInvite() {
+              const code = normalizeInviteCode(arenaInviteCodeInput?.value || currentArenaInviteCode || '');
+              if (!code) {
+                  setArenaSessionStatus('Aucun code à partager pour le moment.', true);
+                  return;
+              }
+              const text = buildArenaInviteShareText(code);
+              if (navigator.share) {
+                  try {
+                      await navigator.share({ title: 'Invitation arène Soon', text });
+                      setArenaSessionStatus(`Invitation partagée ✅ ${code}`);
+                      return;
+                  } catch (err) {}
+              }
+              await copyArenaInviteToClipboard();
+          }
+
           function setDbConnectionStatus(message, isError = false) {
               if (!dbConnectionStatus) return;
               dbConnectionStatus.textContent = message;
@@ -2347,6 +2394,7 @@ export function initLegacyApp() {
               logArenaProfileDiagnostic('createArena.ensure', { created: Boolean(ensured?.created), arenaId: ensured?.arena?.id || null, inviteCode: ensured?.arena?.invite_code || null });
               if (!ensured?.arena?.id) return;
               if (arenaInviteCodeInput) arenaInviteCodeInput.value = ensured.arena.invite_code || '';
+              renderArenaInvitePreview(ensured.arena.invite_code || '');
               if (ensured.created) {
                   setArenaSessionStatus(`Arène créée ✅ Code: ${ensured.arena.invite_code}`);
               } else {
@@ -2516,6 +2564,7 @@ export function initLegacyApp() {
                   }, true);
                   if (fallbackInviteCode) {
                       if (arenaInviteCodeInput) arenaInviteCodeInput.value = fallbackInviteCode;
+                      renderArenaInvitePreview(fallbackInviteCode);
                       setArenaSessionStatus(`Invitation générée via code d’arène ✅ ${fallbackInviteCode}`);
                       return;
                   }
@@ -2526,6 +2575,7 @@ export function initLegacyApp() {
                   return;
               }
               if (arenaInviteCodeInput) arenaInviteCodeInput.value = token;
+              renderArenaInvitePreview(token);
               logArenaProfileDiagnostic('createInvite.success', { arenaId: currentArenaId, token });
               setArenaSessionStatus(`Invitation créée ✅ Token: ${token}`);
           }
@@ -2589,13 +2639,17 @@ export function initLegacyApp() {
           bindPress(authSignOutBtn, signOutSession);
           bindPress(createArenaBtn, createArenaFromProfile);
           bindPress(inviteArenaBtn, createArenaInviteFromProfile);
+          bindPress(arenaCopyInviteBtn, copyArenaInviteToClipboard);
+          bindPress(arenaShareInviteBtn, shareArenaInvite);
           bindPress(joinArenaBtn, joinArenaFromProfile);
           arenaInviteCodeInput?.addEventListener('input', () => {
               const normalized = normalizeInviteCode(arenaInviteCodeInput.value);
               if (arenaInviteCodeInput.value !== normalized) {
                   arenaInviteCodeInput.value = normalized;
               }
+              renderArenaInvitePreview(normalized);
           });
+          renderArenaInvitePreview(arenaInviteCodeInput?.value || currentArenaInviteCode || '');
           bindTap(profileEditBtn, openProfileEditPanel);
           bindTap(profileCancelBtn, closeProfileEditPanel);
           bindTap(profileSaveBtn, saveProfileIdentity);

@@ -1174,6 +1174,29 @@
         .auth-signout-btn {
             width: 100%;
         }
+        .arena-invite-preview {
+            border: 1px solid rgba(126, 216, 255, 0.32);
+            border-radius: 12px;
+            padding: 12px;
+            background: linear-gradient(155deg, rgba(9, 24, 42, 0.92), rgba(9, 20, 34, 0.86));
+            display: grid;
+            gap: 6px;
+        }
+        .arena-invite-kicker {
+            margin: 0;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: rgba(170, 225, 255, 0.8);
+        }
+        .arena-invite-code {
+            margin: 0;
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            color: rgba(146, 247, 210, 0.95);
+        }
+        .arena-share-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         @media (max-width: 760px) {
             .profile-hero {
                 grid-template-columns: auto 1fr;

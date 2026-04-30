@@ -76,6 +76,10 @@ export function collectLegacyDomRefs() {
   const joinArenaBtn = document.getElementById('joinArenaBtn');
   const arenaInviteCodeInput = document.getElementById('arenaInviteCodeInput');
   const arenaSessionStatus = document.getElementById('arenaSessionStatus');
+  const arenaInvitePreview = document.getElementById('arenaInvitePreview');
+  const arenaInvitePreviewCode = document.getElementById('arenaInvitePreviewCode');
+  const arenaCopyInviteBtn = document.getElementById('arenaCopyInviteBtn');
+  const arenaShareInviteBtn = document.getElementById('arenaShareInviteBtn');
   const arenaSessionBadge = document.getElementById('arenaSessionBadge');
   const arenaDebugLog = document.getElementById('arenaDebugLog');
   const profileDisplayName = document.getElementById('profileDisplayName');
@@ -106,6 +110,7 @@ export function collectLegacyDomRefs() {
     supabaseStatus, supabaseUploadedLink, supabaseProbeStatus, authEmailInput, authPasswordInput,
     authCredentialsBlock, authSignInBtn, authSignUpBtn, authSignOutBtn, authStatus, authSessionInfo,
     createArenaBtn, inviteArenaBtn, joinArenaBtn, arenaInviteCodeInput, arenaSessionStatus,
+    arenaInvitePreview, arenaInvitePreviewCode, arenaCopyInviteBtn, arenaShareInviteBtn,
     arenaSessionBadge, arenaDebugLog, profileDisplayName, profileBioText, profileEditBtn,
     profileEditPanel, profileNameInput, profileBioInput, profileSaveBtn, profileCancelBtn,
     dbConnectionStatus, storeCatalog, sessionHistoryList, silenceSessionList,
