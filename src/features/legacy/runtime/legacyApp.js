@@ -396,6 +396,8 @@ export function initLegacyApp() {
               stiffness: 0.0026, damping: 0.93, turnEase: 0.06, maxSpeed: 3.1,
               wakeEmitter: 0, rippleEmitter: 0
           };
+          const GUEST_FISH_COUNT_DEFAULT = 3;
+          const guestFishSchool = [];
           const companionStarfish = {
               x: -260,
               y: 180,
@@ -419,6 +421,34 @@ export function initLegacyApp() {
           let fpsSmoothed = 60;
           let fpsSampleAt = frameLastAt;
           const camera = { x: 0, y: 0, targetX: 0, targetY: 0, ease: 0.05, zoom: 1, targetZoom: 1, zoomEase: 0.08 };
+
+          function ensureGuestFishSchool() {
+              if (guestFishSchool.length) return;
+              for (let index = 0; index < GUEST_FISH_COUNT_DEFAULT; index++) {
+                  const orbitPhase = (index / GUEST_FISH_COUNT_DEFAULT) * Math.PI * 2;
+                  const orbitRadius = 88 + index * 18 + Math.random() * 12;
+                  guestFishSchool.push({
+                      id: `sim-guest-${index + 1}`,
+                      x: ship.x + Math.cos(orbitPhase) * orbitRadius,
+                      y: ship.y + Math.sin(orbitPhase) * orbitRadius,
+                      vx: 0,
+                      vy: 0,
+                      angle: orbitPhase + Math.PI * 0.5,
+                      orbitRadius,
+                      orbitSpeed: 0.00022 + Math.random() * 0.00024,
+                      orbitPhase,
+                      scale: 0.36 + Math.random() * 0.08,
+                      color: 'hsla(334, 86%, 80%, 0.82)',
+                      opacity: 0.62 + Math.random() * 0.2
+                  });
+              }
+          }
+
+          function getVisibleGuestFish() {
+              // TODO: merge Supabase arena presence here when real guest presence is available
+              ensureGuestFishSchool();
+              return guestFishSchool;
+          }
 
           function normalizeAngle(theta) {
               const tau = Math.PI * 2;
@@ -2523,78 +2553,21 @@ export function initLegacyApp() {
                   setArenaSessionStatus('Connecte-toi pour inviter des membres.', true);
                   return;
               }
-              if (!currentArenaId || currentArenaId === 'default') {
-                  const ensured = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: true });
-                  if (!ensured?.arena?.id) {
-                      setArenaSessionStatus('Crée ou rejoins une arène avant d’inviter.', true);
-                      return;
-                  }
-              }
-              if (currentArenaRole !== 'owner') {
-                  setArenaSessionStatus('Seul le propriétaire peut inviter.', true);
+              const ensured = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: true });
+              if (!ensured?.arena?.id) {
+                  setArenaSessionStatus('Impossible de préparer ton arène pour l’invitation.', true);
                   return;
               }
-              const client = buildSupabaseClient();
-              if (!client) return;
-
-              const schema = await verifySoonbaseSchema({ silent: true });
-              logArenaProfileDiagnostic('createInvite.schema_check', { ok: schema.ok, missing: schema.missing, arenaId: currentArenaId });
-              if (!schema.ok) {
-                  console.warn('[legacyApp] createInvite continues despite schema warning', {
-                      arenaId: currentArenaId,
-                      missing: schema.missing,
-                      details: schema.details,
-                  });
-                  setArenaSessionStatus('Diagnostic Soonbase incertain: tentative d’invitation quand même…', true);
-              }
-
-              const token = (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`).replace(/-/g, '');
-              const inviteInsertPayload = {
-                  arena_id: currentArenaId,
-                  token,
-                  invited_by_user_id: currentSession.user.id,
-              };
-              let { error } = await client.from('soon_arena_invites').insert(inviteInsertPayload);
-              const missingColumnMatch = error?.code === 'PGRST204'
-                  ? `${error.message || ''}`.match(/Could not find the '([^']+)' column/i)
-                  : null;
-              const missingColumn = missingColumnMatch?.[1] || null;
-              if (missingColumn === 'invited_by_user_id') {
-                  logArenaProfileDiagnostic('createInvite.retry_without_invited_by_user_id', {
-                      arenaId: currentArenaId,
-                      token,
-                      code: error.code,
-                      message: error.message || null,
-                  }, true);
-                  ({ error } = await client.from('soon_arena_invites').insert({
-                      arena_id: currentArenaId,
-                      token,
-                  }));
-              }
-              if (error && error.code === 'PGRST204' && missingColumn === 'token') {
-                  const fallbackInviteCode = currentArenaInviteCode || '';
-                  logArenaProfileDiagnostic('createInvite.fallback_to_arena_invite_code', {
-                      arenaId: currentArenaId,
-                      fallbackInviteCode,
-                      code: error.code,
-                      message: error.message || null,
-                  }, true);
-                  if (fallbackInviteCode) {
-                      if (arenaInviteCodeInput) arenaInviteCodeInput.value = fallbackInviteCode;
-                      renderArenaInvitePreview(fallbackInviteCode);
-                      setArenaSessionStatus(`Invitation générée via code d’arène ✅ ${fallbackInviteCode}`);
-                      return;
-                  }
-              }
-              if (error) {
-                  const userMessage = mapArenaInviteInsertErrorToStatus(error);
-                  setArenaSessionStatus(userMessage || `Invitation impossible: ${error.message}`, true);
+              const inviteCode = normalizeInviteCode(ensured.arena.invite_code || currentArenaInviteCode || '');
+              if (!inviteCode) {
+                  setArenaSessionStatus('Code d’invitation introuvable pour cette arène.', true);
                   return;
               }
-              if (arenaInviteCodeInput) arenaInviteCodeInput.value = token;
-              renderArenaInvitePreview(token);
-              logArenaProfileDiagnostic('createInvite.success', { arenaId: currentArenaId, token });
-              setArenaSessionStatus(`Invitation créée ✅ Token: ${token}`);
+              await setCurrentArena(ensured.arena.id, inviteCode);
+              if (arenaInviteCodeInput) arenaInviteCodeInput.value = inviteCode;
+              renderArenaInvitePreview(inviteCode);
+              logArenaProfileDiagnostic('inviteCode.ready', { arenaId: ensured.arena.id, inviteCode });
+              setArenaSessionStatus(`Code d’invitation prêt ✅ ${inviteCode}`);
           }
 
           async function restoreSession() {
@@ -2651,10 +2624,13 @@ export function initLegacyApp() {
           }
           initSupabaseProfileCard();
           renderProfileIdentity();
+          if (createArenaBtn) {
+              createArenaBtn.hidden = true;
+              createArenaBtn.disabled = true;
+          }
           bindPress(authSignInBtn, signInWithEmail);
           bindPress(authSignUpBtn, signUpWithEmail);
           bindPress(authSignOutBtn, signOutSession);
-          bindPress(createArenaBtn, createArenaFromProfile);
           bindPress(inviteArenaBtn, createArenaInviteFromProfile);
           bindPress(arenaCopyInviteBtn, copyArenaInviteToClipboard);
           bindPress(arenaShareInviteBtn, shareArenaInvite);
@@ -3242,6 +3218,66 @@ export function initLegacyApp() {
                   x: ship.x + forwardX * 20,
                   y: ship.y + forwardY * 20
               };
+          }
+
+          function updateGuestFishSchool(now) {
+              const visibleGuestFish = getVisibleGuestFish();
+              const nowMs = Number.isFinite(now) ? now : performance.now();
+              visibleGuestFish.forEach((fish, index) => {
+                  const basePhase = fish.orbitPhase + nowMs * fish.orbitSpeed;
+                  const radiusBreath = fish.orbitRadius + Math.sin(nowMs * 0.00045 + index * 1.7) * 12;
+                  const targetX = ship.x + Math.cos(basePhase) * radiusBreath + Math.sin(nowMs * 0.0012 + index) * 10;
+                  const targetY = ship.y + Math.sin(basePhase) * radiusBreath + Math.cos(nowMs * 0.00105 + index * 0.8) * 8;
+                  fish.vx += (targetX - fish.x) * 0.008;
+                  fish.vy += (targetY - fish.y) * 0.008;
+                  fish.vx *= 0.9;
+                  fish.vy *= 0.9;
+                  fish.x += fish.vx;
+                  fish.y += fish.vy;
+                  if (Math.abs(fish.vx) + Math.abs(fish.vy) > 0.0008) {
+                      fish.angle = Math.atan2(fish.vy, fish.vx) + Math.PI / 2;
+                  }
+              });
+          }
+
+          function drawGuestFish(renderCtx, fish) {
+              if (!renderCtx || !fish) return;
+              renderCtx.save();
+              renderCtx.translate(fish.x, fish.y);
+              renderCtx.rotate(fish.angle || 0);
+              renderCtx.scale(fish.scale || 0.4, fish.scale || 0.4);
+              renderCtx.globalAlpha = fish.opacity ?? 0.72;
+              renderCtx.globalCompositeOperation = 'screen';
+
+              const halo = renderCtx.createRadialGradient(0, 1, 0, 0, 1, 26);
+              halo.addColorStop(0, 'rgba(255, 206, 231, 0.26)');
+              halo.addColorStop(1, 'rgba(255, 170, 218, 0)');
+              renderCtx.fillStyle = halo;
+              renderCtx.beginPath();
+              renderCtx.ellipse(0, 2, 24, 20, 0, 0, Math.PI * 2);
+              renderCtx.fill();
+
+              const bodyGrad = renderCtx.createLinearGradient(-8, -14, 8, 18);
+              bodyGrad.addColorStop(0, 'rgba(255, 235, 246, 0.94)');
+              bodyGrad.addColorStop(0.55, fish.color || 'rgba(255, 181, 218, 0.84)');
+              bodyGrad.addColorStop(1, 'rgba(255, 134, 198, 0.12)');
+              renderCtx.fillStyle = bodyGrad;
+              renderCtx.beginPath();
+              renderCtx.moveTo(0, -13);
+              renderCtx.bezierCurveTo(-7, -10, -9, -1, -6, 8);
+              renderCtx.bezierCurveTo(-3, 14, 3, 14, 6, 8);
+              renderCtx.bezierCurveTo(9, -1, 7, -10, 0, -13);
+              renderCtx.fill();
+
+              renderCtx.fillStyle = 'rgba(255, 175, 220, 0.7)';
+              renderCtx.beginPath();
+              renderCtx.moveTo(0, 10);
+              renderCtx.bezierCurveTo(-4, 14, -5, 19, -1, 23);
+              renderCtx.quadraticCurveTo(0, 20, 1, 23);
+              renderCtx.bezierCurveTo(5, 19, 4, 14, 0, 10);
+              renderCtx.fill();
+
+              renderCtx.restore();
           }
 
           function queueFireflyVocalPlayback(firefly) {
@@ -5094,6 +5130,7 @@ export function initLegacyApp() {
               updateResonanceWaves();
               updatePoetryEffects(speed);
               updateArenaFireflies();
+              updateGuestFishSchool(now);
               updateCompanionStarfish(now);
               handleStarfishFishCollision(now);
               updateStarfishResonanceWaves();
@@ -6250,6 +6287,7 @@ export function initLegacyApp() {
                   drawLuminousTrail();
               }
               drawCompanionStarfish(performance.now() * 0.001, audioReactiveState.energy);
+              getVisibleGuestFish().forEach((fish) => drawGuestFish(ctx, fish));
 
               const nearestBubbleData = getNearestBubbleForShip();
               const bubbleProximity = nearestBubbleData ? nearestBubbleData.distanceRatio : 0;
