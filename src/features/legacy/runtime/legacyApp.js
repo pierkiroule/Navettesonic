@@ -2490,7 +2490,11 @@ export function initLegacyApp() {
                   invited_by_user_id: currentSession.user.id,
               };
               let { error } = await client.from('soon_arena_invites').insert(inviteInsertPayload);
-              if (error && error.code === 'PGRST204' && `${error.message || ''}`.includes("'invited_by_user_id'")) {
+              const missingColumnMatch = error?.code === 'PGRST204'
+                  ? `${error.message || ''}`.match(/Could not find the '([^']+)' column/i)
+                  : null;
+              const missingColumn = missingColumnMatch?.[1] || null;
+              if (missingColumn === 'invited_by_user_id') {
                   logArenaProfileDiagnostic('createInvite.retry_without_invited_by_user_id', {
                       arenaId: currentArenaId,
                       token,
@@ -2501,6 +2505,20 @@ export function initLegacyApp() {
                       arena_id: currentArenaId,
                       token,
                   }));
+              }
+              if (error && error.code === 'PGRST204' && missingColumn === 'token') {
+                  const fallbackInviteCode = currentArenaInviteCode || '';
+                  logArenaProfileDiagnostic('createInvite.fallback_to_arena_invite_code', {
+                      arenaId: currentArenaId,
+                      fallbackInviteCode,
+                      code: error.code,
+                      message: error.message || null,
+                  }, true);
+                  if (fallbackInviteCode) {
+                      if (arenaInviteCodeInput) arenaInviteCodeInput.value = fallbackInviteCode;
+                      setArenaSessionStatus(`Invitation générée via code d’arène ✅ ${fallbackInviteCode}`);
+                      return;
+                  }
               }
               if (error) {
                   const userMessage = mapArenaInviteInsertErrorToStatus(error);
