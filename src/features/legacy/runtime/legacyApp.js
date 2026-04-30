@@ -2484,11 +2484,24 @@ export function initLegacyApp() {
               }
 
               const token = (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`).replace(/-/g, '');
-              const { error } = await client.from('soon_arena_invites').insert({
+              const inviteInsertPayload = {
                   arena_id: currentArenaId,
                   token,
                   invited_by_user_id: currentSession.user.id,
-              });
+              };
+              let { error } = await client.from('soon_arena_invites').insert(inviteInsertPayload);
+              if (error && error.code === 'PGRST204' && `${error.message || ''}`.includes("'invited_by_user_id'")) {
+                  logArenaProfileDiagnostic('createInvite.retry_without_invited_by_user_id', {
+                      arenaId: currentArenaId,
+                      token,
+                      code: error.code,
+                      message: error.message || null,
+                  }, true);
+                  ({ error } = await client.from('soon_arena_invites').insert({
+                      arena_id: currentArenaId,
+                      token,
+                  }));
+              }
               if (error) {
                   const userMessage = mapArenaInviteInsertErrorToStatus(error);
                   setArenaSessionStatus(userMessage || `Invitation impossible: ${error.message}`, true);
