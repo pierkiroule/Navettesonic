@@ -1899,6 +1899,22 @@ export function initLegacyApp() {
               return `Écriture arène impossible: ${error?.message || 'erreur inconnue'}`;
           }
 
+          async function joinArenaAndSetupFish(inviteCode) {
+              const client = buildSupabaseClient();
+              if (!client || !currentSession?.user?.id) {
+                  return { data: null, error: new Error('missing session') };
+              }
+              const { data, error } = await client.rpc('join_arena_and_claim_fish', { invite_code: inviteCode });
+              if (error) return { data: null, error };
+              const row = Array.isArray(data) ? data[0] : data;
+              return { data: row || null, error: null };
+          }
+
+          function canCurrentUserControlBubble(bubble) {
+              if (!bubble || !currentSession?.user?.id) return false;
+              return bubble.created_by === currentSession.user.id || bubble.created_by_user_id === currentSession.user.id;
+          }
+
           async function insertArenaBubbleRow(client, payload, context = {}) {
               const result = await client.from('soon_arena_bubbles').insert(payload);
               if (result.error) {
@@ -2429,11 +2445,12 @@ export function initLegacyApp() {
                   });
                   setArenaSessionStatus('Diagnostic Soonbase incertain: tentative de jointure quand même…', true);
               }
-              const { data: rpcArenaId, error: rpcJoinError } = await client.rpc('accept_arena_invite', { p_token: inviteCode });
-              logArenaProfileDiagnostic('joinArena.rpc_result', { inviteCode, rpcArenaId: rpcArenaId || null, rpcError: rpcJoinError?.message || null }, Boolean(rpcJoinError));
+              const { data: joinResult, error: rpcJoinError } = await joinArenaAndSetupFish(inviteCode);
+              const rpcArenaId = joinResult?.arena_id || null;
+              logArenaProfileDiagnostic('joinArena.rpc_result', { inviteCode, rpcArenaId, rpcError: rpcJoinError?.message || null }, Boolean(rpcJoinError));
               if (!rpcJoinError && rpcArenaId) {
                   await setCurrentArena(rpcArenaId, inviteCode);
-                  setArenaSessionStatus(`Arène rejointe ✅ ${inviteCode}`);
+                  setArenaSessionStatus(`Arène rejointe ✅ ${inviteCode} · ${joinResult?.label || ''}`.trim());
                   if (currentView !== 'experience') showView('experience');
                   return;
               }
@@ -3643,6 +3660,10 @@ export function initLegacyApp() {
 
               // Props panel open → canvas touch = drag selected bubble
               if (selectedBubble) {
+                  if (!canCurrentUserControlBubble(selectedBubble)) {
+                      setArenaSessionStatus('Tu peux uniquement déplacer ton propre poisson.', true);
+                      return;
+                  }
                   isDraggingBubble = true;
                   isTethered = false;
                   return;
@@ -4520,6 +4541,8 @@ export function initLegacyApp() {
                   bubble.label = row.label;
               }
               bubble._version = getRowVersion(row);
+              bubble.playerNumber = Number.isFinite(Number(row.player_number)) ? Number(row.player_number) : null;
+              bubble.created_by = row.created_by || row.created_by_user_id || bubble.created_by || null;
               setKnownBubbleVersion(bubble.id, bubble._version);
           }
 
