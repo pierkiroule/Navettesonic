@@ -13,7 +13,7 @@ export function initLegacyApp() {
 
           const {
             homeView, experienceModeView, experienceView, echoHypnoseView, profileView, bottomNav, bottomNavToggle,
-            navHome, navSoon, navProfile, enterExperienceBtn, selectSoloModeBtn, selectMultiModeBtn, multiRoomComposer, createMultiRoomBtn, multiRoomLinkOutput, copyMultiRoomLinkBtn, toggleRoomAccessBtn, enterMultiRoomBtn, multiRoomAdminHint, heroVideo, heroVideoShell, heroPlayBtn,
+            navHome, navSoon, navProfile, enterExperienceBtn, selectSoloModeBtn, selectMultiModeBtn, multiRoomComposer, createMultiRoomBtn, multiRoomLinkOutput, copyMultiRoomLinkBtn, toggleRoomAccessBtn, enterMultiRoomBtn, multiRoomAdminActions, multiRoomAdminHint, heroVideo, heroVideoShell, heroPlayBtn,
             canvas, ctx, ui, helperTips, soonTutoLink, soonTutoModal, soonTutoCloseBtn,
             silenceDesYeuxOverlay, silenceDesYeuxTitle, silenceDesYeuxCountdown, silenceDesYeuxPoem,
             echoRecorderPanel, echoRecordToggleBtn, echoRecordTimer, echoRecordStatus, echoRecordDownloadLink,
@@ -1102,6 +1102,8 @@ export function initLegacyApp() {
               if (copyMultiRoomLinkBtn) copyMultiRoomLinkBtn.disabled = true;
               if (toggleRoomAccessBtn) { toggleRoomAccessBtn.disabled = true; toggleRoomAccessBtn.textContent = "Fermer l'accès invités"; }
               if (enterMultiRoomBtn) enterMultiRoomBtn.disabled = true;
+              if (multiRoomAdminActions) multiRoomAdminActions.classList.add('hidden-view');
+              if (multiRoomAdminHint) multiRoomAdminHint.classList.add('hidden-view');
               showView('mode-select');
               return true;
           }
@@ -1240,6 +1242,8 @@ export function initLegacyApp() {
 
           bindTap(selectMultiModeBtn, () => {
               if (multiRoomComposer) multiRoomComposer.classList.remove('hidden-view');
+              if (multiRoomAdminActions) multiRoomAdminActions.classList.add('hidden-view');
+              if (multiRoomAdminHint) multiRoomAdminHint.classList.add('hidden-view');
           });
 
           bindTap(createMultiRoomBtn, async () => {
@@ -1259,6 +1263,8 @@ export function initLegacyApp() {
               if (copyMultiRoomLinkBtn) copyMultiRoomLinkBtn.disabled = false;
               if (toggleRoomAccessBtn) toggleRoomAccessBtn.disabled = false;
               if (enterMultiRoomBtn) enterMultiRoomBtn.disabled = false;
+              if (multiRoomAdminActions) multiRoomAdminActions.classList.remove('hidden-view');
+              if (multiRoomAdminHint) multiRoomAdminHint.classList.remove('hidden-view');
               setArenaSessionStatus('Room prête ✅ Partage le lien, puis ouvre la session quand tu veux.');
           });
 
