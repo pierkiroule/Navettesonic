@@ -1197,7 +1197,7 @@ export function initLegacyApp() {
           });
 
           bindTap(createMultiRoomBtn, async () => {
-              const ensured = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: false });
+              const ensured = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: false, reuseExisting: false });
               let arenaId = ensured?.arena?.id || null;
               let inviteCode = normalizeInviteCode(ensured?.arena?.invite_code || '');
               if (!arenaId || !inviteCode) {
@@ -2209,21 +2209,22 @@ export function initLegacyApp() {
           }
 
           async function ensureArenaBoundToCurrentSession(options = {}) {
-              const { createIfMissing = true, silent = true } = options;
+              const { createIfMissing = true, silent = true, reuseExisting = true } = options;
               if (!currentSession?.user?.id) return null;
               const client = buildSupabaseClient();
               if (!client) return null;
 
               const userId = currentSession.user.id;
-              const { data: existingArena, error: existingArenaError } = await client
-                  .from('soon_arenas')
-                  .select('id, invite_code, created_at')
-                  .eq('owner_user_id', userId)
-                  .order('created_at', { ascending: true })
-                  .limit(1)
-                  .maybeSingle();
-
-              if (existingArenaError) {
+              let existingArena = null;
+              if (reuseExisting) {
+                  const { data, error: existingArenaError } = await client
+                      .from('soon_arenas')
+                      .select('id, invite_code, created_at')
+                      .eq('owner_user_id', userId)
+                      .order('created_at', { ascending: false })
+                      .limit(1)
+                      .maybeSingle();
+                  if (existingArenaError) {
                   if (!silent) {
                       if (isSupabaseMissingRelationError(existingArenaError)) {
                           setArenaSessionStatus('Arène indisponible: tables Supabase manquantes. Lance les migrations puis réessaie.', true);
@@ -2233,7 +2234,9 @@ export function initLegacyApp() {
                           setArenaSessionStatus(`Récupération arène impossible: ${existingArenaError.message}`, true);
                       }
                   }
-                  return null;
+                      return null;
+                  }
+                  existingArena = data || null;
               }
 
               if (existingArena?.id) {
