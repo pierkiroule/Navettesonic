@@ -1244,11 +1244,11 @@ export function initLegacyApp() {
 
           bindTap(createMultiRoomBtn, async () => {
               const ensured = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: false, reuseExisting: false });
-              let arenaId = ensured?.arena?.id || null;
-              let inviteCode = normalizeRoomSlug(ensured?.arena?.invite_code || '');
+              const arenaId = ensured?.arena?.id || null;
+              const inviteCode = normalizeRoomSlug(ensured?.arena?.invite_code || '');
               if (!arenaId || !inviteCode) {
-                  inviteCode = generateRoomSlug();
-                  arenaId = `room-${inviteCode.toLowerCase()}`;
+                  setArenaSessionStatus('Impossible de créer la room partagée : arène Supabase introuvable.', true);
+                  return;
               }
               await setCurrentArena(arenaId, inviteCode);
               pendingMultiRoomArenaId = arenaId;
