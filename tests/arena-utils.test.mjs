@@ -22,7 +22,8 @@ test('roomLink utils', () => {
   assert.equal(slug.length, 10);
   const url = buildRoomUrl({ origin: 'https://example.com/app', roomSlug: 'room-abc' });
   assert.equal(url, 'https://example.com/app?room=RMABC');
-  assert.equal(extractRoomSlugFromUrl(new URLSearchParams('?arenaInvite=ROOMabc')), 'RMABC');
+  assert.equal(extractRoomSlugFromUrl(new URLSearchParams('?arenaInvite=ROOMabc99')), 'RMABC99');
+  assert.equal(extractRoomSlugFromUrl(new URLSearchParams('?arenaInvite=local')), '');
 });
 
 test('db/runtime bubble mappings', () => {
