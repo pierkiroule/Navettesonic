@@ -18,6 +18,7 @@ export function collectLegacyDomRefs() {
   const copyMultiRoomLinkBtn = document.getElementById('copyMultiRoomLinkBtn');
   const toggleRoomAccessBtn = document.getElementById('toggleRoomAccessBtn');
   const enterMultiRoomBtn = document.getElementById('enterMultiRoomBtn');
+  const multiRoomAdminActions = document.getElementById('multiRoomAdminActions');
   const multiRoomAdminHint = document.getElementById('multiRoomAdminHint');
   const heroVideo = document.getElementById('heroVideo');
   const heroVideoShell = document.getElementById('heroVideoShell');
@@ -113,7 +114,7 @@ export function collectLegacyDomRefs() {
 
   return {
     homeView, experienceModeView, experienceView, echoHypnoseView, profileView, bottomNav, bottomNavToggle,
-    navHome, navSoon, navProfile, enterExperienceBtn, selectSoloModeBtn, selectMultiModeBtn, multiRoomComposer, createMultiRoomBtn, multiRoomLinkOutput, copyMultiRoomLinkBtn, toggleRoomAccessBtn, enterMultiRoomBtn, multiRoomAdminHint, heroVideo, heroVideoShell, heroPlayBtn,
+    navHome, navSoon, navProfile, enterExperienceBtn, selectSoloModeBtn, selectMultiModeBtn, multiRoomComposer, createMultiRoomBtn, multiRoomLinkOutput, copyMultiRoomLinkBtn, toggleRoomAccessBtn, enterMultiRoomBtn, multiRoomAdminActions, multiRoomAdminHint, heroVideo, heroVideoShell, heroPlayBtn,
     canvas, ctx, ui, helperTips, soonTutoLink, soonTutoModal, soonTutoCloseBtn,
     silenceDesYeuxOverlay, silenceDesYeuxTitle, silenceDesYeuxCountdown, silenceDesYeuxPoem,
     echoRecorderPanel, echoRecordToggleBtn, echoRecordTimer, echoRecordStatus, echoRecordDownloadLink,
