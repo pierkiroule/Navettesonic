@@ -937,6 +937,9 @@ export function initLegacyApp() {
 
           function showView(target) {
               console.log('[legacyApp] showView called', { target, currentViewBefore: currentView });
+              if (isInviteGuestMode && target !== 'experience') {
+                  target = 'experience';
+              }
               currentView = target;
               homeView.classList.toggle('hidden-view', target !== 'home');
               experienceModeView?.classList.toggle('hidden-view', target !== 'mode-select');
@@ -6849,7 +6852,7 @@ export function initLegacyApp() {
               requestAnimationFrame(loop);
           }
 
-          showView('home');
+          showView(isInviteGuestMode ? 'experience' : 'home');
           setBottomNavCollapsed(false);
           loop();
 
