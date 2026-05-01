@@ -2801,23 +2801,26 @@ export function initLegacyApp() {
                           return;
                       }
                       guestEntryModal.hidden = true;
-                      resolve(true);
+                      resolve(joinResult.data?.id || true);
                   };
                   guestEnterRoomBtn.onclick = submit;
               });
           }
           const inviteParams = new URLSearchParams(window.location.search);
           const inviteCodeFromUrl = normalizeInviteCode(inviteParams.get('room') || inviteParams.get('arenaInvite') || inviteParams.get('invite') || '');
-          const inviteGuestFlag = inviteParams.get('guest') === '1' || inviteParams.get('guest') === 'true';
           if (inviteCodeFromUrl) {
               const invitedArenaId = `room-${inviteCodeFromUrl.toLowerCase()}`;
-              isInviteGuestMode = inviteGuestFlag;
-              if (inviteGuestFlag) currentArenaRole = 'guest';
+              isInviteGuestMode = true;
+              currentArenaRole = 'guest';
+              showView('experience');
               setCurrentArena(invitedArenaId, inviteCodeFromUrl).catch(() => {});
               if (arenaInviteCodeInput) arenaInviteCodeInput.value = inviteCodeFromUrl;
               renderArenaInvitePreview(inviteCodeFromUrl);
-              promptGuestEntryForRoom(inviteCodeFromUrl).then((ok) => {
-                  if (!ok) return;
+              promptGuestEntryForRoom(inviteCodeFromUrl).then((joinedArenaId) => {
+                  if (!joinedArenaId) return;
+                  if (typeof joinedArenaId === 'string') {
+                      setCurrentArena(joinedArenaId, inviteCodeFromUrl).catch(() => {});
+                  }
                   setArenaSessionStatus(`Invitation détectée ✅ Entrée directe dans la room ${inviteCodeFromUrl}.`);
                   showView('experience');
                   ensureAllAudioRunning();
