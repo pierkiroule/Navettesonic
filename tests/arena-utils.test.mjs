@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { normalizeInviteCode, generateInviteCode } from '../src/features/arena/utils/inviteCode.js';
 import { dbBubbleToRuntimeBubble, runtimeBubbleToDbInsert, runtimeBubbleToDbPatch } from '../src/features/arena/utils/arenaMappers.js';
 import { joinArenaByCode } from '../src/features/arena/services/arenaService.js';
+import { normalizeGuestPseudo, validateGuestPseudo, saveGuestPseudo, getStoredGuestPseudo } from '../src/features/arena/utils/guestIdentity.js';
 
 test('normalizeInviteCode', () => {
   assert.equal(normalizeInviteCode(' ab c-12o '), 'ABC2');
@@ -28,4 +29,24 @@ test('db/runtime bubble mappings', () => {
 test('joinArenaByCode empty code', async () => {
   const res = await joinArenaByCode({ supabase: {}, userId: 'u', inviteCode: '   ' });
   assert.equal(res.error.message, 'Code d’invitation requis');
+});
+
+test('guest pseudo normalization and validation', () => {
+  assert.equal(normalizeGuestPseudo('  Écho   Plume  '), 'Écho Plume');
+  assert.equal(validateGuestPseudo('Pier').ok, true);
+  assert.equal(validateGuestPseudo('Nina_44').ok, true);
+  assert.equal(validateGuestPseudo('Écho Plume').ok, true);
+  assert.equal(validateGuestPseudo('').ok, false);
+  assert.equal(validateGuestPseudo('A').reason, 'Pseudo trop court');
+  assert.equal(validateGuestPseudo('a'.repeat(25)).reason, 'Pseudo trop long');
+});
+
+test('save/get guest pseudo by roomSlug', () => {
+  global.localStorage = {
+    _data: {},
+    getItem(k) { return this._data[k] || null; },
+    setItem(k, v) { this._data[k] = String(v); },
+  };
+  saveGuestPseudo({ roomSlug: 'roomslug123', pseudo: 'Pier' });
+  assert.equal(getStoredGuestPseudo({ roomSlug: 'ROOMSLUG123' }), 'Pier');
 });

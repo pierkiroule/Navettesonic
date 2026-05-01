@@ -43,6 +43,23 @@ export async function joinArenaByCode({ supabase, userId, inviteCode }) {
   if (touch.error) return touch;
   return ok(arenaRes.data);
 }
+export async function joinRoomAsGuest({ supabase, roomSlug, guestIdentity, pseudo }) {
+  if (!supabase) return fail('Multiutilisateur indisponible : connexion Supabase requise.');
+  if (!guestIdentity?.id) return fail('Identité invité invalide');
+  const arenaRes = await getArenaByInviteCode({ supabase, inviteCode: roomSlug });
+  if (arenaRes.error) return arenaRes;
+  const arena = arenaRes.data;
+  const { error } = await supabase.from('arena_guests').upsert({
+    arena_id: arena.id,
+    guest_id: guestIdentity.id,
+    display_name: pseudo,
+    role: 'viewer',
+    is_active: true,
+    last_seen_at: new Date().toISOString(),
+  }, { onConflict: 'arena_id,guest_id' });
+  if (error) return fail(error.message, error);
+  return ok(arena);
+}
 export async function listArenaParticipants({ supabase, arenaId }) { const { data, error } = await supabase.from('arena_participants').select('*').eq('arena_id', arenaId); return error ? fail(error.message, error) : ok(data || []); }
 export async function listArenaBubbles({ supabase, arenaId }) { const { data, error } = await supabase.from('arena_bubbles').select('*').eq('arena_id', arenaId); return error ? fail(error.message, error) : ok((data || []).map(dbBubbleToRuntimeBubble)); }
 export async function createArenaBubble({ supabase, arenaId, userId, bubble }) { const { data, error } = await supabase.from('arena_bubbles').insert(runtimeBubbleToDbInsert({ arenaId, userId, bubble })).select('*').single(); return error ? fail(error.message, error) : ok(dbBubbleToRuntimeBubble(data)); }

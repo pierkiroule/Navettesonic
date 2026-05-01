@@ -11,9 +11,10 @@ export function createMultiplayerRoomSession() {
   };
 }
 
-export function buildDedicatedRoomLink(inviteCode) {
+export function buildDedicatedRoomLink(inviteCode, options = {}) {
   const safeCode = normalizeInviteCode(inviteCode);
   const url = new URL(MULTIPLAYER_SHARE_BASE_URL);
   url.searchParams.set('arenaInvite', safeCode);
+  if (options.guestMode) url.searchParams.set('guest', '1');
   return url.toString();
 }

@@ -90,7 +90,13 @@ export function collectLegacyDomRefs() {
   const arenaInvitePreviewCode = document.getElementById('arenaInvitePreviewCode');
   const arenaCopyInviteBtn = document.getElementById('arenaCopyInviteBtn');
   const arenaShareInviteBtn = document.getElementById('arenaShareInviteBtn');
+  const arenaGuestPanel = document.getElementById('arenaGuestPanel');
+  const arenaGuestList = document.getElementById('arenaGuestList');
   const arenaSessionBadge = document.getElementById('arenaSessionBadge');
+  const guestEntryModal = document.getElementById('guestEntryModal');
+  const guestPseudoInput = document.getElementById('guestPseudoInput');
+  const guestPseudoError = document.getElementById('guestPseudoError');
+  const guestEnterRoomBtn = document.getElementById('guestEnterRoomBtn');
   const arenaDebugLog = document.getElementById('arenaDebugLog');
   const profileDisplayName = document.getElementById('profileDisplayName');
   const profileBioText = document.getElementById('profileBioText');
@@ -120,8 +126,8 @@ export function collectLegacyDomRefs() {
     supabaseStatus, supabaseUploadedLink, supabaseProbeStatus, authEmailInput, authPasswordInput,
     authCredentialsBlock, authSignInBtn, authSignUpBtn, authSignOutBtn, authStatus, authSessionInfo,
     createArenaBtn, inviteArenaBtn, joinArenaBtn, arenaInviteCodeInput, arenaSessionStatus,
-    arenaInvitePreview, arenaInvitePreviewCode, arenaCopyInviteBtn, arenaShareInviteBtn,
-    arenaSessionBadge, arenaDebugLog, profileDisplayName, profileBioText, profileEditBtn,
+    arenaInvitePreview, arenaInvitePreviewCode, arenaCopyInviteBtn, arenaShareInviteBtn, arenaGuestPanel, arenaGuestList,
+    arenaSessionBadge, guestEntryModal, guestPseudoInput, guestPseudoError, guestEnterRoomBtn, arenaDebugLog, profileDisplayName, profileBioText, profileEditBtn,
     profileEditPanel, profileNameInput, profileBioInput, profileSaveBtn, profileCancelBtn,
     dbConnectionStatus, storeCatalog, sessionHistoryList, silenceSessionList,
   };
