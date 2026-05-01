@@ -33,5 +33,7 @@ export function buildRoomUrl(args) {
 
 export function extractRoomSlugFromUrl(searchParams) {
   if (!searchParams) return '';
-  return normalizeRoomSlug(searchParams.get('room') || searchParams.get('arenaInvite') || '');
+  const normalized = normalizeRoomSlug(searchParams.get('room') || searchParams.get('arenaInvite') || '');
+  if (normalized.length < 7) return '';
+  return normalized;
 }
