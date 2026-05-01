@@ -2246,7 +2246,15 @@ export function initLegacyApp() {
               const client = buildSupabaseClient();
               if (!client) return null;
 
-              const userId = currentSession.user.id;
+              const { data: authData, error: authError } = await client.auth.getUser();
+              if (authError || !authData?.user?.id) {
+                  if (!silent) {
+                      setArenaSessionStatus('Connexion Supabase requise pour le multi (utilisateur introuvable).', true);
+                  }
+                  return null;
+              }
+
+              const userId = authData.user.id;
               let existingArena = null;
               if (reuseExisting) {
                   const { data, error: existingArenaError } = await client
@@ -2282,6 +2290,10 @@ export function initLegacyApp() {
               while (attempt < 4 && !createdArena) {
                   attempt += 1;
                   const inviteCode = generateReadableInviteCode();
+                  if (!inviteCode) {
+                      if (!silent) setArenaSessionStatus('Code d’arène invalide: génération vide.', true);
+                      continue;
+                  }
                   const { data, error } = await client
                       .from('arenas')
                       .insert({
