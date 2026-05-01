@@ -1,6 +1,7 @@
 import { SAMPLE_LIBRARY } from './constants/sampleLibrary';
 import { BUBBLE_COLORS, HALO_STYLE_LIBRARY } from './constants/uiConstants';
 import { collectLegacyDomRefs } from './domRefs';
+import { buildDedicatedRoomLink, createMultiplayerRoomSession } from '../../multiplayer/session/roomSession';
 
 export function initLegacyApp() {
   const experienceRoot = document.getElementById('experienceView');
@@ -9,8 +10,8 @@ export function initLegacyApp() {
   experienceRoot.dataset.legacyBooted = 'true';
 
           const {
-            homeView, experienceView, echoHypnoseView, profileView, bottomNav, bottomNavToggle,
-            navHome, navSoon, navProfile, enterExperienceBtn, heroVideo, heroVideoShell, heroPlayBtn,
+            homeView, experienceModeView, experienceView, echoHypnoseView, profileView, bottomNav, bottomNavToggle,
+            navHome, navSoon, navProfile, enterExperienceBtn, selectSoloModeBtn, selectMultiModeBtn, multiRoomComposer, createMultiRoomBtn, multiRoomLinkOutput, copyMultiRoomLinkBtn, toggleRoomAccessBtn, enterMultiRoomBtn, multiRoomAdminHint, heroVideo, heroVideoShell, heroPlayBtn,
             canvas, ctx, ui, helperTips, soonTutoLink, soonTutoModal, soonTutoCloseBtn,
             silenceDesYeuxOverlay, silenceDesYeuxTitle, silenceDesYeuxCountdown, silenceDesYeuxPoem,
             echoRecorderPanel, echoRecordToggleBtn, echoRecordTimer, echoRecordStatus, echoRecordDownloadLink,
@@ -337,6 +338,9 @@ export function initLegacyApp() {
           let currentArenaInviteCode = '';
           let currentArenaParticipants = 1;
           let currentArenaRole = null;
+          let pendingMultiRoomInviteLink = '';
+          let pendingMultiRoomArenaId = null;
+          let isPendingMultiRoomClosed = false;
           let syncedArenaId = null;
           let arenaRealtimeChannel = null;
           let isApplyingRemoteArenaSyncEvent = false;
@@ -895,6 +899,7 @@ export function initLegacyApp() {
               console.log('[legacyApp] showView called', { target, currentViewBefore: currentView });
               currentView = target;
               homeView.classList.toggle('hidden-view', target !== 'home');
+              experienceModeView?.classList.toggle('hidden-view', target !== 'mode-select');
               experienceView.classList.toggle('hidden-view', target !== 'experience');
               echoHypnoseView.classList.toggle('hidden-view', target !== 'echohypnose');
               profileView.classList.toggle('hidden-view', target !== 'profile');
@@ -1040,10 +1045,24 @@ export function initLegacyApp() {
               rotateHelperTip();
           }, 5000);
 
+
+          function openExperienceModeSelection(entrySource = 'Soon experience') {
+              if (!requireRegisteredUserForExperience(entrySource)) return false;
+              if (multiRoomComposer) multiRoomComposer.classList.add('hidden-view');
+              if (multiRoomLinkOutput) multiRoomLinkOutput.textContent = '';
+              pendingMultiRoomInviteLink = '';
+              pendingMultiRoomArenaId = null;
+              isPendingMultiRoomClosed = false;
+              if (copyMultiRoomLinkBtn) copyMultiRoomLinkBtn.disabled = true;
+              if (toggleRoomAccessBtn) { toggleRoomAccessBtn.disabled = true; toggleRoomAccessBtn.textContent = "Fermer l'accès invités"; }
+              if (enterMultiRoomBtn) enterMultiRoomBtn.disabled = true;
+              showView('mode-select');
+              return true;
+          }
+
           bindTap(enterExperienceBtn, () => {
-              if (!requireRegisteredUserForExperience('Soon experience')) return;
-              showView('experience');
-              console.log('[legacyApp] enterExperienceBtn -> showView("experience") called', {
+              if (!openExperienceModeSelection('Soon experience')) return;
+              console.log('[legacyApp] enterExperienceBtn -> showView("mode-select") called', {
                   currentView,
                   experienceViewHidden: experienceView?.classList.contains('hidden-view')
               });
@@ -1165,6 +1184,69 @@ export function initLegacyApp() {
               heroVideo.addEventListener('canplay', startHeroHaloLoop);
               syncHeroPlayButton();
           }
+
+          bindTap(selectSoloModeBtn, () => {
+              if (multiRoomComposer) multiRoomComposer.classList.add('hidden-view');
+              setCurrentArena('default').catch(() => {});
+              showView('experience');
+              ensureAllAudioRunning();
+          });
+
+          bindTap(selectMultiModeBtn, () => {
+              if (multiRoomComposer) multiRoomComposer.classList.remove('hidden-view');
+          });
+
+          bindTap(createMultiRoomBtn, async () => {
+              const ensured = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: false, reuseExisting: false });
+              let arenaId = ensured?.arena?.id || null;
+              let inviteCode = normalizeInviteCode(ensured?.arena?.invite_code || '');
+              if (!arenaId || !inviteCode) {
+                  const room = createMultiplayerRoomSession();
+                  arenaId = room.arenaId;
+                  inviteCode = room.inviteCode;
+              }
+              await setCurrentArena(arenaId, inviteCode);
+              pendingMultiRoomArenaId = arenaId;
+              pendingMultiRoomInviteLink = buildDedicatedRoomLink(inviteCode);
+              if (multiRoomLinkOutput) {
+                  multiRoomLinkOutput.textContent = `Lien room admin: ${pendingMultiRoomInviteLink}`;
+              }
+              if (copyMultiRoomLinkBtn) copyMultiRoomLinkBtn.disabled = false;
+              if (toggleRoomAccessBtn) toggleRoomAccessBtn.disabled = false;
+              if (enterMultiRoomBtn) enterMultiRoomBtn.disabled = false;
+              setArenaSessionStatus('Room prête ✅ Partage le lien, puis ouvre la session quand tu veux.');
+          });
+
+          bindTap(copyMultiRoomLinkBtn, async () => {
+              if (!pendingMultiRoomInviteLink) return;
+              try {
+                  await navigator.clipboard.writeText(pendingMultiRoomInviteLink);
+                  setArenaSessionStatus('Lien multi copié ✅');
+              } catch (_error) {
+                  setArenaSessionStatus(`Copie manuelle: ${pendingMultiRoomInviteLink}`);
+              }
+          });
+
+          bindTap(toggleRoomAccessBtn, async () => {
+              if (!pendingMultiRoomArenaId) return;
+              const client = buildSupabaseClient();
+              isPendingMultiRoomClosed = !isPendingMultiRoomClosed;
+              if (client && canSyncArenaWithDb(pendingMultiRoomArenaId)) {
+                  await client.from('soon_arenas').update({ is_closed: isPendingMultiRoomClosed }).eq('id', pendingMultiRoomArenaId);
+              }
+              if (toggleRoomAccessBtn) {
+                  toggleRoomAccessBtn.textContent = isPendingMultiRoomClosed ? "Ouvrir l'accès invités" : "Fermer l'accès invités";
+              }
+              setArenaSessionStatus(isPendingMultiRoomClosed ? 'Accès invités fermé par l’admin.' : 'Accès invités ouvert par l’admin.');
+          });
+
+          bindTap(enterMultiRoomBtn, () => {
+              if (!pendingMultiRoomArenaId) return;
+              currentArenaRole = 'owner';
+              showView('experience');
+              ensureAllAudioRunning();
+          });
+
           if (heroVideoShell) {
               heroVideoShell.style.setProperty('--halo-intensity', '0.18');
               heroVideoShell.style.setProperty('--halo-scale', '1');
@@ -1178,9 +1260,8 @@ export function initLegacyApp() {
           }, { preventTouchDefault: true });
           bindTap(navSoon, () => {
               registerBottomNavActivity();
-              if (!requireRegisteredUserForExperience('navigation')) return;
-              showView('experience');
-              console.log('[legacyApp] navSoon -> showView("experience") called', {
+              if (!openExperienceModeSelection('navigation')) return;
+              console.log('[legacyApp] navSoon -> showView("mode-select") called', {
                   currentView,
                   experienceViewHidden: experienceView?.classList.contains('hidden-view')
               });
@@ -1418,7 +1499,7 @@ export function initLegacyApp() {
           }
 
           function redirectToSoonExperienceAfterAuth() {
-              showView('experience');
+              openExperienceModeSelection('auth');
               ensureAllAudioRunning();
           }
 
@@ -2128,21 +2209,22 @@ export function initLegacyApp() {
           }
 
           async function ensureArenaBoundToCurrentSession(options = {}) {
-              const { createIfMissing = true, silent = true } = options;
+              const { createIfMissing = true, silent = true, reuseExisting = true } = options;
               if (!currentSession?.user?.id) return null;
               const client = buildSupabaseClient();
               if (!client) return null;
 
               const userId = currentSession.user.id;
-              const { data: existingArena, error: existingArenaError } = await client
-                  .from('soon_arenas')
-                  .select('id, invite_code, created_at')
-                  .eq('owner_user_id', userId)
-                  .order('created_at', { ascending: true })
-                  .limit(1)
-                  .maybeSingle();
-
-              if (existingArenaError) {
+              let existingArena = null;
+              if (reuseExisting) {
+                  const { data, error: existingArenaError } = await client
+                      .from('soon_arenas')
+                      .select('id, invite_code, created_at')
+                      .eq('owner_user_id', userId)
+                      .order('created_at', { ascending: false })
+                      .limit(1)
+                      .maybeSingle();
+                  if (existingArenaError) {
                   if (!silent) {
                       if (isSupabaseMissingRelationError(existingArenaError)) {
                           setArenaSessionStatus('Arène indisponible: tables Supabase manquantes. Lance les migrations puis réessaie.', true);
@@ -2152,7 +2234,9 @@ export function initLegacyApp() {
                           setArenaSessionStatus(`Récupération arène impossible: ${existingArenaError.message}`, true);
                       }
                   }
-                  return null;
+                      return null;
+                  }
+                  existingArena = data || null;
               }
 
               if (existingArena?.id) {
