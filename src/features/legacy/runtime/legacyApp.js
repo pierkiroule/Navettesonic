@@ -2988,7 +2988,7 @@ export function initLegacyApp() {
               return Boolean(element.closest(
                   '#bubblePanel, #bubblePropsPanel, #echoRecorderPanel, #traceListeningBtn, #traceCamControls, ' +
                   '#silenceDesYeuxPrompt, #silenceDesYeuxOverlay, #arenaTrianglePad, #bottomNav, ' +
-                  '#homeView, #profileView, #echoHypnoseView'
+                  '#soonTutoModal, #guestEntryModal, #homeView, #profileView, #echoHypnoseView'
               ));
           }
 
