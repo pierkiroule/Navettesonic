@@ -11,7 +11,7 @@ export function initLegacyApp() {
 
           const {
             homeView, experienceModeView, experienceView, echoHypnoseView, profileView, bottomNav, bottomNavToggle,
-            navHome, navSoon, navProfile, enterExperienceBtn, selectSoloModeBtn, selectMultiModeBtn, multiRoomComposer, createMultiRoomBtn, multiRoomLinkOutput, heroVideo, heroVideoShell, heroPlayBtn,
+            navHome, navSoon, navProfile, enterExperienceBtn, selectSoloModeBtn, selectMultiModeBtn, multiRoomComposer, createMultiRoomBtn, multiRoomLinkOutput, copyMultiRoomLinkBtn, toggleRoomAccessBtn, enterMultiRoomBtn, multiRoomAdminHint, heroVideo, heroVideoShell, heroPlayBtn,
             canvas, ctx, ui, helperTips, soonTutoLink, soonTutoModal, soonTutoCloseBtn,
             silenceDesYeuxOverlay, silenceDesYeuxTitle, silenceDesYeuxCountdown, silenceDesYeuxPoem,
             echoRecorderPanel, echoRecordToggleBtn, echoRecordTimer, echoRecordStatus, echoRecordDownloadLink,
@@ -338,6 +338,9 @@ export function initLegacyApp() {
           let currentArenaInviteCode = '';
           let currentArenaParticipants = 1;
           let currentArenaRole = null;
+          let pendingMultiRoomInviteLink = '';
+          let pendingMultiRoomArenaId = null;
+          let isPendingMultiRoomClosed = false;
           let syncedArenaId = null;
           let arenaRealtimeChannel = null;
           let isApplyingRemoteArenaSyncEvent = false;
@@ -1047,6 +1050,12 @@ export function initLegacyApp() {
               if (!requireRegisteredUserForExperience(entrySource)) return false;
               if (multiRoomComposer) multiRoomComposer.classList.add('hidden-view');
               if (multiRoomLinkOutput) multiRoomLinkOutput.textContent = '';
+              pendingMultiRoomInviteLink = '';
+              pendingMultiRoomArenaId = null;
+              isPendingMultiRoomClosed = false;
+              if (copyMultiRoomLinkBtn) copyMultiRoomLinkBtn.disabled = true;
+              if (toggleRoomAccessBtn) { toggleRoomAccessBtn.disabled = true; toggleRoomAccessBtn.textContent = "Fermer l'accès invités"; }
+              if (enterMultiRoomBtn) enterMultiRoomBtn.disabled = true;
               showView('mode-select');
               return true;
           }
@@ -1188,12 +1197,52 @@ export function initLegacyApp() {
           });
 
           bindTap(createMultiRoomBtn, async () => {
-              const room = createMultiplayerRoomSession();
-              await setCurrentArena(room.arenaId, room.inviteCode);
-              const inviteLink = buildDedicatedRoomLink(room.inviteCode);
-              if (multiRoomLinkOutput) {
-                  multiRoomLinkOutput.textContent = `Lien room: ${inviteLink}`;
+              const ensured = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: false });
+              let arenaId = ensured?.arena?.id || null;
+              let inviteCode = normalizeInviteCode(ensured?.arena?.invite_code || '');
+              if (!arenaId || !inviteCode) {
+                  const room = createMultiplayerRoomSession();
+                  arenaId = room.arenaId;
+                  inviteCode = room.inviteCode;
               }
+              await setCurrentArena(arenaId, inviteCode);
+              pendingMultiRoomArenaId = arenaId;
+              pendingMultiRoomInviteLink = buildDedicatedRoomLink(inviteCode);
+              if (multiRoomLinkOutput) {
+                  multiRoomLinkOutput.textContent = `Lien room admin: ${pendingMultiRoomInviteLink}`;
+              }
+              if (copyMultiRoomLinkBtn) copyMultiRoomLinkBtn.disabled = false;
+              if (toggleRoomAccessBtn) toggleRoomAccessBtn.disabled = false;
+              if (enterMultiRoomBtn) enterMultiRoomBtn.disabled = false;
+              setArenaSessionStatus('Room prête ✅ Partage le lien, puis ouvre la session quand tu veux.');
+          });
+
+          bindTap(copyMultiRoomLinkBtn, async () => {
+              if (!pendingMultiRoomInviteLink) return;
+              try {
+                  await navigator.clipboard.writeText(pendingMultiRoomInviteLink);
+                  setArenaSessionStatus('Lien multi copié ✅');
+              } catch (_error) {
+                  setArenaSessionStatus(`Copie manuelle: ${pendingMultiRoomInviteLink}`);
+              }
+          });
+
+          bindTap(toggleRoomAccessBtn, async () => {
+              if (!pendingMultiRoomArenaId) return;
+              const client = buildSupabaseClient();
+              isPendingMultiRoomClosed = !isPendingMultiRoomClosed;
+              if (client && canSyncArenaWithDb(pendingMultiRoomArenaId)) {
+                  await client.from('soon_arenas').update({ is_closed: isPendingMultiRoomClosed }).eq('id', pendingMultiRoomArenaId);
+              }
+              if (toggleRoomAccessBtn) {
+                  toggleRoomAccessBtn.textContent = isPendingMultiRoomClosed ? "Ouvrir l'accès invités" : "Fermer l'accès invités";
+              }
+              setArenaSessionStatus(isPendingMultiRoomClosed ? 'Accès invités fermé par l’admin.' : 'Accès invités ouvert par l’admin.');
+          });
+
+          bindTap(enterMultiRoomBtn, () => {
+              if (!pendingMultiRoomArenaId) return;
+              currentArenaRole = 'owner';
               showView('experience');
               ensureAllAudioRunning();
           });
@@ -1450,7 +1499,7 @@ export function initLegacyApp() {
           }
 
           function redirectToSoonExperienceAfterAuth() {
-              showView('experience');
+              openExperienceModeSelection('auth');
               ensureAllAudioRunning();
           }
 
