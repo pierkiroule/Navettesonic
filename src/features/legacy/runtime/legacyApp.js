@@ -1246,7 +1246,7 @@ export function initLegacyApp() {
               if (multiRoomAdminHint) multiRoomAdminHint.classList.add('hidden-view');
           });
 
-          bindTap(createMultiRoomBtn, async () => {
+          bindPress(createMultiRoomBtn, async () => {
               const ensured = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: false, reuseExisting: false });
               const arenaId = ensured?.arena?.id || null;
               const inviteCode = normalizeRoomSlug(ensured?.arena?.invite_code || '');
