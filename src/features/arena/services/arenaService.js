@@ -1,11 +1,11 @@
-import { generateInviteCode, normalizeInviteCode } from '../utils/inviteCode.js';
+import { generateRoomSlug, normalizeRoomSlug } from '../utils/roomLink.js';
 import { dbBubbleToRuntimeBubble, runtimeBubbleToDbInsert, runtimeBubbleToDbPatch } from '../utils/arenaMappers.js';
 
 const fail = (message, details = null) => ({ data: null, error: { message, details } });
 const ok = (data) => ({ data, error: null });
 
-export async function getArenaByInviteCode({ supabase, inviteCode }) {
-  const code = normalizeInviteCode(inviteCode);
+export async function getArenaByRoomSlug({ supabase, roomSlug }) {
+  const code = normalizeRoomSlug(roomSlug);
   if (!supabase) return fail('Multiutilisateur indisponible : connexion Supabase requise.');
   if (!code) return fail('Arène introuvable');
   const { data, error } = await supabase.from('arenas').select('*').eq('invite_code', code).eq('is_active', true).maybeSingle();
@@ -19,11 +19,11 @@ export async function touchParticipant({ supabase, arenaId, userId, role = 'part
   const { error } = await supabase.from('arena_participants').upsert({ arena_id: arenaId, user_id: userId, role, last_seen_at: new Date().toISOString() }, { onConflict: 'arena_id,user_id' });
   return error ? fail(error.message, error) : ok(true);
 }
-export async function createArena({ supabase, userId, title }) {
+export async function createHostArena({ supabase, userId, title }) {
   if (!supabase) return fail('Multiutilisateur indisponible : connexion Supabase requise.');
   if (!userId) return fail('Connexion requise');
   for (let i = 0; i < 5; i += 1) {
-    const invite_code = generateInviteCode();
+    const invite_code = generateRoomSlug();
     const { data, error } = await supabase.from('arenas').insert({ owner_id: userId, invite_code, title: title || 'Mon arène', status: 'waiting', is_active: true }).select('*').single();
     if (error?.code === '23505') continue;
     if (error) return fail(error.message, error);
@@ -35,9 +35,9 @@ export async function createArena({ supabase, userId, title }) {
 export async function joinArenaByCode({ supabase, userId, inviteCode }) {
   if (!supabase) return fail('Multiutilisateur indisponible : connexion Supabase requise.');
   if (!userId) return fail('Connexion requise');
-  const code = normalizeInviteCode(inviteCode);
+  const code = normalizeRoomSlug(inviteCode);
   if (!code) return fail('Code d’invitation requis');
-  const arenaRes = await getArenaByInviteCode({ supabase, inviteCode: code });
+  const arenaRes = await getArenaByRoomSlug({ supabase, roomSlug: code });
   if (arenaRes.error) return arenaRes;
   const touch = await touchParticipant({ supabase, arenaId: arenaRes.data.id, userId, role: 'participant' });
   if (touch.error) return touch;
@@ -46,7 +46,7 @@ export async function joinArenaByCode({ supabase, userId, inviteCode }) {
 export async function joinRoomAsGuest({ supabase, roomSlug, guestIdentity, pseudo }) {
   if (!supabase) return fail('Multiutilisateur indisponible : connexion Supabase requise.');
   if (!guestIdentity?.id) return fail('Identité invité invalide');
-  const arenaRes = await getArenaByInviteCode({ supabase, inviteCode: roomSlug });
+  const arenaRes = await getArenaByRoomSlug({ supabase, roomSlug });
   if (arenaRes.error) return arenaRes;
   const arena = arenaRes.data;
   const { error } = await supabase.from('arena_guests').upsert({
@@ -67,3 +67,39 @@ export async function updateArenaBubble({ supabase, arenaId, bubbleId, patch }) 
 export async function deleteArenaBubble({ supabase, arenaId, bubbleId }) { const { error } = await supabase.from('arena_bubbles').delete().eq('arena_id', arenaId).eq('id', bubbleId); return error ? fail(error.message, error) : ok(true); }
 
 export { runtimeBubbleToDbPatch };
+
+
+const ALLOWED_GUEST_ROLES = ['viewer', 'player', 'cohost'];
+
+export async function listArenaGuests({ supabase, arenaId }) {
+  if (!supabase) return fail('Multiutilisateur indisponible : connexion Supabase requise.');
+  const { data, error } = await supabase.from('arena_guests').select('*').eq('arena_id', arenaId).eq('is_active', true);
+  return error ? fail(error.message, error) : ok(data || []);
+}
+
+export async function touchArenaGuest({ supabase, arenaId, guestId }) {
+  if (!supabase) return fail('Multiutilisateur indisponible : connexion Supabase requise.');
+  const { error } = await supabase.from('arena_guests').update({ last_seen_at: new Date().toISOString() }).eq('arena_id', arenaId).eq('guest_id', guestId);
+  return error ? fail(error.message, error) : ok(true);
+}
+
+export async function updateArenaGuestRole({ supabase, arenaId, guestId, role }) {
+  if (!supabase) return fail('Multiutilisateur indisponible : connexion Supabase requise.');
+  if (!ALLOWED_GUEST_ROLES.includes(role)) return fail('Rôle invité invalide. Rôles autorisés: viewer, player, cohost.');
+  const { error } = await supabase.from('arena_guests').update({ role }).eq('arena_id', arenaId).eq('guest_id', guestId);
+  return error ? fail(error.message, error) : ok(true);
+}
+
+export async function deactivateArenaGuest({ supabase, arenaId, guestId }) {
+  if (!supabase) return fail('Multiutilisateur indisponible : connexion Supabase requise.');
+  const { error } = await supabase.from('arena_guests').update({ is_active: false }).eq('arena_id', arenaId).eq('guest_id', guestId);
+  return error ? fail(error.message, error) : ok(true);
+}
+
+export async function getArenaByInviteCode({ supabase, inviteCode }) {
+  return getArenaByRoomSlug({ supabase, roomSlug: inviteCode });
+}
+
+export async function createArena(args) {
+  return createHostArena(args);
+}
