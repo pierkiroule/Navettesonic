@@ -1,6 +1,7 @@
 import { SAMPLE_LIBRARY } from './constants/sampleLibrary';
 import { BUBBLE_COLORS, HALO_STYLE_LIBRARY } from './constants/uiConstants';
 import { collectLegacyDomRefs } from './domRefs';
+import { buildDedicatedRoomLink, createMultiplayerRoomSession } from '../../multiplayer/session/roomSession';
 
 export function initLegacyApp() {
   const experienceRoot = document.getElementById('experienceView');
@@ -9,8 +10,8 @@ export function initLegacyApp() {
   experienceRoot.dataset.legacyBooted = 'true';
 
           const {
-            homeView, experienceView, echoHypnoseView, profileView, bottomNav, bottomNavToggle,
-            navHome, navSoon, navProfile, enterExperienceBtn, heroVideo, heroVideoShell, heroPlayBtn,
+            homeView, experienceModeView, experienceView, echoHypnoseView, profileView, bottomNav, bottomNavToggle,
+            navHome, navSoon, navProfile, enterExperienceBtn, selectSoloModeBtn, selectMultiModeBtn, multiRoomComposer, createMultiRoomBtn, multiRoomLinkOutput, heroVideo, heroVideoShell, heroPlayBtn,
             canvas, ctx, ui, helperTips, soonTutoLink, soonTutoModal, soonTutoCloseBtn,
             silenceDesYeuxOverlay, silenceDesYeuxTitle, silenceDesYeuxCountdown, silenceDesYeuxPoem,
             echoRecorderPanel, echoRecordToggleBtn, echoRecordTimer, echoRecordStatus, echoRecordDownloadLink,
@@ -895,6 +896,7 @@ export function initLegacyApp() {
               console.log('[legacyApp] showView called', { target, currentViewBefore: currentView });
               currentView = target;
               homeView.classList.toggle('hidden-view', target !== 'home');
+              experienceModeView?.classList.toggle('hidden-view', target !== 'mode-select');
               experienceView.classList.toggle('hidden-view', target !== 'experience');
               echoHypnoseView.classList.toggle('hidden-view', target !== 'echohypnose');
               profileView.classList.toggle('hidden-view', target !== 'profile');
@@ -1040,10 +1042,18 @@ export function initLegacyApp() {
               rotateHelperTip();
           }, 5000);
 
+
+          function openExperienceModeSelection(entrySource = 'Soon experience') {
+              if (!requireRegisteredUserForExperience(entrySource)) return false;
+              if (multiRoomComposer) multiRoomComposer.classList.add('hidden-view');
+              if (multiRoomLinkOutput) multiRoomLinkOutput.textContent = '';
+              showView('mode-select');
+              return true;
+          }
+
           bindTap(enterExperienceBtn, () => {
-              if (!requireRegisteredUserForExperience('Soon experience')) return;
-              showView('experience');
-              console.log('[legacyApp] enterExperienceBtn -> showView("experience") called', {
+              if (!openExperienceModeSelection('Soon experience')) return;
+              console.log('[legacyApp] enterExperienceBtn -> showView("mode-select") called', {
                   currentView,
                   experienceViewHidden: experienceView?.classList.contains('hidden-view')
               });
@@ -1165,6 +1175,29 @@ export function initLegacyApp() {
               heroVideo.addEventListener('canplay', startHeroHaloLoop);
               syncHeroPlayButton();
           }
+
+          bindTap(selectSoloModeBtn, () => {
+              if (multiRoomComposer) multiRoomComposer.classList.add('hidden-view');
+              setCurrentArena('default').catch(() => {});
+              showView('experience');
+              ensureAllAudioRunning();
+          });
+
+          bindTap(selectMultiModeBtn, () => {
+              if (multiRoomComposer) multiRoomComposer.classList.remove('hidden-view');
+          });
+
+          bindTap(createMultiRoomBtn, async () => {
+              const room = createMultiplayerRoomSession();
+              await setCurrentArena(room.arenaId, room.inviteCode);
+              const inviteLink = buildDedicatedRoomLink(room.inviteCode);
+              if (multiRoomLinkOutput) {
+                  multiRoomLinkOutput.textContent = `Lien room: ${inviteLink}`;
+              }
+              showView('experience');
+              ensureAllAudioRunning();
+          });
+
           if (heroVideoShell) {
               heroVideoShell.style.setProperty('--halo-intensity', '0.18');
               heroVideoShell.style.setProperty('--halo-scale', '1');
@@ -1178,9 +1211,8 @@ export function initLegacyApp() {
           }, { preventTouchDefault: true });
           bindTap(navSoon, () => {
               registerBottomNavActivity();
-              if (!requireRegisteredUserForExperience('navigation')) return;
-              showView('experience');
-              console.log('[legacyApp] navSoon -> showView("experience") called', {
+              if (!openExperienceModeSelection('navigation')) return;
+              console.log('[legacyApp] navSoon -> showView("mode-select") called', {
                   currentView,
                   experienceViewHidden: experienceView?.classList.contains('hidden-view')
               });

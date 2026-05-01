@@ -198,7 +198,21 @@
             50% { transform: scale(calc(var(--halo-scale) * 1.05)) translate3d(0, -0.8%, 0); }
         }
 
-        #experienceView, #profileView { background: #030308; }
+        
+#experienceModeView:not(.hidden-view) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 25% 20%, rgba(64,130,255,.2), transparent 45%), #030308;
+    color: #ebf6ff;
+    padding: 24px;
+}
+.mode-flow-card { width: min(680px, 100%); background: rgba(4, 14, 28, 0.94); border-radius: 20px; padding: 24px; }
+.mode-flow-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.multi-room-composer { margin-top: 16px; }
+.multi-room-link { word-break: break-all; font-size: .92rem; color: #8edfff; }
+
+#experienceView, #profileView { background: #030308; }
         #experienceView { touch-action: none; }
 
         #ui {

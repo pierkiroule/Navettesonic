@@ -1,5 +1,6 @@
 export function collectLegacyDomRefs() {
   const homeView = document.getElementById('homeView');
+  const experienceModeView = document.getElementById('experienceModeView');
   const experienceView = document.getElementById('experienceView');
   const echoHypnoseView = document.getElementById('echoHypnoseView');
   const profileView = document.getElementById('profileView');
@@ -9,6 +10,11 @@ export function collectLegacyDomRefs() {
   const navSoon = document.getElementById('navSoon');
   const navProfile = document.getElementById('navProfile');
   const enterExperienceBtn = document.getElementById('enterExperienceBtn');
+  const selectSoloModeBtn = document.getElementById('selectSoloModeBtn');
+  const selectMultiModeBtn = document.getElementById('selectMultiModeBtn');
+  const multiRoomComposer = document.getElementById('multiRoomComposer');
+  const createMultiRoomBtn = document.getElementById('createMultiRoomBtn');
+  const multiRoomLinkOutput = document.getElementById('multiRoomLinkOutput');
   const heroVideo = document.getElementById('heroVideo');
   const heroVideoShell = document.getElementById('heroVideoShell');
   const heroPlayBtn = document.getElementById('heroPlayBtn');
@@ -96,8 +102,8 @@ export function collectLegacyDomRefs() {
   const silenceSessionList = document.getElementById('silenceSessionList');
 
   return {
-    homeView, experienceView, echoHypnoseView, profileView, bottomNav, bottomNavToggle,
-    navHome, navSoon, navProfile, enterExperienceBtn, heroVideo, heroVideoShell, heroPlayBtn,
+    homeView, experienceModeView, experienceView, echoHypnoseView, profileView, bottomNav, bottomNavToggle,
+    navHome, navSoon, navProfile, enterExperienceBtn, selectSoloModeBtn, selectMultiModeBtn, multiRoomComposer, createMultiRoomBtn, multiRoomLinkOutput, heroVideo, heroVideoShell, heroPlayBtn,
     canvas, ctx, ui, helperTips, soonTutoLink, soonTutoModal, soonTutoCloseBtn,
     silenceDesYeuxOverlay, silenceDesYeuxTitle, silenceDesYeuxCountdown, silenceDesYeuxPoem,
     echoRecorderPanel, echoRecordToggleBtn, echoRecordTimer, echoRecordStatus, echoRecordDownloadLink,
