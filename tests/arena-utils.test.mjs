@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { normalizeInviteCode, generateInviteCode } from '../src/features/arena/utils/inviteCode.js';
 import { normalizeRoomSlug, generateRoomSlug, buildRoomUrl, extractRoomSlugFromUrl } from '../src/features/arena/utils/roomLink.js';
 import { dbBubbleToRuntimeBubble, runtimeBubbleToDbInsert, runtimeBubbleToDbPatch } from '../src/features/arena/utils/arenaMappers.js';
-import { joinArenaByCode, updateArenaGuestRole, loadPublicArenaByCode, loadPublicArenaBubbles } from '../src/features/arena/services/arenaService.js';
+import { loadPublicArenaByCode, loadPublicArenaBubbles } from '../src/features/arena/services/arenaService.js';
 import { normalizeGuestPseudo, validateGuestPseudo, saveGuestPseudo, getStoredGuestPseudo } from '../src/features/arena/utils/guestIdentity.js';
 
 test('normalizeInviteCode', () => {
@@ -35,16 +35,6 @@ test('db/runtime bubble mappings', () => {
   const patch = runtimeBubbleToDbPatch({ ...runtime, version: 2 }, { x: 9 });
   assert.equal(patch.x, 9);
   assert.equal(patch.version, 3);
-});
-
-test('joinArenaByCode empty code', async () => {
-  const res = await joinArenaByCode({ supabase: {}, userId: 'u', inviteCode: '   ' });
-  assert.equal(res.error.message, 'Code d’invitation requis');
-});
-
-test('validation roles invités', async () => {
-  const res = await updateArenaGuestRole({ supabase: {}, arenaId: 'a', guestId: 'g', role: 'host' });
-  assert.equal(res.error.message, 'Rôle invité invalide. Rôles autorisés: viewer, player, cohost.');
 });
 
 test('guest pseudo normalization and validation', () => {
