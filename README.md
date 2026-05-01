@@ -171,3 +171,5 @@ Flux:
 4. Les bulles sont synchronisées via `arena_bubbles` (realtime filtré par `arena_id`).
 
 `arena.id` est un identifiant interne et n’est jamais partagé à l’utilisateur.
+
+- Les invités rejoignent par lien direct et choisissent un pseudo. Le pseudo est visible par l’hôte et sert à gérer les rôles dans la room.

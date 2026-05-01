@@ -3,7 +3,8 @@ import { BUBBLE_COLORS, HALO_STYLE_LIBRARY } from './constants/uiConstants';
 import { collectLegacyDomRefs } from './domRefs';
 import { buildDedicatedRoomLink, createMultiplayerRoomSession } from '../../multiplayer/session/roomSession';
 import { normalizeInviteCode } from '../../arena/utils/inviteCode.js';
-import { createArena, joinArenaByCode } from '../../arena/services/arenaService.js';
+import { createArena, joinArenaByCode, joinRoomAsGuest } from '../../arena/services/arenaService.js';
+import { getOrCreateGuestIdentity, getStoredGuestPseudo, saveGuestPseudo, normalizeGuestPseudo, validateGuestPseudo } from '../../arena/utils/guestIdentity.js';
 
 export function initLegacyApp() {
   const experienceRoot = document.getElementById('experienceView');
@@ -27,7 +28,7 @@ export function initLegacyApp() {
             authCredentialsBlock, authSignInBtn, authSignUpBtn, authSignOutBtn, authStatus, authSessionInfo,
             createArenaBtn, inviteArenaBtn, joinArenaBtn, arenaInviteCodeInput, arenaSessionStatus,
             arenaInvitePreview, arenaInvitePreviewCode, arenaCopyInviteBtn, arenaShareInviteBtn,
-            arenaSessionBadge, arenaDebugLog, profileDisplayName, profileBioText, profileEditBtn,
+            arenaSessionBadge, guestEntryModal, guestPseudoInput, guestPseudoError, guestEnterRoomBtn, arenaDebugLog, profileDisplayName, profileBioText, profileEditBtn,
             profileEditPanel, profileNameInput, profileBioInput, profileSaveBtn, profileCancelBtn,
             dbConnectionStatus, storeCatalog, sessionHistoryList, silenceSessionList,
           } = collectLegacyDomRefs();
@@ -2777,8 +2778,36 @@ export function initLegacyApp() {
           renderSessionHistory();
           renderArenaSessionBadge();
           refreshArenaInviteButton();
+          async function promptGuestEntryForRoom(roomSlug) {
+              if (!guestEntryModal || !guestPseudoInput || !guestEnterRoomBtn) return false;
+              guestEntryModal.hidden = false;
+              const storedPseudo = getStoredGuestPseudo({ roomSlug });
+              guestPseudoInput.value = storedPseudo || '';
+              guestPseudoInput.focus();
+              return await new Promise((resolve) => {
+                  const submit = async () => {
+                      const checked = validateGuestPseudo(guestPseudoInput.value);
+                      if (!checked.ok) {
+                          if (guestPseudoError) guestPseudoError.textContent = checked.reason;
+                          return;
+                      }
+                      const pseudo = normalizeGuestPseudo(checked.value);
+                      const guestIdentity = getOrCreateGuestIdentity();
+                      saveGuestPseudo({ roomSlug, pseudo });
+                      const client = buildSupabaseClient();
+                      const joinResult = await joinRoomAsGuest({ supabase: client, roomSlug, guestIdentity, pseudo });
+                      if (joinResult.error) {
+                          if (guestPseudoError) guestPseudoError.textContent = joinResult.error.message || 'Impossible de rejoindre la room.';
+                          return;
+                      }
+                      guestEntryModal.hidden = true;
+                      resolve(true);
+                  };
+                  guestEnterRoomBtn.onclick = submit;
+              });
+          }
           const inviteParams = new URLSearchParams(window.location.search);
-          const inviteCodeFromUrl = normalizeInviteCode(inviteParams.get('arenaInvite') || inviteParams.get('invite') || '');
+          const inviteCodeFromUrl = normalizeInviteCode(inviteParams.get('room') || inviteParams.get('arenaInvite') || inviteParams.get('invite') || '');
           const inviteGuestFlag = inviteParams.get('guest') === '1' || inviteParams.get('guest') === 'true';
           if (inviteCodeFromUrl) {
               const invitedArenaId = `room-${inviteCodeFromUrl.toLowerCase()}`;
@@ -2787,9 +2816,12 @@ export function initLegacyApp() {
               setCurrentArena(invitedArenaId, inviteCodeFromUrl).catch(() => {});
               if (arenaInviteCodeInput) arenaInviteCodeInput.value = inviteCodeFromUrl;
               renderArenaInvitePreview(inviteCodeFromUrl);
-              setArenaSessionStatus(`Invitation détectée ✅ Entrée directe dans la room ${inviteCodeFromUrl}.`);
-              showView('experience');
-              ensureAllAudioRunning();
+              promptGuestEntryForRoom(inviteCodeFromUrl).then((ok) => {
+                  if (!ok) return;
+                  setArenaSessionStatus(`Invitation détectée ✅ Entrée directe dans la room ${inviteCodeFromUrl}.`);
+                  showView('experience');
+                  ensureAllAudioRunning();
+              });
           }
           restoreSession();
 

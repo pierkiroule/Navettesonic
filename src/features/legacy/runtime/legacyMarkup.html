@@ -68,6 +68,16 @@
     </section>
 
     <section id="experienceView" class="view hidden-view">
+        <div id="guestEntryModal" class="soon-modal" hidden>
+            <div class="soon-modal__content">
+                <h3>Rejoindre la room</h3>
+                <p>Entrez votre pseudo pour rejoindre la room</p>
+                <p class="muted">Aucun compte requis.</p>
+                <input id="guestPseudoInput" type="text" placeholder="Votre pseudo" maxlength="24" />
+                <p id="guestPseudoError" class="muted"></p>
+                <button id="guestEnterRoomBtn" class="immersion-btn" type="button">Entrer dans la room</button>
+            </div>
+        </div>
         <div id="ui"></div>
         <div id="arenaSessionBadge" class="arena-session-badge" aria-live="polite">Arène: solo · 1 participant</div>
         <div id="silenceDesYeuxOverlay" aria-live="polite" aria-atomic="true" hidden>
