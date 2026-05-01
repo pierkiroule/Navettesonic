@@ -111,65 +111,15 @@ Le profil est simplifié autour de 3 besoins : auth (connexion/inscription/sessi
 - `public.user_profile_collections` (RLS): synchronise les expériences achetées.
 - `public.echohypnose_session_history` (RLS): stocke l’historique horodaté des sessions achetées.
 
-### Gestion multiutilisateur (arènes partagées)
+## Multiutilisateur simplifié par lien direct
 
-L’interface affiche la section **Gestion multiutilisateur** avec :
-
-#### Mode simple (sans se soucier des IDs techniques)
-
-Le multiutilisateur repose sur un **code court** (ex: `ABC-123`).
-L’ID Supabase (UUID) de l’arène est interne et ne doit pas être utilisé côté utilisateur.
-
-1. **Hôte**: clique **Partager mon arène**.
-2. **Hôte**: partage uniquement le **code d’invitation** affiché.
-3. **Invité**: clique **Rejoindre**, colle le code, valide.
-
-Astuce UI: le badge affiche `Arène partagée: ...`. Si aucun code n’est prêt, il affiche `code non généré`.
-
-
-- Création d’arène
-- Rejoindre via code (`ABC-123`)
-- Invitation d’un proche depuis une arène active
-
-Si le message suivant apparaît :
-
-> `Arène indisponible: tables Supabase manquantes. Lance les migrations puis réessaie.`
-
-cela signifie que les migrations SQL de `supabase/migrations/` n’ont pas encore été appliquées sur votre projet Supabase cible.
-
-#### Commandes de correction (local)
-
-```bash
-supabase link --project-ref <SUPABASE_PROJECT_ID>
-supabase db push
-```
-
-Puis rechargez l’application et réessayez **Créer mon arène** ou **Rejoindre**.
-
-
-#### Vérification post-migration (Soonbase)
-
-Après `supabase db push`, vous pouvez vérifier la structure attendue avec:
-
-```bash
-supabase db query < supabase/scripts/verify_soonbase_schema.sql
-```
-
-Le résultat doit indiquer aucune table/colonne manquante et RPC `accept_arena_invite` présente.
-
-
-## Multiutilisateur (schéma cible)
-
-Le flux principal utilise uniquement `public.arenas`, `public.arena_participants` et `public.arena_bubbles`.
-
-Tables legacy `soon_*` conservées en base mais **non utilisées** dans le flux principal.
-
-Flux:
-1. L’hôte crée une arène (`arenas`) et reçoit `invite_code`.
-2. L’invité rejoint via ce `invite_code` (sans table d’invitation séparée).
-3. Les participants sont upsertés dans `arena_participants`.
-4. Les bulles sont synchronisées via `arena_bubbles` (realtime filtré par `arena_id`).
-
-`arena.id` est un identifiant interne et n’est jamais partagé à l’utilisateur.
-
-- Les invités rejoignent par lien direct et choisissent un pseudo. Le pseudo est visible par l’hôte et sert à gérer les rôles dans la room.
+- Hôte connecté requis.
+- L’hôte crée une **room offerte**.
+- Lien officiel partagé: `?room=ROOMSLUG`.
+- Invités sans compte (aucun login requis).
+- Pseudo invité obligatoire.
+- Invités stockés dans `public.arena_guests`.
+- Hôte: visibilité des invités + attribution de rôles `viewer` / `player` / `cohost`.
+- V1: invités en lecture seule.
+- Tables actives: `public.arenas`, `public.arena_bubbles`, `public.arena_participants`, `public.arena_guests`.
+- Tables `soon_*`: legacy, non utilisées dans le flux principal.

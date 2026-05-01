@@ -1,9 +1,8 @@
 import { SAMPLE_LIBRARY } from './constants/sampleLibrary';
 import { BUBBLE_COLORS, HALO_STYLE_LIBRARY } from './constants/uiConstants';
 import { collectLegacyDomRefs } from './domRefs';
-import { buildDedicatedRoomLink, createMultiplayerRoomSession } from '../../multiplayer/session/roomSession';
-import { normalizeInviteCode } from '../../arena/utils/inviteCode.js';
-import { createArena, joinArenaByCode, joinRoomAsGuest } from '../../arena/services/arenaService.js';
+import { buildRoomUrl, extractRoomSlugFromUrl, normalizeRoomSlug } from '../../arena/utils/roomLink.js';
+import { createHostArena, joinRoomAsGuest } from '../../arena/services/arenaService.js';
 import { getOrCreateGuestIdentity, getStoredGuestPseudo, saveGuestPseudo, normalizeGuestPseudo, validateGuestPseudo } from '../../arena/utils/guestIdentity.js';
 
 export function initLegacyApp() {
@@ -1243,7 +1242,7 @@ export function initLegacyApp() {
           bindTap(createMultiRoomBtn, async () => {
               const ensured = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: false, reuseExisting: false });
               let arenaId = ensured?.arena?.id || null;
-              let inviteCode = normalizeInviteCode(ensured?.arena?.invite_code || '');
+              let inviteCode = normalizeRoomSlug(ensured?.arena?.invite_code || '');
               if (!arenaId || !inviteCode) {
                   const room = createMultiplayerRoomSession();
                   arenaId = room.arenaId;
@@ -1251,7 +1250,7 @@ export function initLegacyApp() {
               }
               await setCurrentArena(arenaId, inviteCode);
               pendingMultiRoomArenaId = arenaId;
-              pendingMultiRoomInviteLink = buildDedicatedRoomLink(inviteCode, { guestMode: true });
+              pendingMultiRoomInviteLink = buildRoomUrl(inviteCode, { guestMode: true });
               if (multiRoomLinkOutput) {
                   multiRoomLinkOutput.textContent = `Lien room admin: ${pendingMultiRoomInviteLink}`;
               }
@@ -1399,6 +1398,14 @@ export function initLegacyApp() {
               arenaSessionBadge.textContent = `Arène partagée: ${arenaLabel} · ${participantCount} ${participantLabel}${syncLabel}`;
           }
 
+          function canHostEditBubbles() {
+              return currentArenaRole === 'host';
+          }
+
+          function notifyGuestReadOnlyMode() {
+              if (!canHostEditBubbles()) setArenaSessionStatus('Mode invité : lecture seule.', true);
+          }
+
           function isArenaPermissionDeniedError(error) {
               if (!error) return false;
               if (error.code === '42501') return true;
@@ -1439,7 +1446,7 @@ export function initLegacyApp() {
                   return `Invitation invalide: colonnes obligatoires manquantes.${errorCode}`;
               }
               if (message.includes('column') && message.includes('does not exist')) {
-                  return `Schéma soon_arena_invites invalide: colonne manquante.${errorCode}`;
+                  return `Schéma d'invitation invalide: colonne manquante.${errorCode}`;
               }
               return `Invitation impossible: ${error.message || 'erreur SQL inconnue'}${errorCode}`;
           }
@@ -1455,22 +1462,22 @@ export function initLegacyApp() {
           }
 
           function buildArenaInviteShareText(code) {
-              const safeCode = normalizeInviteCode(code || currentArenaInviteCode || '');
-              const inviteLink = buildDedicatedRoomLink(safeCode, { guestMode: true });
+              const safeCode = normalizeRoomSlug(code || currentArenaInviteCode || '');
+              const inviteLink = buildRoomUrl(safeCode, { guestMode: true });
               return `Rejoins ma room Soon ✨\n${inviteLink}\nColle simplement ce lien dans ton navigateur.`;
           }
 
           function renderArenaInvitePreview(rawCode) {
-              const code = normalizeInviteCode(rawCode || currentArenaInviteCode || '');
+              const code = normalizeRoomSlug(rawCode || currentArenaInviteCode || '');
               if (!arenaInvitePreview) return;
               const hasCode = Boolean(code);
               arenaInvitePreview.hidden = !hasCode;
               if (!hasCode) return;
-              if (arenaInvitePreviewCode) arenaInvitePreviewCode.textContent = buildDedicatedRoomLink(code, { guestMode: true });
+              if (arenaInvitePreviewCode) arenaInvitePreviewCode.textContent = buildRoomUrl(code, { guestMode: true });
           }
 
           async function copyArenaInviteToClipboard() {
-              const code = normalizeInviteCode(arenaInviteCodeInput?.value || currentArenaInviteCode || '');
+              const code = normalizeRoomSlug(arenaInviteCodeInput?.value || currentArenaInviteCode || '');
               if (!code) {
                   setArenaSessionStatus('Aucun code à copier pour le moment.', true);
                   return;
@@ -1485,7 +1492,7 @@ export function initLegacyApp() {
           }
 
           async function shareArenaInvite() {
-              const code = normalizeInviteCode(arenaInviteCodeInput?.value || currentArenaInviteCode || '');
+              const code = normalizeRoomSlug(arenaInviteCodeInput?.value || currentArenaInviteCode || '');
               if (!code) {
                   setArenaSessionStatus('Aucun code à partager pour le moment.', true);
                   return;
@@ -1634,7 +1641,7 @@ export function initLegacyApp() {
               }
               // Référence conservée pour compatibilité outillage/tests de correspondance schéma.
               // Ne pilote plus le flux principal room invité.
-              if (false) await client.rpc('accept_arena_invite', { p_token: '__legacy_disabled__' });
+              
               const result = { ok: missing.length === 0, missing: Array.from(new Set(missing)), details, checkedAt: now };
               soonbaseSchemaHealth = result;
               if (!silent) {
@@ -2589,7 +2596,7 @@ export function initLegacyApp() {
               }
               const client = buildSupabaseClient();
               if (!client) return;
-              const inviteCode = normalizeInviteCode(arenaInviteCodeInput?.value || '');
+              const inviteCode = normalizeRoomSlug(arenaInviteCodeInput?.value || '');
               if (!inviteCode || inviteCode.length < 7) {
                   setArenaSessionStatus('Code invalide: entre un code au format ABC-123.', true);
                   return;
@@ -2698,7 +2705,7 @@ export function initLegacyApp() {
                   setArenaSessionStatus('Impossible de préparer ton arène pour l’invitation.', true);
                   return;
               }
-              const inviteCode = normalizeInviteCode(ensured.arena.invite_code || currentArenaInviteCode || '');
+              const inviteCode = normalizeRoomSlug(ensured.arena.invite_code || currentArenaInviteCode || '');
               if (!inviteCode) {
                   setArenaSessionStatus('Code d’invitation introuvable pour cette arène.', true);
                   return;
@@ -2789,7 +2796,7 @@ export function initLegacyApp() {
               arenaInviteCodeInput.setAttribute('aria-label', 'Lien d’invitation');
           }
           arenaInviteCodeInput?.addEventListener('input', () => {
-              const normalized = normalizeInviteCode(arenaInviteCodeInput.value);
+              const normalized = normalizeRoomSlug(arenaInviteCodeInput.value);
               if (arenaInviteCodeInput.value !== normalized) {
                   arenaInviteCodeInput.value = normalized;
               }
@@ -2832,7 +2839,7 @@ export function initLegacyApp() {
               });
           }
           const inviteParams = new URLSearchParams(window.location.search);
-          const inviteCodeFromUrl = normalizeInviteCode(inviteParams.get('room') || inviteParams.get('arenaInvite') || inviteParams.get('invite') || '');
+          const inviteCodeFromUrl = normalizeRoomSlug(inviteParams.get('room') || inviteParams.get('arenaInvite') || inviteParams.get('invite') || '');
           if (inviteCodeFromUrl) {
               const invitedArenaId = `room-${inviteCodeFromUrl.toLowerCase()}`;
               isInviteGuestMode = true;
@@ -4127,6 +4134,7 @@ export function initLegacyApp() {
 
           cancelBtn.addEventListener('click', closeBubblePanel);
           dropBtn.addEventListener('click', async () => {
+              if (!canHostEditBubbles()) { notifyGuestReadOnlyMode(); return; }
               const sample = SAMPLE_LIBRARY.find(s => s.id === selectedSampleId);
               if (!sample) return;
               const bubble = buildSoundBubble(sample, bubbleLayer.value, selectedHaloStyleId);
@@ -4787,6 +4795,7 @@ export function initLegacyApp() {
           }
 
           async function pushBubblePatchToDb(bubble, partialPatch = {}, immediate = false) {
+              if (!canHostEditBubbles()) return;
               if (isApplyingRemoteArenaSyncEvent || isHydratingArenaBubbles) return;
               if (!bubble?.id) return;
               const client = buildSupabaseClient();
@@ -4853,6 +4862,7 @@ export function initLegacyApp() {
           }
 
           async function deleteBubbleInDb(bubble) {
+              if (!canHostEditBubbles()) { notifyGuestReadOnlyMode(); return false; }
               if (isApplyingRemoteArenaSyncEvent || isHydratingArenaBubbles) return;
               if (!bubble?.id) return false;
               const client = buildSupabaseClient();
