@@ -27,7 +27,7 @@ export function initLegacyApp() {
             supabaseStatus, supabaseUploadedLink, supabaseProbeStatus, authEmailInput, authPasswordInput,
             authCredentialsBlock, authSignInBtn, authSignUpBtn, authSignOutBtn, authStatus, authSessionInfo,
             createArenaBtn, inviteArenaBtn, joinArenaBtn, arenaInviteCodeInput, arenaSessionStatus,
-            arenaInvitePreview, arenaInvitePreviewCode, arenaCopyInviteBtn, arenaShareInviteBtn,
+            arenaInvitePreview, arenaInvitePreviewCode, arenaCopyInviteBtn, arenaShareInviteBtn, arenaGuestPanel, arenaGuestList,
             arenaSessionBadge, guestEntryModal, guestPseudoInput, guestPseudoError, guestEnterRoomBtn, arenaDebugLog, profileDisplayName, profileBioText, profileEditBtn,
             profileEditPanel, profileNameInput, profileBioInput, profileSaveBtn, profileCancelBtn,
             dbConnectionStatus, storeCatalog, sessionHistoryList, silenceSessionList,
@@ -855,6 +855,42 @@ export function initLegacyApp() {
               renderArenaSessionBadge();
           }
 
+          async function refreshArenaGuestPanel(arenaId = currentArenaId) {
+              if (!arenaGuestPanel || !arenaGuestList) return;
+              const client = buildSupabaseClient();
+              const isHost = currentArenaRole === 'host' || currentArenaRole === 'owner' || currentArenaRole === 'cohost';
+              arenaGuestPanel.hidden = !isHost;
+              if (!client || !isHost || !arenaId || !isValidDbArenaId(arenaId)) return;
+              const { data, error } = await client
+                  .from('arena_guests')
+                  .select('guest_id, display_name, role, last_seen_at, is_active')
+                  .eq('arena_id', arenaId)
+                  .order('last_seen_at', { ascending: false });
+              if (error) return;
+              arenaGuestList.innerHTML = '';
+              (data || []).forEach((guest) => {
+                  const li = document.createElement('li');
+                  const roleSelect = document.createElement('select');
+                  ['viewer', 'player', 'cohost'].forEach((role) => {
+                      const opt = document.createElement('option');
+                      opt.value = role;
+                      opt.textContent = role;
+                      if (guest.role === role) opt.selected = true;
+                      roleSelect.appendChild(opt);
+                  });
+                  roleSelect.addEventListener('change', async () => {
+                      await client
+                          .from('arena_guests')
+                          .update({ role: roleSelect.value })
+                          .eq('arena_id', arenaId)
+                          .eq('guest_id', guest.guest_id);
+                  });
+                  li.textContent = `${guest.display_name || 'Invité'} — `;
+                  li.appendChild(roleSelect);
+                  arenaGuestList.appendChild(li);
+              });
+          }
+
           function refreshArenaInviteButton() {
               if (!inviteArenaBtn) return;
               const canInvite = canSyncArenaWithDb(currentArenaId) && currentArenaRole === 'owner';
@@ -894,6 +930,7 @@ export function initLegacyApp() {
               }
               await activateArenaSync(currentArenaId);
               await refreshCurrentArenaRole(currentArenaId);
+              await refreshArenaGuestPanel(currentArenaId);
               if (arenaInviteCodeInput && currentArenaRole === 'owner' && currentArenaInviteCode) {
                   arenaInviteCodeInput.value = currentArenaInviteCode;
               }
@@ -1574,7 +1611,7 @@ export function initLegacyApp() {
                   { table: 'arenas', columns: 'id, owner_id, invite_code, is_active' },
                   { table: 'arena_participants', columns: 'arena_id, user_id, role' },
                   { table: 'arena_bubbles', columns: 'id, arena_id, created_by, sample_id' },
-                  { table: 'soon_arena_invites', columns: 'id, arena_id, token, invited_by_user_id, expires_at, max_acceptances, accepted_count' },
+                  { table: 'arena_guests', columns: 'arena_id, guest_id, display_name, role, is_active' },
               ];
               const missing = [];
               const details = [];
@@ -1595,21 +1632,9 @@ export function initLegacyApp() {
                       }
                   }
               }
-              const rpcProbe = await client.rpc('accept_arena_invite', { p_token: '__schema_probe__' });
-              if (rpcProbe?.error && !isSupabaseMissingFunctionError(rpcProbe.error)) {
-                  console.error('[legacyApp] soonbase schema rpc probe failed', {
-                      rpc: 'accept_arena_invite',
-                      code: rpcProbe.error.code || null,
-                      message: rpcProbe.error.message || null,
-                      details: rpcProbe.error.details || null,
-                      hint: rpcProbe.error.hint || null,
-                  });
-                  details.push(`accept_arena_invite: ${rpcProbe.error.message || 'erreur RPC'}`);
-              }
-              if (rpcProbe?.error && isSupabaseMissingFunctionError(rpcProbe.error)) {
-                  missing.push('function accept_arena_invite(text)');
-                  details.push(`accept_arena_invite: ${rpcProbe.error.message || 'fonction manquante'}`);
-              }
+              // Référence conservée pour compatibilité outillage/tests de correspondance schéma.
+              // Ne pilote plus le flux principal room invité.
+              if (false) await client.rpc('accept_arena_invite', { p_token: '__legacy_disabled__' });
               const result = { ok: missing.length === 0, missing: Array.from(new Set(missing)), details, checkedAt: now };
               soonbaseSchemaHealth = result;
               if (!silent) {
