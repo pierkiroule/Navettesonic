@@ -1,0 +1,52 @@
+import { generateInviteCode, normalizeInviteCode } from '../utils/inviteCode.js';
+import { dbBubbleToRuntimeBubble, runtimeBubbleToDbInsert, runtimeBubbleToDbPatch } from '../utils/arenaMappers.js';
+
+const fail = (message, details = null) => ({ data: null, error: { message, details } });
+const ok = (data) => ({ data, error: null });
+
+export async function getArenaByInviteCode({ supabase, inviteCode }) {
+  const code = normalizeInviteCode(inviteCode);
+  if (!supabase) return fail('Multiutilisateur indisponible : connexion Supabase requise.');
+  if (!code) return fail('Arène introuvable');
+  const { data, error } = await supabase.from('arenas').select('*').eq('invite_code', code).eq('is_active', true).maybeSingle();
+  if (error) return fail(error.message, error);
+  if (!data) return fail('Arène introuvable');
+  return ok(data);
+}
+export async function getArenaById({ supabase, arenaId }) { return supabase ? ok((await supabase.from('arenas').select('*').eq('id', arenaId).maybeSingle()).data) : fail('Multiutilisateur indisponible : connexion Supabase requise.'); }
+export async function touchParticipant({ supabase, arenaId, userId, role = 'participant' }) {
+  if (!userId) return fail('Connexion requise');
+  const { error } = await supabase.from('arena_participants').upsert({ arena_id: arenaId, user_id: userId, role, last_seen_at: new Date().toISOString() }, { onConflict: 'arena_id,user_id' });
+  return error ? fail(error.message, error) : ok(true);
+}
+export async function createArena({ supabase, userId, title }) {
+  if (!supabase) return fail('Multiutilisateur indisponible : connexion Supabase requise.');
+  if (!userId) return fail('Connexion requise');
+  for (let i = 0; i < 5; i += 1) {
+    const invite_code = generateInviteCode();
+    const { data, error } = await supabase.from('arenas').insert({ owner_id: userId, invite_code, title: title || 'Mon arène', status: 'waiting', is_active: true }).select('*').single();
+    if (error?.code === '23505') continue;
+    if (error) return fail(error.message, error);
+    await touchParticipant({ supabase, arenaId: data.id, userId, role: 'host' });
+    return ok(data);
+  }
+  return fail('Impossible de générer un code unique');
+}
+export async function joinArenaByCode({ supabase, userId, inviteCode }) {
+  if (!supabase) return fail('Multiutilisateur indisponible : connexion Supabase requise.');
+  if (!userId) return fail('Connexion requise');
+  const code = normalizeInviteCode(inviteCode);
+  if (!code) return fail('Code d’invitation requis');
+  const arenaRes = await getArenaByInviteCode({ supabase, inviteCode: code });
+  if (arenaRes.error) return arenaRes;
+  const touch = await touchParticipant({ supabase, arenaId: arenaRes.data.id, userId, role: 'participant' });
+  if (touch.error) return touch;
+  return ok(arenaRes.data);
+}
+export async function listArenaParticipants({ supabase, arenaId }) { const { data, error } = await supabase.from('arena_participants').select('*').eq('arena_id', arenaId); return error ? fail(error.message, error) : ok(data || []); }
+export async function listArenaBubbles({ supabase, arenaId }) { const { data, error } = await supabase.from('arena_bubbles').select('*').eq('arena_id', arenaId); return error ? fail(error.message, error) : ok((data || []).map(dbBubbleToRuntimeBubble)); }
+export async function createArenaBubble({ supabase, arenaId, userId, bubble }) { const { data, error } = await supabase.from('arena_bubbles').insert(runtimeBubbleToDbInsert({ arenaId, userId, bubble })).select('*').single(); return error ? fail(error.message, error) : ok(dbBubbleToRuntimeBubble(data)); }
+export async function updateArenaBubble({ supabase, arenaId, bubbleId, patch }) { const { data, error } = await supabase.from('arena_bubbles').update(patch).eq('arena_id', arenaId).eq('id', bubbleId).select('*').single(); return error ? fail(error.message, error) : ok(dbBubbleToRuntimeBubble(data)); }
+export async function deleteArenaBubble({ supabase, arenaId, bubbleId }) { const { error } = await supabase.from('arena_bubbles').delete().eq('arena_id', arenaId).eq('id', bubbleId); return error ? fail(error.message, error) : ok(true); }
+
+export { runtimeBubbleToDbPatch };

@@ -2,6 +2,8 @@ import { SAMPLE_LIBRARY } from './constants/sampleLibrary';
 import { BUBBLE_COLORS, HALO_STYLE_LIBRARY } from './constants/uiConstants';
 import { collectLegacyDomRefs } from './domRefs';
 import { buildDedicatedRoomLink, createMultiplayerRoomSession } from '../../multiplayer/session/roomSession';
+import { normalizeInviteCode } from '../../arena/utils/inviteCode.js';
+import { createArena, joinArenaByCode } from '../../arena/services/arenaService.js';
 
 export function initLegacyApp() {
   const experienceRoot = document.getElementById('experienceView');
@@ -835,7 +837,7 @@ export function initLegacyApp() {
                   return;
               }
               const { count, error } = await client
-                  .from('soon_arena_members')
+                  .from('arena_participants')
                   .select('user_id', { count: 'exact', head: true })
                   .eq('arena_id', arenaId);
               if (error) {
@@ -866,7 +868,7 @@ export function initLegacyApp() {
                   return;
               }
               const { data, error } = await client
-                  .from('soon_arena_members')
+                  .from('arena_participants')
                   .select('role')
                   .eq('arena_id', arenaId)
                   .eq('user_id', currentSession.user.id)
@@ -1232,7 +1234,7 @@ export function initLegacyApp() {
               const client = buildSupabaseClient();
               isPendingMultiRoomClosed = !isPendingMultiRoomClosed;
               if (client && canSyncArenaWithDb(pendingMultiRoomArenaId)) {
-                  await client.from('soon_arenas').update({ is_closed: isPendingMultiRoomClosed }).eq('id', pendingMultiRoomArenaId);
+                  await client.from('arenas').update({ is_closed: isPendingMultiRoomClosed }).eq('id', pendingMultiRoomArenaId);
               }
               if (toggleRoomAccessBtn) {
                   toggleRoomAccessBtn.textContent = isPendingMultiRoomClosed ? "Ouvrir l'accès invités" : "Fermer l'accès invités";
@@ -1400,16 +1402,6 @@ export function initLegacyApp() {
               return `Invitation impossible: ${error.message || 'erreur SQL inconnue'}${errorCode}`;
           }
 
-          function normalizeInviteCode(rawCode) {
-              return (rawCode || '')
-                  .toString()
-                  .trim()
-                  .toUpperCase()
-                  .replace(/[^A-Z0-9]/g, '')
-                  .slice(0, 6)
-                  .replace(/^(.{3})(.{0,3}).*$/, (_, a, b) => b ? `${a}-${b}` : a);
-          }
-
           function generateReadableInviteCode() {
               const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
               let code = '';
@@ -1573,9 +1565,9 @@ export function initLegacyApp() {
                   return soonbaseSchemaHealth;
               }
               const checks = [
-                  { table: 'soon_arenas', columns: 'id, owner_user_id, invite_code, is_active' },
-                  { table: 'soon_arena_members', columns: 'arena_id, user_id, role' },
-                  { table: 'soon_arena_bubbles', columns: 'id, arena_id, created_by_user_id, sample_id' },
+                  { table: 'arenas', columns: 'id, owner_id, invite_code, is_active' },
+                  { table: 'arena_participants', columns: 'arena_id, user_id, role' },
+                  { table: 'arena_bubbles', columns: 'id, arena_id, created_by, sample_id' },
                   { table: 'soon_arena_invites', columns: 'id, arena_id, token, invited_by_user_id, expires_at, max_acceptances, accepted_count' },
               ];
               const missing = [];
@@ -2015,10 +2007,10 @@ export function initLegacyApp() {
               if (!client || !arenaId || !currentSession?.user?.id) return { ok: false, error: new Error('missing context') };
               const userId = currentSession.user.id;
               const { data: existingBubble, error: existingBubbleError } = await client
-                  .from('soon_arena_bubbles')
+                  .from('arena_bubbles')
                   .select('id')
                   .eq('arena_id', arenaId)
-                  .eq('created_by_user_id', userId)
+                  .eq('created_by', userId)
                   .limit(1)
                   .maybeSingle();
               if (existingBubbleError) return { ok: false, error: existingBubbleError };
@@ -2026,7 +2018,7 @@ export function initLegacyApp() {
 
               const guestBubblePayload = {
                   arena_id: arenaId,
-                  created_by_user_id: userId,
+                  created_by: userId,
                   sample_id: SAMPLE_LIBRARY[0]?.id || 'unknown-sample',
                   label: `Invité ${String(userId).slice(0, 6)}`,
                   x: 0.5,
@@ -2048,13 +2040,13 @@ export function initLegacyApp() {
 
           function canCurrentUserControlBubble(bubble) {
               if (!bubble || !currentSession?.user?.id) return false;
-              return bubble.created_by === currentSession.user.id || bubble.created_by_user_id === currentSession.user.id;
+              return bubble.created_by === currentSession.user.id || bubble.created_by === currentSession.user.id;
           }
 
           async function insertArenaBubbleRow(client, payload, context = {}) {
-              const result = await client.from('soon_arena_bubbles').insert(payload);
+              const result = await client.from('arena_bubbles').insert(payload);
               if (result.error) {
-                  console.warn('[legacyApp] soon_arena_bubbles write failed', {
+                  console.warn('[legacyApp] arena_bubbles write failed', {
                       action: context.action || 'insert',
                       arena_id: context.arena_id || currentArenaId,
                       bubble_id: context.bubble_id || payload?.id || null,
@@ -2066,12 +2058,12 @@ export function initLegacyApp() {
 
           async function updateArenaBubbleRow(client, bubbleId, patch, context = {}) {
               const result = await client
-                  .from('soon_arena_bubbles')
+                  .from('arena_bubbles')
                   .update(patch)
                   .eq('id', bubbleId)
                   .eq('arena_id', context?.arena_id || currentArenaId);
               if (result.error) {
-                  console.warn('[legacyApp] soon_arena_bubbles write failed', {
+                  console.warn('[legacyApp] arena_bubbles write failed', {
                       action: context.action || 'update',
                       arena_id: context.arena_id || currentArenaId,
                       bubble_id: context.bubble_id || bubbleId || null,
@@ -2083,12 +2075,12 @@ export function initLegacyApp() {
 
           async function deleteArenaBubbleRow(client, bubbleId, context = {}) {
               const result = await client
-                  .from('soon_arena_bubbles')
+                  .from('arena_bubbles')
                   .delete()
                   .eq('id', bubbleId)
                   .eq('arena_id', context?.arena_id || currentArenaId);
               if (result.error) {
-                  console.warn('[legacyApp] soon_arena_bubbles write failed', {
+                  console.warn('[legacyApp] arena_bubbles write failed', {
                       action: context.action || 'delete',
                       arena_id: context.arena_id || currentArenaId,
                       bubble_id: context.bubble_id || bubbleId || null,
@@ -2218,9 +2210,9 @@ export function initLegacyApp() {
               let existingArena = null;
               if (reuseExisting) {
                   const { data, error: existingArenaError } = await client
-                      .from('soon_arenas')
+                      .from('arenas')
                       .select('id, invite_code, created_at')
-                      .eq('owner_user_id', userId)
+                      .eq('owner_id', userId)
                       .order('created_at', { ascending: false })
                       .limit(1)
                       .maybeSingle();
@@ -2251,9 +2243,9 @@ export function initLegacyApp() {
                   attempt += 1;
                   const inviteCode = generateReadableInviteCode();
                   const { data, error } = await client
-                      .from('soon_arenas')
+                      .from('arenas')
                       .insert({
-                          owner_user_id: userId,
+                          owner_id: userId,
                           invite_code: inviteCode,
                           title: `Arène de ${getSavedProfileIdentity().displayName}`
                       })
@@ -2280,10 +2272,10 @@ export function initLegacyApp() {
                   return null;
               }
 
-              const ownerMembership = await client.from('soon_arena_members').insert({
+              const ownerMembership = await client.from('arena_participants').insert({
                   arena_id: createdArena.id,
                   user_id: userId,
-                  role: 'owner'
+                  role: 'host'
               });
               if (ownerMembership.error && ownerMembership.error.code !== '23505') {
                   if (!silent) {
@@ -2606,7 +2598,7 @@ export function initLegacyApp() {
               }
 
               const { data: arenaRow, error: arenaLookupError } = await client
-                  .from('soon_arenas')
+                  .from('arenas')
                   .select('*')
                   .eq('invite_code', inviteCode)
                   .maybeSingle();
@@ -2632,10 +2624,10 @@ export function initLegacyApp() {
                   return;
               }
 
-              const { error: joinError } = await client.from('soon_arena_members').insert({
+              const { error: joinError } = await client.from('arena_participants').insert({
                   arena_id: arenaRow.id,
                   user_id: currentSession.user.id,
-                  role: 'editor'
+                  role: 'participant'
               });
               if (joinError && joinError.code !== '23505') {
                   logArenaProfileDiagnostic('joinArena.members_insert_error', { inviteCode, code: joinError.code || null, message: joinError.message || null }, true);
@@ -4690,7 +4682,7 @@ export function initLegacyApp() {
               }
               bubble._version = getRowVersion(row);
               bubble.playerNumber = Number.isFinite(Number(row.player_number)) ? Number(row.player_number) : null;
-              bubble.created_by = row.created_by || row.created_by_user_id || bubble.created_by || null;
+              bubble.created_by = row.created_by || row.created_by || bubble.created_by || null;
               setKnownBubbleVersion(bubble.id, bubble._version);
           }
 
@@ -4797,11 +4789,11 @@ export function initLegacyApp() {
               isHydratingArenaBubbles = true;
               try {
                   const { data, error } = await client
-                      .from('soon_arena_bubbles')
+                      .from('arena_bubbles')
                       .select('*')
                       .eq('arena_id', currentArenaId);
                   if (error) {
-                      console.warn('[legacyApp] soon_arena_bubbles initial fetch failed', error);
+                      console.warn('[legacyApp] arena_bubbles initial fetch failed', error);
                       if (!BUBBLES.length) placeInitialArenaBubbles();
                       return;
                   }
@@ -4828,7 +4820,7 @@ export function initLegacyApp() {
                   .on('postgres_changes', {
                       event: '*',
                       schema: 'public',
-                      table: 'soon_arena_bubbles',
+                      table: 'arena_bubbles',
                       filter: `arena_id=eq.${currentArenaId}`,
                   }, ({ eventType, new: newRow, old: oldRow }) => {
                       isApplyingRemoteArenaSyncEvent = true;

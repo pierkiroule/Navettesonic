@@ -156,3 +156,18 @@ supabase db query < supabase/scripts/verify_soonbase_schema.sql
 ```
 
 Le résultat doit indiquer aucune table/colonne manquante et RPC `accept_arena_invite` présente.
+
+
+## Multiutilisateur (schéma cible)
+
+Le flux principal utilise uniquement `public.arenas`, `public.arena_participants` et `public.arena_bubbles`.
+
+Tables legacy `soon_*` conservées en base mais **non utilisées** dans le flux principal.
+
+Flux:
+1. L’hôte crée une arène (`arenas`) et reçoit `invite_code`.
+2. L’invité rejoint via ce `invite_code` (sans table d’invitation séparée).
+3. Les participants sont upsertés dans `arena_participants`.
+4. Les bulles sont synchronisées via `arena_bubbles` (realtime filtré par `arena_id`).
+
+`arena.id` est un identifiant interne et n’est jamais partagé à l’utilisateur.
