@@ -2,7 +2,7 @@ import { SAMPLE_LIBRARY } from './constants/sampleLibrary';
 import { BUBBLE_COLORS, HALO_STYLE_LIBRARY } from './constants/uiConstants';
 import { collectLegacyDomRefs } from './domRefs';
 import { buildRoomUrl, extractRoomSlugFromUrl, generateRoomSlug, normalizeRoomSlug } from '../../arena/utils/roomLink.js';
-import { createHostArena, joinRoomAsGuest } from '../../arena/services/arenaService.js';
+import { createHostArena, loadPublicArenaByCode, loadPublicArenaBubbles } from '../../arena/services/arenaService.js';
 import { getOrCreateGuestIdentity, getStoredGuestPseudo, saveGuestPseudo, normalizeGuestPseudo, validateGuestPseudo } from '../../arena/utils/guestIdentity.js';
 
 export function initLegacyApp() {
@@ -340,6 +340,7 @@ export function initLegacyApp() {
           let currentArenaInviteCode = '';
           let currentArenaParticipants = 1;
           let currentArenaRole = null;
+          let appMode = 'solo';
           let isInviteGuestMode = false;
           let pendingMultiRoomInviteLink = '';
           let pendingMultiRoomArenaId = null;
@@ -1407,7 +1408,7 @@ export function initLegacyApp() {
           }
 
           function canHostEditBubbles() {
-              return currentArenaRole === 'host';
+              return appMode === 'host' || currentArenaRole === 'host';
           }
 
           function notifyGuestReadOnlyMode() {
@@ -2830,53 +2831,31 @@ export function initLegacyApp() {
           renderSessionHistory();
           renderArenaSessionBadge();
           refreshArenaInviteButton();
-          async function promptGuestEntryForRoom(roomSlug) {
-              if (!guestEntryModal || !guestPseudoInput || !guestEnterRoomBtn) return false;
-              guestEntryModal.hidden = false;
-              const storedPseudo = getStoredGuestPseudo({ roomSlug });
-              guestPseudoInput.value = storedPseudo || '';
-              guestPseudoInput.focus();
-              return await new Promise((resolve) => {
-                  const submit = async () => {
-                      const checked = validateGuestPseudo(guestPseudoInput.value);
-                      if (!checked.ok) {
-                          if (guestPseudoError) guestPseudoError.textContent = checked.reason;
-                          return;
-                      }
-                      const pseudo = normalizeGuestPseudo(checked.value);
-                      const guestIdentity = getOrCreateGuestIdentity();
-                      saveGuestPseudo({ roomSlug, pseudo });
-                      const client = buildSupabaseClient();
-                      const joinResult = await joinRoomAsGuest({ supabase: client, roomSlug, guestIdentity, pseudo });
-                      if (joinResult.error) {
-                          if (guestPseudoError) guestPseudoError.textContent = joinResult.error.message || 'Impossible de rejoindre la room.';
-                          return;
-                      }
-                      guestEntryModal.hidden = true;
-                      resolve(joinResult.data?.id || true);
-                  };
-                  guestEnterRoomBtn.onclick = submit;
-              });
-          }
           const inviteParams = new URLSearchParams(window.location.search);
           const inviteCodeFromUrl = extractRoomSlugFromUrl(inviteParams);
           if (inviteCodeFromUrl) {
-              const invitedArenaId = `room-${inviteCodeFromUrl.toLowerCase()}`;
               isInviteGuestMode = true;
-              currentArenaRole = 'guest';
-              showView('experience');
-              setCurrentArena(invitedArenaId, inviteCodeFromUrl).catch(() => {});
+              appMode = 'visitorReadonly';
+              currentArenaRole = 'visitorReadonly';
+              const client = buildSupabaseClient();
+              loadPublicArenaByCode({ supabase: client, inviteCode: inviteCodeFromUrl }).then(async (arenaResult) => {
+                  if (arenaResult.error) {
+                      setArenaSessionStatus('Ce paysage sonore est introuvable ou n’est plus disponible.', true);
+                      return;
+                  }
+                  const arena = arenaResult.data;
+                  await setCurrentArena(arena.id, inviteCodeFromUrl);
+                  const bubblesResult = await loadPublicArenaBubbles({ supabase: client, arenaId: arena.id });
+                  if (!bubblesResult.error) {
+                      BUBBLES.length = 0;
+                      BUBBLES.push(...(bubblesResult.data || []));
+                  }
+                  setArenaSessionStatus('Vous entrez dans un paysage sonore composé. Votre traversée est personnelle.');
+              });
               if (arenaInviteCodeInput) arenaInviteCodeInput.value = inviteCodeFromUrl;
               renderArenaInvitePreview(inviteCodeFromUrl);
-              promptGuestEntryForRoom(inviteCodeFromUrl).then((joinedArenaId) => {
-                  if (!joinedArenaId) return;
-                  if (typeof joinedArenaId === 'string') {
-                      setCurrentArena(joinedArenaId, inviteCodeFromUrl).catch(() => {});
-                  }
-                  setArenaSessionStatus(`Invitation détectée ✅ Entrée directe dans la room ${inviteCodeFromUrl}.`);
-                  showView('experience');
-                  ensureAllAudioRunning();
-              });
+              showView('experience');
+              ensureAllAudioRunning();
           }
           restoreSession();
 

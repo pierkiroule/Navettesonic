@@ -43,6 +43,24 @@ export async function joinArenaByCode({ supabase, userId, inviteCode }) {
   if (touch.error) return touch;
   return ok(arenaRes.data);
 }
+export async function loadPublicArenaByCode({ supabase, inviteCode }) {
+  if (!supabase) return fail('Connexion Supabase requise.');
+  const code = normalizeRoomSlug(inviteCode);
+  if (!code) return fail('Lien de visite invalide.');
+  const { data, error } = await supabase.from('arenas').select('*').eq('invite_code', code).eq('is_active', true).maybeSingle();
+  if (error) return fail(error.message, error);
+  if (!data) return fail('Ce paysage sonore est introuvable ou n’est plus disponible.');
+  return ok(data);
+}
+
+export async function loadPublicArenaBubbles({ supabase, arenaId }) {
+  if (!supabase) return fail('Connexion Supabase requise.');
+  if (!arenaId) return fail('Arène invalide.');
+  const { data, error } = await supabase.from('arena_bubbles').select('*').eq('arena_id', arenaId);
+  if (error) return fail(error.message, error);
+  return ok((data || []).map(dbBubbleToRuntimeBubble));
+}
+
 export async function joinRoomAsGuest({ supabase, roomSlug, guestIdentity, pseudo }) {
   if (!supabase) return fail('Multiutilisateur indisponible : connexion Supabase requise.');
   if (!guestIdentity?.id) return fail('Identité invité invalide');
