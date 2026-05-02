@@ -18,14 +18,14 @@ export function usePublishedArena(roomCode) {
       const arenaResult = await loadPublicArenaByCode({ supabase: supabaseClient, inviteCode: roomCode });
       if (!isMounted) return;
       if (arenaResult.error) {
-        setState({ isLoading: false, arena: null, bubbles: [], error: arenaResult.error.message });
+        setState({ isLoading: false, arena: null, bubbles: [], error: arenaResult.error });
         return;
       }
 
       const bubblesResult = await loadPublicArenaBubbles({ supabase: supabaseClient, arenaId: arenaResult.data.id });
       if (!isMounted) return;
       if (bubblesResult.error) {
-        setState({ isLoading: false, arena: arenaResult.data, bubbles: [], error: bubblesResult.error.message });
+        setState({ isLoading: false, arena: arenaResult.data, bubbles: [], error: bubblesResult.error });
         return;
       }
 
