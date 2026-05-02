@@ -224,61 +224,11 @@
             <header class="profile-hero">
                 <div class="profile-avatar" aria-hidden="true">S°</div>
                 <div class="profile-hero-copy">
-                    <p class="profile-kicker">Ta bulle</p>
-                    <h1>Ta bulle Soon•°</h1>
-                    <p class="profile-sub">Ici, ta présence, tes traversées et tes clés d'accès.</p>
+                    <p class="profile-kicker">hublo•°</p>
+                    <h1>Invitation hublo•°</h1>
+                    <p class="profile-sub">Génère et partage ton lien visiteur en un seul endroit.</p>
                 </div>
-                <button id="profileEditBtn" class="profile-edit-btn" type="button">Éditer mon profil</button>
             </header>
-
-            <div class="profile-grid profile-grid--pro">
-                <article class="card profile-card">
-                    <h3>Présence</h3>
-                    <div class="profile-meta-list">
-                        <p><span>Nom dans l'eau calme</span><strong id="profileDisplayName">Poisson-Plume</strong></p>
-                        <p><span>Souffle du compte</span><strong class="pill">Actif</strong></p>
-                        <p><span>Rythme</span><strong>Standard</strong></p>
-                    </div>
-                    <p class="profile-bio" id="profileBioText">Aucune présentation pour le moment.</p>
-                </article>
-
-                <article class="card profile-card">
-                    <h3>Tes dernières traversées</h3>
-                    <ul class="profile-timeline">
-                        <li><span>Aujourd'hui</span><strong>Entrée dans l'espace</strong></li>
-                        <li><span>Hier</span><strong>Écoute immersive lancée</strong></li>
-                        <li><span>Il y a 3 jours</span><strong>Préférences sonores accordées</strong></li>
-                    </ul>
-                </article>
-
-                <article class="card profile-card">
-                    <h3>Traversées du Silence des Yeux</h3>
-                    <p class="muted">Le fil de tes passages conservés.</p>
-                    <div id="silenceSessionList" class="silence-session-list">
-                        <p class="collection-empty">Le silence te précède encore.</p>
-                    </div>
-                </article>
-            </div>
-
-            <article class="card profile-auth-card">
-                <h3>Clés d'accès</h3>
-                <p>Protège ton accès et poursuis l'expérience sans détour.</p>
-                <div class="stack">
-                    <div id="authCredentialsBlock">
-                        <label class="field-label" for="authEmailInput">Adresse e-mail</label>
-                        <input id="authEmailInput" type="text" placeholder="email@soono.app">
-                        <label class="field-label" for="authPasswordInput">Mot de passe</label>
-                        <input id="authPasswordInput" type="password" placeholder="••••••••">
-                        <div class="auth-row">
-                            <button id="authSignInBtn" type="button">Entrer dans Soon experience</button>
-                            <button id="authSignUpBtn" type="button">Créer mon accès</button>
-                        </div>
-                    </div>
-                    <p id="authStatus" class="status"></p>
-                    <p id="authSessionInfo" class="muted"></p>
-                    <button id="authSignOutBtn" type="button" class="auth-signout-btn" hidden>Se déconnecter</button>
-                </div>
-            </article>
 
             <article class="card profile-auth-card profile-multi-section">
                 <h3>Gestion multiutilisateur</h3>
@@ -306,10 +256,6 @@
                         <ul id="arenaGuestList" class="muted"></ul>
                     </section>
                     <p id="arenaSessionStatus" class="status"></p>
-                    <details id="arenaDebugPanel" class="muted">
-                        <summary>Diagnostic multiutilisateur</summary>
-                        <pre id="arenaDebugLog">Aucun diagnostic pour le moment.</pre>
-                    </details>
                 </div>
             </article>
 
@@ -324,21 +270,29 @@
                 </div>
             </article>
 
-            <article id="profileEditPanel" class="card profile-edit-panel" hidden>
-                <h3>Éditer ton profil</h3>
-                <div class="stack">
-                    <label class="field-label" for="profileNameInput">Pseudo</label>
-                    <input id="profileNameInput" type="text" maxlength="48" placeholder="Poisson-Plume">
-                    <label class="field-label" for="profileBioInput">Présentation</label>
-                    <textarea id="profileBioInput" maxlength="220" rows="4" placeholder="Écris quelques lignes sur ton univers…"></textarea>
-                    <div class="auth-row">
-                        <button id="profileSaveBtn" type="button">Enregistrer</button>
-                        <button id="profileCancelBtn" type="button">Annuler</button>
-                    </div>
-                </div>
-            </article>
-
             <div hidden aria-hidden="true">
+                <strong id="profileDisplayName">Poisson-Plume</strong>
+                <p id="profileBioText">Aucune présentation pour le moment.</p>
+                <button id="profileEditBtn" type="button">Éditer mon profil</button>
+                <article id="profileEditPanel">
+                    <input id="profileNameInput" type="text" maxlength="48" placeholder="Poisson-Plume">
+                    <textarea id="profileBioInput" maxlength="220" rows="4" placeholder="Écris quelques lignes sur ton univers…"></textarea>
+                    <button id="profileSaveBtn" type="button">Enregistrer</button>
+                    <button id="profileCancelBtn" type="button">Annuler</button>
+                </article>
+                <details id="arenaDebugPanel">
+                    <summary>Diagnostic multiutilisateur</summary>
+                    <pre id="arenaDebugLog">Aucun diagnostic pour le moment.</pre>
+                </details>
+                <div id="silenceSessionList" class="silence-session-list"></div>
+                <div id="authCredentialsBlock"></div>
+                <input id="authEmailInput" type="text" placeholder="email@soono.app">
+                <input id="authPasswordInput" type="password" placeholder="••••••••">
+                <button id="authSignInBtn" type="button">Entrer</button>
+                <button id="authSignUpBtn" type="button">Créer</button>
+                <p id="authStatus"></p>
+                <p id="authSessionInfo"></p>
+                <button id="authSignOutBtn" type="button">Se déconnecter</button>
                 <input id="supabaseUrlInput" type="text">
                 <input id="supabaseKeyInput" type="text">
                 <button id="supabaseSaveConfigBtn" type="button">save</button>
