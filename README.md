@@ -141,6 +141,11 @@ src/
 
 ---
 
+
+## Guide de simplification
+
+Un plan opérationnel de simplification progressive (sans casse) est disponible dans `docs/architecture-simplification-plan.md`.
+
 ## Architecture cible
 
 Le runtime legacy reste transitoire.
