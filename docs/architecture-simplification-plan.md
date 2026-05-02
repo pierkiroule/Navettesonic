@@ -101,3 +101,29 @@ src/
 4. UI React native
 5. Suppression code mort
 
+
+## Stratégie de retrait du legacy (routing)
+
+### Situation actuelle (état transitoire)
+- Le routing applicatif est explicite via le pathname :
+  - `/` → landing React
+  - `/editor` → parcours éditeur
+  - `/visitor` → parcours visiteur
+- Le shell legacy n'est plus le fallback par défaut.
+- Le runtime legacy reste accessible uniquement via le flag de compatibilité `?legacy=1` pour rollback rapide.
+
+### Plan de retrait du flag `legacy`
+1. **Phase d'observation (Semaine 1-2)**
+   - Monitorer erreurs frontend et taux d'usage du flag `?legacy=1`.
+   - Corriger en priorité les régressions bloquantes éditeur/visiteur.
+2. **Phase de durcissement (Semaine 3)**
+   - Bloquer l'introduction de nouvelles fonctionnalités dans `LegacyShell`.
+   - Finaliser la parité fonctionnelle sur les flows critiques.
+3. **Phase de suppression (Semaine 4)**
+   - Retirer le branchement `legacy=1` dans `AppRouter`.
+   - Supprimer `LegacyShell` du flux principal et nettoyer les dépendances associées.
+
+### Critères de sortie
+- Aucun incident P1/P2 lié au routing React pendant au moins 7 jours.
+- Taux d'usage de `?legacy=1` proche de zéro sur la période d'observation.
+- Checklist de non-régression hôte/visiteur validée sans recours au legacy.
