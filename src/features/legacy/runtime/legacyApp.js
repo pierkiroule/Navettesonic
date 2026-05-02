@@ -45,7 +45,7 @@ export function initLegacyApp({ callbacks } = {}) {
             authCredentialsBlock, authSignInBtn, authSignUpBtn, authSignOutBtn, authStatus, authSessionInfo,
             createArenaBtn, inviteArenaBtn, joinArenaBtn, arenaInviteCodeInput, arenaSessionStatus,
             arenaInvitePreview, arenaInvitePreviewCode, arenaCopyInviteBtn, arenaShareInviteBtn, arenaGuestPanel, arenaGuestList,
-            arenaSessionBadge, guestEntryModal, guestPseudoInput, guestPseudoError, guestEnterRoomBtn, arenaDebugLog, profileDisplayName, profileBioText, profileEditBtn,
+            arenaSessionBadge, guestEntryModal, arenaDebugLog, profileDisplayName, profileBioText, profileEditBtn,
             profileEditPanel, profileNameInput, profileBioInput, profileSaveBtn, profileCancelBtn,
             dbConnectionStatus, storeCatalog, sessionHistoryList, silenceSessionList,
           } = collectLegacyDomRefs();
@@ -3003,7 +3003,7 @@ export function initLegacyApp({ callbacks } = {}) {
               return Boolean(element.closest(
                   '#bubblePanel, #bubblePropsPanel, #echoRecorderPanel, #traceListeningBtn, #traceCamControls, ' +
                   '#silenceDesYeuxPrompt, #silenceDesYeuxOverlay, #arenaTrianglePad, #bottomNav, ' +
-                  '#soonTutoModal, #guestEntryModal, #homeView, #profileView, #echoHypnoseView'
+                  '#soonTutoModal, #homeView, #profileView, #echoHypnoseView'
               ));
           }
 
