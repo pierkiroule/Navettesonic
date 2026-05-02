@@ -9,6 +9,7 @@ import {
   updateArenaBubble,
 } from '../services/arenaService';
 import { arenaDomainService } from '../services/arenaDomainService';
+import { buildRoomUrl, generateRoomSlug } from '../utils/roomLink';
 
 const createFeedback = (type, message, code = null) => ({ type, message, code });
 
@@ -17,6 +18,8 @@ const getBusinessErrorMessage = (error) => {
   if (error.code) return `Erreur métier (${error.code}) : ${error.message}`;
   return `Erreur métier : ${error.message}`;
 };
+
+const createLocalBubble = (patch = {}) => ({ id: crypto.randomUUID(), label: 'Nouvelle bulle', x: 50, y: 50, size: 80, ...patch });
 
 export function useArenaEditor() {
   const [bubbles, setBubbles] = useState([]);
@@ -33,12 +36,13 @@ export function useArenaEditor() {
     async function bootstrap() {
       setIsProcessing(true);
       setFeedback(createFeedback('loading', 'Chargement : initialisation de l’éditeur…'));
+
       const authResult = await supabaseClient.auth.getUser();
       const ownerId = authResult?.data?.user?.id;
       if (!ownerId) {
         if (isMounted) {
           setIsProcessing(false);
-          setFeedback(createFeedback('error', 'Erreur métier (auth-required) : connexion requise.', 'auth-required'));
+          setFeedback(createFeedback('success', 'Mode local actif : connectez-vous pour activer la publication cloud.', 'local-mode'));
         }
         return;
       }
@@ -64,14 +68,13 @@ export function useArenaEditor() {
   }, []);
 
   const addBubble = useCallback(async (bubblePatch = {}) => {
-    if (!arena?.id || !userId) return;
-    const bubble = {
-      label: 'Nouvelle bulle',
-      x: 50,
-      y: 50,
-      size: 80,
-      ...bubblePatch,
-    };
+    const bubble = createLocalBubble(bubblePatch);
+
+    if (!arena?.id || !userId) {
+      setBubbles((prev) => [...prev, bubble]);
+      return;
+    }
+
     setIsProcessing(true);
     const result = await createArenaBubble({ supabase: supabaseClient, arenaId: arena.id, userId, bubble });
     if (result.error) {
@@ -85,9 +88,15 @@ export function useArenaEditor() {
   }, [arena?.id, userId]);
 
   const updateBubble = useCallback(async (bubbleId, patch) => {
-    if (!arena?.id || !bubbleId) return;
+    if (!bubbleId) return;
     const bubble = bubbles.find((item) => item.id === bubbleId);
     if (!bubble) return;
+
+    if (!arena?.id) {
+      setBubbles((prev) => prev.map((item) => (item.id === bubbleId ? { ...item, ...patch } : item)));
+      return;
+    }
+
     setIsProcessing(true);
     const result = await updateArenaBubble({ supabase: supabaseClient, arenaId: arena.id, bubbleId, patch, bubble });
     if (result.error) {
@@ -100,7 +109,13 @@ export function useArenaEditor() {
   }, [arena?.id, bubbles]);
 
   const removeBubble = useCallback(async (bubbleId) => {
-    if (!arena?.id || !bubbleId) return;
+    if (!bubbleId) return;
+
+    if (!arena?.id) {
+      setBubbles((prev) => prev.filter((item) => item.id !== bubbleId));
+      return;
+    }
+
     setIsProcessing(true);
     const result = await deleteArenaBubble({ supabase: supabaseClient, arenaId: arena.id, bubbleId });
     if (result.error) {
@@ -114,11 +129,19 @@ export function useArenaEditor() {
   }, [arena?.id]);
 
   const publish = useCallback(async () => {
-    if (!arena?.id || !userId) return;
     if (bubbles.length === 0) {
       setFeedback(createFeedback('error', 'Erreur métier (arena-empty) : ajoutez au moins une bulle avant la publication.', 'arena-empty'));
       return;
     }
+
+    if (!arena?.id || !userId) {
+      const localVisitorUrl = buildRoomUrl({ origin: window.location.origin, roomSlug: generateRoomSlug(10) });
+      setInviteLink(localVisitorUrl);
+      setStatus(arenaDomainService.ARENA_STATUSES.PUBLISHED);
+      setFeedback(createFeedback('success', 'Mode local : lien de visite généré pour prévisualisation.', 'local-preview'));
+      return;
+    }
+
     setIsProcessing(true);
     setFeedback(createFeedback('loading', 'Chargement : publication en cours...'));
     const result = await publishArena({ supabase: supabaseClient, arenaId: arena.id, userId, origin: window.location.origin });
@@ -134,16 +157,5 @@ export function useArenaEditor() {
     setFeedback(createFeedback('success', 'Publication réussie : votre arène est maintenant disponible en lecture.'));
   }, [arena?.id, bubbles.length, userId]);
 
-  return useMemo(() => ({
-    bubbles,
-    status,
-    isProcessing,
-    feedback,
-    inviteLink,
-    addBubble,
-    updateBubble,
-    removeBubble,
-    publish,
-    setFeedback,
-  }), [bubbles, status, isProcessing, feedback, inviteLink, addBubble, updateBubble, removeBubble, publish]);
+  return useMemo(() => ({ bubbles, status, isProcessing, feedback, inviteLink, addBubble, updateBubble, removeBubble, publish, setFeedback }), [bubbles, status, isProcessing, feedback, inviteLink, addBubble, updateBubble, removeBubble, publish]);
 }
