@@ -8,19 +8,8 @@ export function AppRouter() {
   const isEditorMode =
     typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('arena') === 'editor';
 
-  if (room && isEditorMode) {
-    return (
-      <section>
-        <h1>Paramètres d’entrée en conflit</h1>
-        <p>
-          Le lien contient à la fois un accès visiteur (<code>room</code>) et un accès éditeur (
-          <code>arena=editor</code>).
-        </p>
-        <p>Supprimez l’un des paramètres pour ouvrir un seul parcours à la fois.</p>
-      </section>
-    );
-  }
-
+  // Priorité explicite au parcours visiteur lorsqu'un room slug valide est présent.
+  // Cela évite les ambiguïtés tout en gardant un routage déterministe.
   if (room) {
     return <ArenaVisitorPage />;
   }

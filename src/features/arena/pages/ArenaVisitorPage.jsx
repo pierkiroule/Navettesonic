@@ -57,20 +57,14 @@ export function ArenaVisitorPage() {
   return (
     <section style={shellStyles.layout}>
       <header style={shellStyles.header}>
-        <strong>Flow visiteur · Ouvrir → Entrer → Piloter → Écouter</strong>
+        <strong>Arène visiteur</strong>
         <span>Lecture seule</span>
       </header>
 
       <div style={shellStyles.bodyVisitor}>
         <article style={shellStyles.canvas}>
           <h1 style={{ marginTop: 0 }}>{arena?.title || 'Arena visiteur'}</h1>
-          <p>Parcours visiteur : entrer dans l’arène et écouter à sa façon.</p>
-          <ol style={{ paddingLeft: 18 }}>
-            <li>Ouvrir le lien de partage</li>
-            <li>Entrer dans l’arène publiée</li>
-            <li>Piloter le petit poisson rose</li>
-            <li>Écouter la composition</li>
-          </ol>
+          <p>Entrer dans l’arène et écouter à sa façon.</p>
           <ul>
             {bubbles.map((bubble) => (
               <li key={bubble.id}>{bubble.label} ({Math.round(bubble.x)}, {Math.round(bubble.y)})</li>

@@ -66,7 +66,7 @@ export function ArenaEditorPage() {
   return (
     <section style={shellStyles.layout}>
       <header style={shellStyles.header}>
-        <strong>Flow hôte · Composer → Publier → Partager</strong>
+        <strong>Éditeur d’arène</strong>
         <button type="button" onClick={() => addBubble()} disabled={!publicationPolicy.canWrite || isProcessing}>
           Ajouter une bulle
         </button>
@@ -127,13 +127,7 @@ export function ArenaEditorPage() {
         </article>
 
         <aside style={shellStyles.panel}>
-          <h2 style={{ marginTop: 0 }}>Parcours hôte</h2>
-          <ol style={{ marginTop: 0, paddingLeft: 18 }}>
-            <li>Composer mon arène</li>
-            <li>Ajouter et régler les bulles</li>
-            <li>Publier mon arène</li>
-            <li>Copier le lien de partage</li>
-          </ol>
+          <h2 style={{ marginTop: 0 }}>Publication</h2>
           <p>État courant : <strong>{STATUS_LABELS[status]}</strong></p>
           <p>Rôle : <strong>{actorRole}</strong></p>
           <p>Écran cible : <strong>{publicationPolicy.screen}</strong></p>
@@ -153,7 +147,7 @@ export function ArenaEditorPage() {
       </div>
 
       <footer style={shellStyles.feedback}>
-        Le CTA principal suit le flow hôte du MVP : composer, publier, partager.
+        Composer, publier, partager.
       </footer>
     </section>
   );
