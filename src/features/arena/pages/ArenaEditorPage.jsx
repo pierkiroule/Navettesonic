@@ -20,6 +20,8 @@ export function ArenaEditorPage() {
   const { bubbles, addBubble, updateBubble, removeBubble } = useArenaEditor();
   const actorRole = arenaDomainService.ACTOR_ROLES.OWNER;
   const [status, setStatus] = useState(arenaDomainService.ARENA_STATUSES.DRAFT);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [feedback, setFeedback] = useState(null);
 
   const publicationPolicy = useMemo(
     () => arenaDomainService.getScreenPolicy({ status, actorRole }),
@@ -29,16 +31,43 @@ export function ArenaEditorPage() {
   const primaryTransition = publicationPolicy.allowedTransitions?.[0] ?? null;
   const ctaLabel = primaryTransition ? CTA_BY_TRANSITION[primaryTransition] ?? 'Changer le statut' : 'Arène finalisée';
 
-  const handlePrimaryCta = () => {
-    if (!primaryTransition) return;
+  const showFeedback = (type, message) => {
+    setFeedback({ type, message });
+  };
+
+  const handlePrimaryCta = async () => {
+    if (!primaryTransition || isProcessing) return;
+    if (primaryTransition === arenaDomainService.ARENA_STATUSES.PUBLISHED && bubbles.length === 0) {
+      showFeedback('error', 'Erreur métier : ajoutez au moins une bulle avant la publication.');
+      return;
+    }
+
+    setIsProcessing(true);
+    showFeedback('loading', 'Chargement : publication en cours...');
+
+    await new Promise((resolve) => setTimeout(resolve, 650));
     setStatus(primaryTransition);
+    setIsProcessing(false);
+    showFeedback('success', 'Publication réussie : votre arène est maintenant disponible en lecture.');
+  };
+
+  const handleCopyLink = async () => {
+    const roomCode = 'demo-arena';
+    const shareUrl = `${window.location.origin}/?room=${roomCode}`;
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      showFeedback('success', 'Lien copié dans le presse-papiers.');
+    } catch {
+      showFeedback('error', 'Erreur réseau : impossible de copier le lien pour le moment.');
+    }
   };
 
   return (
     <section style={shellStyles.layout}>
       <header style={shellStyles.header}>
         <strong>Éditeur d’arène</strong>
-        <button type="button" onClick={() => addBubble()} disabled={!publicationPolicy.canWrite}>
+        <button type="button" onClick={() => addBubble()} disabled={!publicationPolicy.canWrite || isProcessing}>
           Ajouter une bulle
         </button>
       </header>
@@ -103,9 +132,17 @@ export function ArenaEditorPage() {
           <p>Rôle : <strong>{actorRole}</strong></p>
           <p>Écran cible : <strong>{publicationPolicy.screen}</strong></p>
           <p>Édition : <strong>{publicationPolicy.canWrite ? 'autorisée' : 'verrouillée'}</strong></p>
-          <button type="button" onClick={handlePrimaryCta} disabled={!primaryTransition}>
+          <button type="button" onClick={handlePrimaryCta} disabled={!primaryTransition || isProcessing}>
             {ctaLabel}
           </button>
+          <button type="button" onClick={handleCopyLink} disabled={isProcessing} style={{ marginLeft: 8 }}>
+            Copier le lien
+          </button>
+          {feedback ? (
+            <p role="status" style={{ marginTop: 12 }}>
+              {feedback.message}
+            </p>
+          ) : null}
         </aside>
       </div>
 
