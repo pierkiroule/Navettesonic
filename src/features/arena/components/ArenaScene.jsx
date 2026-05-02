@@ -13,9 +13,9 @@ export function ArenaScene({ bubbles, readonly = false }) {
   };
 
   return (
-    <section className="soon-card" style={{ position: 'relative', minHeight: 320 }} onPointerMove={handleMove}>
+    <section className="soon-card arena-scene" onPointerMove={handleMove}>
       <FishPlume fish={fish} />
-      <BubbleLayer bubbles={bubbles} onInteract={() => !readonly && playBubbleTone(250)} />
+      <BubbleLayer bubbles={bubbles} onInteract={(bubble) => !readonly && playBubbleTone(200 + (bubble.x % 180))} />
     </section>
   );
 }
