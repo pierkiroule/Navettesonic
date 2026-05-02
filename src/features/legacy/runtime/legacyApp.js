@@ -1534,22 +1534,16 @@ export function initLegacyApp({ callbacks } = {}) {
           }
 
           function updateExperienceAccessUi() {
-              const hasAccess = !!currentSession?.user;
               if (enterExperienceBtn) {
-                  enterExperienceBtn.textContent = hasAccess ? 'Soon experience' : 'Soon experience 🔒';
+                  enterExperienceBtn.textContent = 'Soon experience';
               }
               if (navSoon) {
-                  navSoon.textContent = hasAccess ? '🐟' : '🐟 🔒';
+                  navSoon.textContent = '🐟';
               }
           }
 
           function requireRegisteredUserForExperience(triggerLabel = 'Soon experience') {
-              if (currentSession?.user) return true;
-              setAuthStatus(`Inscris-toi ou connecte-toi pour accéder à l'expérience (${triggerLabel}).`, true);
-              console.warn('[legacyApp] Access denied for experience, redirecting to profile', { triggerLabel });
-              showView('profile');
-              authEmailInput?.focus();
-              return false;
+              return true;
           }
 
           function redirectToSoonExperienceAfterAuth() {
