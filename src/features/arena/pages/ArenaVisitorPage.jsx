@@ -57,14 +57,20 @@ export function ArenaVisitorPage() {
   return (
     <section style={shellStyles.layout}>
       <header style={shellStyles.header}>
-        <strong>Shell visiteur</strong>
-        <span>UI minimale</span>
+        <strong>Flow visiteur · Ouvrir → Entrer → Piloter → Écouter</strong>
+        <span>Lecture seule</span>
       </header>
 
       <div style={shellStyles.bodyVisitor}>
         <article style={shellStyles.canvas}>
           <h1 style={{ marginTop: 0 }}>{arena?.title || 'Arena visiteur'}</h1>
-          <p>Expérience immersive en lecture seule.</p>
+          <p>Parcours visiteur : entrer dans l’arène et écouter à sa façon.</p>
+          <ol style={{ paddingLeft: 18 }}>
+            <li>Ouvrir le lien de partage</li>
+            <li>Entrer dans l’arène publiée</li>
+            <li>Piloter le petit poisson rose</li>
+            <li>Écouter la composition</li>
+          </ol>
           <ul>
             {bubbles.map((bubble) => (
               <li key={bubble.id}>{bubble.label} ({Math.round(bubble.x)}, {Math.round(bubble.y)})</li>
@@ -80,7 +86,7 @@ export function ArenaVisitorPage() {
       </div>
 
       <footer style={shellStyles.feedback}>
-        Feedback : connexion visiteur stable, synchronisation passive active.
+        Ce mode visiteur reste local et en lecture seule.
       </footer>
     </section>
   );
