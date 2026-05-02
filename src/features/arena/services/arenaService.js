@@ -64,7 +64,7 @@ export async function publishArena({ supabase, arenaId, userId, origin }) {
   const { data, error } = await updateArenaStatus({ supabase, arenaId, ownerId: userId, status: 'published', isActive: true });
   if (error) return fail(error.message, error);
   const roomSlug = normalizeRoomSlug(data?.invite_code);
-  return ok({ arena: data, roomSlug, visitorUrl: buildRoomUrl({ origin: origin || window.location.origin, roomSlug }) });
+  return ok({ arena: data, roomSlug, visitorUrl: buildRoomUrl({ origin, roomSlug }) });
 }
 
 export async function archiveArena({ supabase, arenaId, userId }) {
