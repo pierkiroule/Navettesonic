@@ -4,6 +4,7 @@ import { FishController } from '../components/FishController';
 import { useArenaEditor } from '../hooks/useArenaEditor';
 import { arenaDomainService } from '../services/arenaDomainService';
 import { shellStyles } from '../ui/shellMockups';
+import { buildRoomUrl, generateRoomSlug } from '../utils/roomLink';
 
 const STATUS_LABELS = {
   [arenaDomainService.ARENA_STATUSES.DRAFT]: 'Brouillon',
@@ -22,6 +23,7 @@ export function ArenaEditorPage() {
   const [status, setStatus] = useState(arenaDomainService.ARENA_STATUSES.DRAFT);
   const [isProcessing, setIsProcessing] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const [inviteLink, setInviteLink] = useState('');
 
   const publicationPolicy = useMemo(
     () => arenaDomainService.getScreenPolicy({ status, actorRole }),
@@ -52,21 +54,47 @@ export function ArenaEditorPage() {
   };
 
   const handleCopyLink = async () => {
-    const roomCode = 'demo-arena';
-    const shareUrl = `${window.location.origin}/?room=${roomCode}`;
+    const shareUrl = inviteLink || buildRoomUrl({ origin: window.location.origin, roomSlug: generateRoomSlug(10) });
 
     try {
       await navigator.clipboard.writeText(shareUrl);
+      setInviteLink(shareUrl);
       showFeedback('success', 'Lien copié dans le presse-papiers.');
     } catch {
       showFeedback('error', 'Erreur réseau : impossible de copier le lien pour le moment.');
     }
   };
 
+  const handleInviteVisitors = async () => {
+    const shareUrl = inviteLink || buildRoomUrl({ origin: window.location.origin, roomSlug: generateRoomSlug(10) });
+    setInviteLink(shareUrl);
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Invitation Soon•°',
+          text: 'Entre dans mon arène sonore.',
+          url: shareUrl,
+        });
+        showFeedback('success', 'Invitation prête et partagée.');
+        return;
+      } catch {
+        // fallback clipboard
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      showFeedback('success', 'Invitation générée et copiée.');
+    } catch {
+      showFeedback('error', `Invitation générée : ${shareUrl}`);
+    }
+  };
+
   return (
     <section style={shellStyles.layout}>
       <header style={shellStyles.header}>
-        <strong>Éditeur d’arène</strong>
+        <strong>Composer mon arène</strong>
         <button type="button" onClick={() => addBubble()} disabled={!publicationPolicy.canWrite || isProcessing}>
           Ajouter une bulle
         </button>
@@ -127,7 +155,8 @@ export function ArenaEditorPage() {
         </article>
 
         <aside style={shellStyles.panel}>
-          <h2 style={{ marginTop: 0 }}>Publication</h2>
+          <h2 style={{ marginTop: 0 }}>Parcours hôte</h2>
+          <p style={{ marginTop: 0 }}>Composer → Régler les bulles → Publier → Copier le lien.</p>
           <p>État courant : <strong>{STATUS_LABELS[status]}</strong></p>
           <p>Rôle : <strong>{actorRole}</strong></p>
           <p>Écran cible : <strong>{publicationPolicy.screen}</strong></p>
@@ -138,6 +167,10 @@ export function ArenaEditorPage() {
           <button type="button" onClick={handleCopyLink} disabled={isProcessing} style={{ marginLeft: 8 }}>
             Copier le lien
           </button>
+          <button type="button" onClick={handleInviteVisitors} disabled={isProcessing} style={{ marginLeft: 8 }}>
+            Inviter des visiteurs
+          </button>
+          {inviteLink ? <p style={{ marginTop: 8 }}>Lien d’invitation : {inviteLink}</p> : null}
           {feedback ? (
             <p role="status" style={{ marginTop: 12 }}>
               {feedback.message}
@@ -147,7 +180,7 @@ export function ArenaEditorPage() {
       </div>
 
       <footer style={shellStyles.feedback}>
-        CTA principal contextuel piloté par le service domaine d’arène.
+        Flow produit README : composer, publier, partager mon arène.
       </footer>
     </section>
   );

@@ -5,12 +5,16 @@ import LegacyShell from '../../features/legacy/components/LegacyShell';
 
 export function AppRouter() {
   const room = useRoomParam();
+  const isEditorMode =
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('arena') === 'editor';
 
+  // Priorité explicite au parcours visiteur lorsqu'un room slug valide est présent.
+  // Cela évite les ambiguïtés tout en gardant un routage déterministe.
   if (room) {
     return <ArenaVisitorPage />;
   }
 
-  if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('arena') === 'editor') {
+  if (isEditorMode) {
     return <ArenaEditorPage />;
   }
 

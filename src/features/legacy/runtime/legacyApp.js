@@ -1111,25 +1111,16 @@ export function initLegacyApp({ callbacks } = {}) {
           }, 5000);
 
 
-          function openExperienceModeSelection(entrySource = 'Soon experience') {
+          function openSoonArena(entrySource = 'Soon arène') {
               if (!requireRegisteredUserForExperience(entrySource)) return false;
-              if (multiRoomComposer) multiRoomComposer.classList.add('hidden-view');
-              if (multiRoomLinkOutput) multiRoomLinkOutput.textContent = '';
-              pendingMultiRoomInviteLink = '';
-              pendingMultiRoomArenaId = null;
-              isPendingMultiRoomClosed = false;
-              if (copyMultiRoomLinkBtn) copyMultiRoomLinkBtn.disabled = true;
-              if (toggleRoomAccessBtn) { toggleRoomAccessBtn.disabled = true; toggleRoomAccessBtn.textContent = "Fermer l'accès invités"; }
-              if (enterMultiRoomBtn) enterMultiRoomBtn.disabled = true;
-              if (multiRoomAdminActions) multiRoomAdminActions.classList.add('hidden-view');
-              if (multiRoomAdminHint) multiRoomAdminHint.classList.add('hidden-view');
-              showView('mode-select');
+              setCurrentArena('default').catch(() => {});
+              showView('experience');
               return true;
           }
 
           bindTap(enterExperienceBtn, () => {
-              if (!openExperienceModeSelection('Soon experience')) return;
-              console.log('[legacyApp] enterExperienceBtn -> showView("mode-select") called', {
+              if (!openSoonArena('Soon arène')) return;
+              console.log('[legacyApp] enterExperienceBtn -> showView("experience") called', {
                   currentView,
                   experienceViewHidden: experienceView?.classList.contains('hidden-view')
               });
@@ -1252,19 +1243,6 @@ export function initLegacyApp({ callbacks } = {}) {
               syncHeroPlayButton();
           }
 
-          bindTap(selectSoloModeBtn, () => {
-              if (multiRoomComposer) multiRoomComposer.classList.add('hidden-view');
-              setCurrentArena('default').catch(() => {});
-              showView('experience');
-              ensureAllAudioRunning();
-          });
-
-          bindTap(selectMultiModeBtn, () => {
-              if (multiRoomComposer) multiRoomComposer.classList.remove('hidden-view');
-              if (multiRoomAdminActions) multiRoomAdminActions.classList.add('hidden-view');
-              if (multiRoomAdminHint) multiRoomAdminHint.classList.add('hidden-view');
-          });
-
           bindPress(createMultiRoomBtn, async () => {
               const ensured = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: false, reuseExisting: false });
               const arenaId = ensured?.arena?.id || null;
@@ -1330,8 +1308,8 @@ export function initLegacyApp({ callbacks } = {}) {
           }, { preventTouchDefault: true });
           bindTap(navSoon, () => {
               registerBottomNavActivity();
-              if (!openExperienceModeSelection('navigation')) return;
-              console.log('[legacyApp] navSoon -> showView("mode-select") called', {
+              if (!openSoonArena('navigation')) return;
+              console.log('[legacyApp] navSoon -> showView("experience") called', {
                   currentView,
                   experienceViewHidden: experienceView?.classList.contains('hidden-view')
               });
