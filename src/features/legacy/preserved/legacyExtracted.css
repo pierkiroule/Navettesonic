@@ -1,0 +1,17 @@
+@import '../runtime/legacy.css';
+
+/* Preserve legacy Soon•° visual identity in modern React components. */
+.home-shell,
+.arena-shell {
+  min-height: 100vh;
+  color: #f7f8ff;
+  background: radial-gradient(circle at top, #203a70 0%, #111b36 45%, #090f1d 100%);
+}
+
+.soon-card {
+  background: rgba(10, 18, 42, 0.58);
+  border: 1px solid rgba(176, 214, 255, 0.26);
+  backdrop-filter: blur(6px);
+  border-radius: 16px;
+  padding: 1rem;
+}

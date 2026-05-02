@@ -1,7 +1,8 @@
-import LegacyShell from '../features/legacy/components/LegacyShell';
+import { AppRouter } from './AppRouter';
+import '../features/legacy/preserved/legacyExtracted.css';
 
 function App() {
-  return <LegacyShell />;
+  return <AppRouter />;
 }
 
 export default App;
