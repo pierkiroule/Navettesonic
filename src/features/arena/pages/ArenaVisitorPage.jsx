@@ -57,14 +57,14 @@ export function ArenaVisitorPage() {
   return (
     <section style={shellStyles.layout}>
       <header style={shellStyles.header}>
-        <strong>Arène visiteur</strong>
-        <span>Lecture seule</span>
+        <strong>Entrer dans l’arène</strong>
+        <span>Mode visiteur</span>
       </header>
 
       <div style={shellStyles.bodyVisitor}>
         <article style={shellStyles.canvas}>
           <h1 style={{ marginTop: 0 }}>{arena?.title || 'Arena visiteur'}</h1>
-          <p>Entrer dans l’arène et écouter à sa façon.</p>
+          <p>Ouvrir le lien → Entrer → Piloter le poisson rose → Écouter à sa façon.</p>
           <ul>
             {bubbles.map((bubble) => (
               <li key={bubble.id}>{bubble.label} ({Math.round(bubble.x)}, {Math.round(bubble.y)})</li>
@@ -73,14 +73,14 @@ export function ArenaVisitorPage() {
         </article>
 
         <aside style={{ ...shellStyles.panel, marginTop: 12, opacity: 0.86 }}>
-          <h2 style={{ marginTop: 0 }}>Panel minimal</h2>
+          <h2 style={{ marginTop: 0 }}>Parcours visiteur</h2>
           <p>Actions autorisées : {policy.allowedActions.join(', ')}</p>
-          <p>Les actions d’édition restent désactivées.</p>
+          <p>Lecture seule : aucune création, modification ou suppression de bulle.</p>
         </aside>
       </div>
 
       <footer style={shellStyles.feedback}>
-        Ce mode visiteur reste local et en lecture seule.
+        Chaque visiteur vit une traversée personnelle dans un monde commun.
       </footer>
     </section>
   );

@@ -66,7 +66,7 @@ export function ArenaEditorPage() {
   return (
     <section style={shellStyles.layout}>
       <header style={shellStyles.header}>
-        <strong>Éditeur d’arène</strong>
+        <strong>Composer mon arène</strong>
         <button type="button" onClick={() => addBubble()} disabled={!publicationPolicy.canWrite || isProcessing}>
           Ajouter une bulle
         </button>
@@ -127,7 +127,8 @@ export function ArenaEditorPage() {
         </article>
 
         <aside style={shellStyles.panel}>
-          <h2 style={{ marginTop: 0 }}>Publication</h2>
+          <h2 style={{ marginTop: 0 }}>Parcours hôte</h2>
+          <p style={{ marginTop: 0 }}>Composer → Régler les bulles → Publier → Copier le lien.</p>
           <p>État courant : <strong>{STATUS_LABELS[status]}</strong></p>
           <p>Rôle : <strong>{actorRole}</strong></p>
           <p>Écran cible : <strong>{publicationPolicy.screen}</strong></p>
@@ -147,7 +148,7 @@ export function ArenaEditorPage() {
       </div>
 
       <footer style={shellStyles.feedback}>
-        Composer, publier, partager.
+        Flow produit README : composer, publier, partager mon arène.
       </footer>
     </section>
   );
