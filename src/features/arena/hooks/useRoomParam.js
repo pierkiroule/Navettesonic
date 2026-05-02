@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
+import { extractRoomSlugFromUrl } from '../utils/roomLink';
 
 export function useRoomParam() {
   return useMemo(() => {
     if (typeof window === 'undefined') return '';
-    const value = new URLSearchParams(window.location.search).get('room') || '';
-    return value.trim();
+    const searchParams = new URLSearchParams(window.location.search);
+    return extractRoomSlugFromUrl(searchParams);
   }, []);
 }
