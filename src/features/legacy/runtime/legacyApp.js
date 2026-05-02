@@ -2340,16 +2340,12 @@ export function initLegacyApp({ callbacks } = {}) {
                   role: 'host'
               });
               if (ownerMembership.error && ownerMembership.error.code !== '23505') {
-                  if (!silent) {
-                      if (isSupabaseMissingRelationError(ownerMembership.error)) {
-                          setArenaSessionStatus('Arène indisponible: tables Supabase manquantes. Lance les migrations puis réessaie.', true);
-                      } else if (isArenaPermissionDeniedError(ownerMembership.error)) {
-                          setArenaSessionStatus('Droit refusé (RLS) pour ajouter le propriétaire.', true);
-                      } else {
-                          setArenaSessionStatus(`Création incomplète: ${ownerMembership.error.message}`, true);
-                      }
-                  }
-                  return null;
+                  // Legacy fallback: le flow hublo° fonctionne sans table arena_participants.
+                  // On loggue seulement pour diagnostic mais on ne bloque plus la génération du lien.
+                  logArenaProfileDiagnostic('ensureArena.owner_membership_non_blocking_error', {
+                      code: ownerMembership.error.code || null,
+                      message: ownerMembership.error.message || null,
+                  }, true);
               }
 
               await setCurrentArena(createdArena.id, createdArena.invite_code || '');
