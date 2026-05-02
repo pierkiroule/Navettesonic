@@ -1,5 +1,6 @@
 const ROOM_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
 const MIN_ROOM_SLUG_LENGTH = 5;
+const DEFAULT_VISITOR_BASE_URL = 'https://navettesonic.vercel.app/';
 
 export function normalizeRoomSlug(value) {
   return String(value || '')
@@ -24,19 +25,19 @@ export function generateRoomSlug(length = 10) {
 }
 
 export function buildRoomUrl(args) {
-  const origin = typeof args === 'object' ? args.origin : window.location.origin;
+  const origin = typeof args === 'object' ? args.origin : undefined;
   const roomSlug = typeof args === 'object' ? args.roomSlug : args;
   const safeSlug = normalizeRoomSlug(roomSlug);
-  const url = new URL(origin || window.location.origin);
+  const url = new URL(origin || DEFAULT_VISITOR_BASE_URL);
   url.searchParams.set('room', safeSlug);
   return url.toString();
 }
 
 export function buildHubloUrl(args) {
-  const origin = typeof args === 'object' ? args.origin : window.location.origin;
+  const origin = typeof args === 'object' ? args.origin : undefined;
   const roomSlug = typeof args === 'object' ? args.roomSlug : args;
   const safeSlug = normalizeRoomSlug(roomSlug);
-  const url = new URL(origin || window.location.origin);
+  const url = new URL(origin || DEFAULT_VISITOR_BASE_URL);
   url.searchParams.set('hublo', safeSlug);
   return url.toString();
 }
