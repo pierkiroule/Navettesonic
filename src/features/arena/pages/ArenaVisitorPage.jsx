@@ -2,13 +2,47 @@ import { usePublishedArena } from '../hooks/usePublishedArena';
 import { useRoomParam } from '../hooks/useRoomParam';
 import { arenaDomainService } from '../services/arenaDomainService';
 
+const STANDARD_ERROR_UX = {
+  'invalid-room-link': {
+    title: 'Lien room invalide',
+    message: 'Le lien de visite est incomplet ou mal formaté.',
+    cta: { label: 'Retour à l’accueil', href: '/' },
+  },
+  'arena-unpublished': {
+    title: 'Arène non publiée',
+    message: 'Cette arène existe mais son accès visiteur n’est pas encore ouvert.',
+    cta: { label: 'Demander un lien actif', href: '/' },
+  },
+  'arena-missing': {
+    title: 'Arène absente ou supprimée',
+    message: 'Ce lien ne correspond plus à une arène disponible.',
+    cta: { label: 'Explorer les arènes publiques', href: '/' },
+  },
+  network: {
+    title: 'Erreur réseau',
+    message: 'Impossible de charger l’arène pour le moment. Vérifiez votre connexion puis réessayez.',
+    cta: { label: 'Réessayer', action: () => window.location.reload() },
+  },
+};
+
 export function ArenaVisitorPage() {
   const roomCode = useRoomParam();
   const { isLoading, arena, bubbles, error } = usePublishedArena(roomCode);
 
   if (!roomCode) return <p>Code room manquant.</p>;
   if (isLoading) return <p>Chargement de l’arène…</p>;
-  if (error) return <p>Erreur: {error}</p>;
+  if (error) {
+    const ux = STANDARD_ERROR_UX[error.code] || STANDARD_ERROR_UX.network;
+    return (
+      <section>
+        <h1>{ux.title}</h1>
+        <p>{ux.message}</p>
+        {error?.message ? <p>Détail technique : {error.message}</p> : null}
+        {ux.cta.href ? <a href={ux.cta.href}>{ux.cta.label}</a> : null}
+        {ux.cta.action ? <button onClick={ux.cta.action}>{ux.cta.label}</button> : null}
+      </section>
+    );
+  }
 
   const policy = arenaDomainService.getScreenPolicy({
     status: arena?.status,

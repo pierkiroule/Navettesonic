@@ -3,6 +3,7 @@ import { arenaDomainService } from './arenaDomainService.js';
 import { runtimeBubbleToDbPatch } from '../utils/arenaMappers.js';
 import {
   findPublishedArenaByInviteCode,
+  findArenaByInviteCode,
   listArenaBubblesByArenaId,
   insertArena,
   updateArenaStatus,
@@ -12,16 +13,21 @@ import {
   deleteArenaBubble as repoDeleteArenaBubble,
 } from '../../../integrations/supabase/arenaRepository.js';
 
-const fail = (message, details = null) => ({ data: null, error: { message, details } });
+const fail = (message, details = null, code = 'unknown') => ({ data: null, error: { message, details, code } });
 const ok = (data) => ({ data, error: null });
 
 export async function loadPublicArenaByCode({ supabase, inviteCode }) {
-  if (!supabase) return fail('Connexion Supabase requise.');
+  if (!supabase) return fail('Connexion Supabase requise.', null, 'network');
   const code = normalizeRoomSlug(inviteCode);
-  if (!code) return fail('Lien de visite invalide.');
+  if (!code) return fail('Lien de visite invalide.', null, 'invalid-room-link');
   const { data, error } = await findPublishedArenaByInviteCode({ supabase, inviteCode: code });
-  if (error) return fail(error.message, error);
-  if (!data) return fail('Ce paysage sonore est introuvable ou n’est plus disponible.');
+  if (error) return fail(error.message, error, 'network');
+  if (!data) {
+    const { data: arenaByCode, error: arenaByCodeError } = await findArenaByInviteCode({ supabase, inviteCode: code });
+    if (arenaByCodeError) return fail(arenaByCodeError.message, arenaByCodeError, 'network');
+    if (arenaByCode) return fail('Cette arène existe mais n’est pas encore publiée.', null, 'arena-unpublished');
+    return fail('Cette arène est absente ou a été supprimée.', null, 'arena-missing');
+  }
   return ok(data);
 }
 

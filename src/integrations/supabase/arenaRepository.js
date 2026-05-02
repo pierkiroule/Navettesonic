@@ -10,6 +10,10 @@ export async function findPublishedArenaByInviteCode({ supabase, inviteCode }) {
     .maybeSingle();
 }
 
+export async function findArenaByInviteCode({ supabase, inviteCode }) {
+  return supabase.from('arenas').select('id,status,is_active').eq('invite_code', inviteCode).maybeSingle();
+}
+
 export async function listArenaBubblesByArenaId({ supabase, arenaId }) {
   const { data, error } = await supabase.from('arena_bubbles').select('*').eq('arena_id', arenaId);
   return { data: (data || []).map(dbBubbleToRuntimeBubble), error };
