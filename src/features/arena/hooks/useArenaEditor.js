@@ -1,34 +1,149 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
-const createBubble = (overrides = {}) => ({
-  id: crypto.randomUUID(),
-  label: 'Nouvelle bulle',
-  x: 50,
-  y: 50,
-  size: 80,
-  ...overrides,
-});
+import { supabaseClient } from '../../../integrations/supabase/client/supabaseClient';
+import {
+  createArenaBubble,
+  createHostArena,
+  deleteArenaBubble,
+  publishArena,
+  updateArenaBubble,
+} from '../services/arenaService';
+import { arenaDomainService } from '../services/arenaDomainService';
 
-export function useArenaEditor(initialBubbles = []) {
-  const [bubbles, setBubbles] = useState(initialBubbles);
+const createFeedback = (type, message, code = null) => ({ type, message, code });
 
-  const addBubble = useCallback((bubblePatch = {}) => {
-    const bubble = createBubble(bubblePatch);
-    setBubbles((prev) => [...prev, bubble]);
-    return bubble;
+const getBusinessErrorMessage = (error) => {
+  if (!error) return 'Une erreur inconnue est survenue.';
+  if (error.code) return `Erreur métier (${error.code}) : ${error.message}`;
+  return `Erreur métier : ${error.message}`;
+};
+
+export function useArenaEditor() {
+  const [bubbles, setBubbles] = useState([]);
+  const [status, setStatus] = useState(arenaDomainService.ARENA_STATUSES.DRAFT);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+  const [inviteLink, setInviteLink] = useState('');
+  const [arena, setArena] = useState(null);
+  const [userId, setUserId] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function bootstrap() {
+      setIsProcessing(true);
+      setFeedback(createFeedback('loading', 'Chargement : initialisation de l’éditeur…'));
+      const authResult = await supabaseClient.auth.getUser();
+      const ownerId = authResult?.data?.user?.id;
+      if (!ownerId) {
+        if (isMounted) {
+          setIsProcessing(false);
+          setFeedback(createFeedback('error', 'Erreur métier (auth-required) : connexion requise.', 'auth-required'));
+        }
+        return;
+      }
+
+      const arenaResult = await createHostArena({ supabase: supabaseClient, userId: ownerId, title: 'Mon arène' });
+      if (!isMounted) return;
+      if (arenaResult.error) {
+        setIsProcessing(false);
+        setFeedback(createFeedback('error', getBusinessErrorMessage(arenaResult.error), arenaResult.error.code));
+        return;
+      }
+
+      setUserId(ownerId);
+      setArena(arenaResult.data);
+      setIsProcessing(false);
+      setFeedback(createFeedback('success', 'Éditeur prêt : arène brouillon créée.'));
+    }
+
+    bootstrap();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const updateBubble = useCallback((bubbleId, patch) => {
-    setBubbles((prev) => prev.map((bubble) => (bubble.id === bubbleId ? { ...bubble, ...patch } : bubble)));
-  }, []);
+  const addBubble = useCallback(async (bubblePatch = {}) => {
+    if (!arena?.id || !userId) return;
+    const bubble = {
+      label: 'Nouvelle bulle',
+      x: 50,
+      y: 50,
+      size: 80,
+      ...bubblePatch,
+    };
+    setIsProcessing(true);
+    const result = await createArenaBubble({ supabase: supabaseClient, arenaId: arena.id, userId, bubble });
+    if (result.error) {
+      setFeedback(createFeedback('error', getBusinessErrorMessage(result.error), result.error.code));
+      setIsProcessing(false);
+      return;
+    }
+    setBubbles((prev) => [...prev, result.data]);
+    setFeedback(createFeedback('success', 'Bulle créée.'));
+    setIsProcessing(false);
+  }, [arena?.id, userId]);
 
-  const removeBubble = useCallback((bubbleId) => {
-    setBubbles((prev) => prev.filter((bubble) => bubble.id !== bubbleId));
-  }, []);
+  const updateBubble = useCallback(async (bubbleId, patch) => {
+    if (!arena?.id || !bubbleId) return;
+    const bubble = bubbles.find((item) => item.id === bubbleId);
+    if (!bubble) return;
+    setIsProcessing(true);
+    const result = await updateArenaBubble({ supabase: supabaseClient, arenaId: arena.id, bubbleId, patch, bubble });
+    if (result.error) {
+      setFeedback(createFeedback('error', getBusinessErrorMessage(result.error), result.error.code));
+      setIsProcessing(false);
+      return;
+    }
+    setBubbles((prev) => prev.map((item) => (item.id === bubbleId ? { ...item, ...patch } : item)));
+    setIsProcessing(false);
+  }, [arena?.id, bubbles]);
 
-  const clearBubbles = useCallback(() => {
-    setBubbles([]);
-  }, []);
+  const removeBubble = useCallback(async (bubbleId) => {
+    if (!arena?.id || !bubbleId) return;
+    setIsProcessing(true);
+    const result = await deleteArenaBubble({ supabase: supabaseClient, arenaId: arena.id, bubbleId });
+    if (result.error) {
+      setFeedback(createFeedback('error', getBusinessErrorMessage(result.error), result.error.code));
+      setIsProcessing(false);
+      return;
+    }
+    setBubbles((prev) => prev.filter((item) => item.id !== bubbleId));
+    setFeedback(createFeedback('success', 'Bulle supprimée.'));
+    setIsProcessing(false);
+  }, [arena?.id]);
 
-  return useMemo(() => ({ bubbles, addBubble, updateBubble, removeBubble, clearBubbles }), [bubbles, addBubble, updateBubble, removeBubble, clearBubbles]);
+  const publish = useCallback(async () => {
+    if (!arena?.id || !userId) return;
+    if (bubbles.length === 0) {
+      setFeedback(createFeedback('error', 'Erreur métier (arena-empty) : ajoutez au moins une bulle avant la publication.', 'arena-empty'));
+      return;
+    }
+    setIsProcessing(true);
+    setFeedback(createFeedback('loading', 'Chargement : publication en cours...'));
+    const result = await publishArena({ supabase: supabaseClient, arenaId: arena.id, userId, origin: window.location.origin });
+    if (result.error) {
+      setFeedback(createFeedback('error', getBusinessErrorMessage(result.error), result.error.code));
+      setIsProcessing(false);
+      return;
+    }
+
+    setStatus(arenaDomainService.ARENA_STATUSES.PUBLISHED);
+    setInviteLink(result.data.visitorUrl || '');
+    setIsProcessing(false);
+    setFeedback(createFeedback('success', 'Publication réussie : votre arène est maintenant disponible en lecture.'));
+  }, [arena?.id, bubbles.length, userId]);
+
+  return useMemo(() => ({
+    bubbles,
+    status,
+    isProcessing,
+    feedback,
+    inviteLink,
+    addBubble,
+    updateBubble,
+    removeBubble,
+    publish,
+    setFeedback,
+  }), [bubbles, status, isProcessing, feedback, inviteLink, addBubble, updateBubble, removeBubble, publish]);
 }

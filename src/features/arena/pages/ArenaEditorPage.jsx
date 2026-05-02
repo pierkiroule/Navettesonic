@@ -1,10 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 import { FishController } from '../components/FishController';
 import { useArenaEditor } from '../hooks/useArenaEditor';
 import { arenaDomainService } from '../services/arenaDomainService';
 import { shellStyles } from '../ui/shellMockups';
-import { buildRoomUrl, generateRoomSlug } from '../utils/roomLink';
 
 const STATUS_LABELS = {
   [arenaDomainService.ARENA_STATUSES.DRAFT]: 'Brouillon',
@@ -18,12 +17,19 @@ const CTA_BY_TRANSITION = {
 };
 
 export function ArenaEditorPage() {
-  const { bubbles, addBubble, updateBubble, removeBubble } = useArenaEditor();
+  const {
+    bubbles,
+    status,
+    isProcessing,
+    feedback,
+    inviteLink,
+    addBubble,
+    updateBubble,
+    removeBubble,
+    publish,
+    setFeedback,
+  } = useArenaEditor();
   const actorRole = arenaDomainService.ACTOR_ROLES.OWNER;
-  const [status, setStatus] = useState(arenaDomainService.ARENA_STATUSES.DRAFT);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [feedback, setFeedback] = useState(null);
-  const [inviteLink, setInviteLink] = useState('');
 
   const publicationPolicy = useMemo(
     () => arenaDomainService.getScreenPolicy({ status, actorRole }),
@@ -33,61 +39,51 @@ export function ArenaEditorPage() {
   const primaryTransition = publicationPolicy.allowedTransitions?.[0] ?? null;
   const ctaLabel = primaryTransition ? CTA_BY_TRANSITION[primaryTransition] ?? 'Changer le statut' : 'Arène finalisée';
 
-  const showFeedback = (type, message) => {
-    setFeedback({ type, message });
-  };
-
   const handlePrimaryCta = async () => {
     if (!primaryTransition || isProcessing) return;
-    if (primaryTransition === arenaDomainService.ARENA_STATUSES.PUBLISHED && bubbles.length === 0) {
-      showFeedback('error', 'Erreur métier : ajoutez au moins une bulle avant la publication.');
-      return;
+    if (primaryTransition === arenaDomainService.ARENA_STATUSES.PUBLISHED) {
+      await publish();
     }
-
-    setIsProcessing(true);
-    showFeedback('loading', 'Chargement : publication en cours...');
-
-    await new Promise((resolve) => setTimeout(resolve, 650));
-    setStatus(primaryTransition);
-    setIsProcessing(false);
-    showFeedback('success', 'Publication réussie : votre arène est maintenant disponible en lecture.');
   };
 
   const handleCopyLink = async () => {
-    const shareUrl = inviteLink || buildRoomUrl({ origin: window.location.origin, roomSlug: generateRoomSlug(10) });
+    if (!inviteLink) {
+      setFeedback({ type: 'error', message: 'Erreur métier (arena-unpublished) : publiez d’abord l’arène pour récupérer le lien.', code: 'arena-unpublished' });
+      return;
+    }
 
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      setInviteLink(shareUrl);
-      showFeedback('success', 'Lien copié dans le presse-papiers.');
+      await navigator.clipboard.writeText(inviteLink);
+      setFeedback({ type: 'success', message: 'Lien copié dans le presse-papiers.' });
     } catch {
-      showFeedback('error', 'Erreur réseau : impossible de copier le lien pour le moment.');
+      setFeedback({ type: 'error', message: 'Erreur métier (network) : impossible de copier le lien pour le moment.', code: 'network' });
     }
   };
 
   const handleInviteVisitors = async () => {
-    const shareUrl = inviteLink || buildRoomUrl({ origin: window.location.origin, roomSlug: generateRoomSlug(10) });
-    setInviteLink(shareUrl);
+    if (!inviteLink) {
+      setFeedback({ type: 'error', message: 'Erreur métier (arena-unpublished) : publiez d’abord l’arène pour partager.', code: 'arena-unpublished' });
+      return;
+    }
 
     if (navigator.share) {
       try {
         await navigator.share({
           title: 'Invitation Soon•°',
           text: 'Entre dans mon arène sonore.',
-          url: shareUrl,
+          url: inviteLink,
         });
-        showFeedback('success', 'Invitation prête et partagée.');
+        setFeedback({ type: 'success', message: 'Invitation prête et partagée.' });
         return;
       } catch {
-        // fallback clipboard
       }
     }
 
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      showFeedback('success', 'Invitation générée et copiée.');
+      await navigator.clipboard.writeText(inviteLink);
+      setFeedback({ type: 'success', message: 'Invitation copiée.' });
     } catch {
-      showFeedback('error', `Invitation générée : ${shareUrl}`);
+      setFeedback({ type: 'error', message: `Erreur métier (network) : impossible de partager automatiquement. Lien : ${inviteLink}`, code: 'network' });
     }
   };
 
