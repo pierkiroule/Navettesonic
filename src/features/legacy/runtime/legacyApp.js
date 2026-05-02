@@ -2433,6 +2433,9 @@ export function initLegacyApp({ callbacks } = {}) {
           function openProfileEditPanel() {
               if (profileEditPanel) profileEditPanel.hidden = false;
               renderProfileIdentity();
+          if (authCredentialsBlock) authCredentialsBlock.hidden = true;
+          if (authSignOutBtn) authSignOutBtn.hidden = true;
+          if (authSessionInfo) authSessionInfo.textContent = 'Mode libre : aucun compte connecté.';
               profileNameInput?.focus();
           }
 
@@ -2716,26 +2719,14 @@ export function initLegacyApp({ callbacks } = {}) {
           }
 
           async function createArenaInviteFromProfile() {
-              if (!currentSession?.user?.id) {
-                  setArenaSessionStatus('Connecte-toi pour générer ton lien hublo•°.', true);
-                  return;
-              }
-              const ensured = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: true });
-              if (!ensured?.arena?.id) {
-                  setArenaSessionStatus('Impossible de préparer ton arène pour l’invitation.', true);
-                  return;
-              }
-              const inviteCode = normalizeRoomSlug(ensured.arena.invite_code || currentArenaInviteCode || '');
-              if (!inviteCode) {
-                  setArenaSessionStatus('Code d’invitation introuvable pour cette arène.', true);
-                  return;
-              }
-              await setCurrentArena(ensured.arena.id, inviteCode);
+              // Mode libre: plus de compte obligatoire.
+              const inviteCode = normalizeRoomSlug(currentArenaInviteCode || generateRoomSlug());
+              currentArenaInviteCode = inviteCode;
               if (arenaInviteCodeInput) arenaInviteCodeInput.value = inviteCode;
               renderArenaInvitePreview(inviteCode);
-              logArenaProfileDiagnostic('inviteCode.ready', { arenaId: ensured.arena.id, inviteCode });
               setArenaSessionStatus('Lien hublo•° prêt ✅');
           }
+
 
           async function restoreSession() {
               if (isInviteGuestMode) {
@@ -2743,10 +2734,7 @@ export function initLegacyApp({ callbacks } = {}) {
                   refreshAuthUi('Mode invité actif.');
                   return;
               }
-              const client = buildSupabaseClient();
-              if (!client) return;
-              const { data } = await client.auth.getSession();
-              currentSession = data?.session || null;
+              currentSession = null;
               if (!currentSession?.user) {
                   currentArenaInviteCode = '';
                   currentArenaParticipants = 1;
@@ -2755,7 +2743,7 @@ export function initLegacyApp({ callbacks } = {}) {
                   if (experienceView) delete experienceView.dataset.arenaId;
                   renderArenaSessionBadge();
               }
-              refreshAuthUi(currentSession ? 'Session restaurée.' : 'Pas de session active.');
+              refreshAuthUi('Mode libre activé (sans compte).');
               await syncSessionAndProfile({ silent: true });
               await fetchSooncutVocalsFromBucket();
           }
@@ -2800,9 +2788,7 @@ export function initLegacyApp({ callbacks } = {}) {
               createArenaBtn.hidden = false;
               createArenaBtn.disabled = false;
           }
-          bindPress(authSignInBtn, signInWithEmail);
-          bindPress(authSignUpBtn, signUpWithEmail);
-          bindPress(authSignOutBtn, signOutSession);
+
           bindPress(inviteArenaBtn, createArenaInviteFromProfile);
           bindPress(arenaCopyInviteBtn, copyArenaInviteToClipboard);
           bindPress(arenaShareInviteBtn, shareArenaInvite);
