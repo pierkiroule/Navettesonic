@@ -54,7 +54,7 @@ export function ArenaEditorPage() {
   };
 
   const handleCopyLink = async () => {
-    const shareUrl = inviteLink || buildRoomUrl({ origin: window.location.origin, roomSlug: generateRoomSlug(10) });
+    const shareUrl = inviteLink || buildRoomUrl({ roomSlug: generateRoomSlug(10) });
 
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -66,7 +66,7 @@ export function ArenaEditorPage() {
   };
 
   const handleInviteVisitors = async () => {
-    const shareUrl = inviteLink || buildRoomUrl({ origin: window.location.origin, roomSlug: generateRoomSlug(10) });
+    const shareUrl = inviteLink || buildRoomUrl({ roomSlug: generateRoomSlug(10) });
     setInviteLink(shareUrl);
 
     if (navigator.share) {
