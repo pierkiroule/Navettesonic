@@ -1254,7 +1254,7 @@ export function initLegacyApp({ callbacks } = {}) {
               }
               await setCurrentArena(arenaId, inviteCode);
               pendingMultiRoomArenaId = arenaId;
-              pendingMultiRoomInviteLink = buildRoomUrl({ origin: window.location.origin, roomSlug: inviteCode });
+              pendingMultiRoomInviteLink = buildRoomUrl({ roomSlug: inviteCode });
               if (multiRoomLinkOutput) {
                   multiRoomLinkOutput.textContent = `Lien room admin: ${pendingMultiRoomInviteLink}`;
               }
@@ -1469,7 +1469,7 @@ export function initLegacyApp({ callbacks } = {}) {
 
           function buildArenaInviteShareText(code) {
               const safeCode = normalizeRoomSlug(code || currentArenaInviteCode || '');
-              const hubloLink = buildHubloUrl({ origin: window.location.origin, roomSlug: safeCode });
+              const hubloLink = buildHubloUrl({ roomSlug: safeCode });
               return `hublo•° — visite mon arène Soon ✨\n${hubloLink}\nOuvre ce lien pour entrer directement en mode petit poisson rose.`;
           }
 
@@ -1478,7 +1478,7 @@ export function initLegacyApp({ callbacks } = {}) {
               if (!arenaInvitePreview) return;
               const hasCode = Boolean(code);
               arenaInvitePreview.hidden = !hasCode;
-              const inviteLink = hasCode ? buildHubloUrl({ origin: window.location.origin, roomSlug: code }) : '';
+              const inviteLink = hasCode ? buildHubloUrl({ roomSlug: code }) : '';
               if (hasCode && arenaInvitePreviewCode) arenaInvitePreviewCode.textContent = inviteLink;
               if (profileInviteLink) profileInviteLink.value = inviteLink;
               if (profileInviteStatus) {
@@ -2758,6 +2758,14 @@ export function initLegacyApp({ callbacks } = {}) {
               const { data } = await client.auth.getSession();
               currentSession = data?.session || null;
               if (!currentSession?.user) {
+                  const { data: anonData, error: anonError } = await client.auth.signInAnonymously();
+                  if (anonError) {
+                      console.warn('[legacyApp] anonymous sign-in failed', anonError);
+                  } else if (anonData?.session) {
+                      currentSession = anonData.session;
+                  }
+              }
+              if (!currentSession?.user) {
                   currentArenaInviteCode = '';
                   currentArenaParticipants = 1;
                   currentArenaId = 'default';
@@ -2765,7 +2773,7 @@ export function initLegacyApp({ callbacks } = {}) {
                   if (experienceView) delete experienceView.dataset.arenaId;
                   renderArenaSessionBadge();
               }
-              refreshAuthUi(currentSession ? 'Session restaurée.' : 'Pas de session active.');
+              refreshAuthUi(currentSession ? 'Session prête automatiquement.' : 'Pas de session active.');
               await syncSessionAndProfile({ silent: true });
               await fetchSooncutVocalsFromBucket();
           }
