@@ -2615,7 +2615,7 @@ export function initLegacyApp({ callbacks } = {}) {
               const client = buildSupabaseClient();
               if (!client) return;
               const inviteCode = normalizeRoomSlug(arenaInviteCodeInput?.value || '');
-              if (!inviteCode || inviteCode.length < 7) {
+              if (!inviteCode || inviteCode.length < 5) {
                   setArenaSessionStatus('Code invalide: entre un code au format ABC-123.', true);
                   return;
               }
@@ -2724,6 +2724,14 @@ export function initLegacyApp({ callbacks } = {}) {
               }
               const ensured = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: true });
               if (!ensured?.arena?.id) {
+                  const fallbackInviteCode = normalizeRoomSlug(arenaInviteCodeInput?.value || currentArenaInviteCode || '');
+                  if (fallbackInviteCode) {
+                      currentArenaInviteCode = fallbackInviteCode;
+                      if (arenaInviteCodeInput) arenaInviteCodeInput.value = fallbackInviteCode;
+                      renderArenaInvitePreview(fallbackInviteCode);
+                      setArenaSessionStatus('Lien hublo•° prêt ✅ (code existant)');
+                      return;
+                  }
                   setArenaSessionStatus('Impossible de préparer ton arène pour l’invitation.', true);
                   return;
               }

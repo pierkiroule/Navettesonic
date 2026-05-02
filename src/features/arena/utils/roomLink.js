@@ -1,4 +1,5 @@
 const ROOM_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+const MIN_ROOM_SLUG_LENGTH = 5;
 
 export function normalizeRoomSlug(value) {
   return String(value || '')
@@ -45,6 +46,6 @@ export function extractRoomSlugFromUrl(searchParams) {
   const normalized = normalizeRoomSlug(
     searchParams.get('hublo') || searchParams.get('room') || searchParams.get('arenaInvite') || '',
   );
-  if (normalized.length < 7) return '';
+  if (normalized.length < MIN_ROOM_SLUG_LENGTH) return '';
   return normalized;
 }
