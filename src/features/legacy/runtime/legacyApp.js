@@ -1,7 +1,7 @@
 import { SAMPLE_LIBRARY } from './constants/sampleLibrary';
 import { BUBBLE_COLORS, HALO_STYLE_LIBRARY } from './constants/uiConstants';
 import { collectLegacyDomRefs } from './domRefs';
-import { buildRoomUrl, extractRoomSlugFromUrl, generateRoomSlug, normalizeRoomSlug } from '../../arena/utils/roomLink.js';
+import { buildHubloUrl, buildRoomUrl, extractRoomSlugFromUrl, generateRoomSlug, normalizeRoomSlug } from '../../arena/utils/roomLink.js';
 import { createHostArena, loadPublicArenaByCode, loadPublicArenaBubbles } from '../../arena/services/arenaService.js';
 import { getOrCreateGuestIdentity, getStoredGuestPseudo, saveGuestPseudo, normalizeGuestPseudo, validateGuestPseudo } from '../../arena/utils/guestIdentity.js';
 
@@ -1469,8 +1469,8 @@ export function initLegacyApp({ callbacks } = {}) {
 
           function buildArenaInviteShareText(code) {
               const safeCode = normalizeRoomSlug(code || currentArenaInviteCode || '');
-              const inviteLink = buildRoomUrl({ origin: window.location.origin, roomSlug: safeCode });
-              return `Rejoins ma room Soon ✨\n${inviteLink}\nColle simplement ce lien dans ton navigateur.`;
+              const hubloLink = buildHubloUrl({ origin: window.location.origin, roomSlug: safeCode });
+              return `hublo•° — visite mon arène Soon ✨\n${hubloLink}\nOuvre ce lien pour entrer directement en mode petit poisson rose.`;
           }
 
           function renderArenaInvitePreview(rawCode) {
@@ -1478,13 +1478,13 @@ export function initLegacyApp({ callbacks } = {}) {
               if (!arenaInvitePreview) return;
               const hasCode = Boolean(code);
               arenaInvitePreview.hidden = !hasCode;
-              const inviteLink = hasCode ? buildRoomUrl({ origin: window.location.origin, roomSlug: code }) : '';
+              const inviteLink = hasCode ? buildHubloUrl({ origin: window.location.origin, roomSlug: code }) : '';
               if (hasCode && arenaInvitePreviewCode) arenaInvitePreviewCode.textContent = inviteLink;
               if (profileInviteLink) profileInviteLink.value = inviteLink;
               if (profileInviteStatus) {
                   profileInviteStatus.textContent = hasCode
-                      ? 'Lien prêt à être partagé ✨'
-                      : 'Crée ou rejoins une arène pour générer un lien.';
+                      ? 'Lien hublo•° prêt à être partagé ✨'
+                      : 'Clique « Générer mon lien hublo•° » pour créer ton lien visiteur.';
               }
           }
 
@@ -1497,7 +1497,7 @@ export function initLegacyApp({ callbacks } = {}) {
               const text = buildArenaInviteShareText(code);
               try {
                   await navigator.clipboard.writeText(text);
-                  setArenaSessionStatus('Lien d’invitation copié ✅');
+                  setArenaSessionStatus('Lien hublo•° copié ✅');
               } catch (err) {
                   setArenaSessionStatus('Copie impossible automatiquement: copie le lien affiché manuellement.', true);
               }
@@ -2738,7 +2738,7 @@ export function initLegacyApp({ callbacks } = {}) {
               if (arenaInviteCodeInput) arenaInviteCodeInput.value = inviteCode;
               renderArenaInvitePreview(inviteCode);
               logArenaProfileDiagnostic('inviteCode.ready', { arenaId: ensured.arena.id, inviteCode });
-              setArenaSessionStatus('Lien d’invitation prêt ✅');
+              setArenaSessionStatus('Lien hublo•° prêt ✅');
           }
 
           async function restoreSession() {
@@ -2817,7 +2817,7 @@ export function initLegacyApp({ callbacks } = {}) {
           }
           if (arenaInviteCodeInput) {
               arenaInviteCodeInput.readOnly = true;
-              arenaInviteCodeInput.setAttribute('aria-label', 'Lien d’invitation');
+              arenaInviteCodeInput.setAttribute('aria-label', 'Code hublo');
           }
           arenaInviteCodeInput?.addEventListener('input', () => {
               const normalized = normalizeRoomSlug(arenaInviteCodeInput.value);
@@ -2831,14 +2831,18 @@ export function initLegacyApp({ callbacks } = {}) {
           bindTap(profileCancelBtn, closeProfileEditPanel);
           bindTap(profileSaveBtn, saveProfileIdentity);
           bindPress(profileCopyInviteLinkBtn, async () => {
-              const inviteLink = (profileInviteLink?.value || '').trim();
+              let inviteLink = (profileInviteLink?.value || '').trim();
               if (!inviteLink) {
-                  if (profileInviteStatus) profileInviteStatus.textContent = 'Aucun lien d’invitation disponible pour le moment.';
-                  return;
+                  await createArenaInviteFromProfile();
+                  inviteLink = (profileInviteLink?.value || '').trim();
+                  if (!inviteLink) {
+                      if (profileInviteStatus) profileInviteStatus.textContent = 'Impossible de générer le lien hublo•° pour le moment.';
+                      return;
+                  }
               }
               try {
                   await navigator.clipboard.writeText(inviteLink);
-                  if (profileInviteStatus) profileInviteStatus.textContent = 'Lien d’invitation copié ✅';
+                  if (profileInviteStatus) profileInviteStatus.textContent = 'Lien hublo•° copié ✅';
               } catch (err) {
                   if (profileInviteStatus) profileInviteStatus.textContent = 'Copie impossible automatiquement, copie le lien manuellement.';
               }

@@ -5,7 +5,7 @@ import { shellStyles } from '../ui/shellMockups';
 
 const STANDARD_ERROR_UX = {
   'invalid-room-link': {
-    title: 'Lien room invalide',
+    title: 'Lien hublo•° invalide',
     message: 'Le lien de visite est incomplet ou mal formaté.',
     cta: { label: 'Retour à l’accueil', href: '/' },
   },
@@ -58,7 +58,7 @@ export function ArenaVisitorPage() {
     <section style={shellStyles.layout}>
       <header style={shellStyles.header}>
         <strong>Entrer dans l’arène</strong>
-        <span>Mode visiteur</span>
+        <span>Mode hublo•°</span>
       </header>
 
       <div style={shellStyles.bodyVisitor}>
@@ -73,7 +73,7 @@ export function ArenaVisitorPage() {
         </article>
 
         <aside style={{ ...shellStyles.panel, marginTop: 12, opacity: 0.86 }}>
-          <h2 style={{ marginTop: 0 }}>Parcours visiteur</h2>
+          <h2 style={{ marginTop: 0 }}>Parcours hublo•°</h2>
           <p>Actions autorisées : {policy.allowedActions.join(', ')}</p>
           <p>Lecture seule : aucune création, modification ou suppression de bulle.</p>
         </aside>
