@@ -2,6 +2,7 @@ import { ArenaEditorPage } from '../../features/arena/pages/ArenaEditorPage';
 import { ArenaVisitorPage } from '../../features/arena/pages/ArenaVisitorPage';
 import { useRoomParam } from '../../features/arena/hooks/useRoomParam';
 import LegacyShell from '../../features/legacy/components/LegacyShell';
+import { AppLanding } from './AppLanding';
 
 export function AppRouter() {
   const room = useRoomParam();
@@ -18,5 +19,12 @@ export function AppRouter() {
     return <ArenaEditorPage />;
   }
 
-  return <LegacyShell />;
+  const isLegacyMode =
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('arena') === 'legacy';
+
+  if (isLegacyMode) {
+    return <LegacyShell />;
+  }
+
+  return <AppLanding />;
 }
