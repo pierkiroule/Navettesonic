@@ -525,3 +525,65 @@ Objectifs :
 ## Phrase produit
 
 Soon•° permet de composer une arène sonore poétique et de la partager par lien. Chaque visiteur y pilote son petit poisson rose et écoute la composition à sa façon.
+
+
+---
+
+## Commandes de développement
+
+- `npm install` : installe les dépendances.
+- `npm run dev` : lance l'application en local (Vite).
+- `npm run build` : génère le build de production.
+- `npm run preview` : sert le build localement pour vérification.
+- `npm test` : exécute les tests unitaires/smoke actuels (`node --test tests/*.test.mjs`).
+
+## Architecture réelle post-refonte
+
+L'architecture active est désormais orientée par **bootstrap applicatif + features + intégrations + shared**, avec encapsulation explicite du legacy:
+
+```txt
+src/
+  app/
+    bootstrap/
+      AppBootstrap.jsx
+    providers/
+      AppProviders.jsx
+    routing/
+      AppRouter.jsx
+    App.jsx
+
+  features/
+    arena/
+      pages/
+      components/
+      hooks/
+      services/
+      utils/
+      ui/
+    multiplayer/session/
+    legacy/
+    auth/
+    profile/
+    echohypnose/
+
+  integrations/supabase/
+    client/
+    repositories/
+    arenaRepository.js
+
+  shared/
+    constants/
+    ui/
+    utils/
+
+  main.jsx
+```
+
+### Principes de dépendance
+
+- `app` orchestre et peut importer `features`, `shared`, `integrations`.
+- Chaque `feature` reste isolée des autres features et importe uniquement `shared` et `integrations`.
+- `integrations` contient l'accès infra (Supabase) sans dépendance vers les features.
+- `shared` reste transverse et sans dépendance vers les features.
+
+Pour les conventions de contribution (naming, boundaries, stratégie de tests), voir `docs/contributing.md`.
