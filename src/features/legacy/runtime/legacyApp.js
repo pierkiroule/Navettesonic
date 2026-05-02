@@ -47,6 +47,7 @@ export function initLegacyApp({ callbacks } = {}) {
             arenaInvitePreview, arenaInvitePreviewCode, arenaCopyInviteBtn, arenaShareInviteBtn, arenaGuestPanel, arenaGuestList,
             arenaSessionBadge, guestEntryModal, arenaDebugLog, profileDisplayName, profileBioText, profileEditBtn,
             profileEditPanel, profileNameInput, profileBioInput, profileSaveBtn, profileCancelBtn,
+            profileInviteLink, profileCopyInviteLinkBtn, profileInviteStatus,
             dbConnectionStatus, storeCatalog, sessionHistoryList, silenceSessionList,
           } = collectLegacyDomRefs();
 
@@ -1477,8 +1478,14 @@ export function initLegacyApp({ callbacks } = {}) {
               if (!arenaInvitePreview) return;
               const hasCode = Boolean(code);
               arenaInvitePreview.hidden = !hasCode;
-              if (!hasCode) return;
-              if (arenaInvitePreviewCode) arenaInvitePreviewCode.textContent = buildRoomUrl({ origin: window.location.origin, roomSlug: code });
+              const inviteLink = hasCode ? buildRoomUrl({ origin: window.location.origin, roomSlug: code }) : '';
+              if (hasCode && arenaInvitePreviewCode) arenaInvitePreviewCode.textContent = inviteLink;
+              if (profileInviteLink) profileInviteLink.value = inviteLink;
+              if (profileInviteStatus) {
+                  profileInviteStatus.textContent = hasCode
+                      ? 'Lien prêt à être partagé ✨'
+                      : 'Crée ou rejoins une arène pour générer un lien.';
+              }
           }
 
           async function copyArenaInviteToClipboard() {
@@ -2823,6 +2830,19 @@ export function initLegacyApp({ callbacks } = {}) {
           bindTap(profileEditBtn, openProfileEditPanel);
           bindTap(profileCancelBtn, closeProfileEditPanel);
           bindTap(profileSaveBtn, saveProfileIdentity);
+          bindPress(profileCopyInviteLinkBtn, async () => {
+              const inviteLink = (profileInviteLink?.value || '').trim();
+              if (!inviteLink) {
+                  if (profileInviteStatus) profileInviteStatus.textContent = 'Aucun lien d’invitation disponible pour le moment.';
+                  return;
+              }
+              try {
+                  await navigator.clipboard.writeText(inviteLink);
+                  if (profileInviteStatus) profileInviteStatus.textContent = 'Lien d’invitation copié ✅';
+              } catch (err) {
+                  if (profileInviteStatus) profileInviteStatus.textContent = 'Copie impossible automatiquement, copie le lien manuellement.';
+              }
+          });
           renderStoreCatalog();
           renderSessionHistory();
           renderArenaSessionBadge();

@@ -104,6 +104,9 @@ export function collectLegacyDomRefs() {
   const profileBioInput = document.getElementById('profileBioInput');
   const profileSaveBtn = document.getElementById('profileSaveBtn');
   const profileCancelBtn = document.getElementById('profileCancelBtn');
+  const profileInviteLink = document.getElementById('profileInviteLink');
+  const profileCopyInviteLinkBtn = document.getElementById('profileCopyInviteLinkBtn');
+  const profileInviteStatus = document.getElementById('profileInviteStatus');
   const dbConnectionStatus = document.getElementById('dbConnectionStatus');
   const storeCatalog = document.getElementById('storeCatalog');
   const sessionHistoryList = document.getElementById('sessionHistoryListLegacy');
@@ -127,6 +130,7 @@ export function collectLegacyDomRefs() {
     arenaInvitePreview, arenaInvitePreviewCode, arenaCopyInviteBtn, arenaShareInviteBtn, arenaGuestPanel, arenaGuestList,
     arenaSessionBadge, guestEntryModal, arenaDebugLog, profileDisplayName, profileBioText, profileEditBtn,
     profileEditPanel, profileNameInput, profileBioInput, profileSaveBtn, profileCancelBtn,
+    profileInviteLink, profileCopyInviteLinkBtn, profileInviteStatus,
     dbConnectionStatus, storeCatalog, sessionHistoryList, silenceSessionList,
   };
 }
