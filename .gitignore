@@ -13,3 +13,7 @@
 .env
 .env.local
 .env.*.local
+
+# Build and dependencies
+node_modules/
+dist/

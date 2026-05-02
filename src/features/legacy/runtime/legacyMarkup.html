@@ -281,13 +281,13 @@
             </article>
 
             <article class="card profile-auth-card profile-multi-section">
-                <h3>Gestion multiutilisateur</h3>
-                <p>Mode simple : 1) clique « Générer mon lien hublo•° », 2) copie le lien créé automatiquement, 3) envoie ce lien à tes proches. Ils entrent directement dans ton univers en mode visiteur (petit poisson rose).</p>
+                <h3>Lien hublo•°</h3>
+                <p>Mode simple : 1) clique « Générer mon lien hublo•° », 2) copie le lien, 3) partage-le. Les proches entrent directement dans ton univers en mode visiteur.</p>
                 <div class="stack">
                     <div class="auth-row">
                         <button id="createArenaBtn" type="button">Générer mon lien hublo•°</button>
                         <button id="inviteArenaBtn" type="button" hidden>Inviter</button>
-                        <button id="joinArenaBtn" type="button">Rejoindre</button>
+                        <button id="joinArenaBtn" type="button" hidden>Rejoindre</button>
                     </div>
                     <label class="field-label" for="arenaInviteCodeInput">Code hublo•°</label>
                     <input id="arenaInviteCodeInput" type="text" maxlength="8" placeholder="ABC-123">
@@ -307,7 +307,7 @@
                     </section>
                     <p id="arenaSessionStatus" class="status"></p>
                     <details id="arenaDebugPanel" class="muted">
-                        <summary>Diagnostic multiutilisateur</summary>
+                        <summary>Diagnostic lien hublo•°</summary>
                         <pre id="arenaDebugLog">Aucun diagnostic pour le moment.</pre>
                     </details>
                 </div>

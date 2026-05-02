@@ -2721,7 +2721,7 @@ export function initLegacyApp({ callbacks } = {}) {
 
           async function createArenaInviteFromProfile() {
               if (!currentSession?.user?.id) {
-                  setArenaSessionStatus('Connecte-toi pour inviter des membres.', true);
+                  setArenaSessionStatus('Connecte-toi pour générer ton lien hublo•°.', true);
                   return;
               }
               const ensured = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: true });
@@ -2801,8 +2801,8 @@ export function initLegacyApp({ callbacks } = {}) {
           initSupabaseProfileCard();
           renderProfileIdentity();
           if (createArenaBtn) {
-              createArenaBtn.hidden = true;
-              createArenaBtn.disabled = true;
+              createArenaBtn.hidden = false;
+              createArenaBtn.disabled = false;
           }
           bindPress(authSignInBtn, signInWithEmail);
           bindPress(authSignUpBtn, signUpWithEmail);
