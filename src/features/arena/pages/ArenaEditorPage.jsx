@@ -1,45 +1,116 @@
-import { ArenaPublishPanel } from '../components/ArenaPublishPanel';
+import { useMemo, useState } from 'react';
+
 import { FishController } from '../components/FishController';
 import { useArenaEditor } from '../hooks/useArenaEditor';
 import { arenaDomainService } from '../services/arenaDomainService';
 import { shellStyles } from '../ui/shellMockups';
 
+const STATUS_LABELS = {
+  [arenaDomainService.ARENA_STATUSES.DRAFT]: 'Brouillon',
+  [arenaDomainService.ARENA_STATUSES.PUBLISHED]: 'Publié',
+  [arenaDomainService.ARENA_STATUSES.ARCHIVED]: 'Archivé',
+};
+
+const CTA_BY_TRANSITION = {
+  [arenaDomainService.ARENA_STATUSES.PUBLISHED]: 'Publier l’arène',
+  [arenaDomainService.ARENA_STATUSES.ARCHIVED]: 'Archiver l’arène',
+};
+
 export function ArenaEditorPage() {
   const { bubbles, addBubble, updateBubble, removeBubble } = useArenaEditor();
-  const status = arenaDomainService.ARENA_STATUSES.DRAFT;
   const actorRole = arenaDomainService.ACTOR_ROLES.OWNER;
+  const [status, setStatus] = useState(arenaDomainService.ARENA_STATUSES.DRAFT);
+
+  const publicationPolicy = useMemo(
+    () => arenaDomainService.getScreenPolicy({ status, actorRole }),
+    [status, actorRole],
+  );
+
+  const primaryTransition = publicationPolicy.allowedTransitions?.[0] ?? null;
+  const ctaLabel = primaryTransition ? CTA_BY_TRANSITION[primaryTransition] ?? 'Changer le statut' : 'Arène finalisée';
+
+  const handlePrimaryCta = () => {
+    if (!primaryTransition) return;
+    setStatus(primaryTransition);
+  };
 
   return (
     <section style={shellStyles.layout}>
       <header style={shellStyles.header}>
-        <strong>Shell hôte</strong>
-        <button type="button" onClick={() => addBubble()}>Ajouter une bulle</button>
+        <strong>Éditeur d’arène</strong>
+        <button type="button" onClick={() => addBubble()} disabled={!publicationPolicy.canWrite}>
+          Ajouter une bulle
+        </button>
       </header>
 
       <div style={shellStyles.bodyHost}>
         <article style={shellStyles.canvas}>
-          <h1 style={{ marginTop: 0 }}>Canvas édition</h1>
-          <p>Zone immersive de création avec interactions riches.</p>
+          <h1 style={{ marginTop: 0 }}>Bulles</h1>
+          <p>Éditez les bulles métier (position, libellé, taille) sans dépendance DOM legacy.</p>
           <ul>
             {bubbles.map((bubble) => (
-              <li key={bubble.id}>
-                <strong>{bubble.label}</strong> ({Math.round(bubble.x)}, {Math.round(bubble.y)})
+              <li key={bubble.id} style={{ marginBottom: 12 }}>
+                <label>
+                  Nom :{' '}
+                  <input
+                    value={bubble.label}
+                    onChange={(event) => updateBubble(bubble.id, { label: event.target.value })}
+                    disabled={!publicationPolicy.canWrite}
+                  />
+                </label>{' '}
+                <label>
+                  X :{' '}
+                  <input
+                    type="number"
+                    value={Math.round(bubble.x)}
+                    onChange={(event) => updateBubble(bubble.id, { x: Number(event.target.value) || 0 })}
+                    disabled={!publicationPolicy.canWrite}
+                    style={{ width: 64 }}
+                  />
+                </label>{' '}
+                <label>
+                  Y :{' '}
+                  <input
+                    type="number"
+                    value={Math.round(bubble.y)}
+                    onChange={(event) => updateBubble(bubble.id, { y: Number(event.target.value) || 0 })}
+                    disabled={!publicationPolicy.canWrite}
+                    style={{ width: 64 }}
+                  />
+                </label>{' '}
+                <label>
+                  Taille :{' '}
+                  <input
+                    type="number"
+                    value={Math.round(bubble.size)}
+                    onChange={(event) => updateBubble(bubble.id, { size: Number(event.target.value) || 1 })}
+                    disabled={!publicationPolicy.canWrite}
+                    style={{ width: 64 }}
+                  />
+                </label>{' '}
+                <button type="button" onClick={() => removeBubble(bubble.id)} disabled={!publicationPolicy.canWrite}>
+                  Supprimer
+                </button>
                 <FishController bubble={bubble} onMove={updateBubble} />
-                <button type="button" onClick={() => removeBubble(bubble.id)}>Supprimer</button>
               </li>
             ))}
           </ul>
         </article>
 
         <aside style={shellStyles.panel}>
-          <h2 style={{ marginTop: 0 }}>Panel de contrôle</h2>
-          <p>Paramètres, publication et outils de modération hôte.</p>
-          <ArenaPublishPanel roomCode="preview" status={status} actorRole={actorRole} />
+          <h2 style={{ marginTop: 0 }}>Publication</h2>
+          <p>État courant : <strong>{STATUS_LABELS[status]}</strong></p>
+          <p>Rôle : <strong>{actorRole}</strong></p>
+          <p>Écran cible : <strong>{publicationPolicy.screen}</strong></p>
+          <p>Édition : <strong>{publicationPolicy.canWrite ? 'autorisée' : 'verrouillée'}</strong></p>
+          <button type="button" onClick={handlePrimaryCta} disabled={!primaryTransition}>
+            {ctaLabel}
+          </button>
         </aside>
       </div>
 
       <footer style={shellStyles.feedback}>
-        Feedback : mode édition actif — toutes les commandes hôte sont disponibles.
+        CTA principal contextuel piloté par le service domaine d’arène.
       </footer>
     </section>
   );
