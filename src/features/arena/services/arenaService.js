@@ -15,6 +15,11 @@ import {
 
 const fail = (message, details = null, code = 'unknown') => ({ data: null, error: { message, details, code } });
 const ok = (data) => ({ data, error: null });
+const resolveOrigin = (origin) => {
+  if (origin) return origin;
+  if (typeof window !== 'undefined' && window?.location?.origin) return window.location.origin;
+  return 'http://localhost:5173';
+};
 
 export async function loadPublicArenaByCode({ supabase, inviteCode }) {
   if (!supabase) return fail('Connexion Supabase requise.', null, 'network');
@@ -64,7 +69,7 @@ export async function publishArena({ supabase, arenaId, userId, origin }) {
   const { data, error } = await updateArenaStatus({ supabase, arenaId, ownerId: userId, status: 'published', isActive: true });
   if (error) return fail(error.message, error);
   const roomSlug = normalizeRoomSlug(data?.invite_code);
-  return ok({ arena: data, roomSlug, visitorUrl: buildRoomUrl({ origin: origin || window.location.origin, roomSlug }) });
+  return ok({ arena: data, roomSlug, visitorUrl: buildRoomUrl({ origin: resolveOrigin(origin), roomSlug }) });
 }
 
 export async function archiveArena({ supabase, arenaId, userId }) {
