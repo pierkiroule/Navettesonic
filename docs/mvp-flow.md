@@ -1,31 +1,24 @@
 # MVP Flow
 
-## Parcours hôte (Soon Experience)
+Ce flux officiel cible un **modèle publié en lecture seule, sans synchronisation live**.
 
-1. Le user arrive sur **Accueil**.
-2. Il entre dans **Soon Experience**.
-3. Depuis sa page **Profil**, il clique sur **Invitation**.
-4. Le système génère un lien public d'accès à son arène.
-5. Une fois le lien partagé, l'hôte ouvre son arène à tous les visiteurs connectés.
+## Parcours hôte (MVP)
 
-## Parcours visiteur (accès invité)
+1. L'hôte arrive sur l'éditeur d'arène.
+2. Il compose son arène (ajout, édition, suppression de bulles).
+3. Il publie l'arène.
+4. Il copie puis partage le lien visiteur de l'arène publiée.
 
-1. Le visiteur ouvre le lien d'invitation.
-2. Il saisit un pseudo (uniquement pour apparaître dans la liste des visiteurs).
-3. Il entre dans l'arène en mode visiteur, sans restriction d'observation.
-4. Son interface est volontairement minimale: **pas d'accueil, pas de menu, pas de profil**.
-5. Il voit et entend exactement ce que voit l'hôte pendant la composition live.
+## Parcours visiteur (MVP)
 
-## Expérience live dans l'arène
+1. Le visiteur ouvre le lien partagé.
+2. L'application charge l'arène publiée.
+3. Le visiteur consulte le contenu en lecture seule.
+4. Le visiteur explore localement (navigation personnelle côté client).
 
-- L'hôte incarne le **poisson-plume** (maître de cérémonie).
-- Chaque invité est représenté par un **petit poisson rose**.
-- Les poissons roses suivent les déplacements du poisson-plume.
-- Le mode invité est un **streaming passif**: regarder et écouter, sans action de composition.
+## Contraintes produit (MVP)
 
-## Règles produit (MVP)
-
-- Flux simple et ouvert au public dès qu'un hôte invite.
-- Le pseudo visiteur sert uniquement à l'identification en liste de présence.
-- Pas d'édition côté visiteur.
-- Pas de navigation hors expérience visiteur dédiée.
+- Aucun pseudo obligatoire à l'entrée.
+- Aucune présence live (pas de liste de visiteurs connectés en temps réel).
+- Aucun suivi temps réel de l'hôte (pas de caméra/position partagée en direct).
+- Aucune écriture côté visiteur (création/modification/suppression interdites).

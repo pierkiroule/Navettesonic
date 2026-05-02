@@ -168,7 +168,7 @@ export function ArenaEditorPage() {
             Copier le lien
           </button>
           <button type="button" onClick={handleInviteVisitors} disabled={isProcessing} style={{ marginLeft: 8 }}>
-            Inviter des visiteurs
+            Partager le lien
           </button>
           {inviteLink ? <p style={{ marginTop: 8 }}>Lien d’invitation : {inviteLink}</p> : null}
           {feedback ? (
@@ -179,9 +179,7 @@ export function ArenaEditorPage() {
         </aside>
       </div>
 
-      <footer style={shellStyles.feedback}>
-        Flow produit README : composer, publier, partager mon arène.
-      </footer>
+      <footer style={shellStyles.feedback}>Flow MVP : composer, publier, partager une consultation en lecture seule.</footer>
     </section>
   );
 }
