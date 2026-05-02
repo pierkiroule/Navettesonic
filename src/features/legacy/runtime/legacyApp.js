@@ -1534,22 +1534,16 @@ export function initLegacyApp({ callbacks } = {}) {
           }
 
           function updateExperienceAccessUi() {
-              const hasAccess = !!currentSession?.user;
               if (enterExperienceBtn) {
-                  enterExperienceBtn.textContent = hasAccess ? 'Soon experience' : 'Soon experience 🔒';
+                  enterExperienceBtn.textContent = 'Soon experience';
               }
               if (navSoon) {
-                  navSoon.textContent = hasAccess ? '🐟' : '🐟 🔒';
+                  navSoon.textContent = '🐟';
               }
           }
 
           function requireRegisteredUserForExperience(triggerLabel = 'Soon experience') {
-              if (currentSession?.user) return true;
-              setAuthStatus(`Inscris-toi ou connecte-toi pour accéder à l'expérience (${triggerLabel}).`, true);
-              console.warn('[legacyApp] Access denied for experience, redirecting to profile', { triggerLabel });
-              showView('profile');
-              authEmailInput?.focus();
-              return false;
+              return true;
           }
 
           function redirectToSoonExperienceAfterAuth() {
@@ -2721,7 +2715,11 @@ export function initLegacyApp({ callbacks } = {}) {
 
           async function createArenaInviteFromProfile() {
               if (!currentSession?.user?.id) {
-                  setArenaSessionStatus('Connecte-toi pour inviter des membres.', true);
+                  const localInviteCode = normalizeRoomSlug(currentArenaInviteCode || generateReadableInviteCode());
+                  currentArenaInviteCode = localInviteCode;
+                  if (arenaInviteCodeInput) arenaInviteCodeInput.value = localInviteCode;
+                  renderArenaInvitePreview(localInviteCode);
+                  setArenaSessionStatus('Lien hublo•° prêt ✅ (mode local)');
                   return;
               }
               const ensured = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: true });
@@ -2801,9 +2799,10 @@ export function initLegacyApp({ callbacks } = {}) {
           initSupabaseProfileCard();
           renderProfileIdentity();
           if (createArenaBtn) {
-              createArenaBtn.hidden = true;
-              createArenaBtn.disabled = true;
+              createArenaBtn.hidden = false;
+              createArenaBtn.disabled = false;
           }
+          bindPress(createArenaBtn, createArenaInviteFromProfile);
           bindPress(authSignInBtn, signInWithEmail);
           bindPress(authSignUpBtn, signUpWithEmail);
           bindPress(authSignOutBtn, signOutSession);
