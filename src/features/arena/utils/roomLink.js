@@ -31,9 +31,20 @@ export function buildRoomUrl(args) {
   return url.toString();
 }
 
+export function buildHubloUrl(args) {
+  const origin = typeof args === 'object' ? args.origin : window.location.origin;
+  const roomSlug = typeof args === 'object' ? args.roomSlug : args;
+  const safeSlug = normalizeRoomSlug(roomSlug);
+  const url = new URL(origin || window.location.origin);
+  url.searchParams.set('hublo', safeSlug);
+  return url.toString();
+}
+
 export function extractRoomSlugFromUrl(searchParams) {
   if (!searchParams) return '';
-  const normalized = normalizeRoomSlug(searchParams.get('room') || searchParams.get('arenaInvite') || '');
+  const normalized = normalizeRoomSlug(
+    searchParams.get('hublo') || searchParams.get('room') || searchParams.get('arenaInvite') || '',
+  );
   if (normalized.length < 7) return '';
   return normalized;
 }
