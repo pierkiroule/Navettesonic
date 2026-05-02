@@ -48,7 +48,7 @@ export function ArenaEditorPage() {
 
   const handleCopyLink = async () => {
     if (!inviteLink) {
-      setFeedback({ type: 'error', message: 'Erreur métier (arena-unpublished) : publiez d’abord l’arène pour récupérer le lien.', code: 'arena-unpublished' });
+      setFeedback({ type: 'error', message: 'Erreur métier : publiez d’abord l’arène pour récupérer le lien.', code: 'arena-unpublished' });
       return;
     }
 
@@ -56,13 +56,13 @@ export function ArenaEditorPage() {
       await navigator.clipboard.writeText(inviteLink);
       setFeedback({ type: 'success', message: 'Lien copié dans le presse-papiers.' });
     } catch {
-      setFeedback({ type: 'error', message: 'Erreur métier (network) : impossible de copier le lien pour le moment.', code: 'network' });
+      setFeedback({ type: 'error', message: 'Erreur réseau : impossible de copier le lien pour le moment.', code: 'network' });
     }
   };
 
   const handleInviteVisitors = async () => {
     if (!inviteLink) {
-      setFeedback({ type: 'error', message: 'Erreur métier (arena-unpublished) : publiez d’abord l’arène pour partager.', code: 'arena-unpublished' });
+      setFeedback({ type: 'error', message: 'Erreur métier : publiez d’abord l’arène pour partager.', code: 'arena-unpublished' });
       return;
     }
 
@@ -81,9 +81,9 @@ export function ArenaEditorPage() {
 
     try {
       await navigator.clipboard.writeText(inviteLink);
-      setFeedback({ type: 'success', message: 'Invitation copiée.' });
+      setFeedback({ type: 'success', message: 'Invitation générée et copiée.' });
     } catch {
-      setFeedback({ type: 'error', message: `Erreur métier (network) : impossible de partager automatiquement. Lien : ${inviteLink}`, code: 'network' });
+      setFeedback({ type: 'error', message: `Invitation générée : ${inviteLink}`, code: 'network' });
     }
   };
 
