@@ -29,6 +29,22 @@ required_columns(table_name, column_name) as (
     ('soon_arena_invites','max_acceptances'),
     ('soon_arena_invites','accepted_count')
 ),
+required_policies(table_name, policy_name) as (
+  values
+    ('arenas', 'arenas_public_read_published'),
+    ('arenas', 'arenas_owner_all'),
+    ('arena_bubbles', 'arena_bubbles_public_read_published'),
+    ('arena_bubbles', 'arena_bubbles_owner_all')
+),
+forbidden_anon_write_policies(table_name, policy_name) as (
+  values
+    ('arenas', 'arenas_anon_insert'),
+    ('arenas', 'arenas_anon_update'),
+    ('arenas', 'arenas_anon_delete'),
+    ('arena_bubbles', 'arena_bubbles_anon_insert'),
+    ('arena_bubbles', 'arena_bubbles_anon_update'),
+    ('arena_bubbles', 'arena_bubbles_anon_delete')
+),
 missing_tables as (
   select rt.name as missing_table
   from required_tables rt
@@ -45,6 +61,23 @@ missing_columns as (
    and c.column_name = rc.column_name
   where c.column_name is null
 ),
+missing_policies as (
+  select rp.table_name, rp.policy_name
+  from required_policies rp
+  left join pg_policies p
+    on p.schemaname = 'public'
+   and p.tablename = rp.table_name
+   and p.policyname = rp.policy_name
+  where p.policyname is null
+),
+present_forbidden_anon_write_policies as (
+  select f.table_name, f.policy_name
+  from forbidden_anon_write_policies f
+  join pg_policies p
+    on p.schemaname = 'public'
+   and p.tablename = f.table_name
+   and p.policyname = f.policy_name
+),
 rpc_check as (
   select case when exists (
     select 1
@@ -59,6 +92,12 @@ from missing_tables
 union all
 select 'columns' as check_type, coalesce(json_agg(json_build_object('table', table_name, 'column', column_name)), '[]'::json) as details
 from missing_columns
+union all
+select 'policies' as check_type, coalesce(json_agg(json_build_object('table', table_name, 'policy', policy_name)), '[]'::json) as details
+from missing_policies
+union all
+select 'forbidden_anon_write_policies' as check_type, coalesce(json_agg(json_build_object('table', table_name, 'policy', policy_name)), '[]'::json) as details
+from present_forbidden_anon_write_policies
 union all
 select 'rpc' as check_type, json_build_array(accept_arena_invite_status) as details
 from rpc_check;
