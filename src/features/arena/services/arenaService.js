@@ -1,4 +1,5 @@
 import { buildRoomUrl, generateRoomSlug, normalizeRoomSlug } from '../utils/roomLink.js';
+import { arenaDomainService } from './arenaDomainService.js';
 import { runtimeBubbleToDbPatch } from '../utils/arenaMappers.js';
 import {
   findPublishedArenaByInviteCode,
@@ -51,6 +52,9 @@ export async function createHostArena({ supabase, userId, title }) {
 export async function publishArena({ supabase, arenaId, userId, origin }) {
   if (!supabase) return fail('Connexion Supabase requise.');
   if (!arenaId || !userId) return fail('Arène ou utilisateur invalide.');
+  if (!arenaDomainService.canTransition({ fromStatus: 'draft', toStatus: 'published', actorRole: arenaDomainService.ACTOR_ROLES.OWNER })) {
+    return fail('Transition draft → published non autorisée.');
+  }
   const { data, error } = await updateArenaStatus({ supabase, arenaId, ownerId: userId, status: 'published', isActive: true });
   if (error) return fail(error.message, error);
   const roomSlug = normalizeRoomSlug(data?.invite_code);
@@ -60,6 +64,9 @@ export async function publishArena({ supabase, arenaId, userId, origin }) {
 export async function archiveArena({ supabase, arenaId, userId }) {
   if (!supabase) return fail('Connexion Supabase requise.');
   if (!arenaId || !userId) return fail('Arène ou utilisateur invalide.');
+  if (!arenaDomainService.canTransition({ fromStatus: 'published', toStatus: 'archived', actorRole: arenaDomainService.ACTOR_ROLES.OWNER })) {
+    return fail('Transition published → archived non autorisée.');
+  }
   const { data, error } = await updateArenaStatus({ supabase, arenaId, ownerId: userId, status: 'archived', isActive: false });
   return error ? fail(error.message, error) : ok(data);
 }
