@@ -282,14 +282,14 @@
 
             <article class="card profile-auth-card profile-multi-section">
                 <h3>Gestion multiutilisateur</h3>
-                <p>Mode simple : 1) clique « Partager mon arène », 2) envoie le code affiché, 3) tes proches cliquent « Rejoindre » et collent ce code. L’ID interne de l’arène est technique, tu peux l’ignorer.</p>
+                <p>Mode simple : 1) clique « Générer mon lien hublo•° », 2) copie le lien créé automatiquement, 3) envoie ce lien à tes proches. Ils entrent directement dans ton univers en mode visiteur (petit poisson rose).</p>
                 <div class="stack">
                     <div class="auth-row">
-                        <button id="createArenaBtn" type="button">Partager mon arène</button>
+                        <button id="createArenaBtn" type="button">Générer mon lien hublo•°</button>
                         <button id="inviteArenaBtn" type="button" hidden>Inviter</button>
                         <button id="joinArenaBtn" type="button">Rejoindre</button>
                     </div>
-                    <label class="field-label" for="arenaInviteCodeInput">Code d'invitation</label>
+                    <label class="field-label" for="arenaInviteCodeInput">Code hublo•°</label>
                     <input id="arenaInviteCodeInput" type="text" maxlength="8" placeholder="ABC-123">
                     <section id="arenaInvitePreview" class="arena-invite-preview" hidden>
                         <p class="arena-invite-kicker">Aperçu à partager</p>
@@ -314,12 +314,12 @@
             </article>
 
             <article class="card profile-auth-card">
-                <h3>Invitation</h3>
-                <p>Retrouve ici le lien direct à partager pour inviter tes amis dans ton arène Soon.</p>
+                <h3>Lien visiteur hublo•°</h3>
+                <p>Ce lien ouvre directement ta vue contemplation. Si le champ est vide, clique d’abord « Générer mon lien hublo•° ».</p>
                 <div class="stack">
-                    <label class="field-label" for="profileInviteLink">Lien d’invitation</label>
-                    <input id="profileInviteLink" type="text" readonly placeholder="Crée une arène pour générer ton lien">
-                    <button id="profileCopyInviteLinkBtn" type="button">Copier le lien d’invitation</button>
+                    <label class="field-label" for="profileInviteLink">Lien hublo•°</label>
+                    <input id="profileInviteLink" type="text" readonly placeholder="Génère ton lien hublo•°">
+                    <button id="profileCopyInviteLinkBtn" type="button">Copier le lien hublo•°</button>
                     <p id="profileInviteStatus" class="status"></p>
                 </div>
             </article>
