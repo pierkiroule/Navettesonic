@@ -1,6 +1,7 @@
 import { usePublishedArena } from '../hooks/usePublishedArena';
 import { useRoomParam } from '../hooks/useRoomParam';
 import { arenaDomainService } from '../services/arenaDomainService';
+import { shellStyles } from '../ui/shellMockups';
 
 const STANDARD_ERROR_UX = {
   'invalid-room-link': {
@@ -54,15 +55,33 @@ export function ArenaVisitorPage() {
   }
 
   return (
-    <section>
-      <h1>{arena?.title || 'Arena visiteur'}</h1>
-      <p>Mode lecture seule — toute action d’édition est bloquée pour les visiteurs.</p>
-      <p>Actions autorisées : {policy.allowedActions.join(', ')}</p>
-      <ul>
-        {bubbles.map((bubble) => (
-          <li key={bubble.id}>{bubble.label} ({Math.round(bubble.x)}, {Math.round(bubble.y)})</li>
-        ))}
-      </ul>
+    <section style={shellStyles.layout}>
+      <header style={shellStyles.header}>
+        <strong>Shell visiteur</strong>
+        <span>UI minimale</span>
+      </header>
+
+      <div style={shellStyles.bodyVisitor}>
+        <article style={shellStyles.canvas}>
+          <h1 style={{ marginTop: 0 }}>{arena?.title || 'Arena visiteur'}</h1>
+          <p>Expérience immersive en lecture seule.</p>
+          <ul>
+            {bubbles.map((bubble) => (
+              <li key={bubble.id}>{bubble.label} ({Math.round(bubble.x)}, {Math.round(bubble.y)})</li>
+            ))}
+          </ul>
+        </article>
+
+        <aside style={{ ...shellStyles.panel, marginTop: 12, opacity: 0.86 }}>
+          <h2 style={{ marginTop: 0 }}>Panel minimal</h2>
+          <p>Actions autorisées : {policy.allowedActions.join(', ')}</p>
+          <p>Les actions d’édition restent désactivées.</p>
+        </aside>
+      </div>
+
+      <footer style={shellStyles.feedback}>
+        Feedback : connexion visiteur stable, synchronisation passive active.
+      </footer>
     </section>
   );
 }

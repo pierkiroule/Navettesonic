@@ -1,0 +1,50 @@
+export const shellStyles = {
+  layout: {
+    minHeight: '100vh',
+    display: 'grid',
+    gridTemplateRows: 'auto 1fr auto',
+    background: 'linear-gradient(180deg, #0b1224 0%, #111a33 50%, #0b1224 100%)',
+    color: '#eef4ff',
+    fontFamily: 'Inter, system-ui, sans-serif',
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '14px 18px',
+    borderBottom: '1px solid rgba(173, 208, 255, 0.25)',
+    background: 'rgba(4, 10, 24, 0.7)',
+    backdropFilter: 'blur(10px)',
+  },
+  bodyHost: {
+    display: 'grid',
+    gridTemplateColumns: '1fr minmax(260px, 320px)',
+    gap: 16,
+    padding: 16,
+  },
+  bodyVisitor: {
+    display: 'grid',
+    gridTemplateColumns: '1fr',
+    padding: 12,
+  },
+  canvas: {
+    border: '1px solid rgba(173, 208, 255, 0.25)',
+    borderRadius: 16,
+    minHeight: '58vh',
+    background: 'radial-gradient(circle at 25% 25%, #2c84ff 0%, #1e3e7c 40%, #08122a 100%)',
+    padding: 16,
+  },
+  panel: {
+    border: '1px solid rgba(173, 208, 255, 0.25)',
+    borderRadius: 16,
+    padding: 16,
+    background: 'rgba(11, 21, 45, 0.8)',
+  },
+  feedback: {
+    borderTop: '1px solid rgba(173, 208, 255, 0.25)',
+    padding: '10px 16px',
+    fontSize: '0.92rem',
+    color: '#c6ddff',
+    background: 'rgba(5, 12, 28, 0.86)',
+  },
+};
