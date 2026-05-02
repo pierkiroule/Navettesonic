@@ -13,6 +13,12 @@ test('extractRoomSlugFromUrl accepts room and arenaInvite query params', () => {
   assert.equal(extractRoomSlugFromUrl(qpInvite), 'RMABC99');
 });
 
+
+test('extractRoomSlugFromUrl accepts short visitor-friendly codes', () => {
+  const qpHublo = new URLSearchParams('?hublo=ABC-123');
+  assert.equal(extractRoomSlugFromUrl(qpHublo), 'ABC23');
+});
+
 test('extractRoomSlugFromUrl rejects short or missing values', () => {
   assert.equal(extractRoomSlugFromUrl(new URLSearchParams('?room=local')), '');
   assert.equal(extractRoomSlugFromUrl(null), '');

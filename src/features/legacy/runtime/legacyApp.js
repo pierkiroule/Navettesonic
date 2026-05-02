@@ -2615,7 +2615,7 @@ export function initLegacyApp({ callbacks } = {}) {
               const client = buildSupabaseClient();
               if (!client) return;
               const inviteCode = normalizeRoomSlug(arenaInviteCodeInput?.value || '');
-              if (!inviteCode || inviteCode.length < 7) {
+              if (!inviteCode || inviteCode.length < 5) {
                   setArenaSessionStatus('Code invalide: entre un code au format ABC-123.', true);
                   return;
               }
