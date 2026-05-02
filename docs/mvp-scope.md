@@ -3,6 +3,16 @@
 Ce document définit le périmètre fonctionnel MVP et la checklist de validation associée.
 Il sert de référence pour toutes les futures PR.
 
+## Décisions produit
+
+**Date de gel : 2026-05-02**
+
+- MVP officiel = **modèle publié en lecture seule**.
+- Le visiteur consulte une version publiée, avec exploration locale uniquement.
+- **Pas de synchronisation live** (ni présence, ni suivi temps réel hôte/visiteurs).
+- **Pas de pseudo obligatoire** à l'entrée visiteur.
+- Les documents de référence (README et `docs/mvp-flow.md`) doivent rester alignés sur ces décisions.
+
 ## Parcours hôte (in scope)
 
 Objectif : permettre à un hôte de préparer et diffuser une arène consultable.

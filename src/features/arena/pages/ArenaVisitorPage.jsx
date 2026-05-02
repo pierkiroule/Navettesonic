@@ -63,8 +63,8 @@ export function ArenaVisitorPage() {
 
       <div style={shellStyles.bodyVisitor}>
         <article style={shellStyles.canvas}>
-          <h1 style={{ marginTop: 0 }}>{arena?.title || 'Arena visiteur'}</h1>
-          <p>Ouvrir le lien → Entrer → Piloter le poisson rose → Écouter à sa façon.</p>
+          <h1 style={{ marginTop: 0 }}>{arena?.title || 'Arène visiteur'}</h1>
+          <p>Ouvrir le lien → Charger la version publiée → Explorer localement en lecture seule.</p>
           <ul>
             {bubbles.map((bubble) => (
               <li key={bubble.id}>{bubble.label} ({Math.round(bubble.x)}, {Math.round(bubble.y)})</li>
@@ -80,7 +80,7 @@ export function ArenaVisitorPage() {
       </div>
 
       <footer style={shellStyles.feedback}>
-        Chaque visiteur vit une traversée personnelle dans un monde commun.
+        Mode visiteur MVP : consultation publiée, sans présence ni synchronisation en direct.
       </footer>
     </section>
   );
