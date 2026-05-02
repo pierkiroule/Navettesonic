@@ -5,7 +5,25 @@ import { buildRoomUrl, extractRoomSlugFromUrl, generateRoomSlug, normalizeRoomSl
 import { createHostArena, loadPublicArenaByCode, loadPublicArenaBubbles } from '../../arena/services/arenaService.js';
 import { getOrCreateGuestIdentity, getStoredGuestPseudo, saveGuestPseudo, normalizeGuestPseudo, validateGuestPseudo } from '../../arena/utils/guestIdentity.js';
 
-export function initLegacyApp() {
+// ⚠️ Legacy boundary: keep API minimal and stable.
+// Pas de nouvelle feature dans legacy.
+const LEGACY_RUNTIME_WARNING = '[legacy] Pas de nouvelle feature dans legacy.';
+let legacyCallbacks = {
+  onInit: null,
+  onDestroy: null,
+  onError: null,
+};
+
+export function configureLegacyCallbacks(callbacks = {}) {
+  legacyCallbacks = {
+    ...legacyCallbacks,
+    ...callbacks,
+  };
+}
+
+export function initLegacyApp({ callbacks } = {}) {
+  if (callbacks) configureLegacyCallbacks(callbacks);
+  console.warn(LEGACY_RUNTIME_WARNING);
   const experienceRoot = document.getElementById('experienceView');
   if (!experienceRoot) return;
   if (experienceRoot.dataset.legacyBooted === 'true') return;
@@ -6852,5 +6870,14 @@ export function initLegacyApp() {
           showView(isInviteGuestMode ? 'experience' : 'home');
           setBottomNavCollapsed(false);
           loop();
+          legacyCallbacks.onInit?.();
 
+}
+
+export function destroyLegacyApp() {
+  const experienceRoot = document.getElementById('experienceView');
+  if (experienceRoot) {
+    delete experienceRoot.dataset.legacyBooted;
+  }
+  legacyCallbacks.onDestroy?.();
 }

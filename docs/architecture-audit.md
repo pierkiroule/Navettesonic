@@ -17,6 +17,8 @@ Le projet est bien en **React + Vite**, mais le cœur fonctionnel est encore ess
 3. **Markup injecté en bloc**: rend le découpage composant + tests unitaires difficiles.
 4. **Frontière legacy non contractuelle**: peu d’API claire entre React et le runtime hérité.
 
+> ⚠️ Règle explicite: **pas de nouvelle feature dans legacy**.
+
 ## Cible recommandée (React multifichiers)
 
 Adopter une architecture par domaines:
