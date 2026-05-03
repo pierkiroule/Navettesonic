@@ -550,25 +550,9 @@
             transform: scale(0.98);
             filter: brightness(1.07);
         }
-        .trace-cam-btn--up {
-            top: calc(50% - var(--trace-cam-arena-ring));
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-        .trace-cam-btn--right {
-            right: calc(50% - var(--trace-cam-arena-ring));
-            top: 50%;
-            transform: translate(50%, -50%);
-        }
-        .trace-cam-btn--down {
-            top: calc(50% + var(--trace-cam-arena-ring));
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-        .trace-cam-btn--left {
-            left: calc(50% - var(--trace-cam-arena-ring));
-            top: 50%;
-            transform: translate(-50%, -50%);
+        .trace-depth-slider {
+            width: 88px;
+            accent-color: rgba(150, 228, 255, 0.9);
         }
         @media (max-width: 860px) {
             .trace-cam-controls {

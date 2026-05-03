@@ -189,6 +189,7 @@ export function initLegacyApp({ callbacks } = {}) {
           const TRACE_DEPTH_TAG_MIN_DISTANCE = 90;
           const TRACE_DRAW_POINT_MIN_DISTANCE = 10;
           const TRACE_DEPTH_LEVELS = ['front', 'above', 'below'];
+          let traceCurrentDepthLevel = 2;
           const traceOverviewZoomMin = 0.06;
           const traceOverviewZoomMax = 1.3;
           const traceCameraControl = {
@@ -3029,7 +3030,7 @@ export function initLegacyApp({ callbacks } = {}) {
           }
 
           function getTraceOverviewBaseZoom() {
-              return Math.max(traceOverviewZoomMin, Math.min(0.55, Math.min(w, h) / (ARENA_RADIUS * 2.05)));
+              return Math.max(traceOverviewZoomMin, Math.min(0.8, Math.min(w, h) / (ARENA_RADIUS * 1.55)));
           }
 
           function clampTraceZoomScale(nextScale) {
@@ -3066,11 +3067,13 @@ export function initLegacyApp({ callbacks } = {}) {
           function finalizeTraceRailFromDraft() {
               if (traceRailPath.length < 2) return;
               if (isDrawingTraceRail) setDrawingTraceRail(false);
-              traceRailPath = buildSmoothedTraceRail(traceRailPath);
-              isTraceDepthTaggingMode = true;
-              traceDepthTags = [];
-              ui.textContent = 'Tracé validé. Ajoute des balises de profondeur (1/2/3) puis appuie sur ✅.';
-              helperTips.textContent = 'Tap sur le tracé pour poser une balise (espacement minimum requis).';
+              isTraceDepthTaggingMode = false;
+              isTraceRailAutopilot = true;
+              setTraceListeningMode(false);
+              traceRailTargetIndex = 0;
+              traceRailDirection = 1;
+              ui.textContent = 'Parcours lancé automatiquement. Utilise ▶︎/⏸ pour pause/reprise.';
+              helperTips.textContent = 'Tracer par points : chaque point garde sa profondeur (slider 1/2/3).';
               updateTraceCamControlsVisibility();
           }
 
@@ -3117,26 +3120,15 @@ export function initLegacyApp({ callbacks } = {}) {
           }
 
           function applyTraceCameraAction(action) {
-              if (action === 'trace-arm') {
-                  armTraceFlow();
-                  return;
-              }
-              if (action === 'trace-launch') {
-                  if (isTraceDepthTaggingMode && traceRailPath.length > 1) {
-                      launchTraceRailAutopilot();
-                  } else if (traceRailPath.length > 1) {
-                      finalizeTraceRailFromDraft();
-                  }
-                  return;
-              }
-              if (action === 'trace-stop') {
-                  stopTraceFlow();
+              if (action === 'trace-playpause') {
+                  if (traceRailPath.length < 2) return;
+                  isTraceRailAutopilot = !isTraceRailAutopilot;
+                  ui.textContent = isTraceRailAutopilot ? 'Parcours en lecture.' : 'Parcours en pause.';
                   return;
               }
               if (!(isTraceListeningMode || isDrawingTraceRail || isTraceRailAutopilot)) return;
               const baseZoom = getTraceOverviewBaseZoom();
               const worldZoom = Math.max(traceOverviewZoomMin, Math.min(traceOverviewZoomMax, baseZoom * traceCameraControl.zoomScale));
-              const panStep = Math.max(26, 44 / Math.max(0.3, worldZoom));
               if (action === 'zoom-in') {
                   traceCameraControl.zoomScale = clampTraceZoomScale(traceCameraControl.zoomScale * 1.14);
                   return;
@@ -3144,15 +3136,6 @@ export function initLegacyApp({ callbacks } = {}) {
               if (action === 'zoom-out') {
                   traceCameraControl.zoomScale = clampTraceZoomScale(traceCameraControl.zoomScale / 1.14);
                   return;
-              }
-              if (action === 'up') {
-                  traceCameraControl.panY -= panStep;
-              } else if (action === 'down') {
-                  traceCameraControl.panY += panStep;
-              } else if (action === 'left') {
-                  traceCameraControl.panX -= panStep;
-              } else if (action === 'right') {
-                  traceCameraControl.panX += panStep;
               }
           }
 
@@ -3936,7 +3919,7 @@ export function initLegacyApp({ callbacks } = {}) {
                   return;
               }
               if (isTraceListeningMode) {
-                  if (isTraceDepthTaggingMode) {
+                  if (false && isTraceDepthTaggingMode) {
                       if (!traceRailPath.length) return;
                       let nearestIndex = 0;
                       let nearestDistance = Infinity;
@@ -3962,10 +3945,12 @@ export function initLegacyApp({ callbacks } = {}) {
                   setDrawingTraceRail(true);
                   if (!traceRailPath.length) {
                       traceRailPath = [pos];
+                      traceDepthTags = [{ index: 0, x: pos.x, y: pos.y, depthLayer: TRACE_DEPTH_LEVELS[traceCurrentDepthLevel - 1] || 'front' }];
                   } else {
                       const last = traceRailPath[traceRailPath.length - 1];
                       if (!last || Math.hypot(pos.x - last.x, pos.y - last.y) > TRACE_DRAW_POINT_MIN_DISTANCE) {
                           traceRailPath.push(pos);
+                          traceDepthTags.push({ index: traceRailPath.length - 1, x: pos.x, y: pos.y, depthLayer: TRACE_DEPTH_LEVELS[traceCurrentDepthLevel - 1] || 'front' });
                       }
                   }
                   traceExitConfirmUntil = 0;
@@ -4022,12 +4007,6 @@ export function initLegacyApp({ callbacks } = {}) {
               if (shouldLockSceneInteractions()) return;
               const pos = getMousePos(e);
               mouseWorld = pos;
-              if (isDrawingTraceRail) {
-                  const lastPoint = traceRailPath[traceRailPath.length - 1];
-                  if (!lastPoint || Math.hypot(pos.x - lastPoint.x, pos.y - lastPoint.y) > TRACE_DRAW_POINT_MIN_DISTANCE) {
-                      traceRailPath.push(pos);
-                  }
-              }
               if (isDraggingBubble && selectedBubble) {
                   selectedBubble.x = pos.x;
                   selectedBubble.y = pos.y;
@@ -4055,9 +4034,7 @@ export function initLegacyApp({ callbacks } = {}) {
               cancelFishLongPress();
               if (isDrawingTraceRail) {
                   setDrawingTraceRail(false);
-                  ui.textContent = 'Tracé prêt. Étape 3/4 : appuie sur ✅ pour lancer.';
-                  helperTips.textContent = 'Étape 4/4 : utilise ⏹ pour stopper et quitter le mode tracé.';
-                  updateTraceFlowButtons();
+                  finalizeTraceRailFromDraft();
               }
               const draggedBubbleId = isDraggingBubble && selectedBubble?.id ? selectedBubble.id : null;
               isTethered = false;
@@ -4108,6 +4085,7 @@ export function initLegacyApp({ callbacks } = {}) {
           window.addEventListener('touchcancel', onEnd);
 
           const traceCamButtons = traceCamControls?.querySelectorAll('[data-trace-cam-action]');
+          const traceDepthSlider = traceCamControls?.querySelector('#traceDepthSlider');
           traceCamButtons?.forEach((button) => {
               let repeatTimer = null;
               let repeatInterval = null;
@@ -4166,6 +4144,10 @@ export function initLegacyApp({ callbacks } = {}) {
           window.addEventListener('pointerup', () => { isTraceCamControlGestureActive = false; }, { passive: true });
           window.addEventListener('pointercancel', () => { isTraceCamControlGestureActive = false; }, { passive: true });
           window.addEventListener('touchend', () => { isTraceCamControlGestureActive = false; }, { passive: true });
+          traceDepthSlider?.addEventListener('input', () => {
+              const next = Number(traceDepthSlider.value);
+              if ([1, 2, 3].includes(next)) traceCurrentDepthLevel = next;
+          });
           window.addEventListener('touchcancel', () => { isTraceCamControlGestureActive = false; }, { passive: true });
           const traceCamDragZone = traceCamControls?.querySelector('[data-trace-cam-drag-zone]');
           const stopTraceCamMenuDrag = () => {
