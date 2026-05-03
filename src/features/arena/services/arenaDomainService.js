@@ -4,6 +4,12 @@ const ARENA_STATUSES = Object.freeze({
   ARCHIVED: 'archived',
 });
 
+const DB_STATUS_ALIASES = Object.freeze({
+  waiting: ARENA_STATUSES.DRAFT,
+  running: ARENA_STATUSES.PUBLISHED,
+  finished: ARENA_STATUSES.ARCHIVED,
+});
+
 const ACTOR_ROLES = Object.freeze({
   OWNER: 'owner',
   EDITOR: 'editor',
@@ -33,7 +39,17 @@ const TRANSITION_PERMISSIONS = Object.freeze({
 const VISITOR_ALLOWED_ACTIONS = Object.freeze(['read_published_arena', 'read_published_bubbles']);
 
 function normalizeStatus(status) {
-  return Object.values(ARENA_STATUSES).includes(status) ? status : ARENA_STATUSES.DRAFT;
+  if (Object.values(ARENA_STATUSES).includes(status)) return status;
+  if (DB_STATUS_ALIASES[status]) return DB_STATUS_ALIASES[status];
+  return ARENA_STATUSES.DRAFT;
+}
+
+function toDbStatus(status) {
+  const normalized = normalizeStatus(status);
+  if (normalized === ARENA_STATUSES.DRAFT) return 'waiting';
+  if (normalized === ARENA_STATUSES.PUBLISHED) return 'running';
+  if (normalized === ARENA_STATUSES.ARCHIVED) return 'finished';
+  return 'waiting';
 }
 
 function canTransition({ fromStatus, toStatus, actorRole }) {
@@ -82,4 +98,5 @@ export const arenaDomainService = {
   canTransition,
   getAvailableTransitions,
   getScreenPolicy,
+  toDbStatus,
 };
