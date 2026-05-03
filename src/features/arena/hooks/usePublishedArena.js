@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabaseClient } from '../../../integrations/supabase/client/supabaseClient';
+import { isSupabaseConfigured, supabaseClient } from '../../../integrations/supabase/client/supabaseClient';
 import { loadPublicArenaBubbles, loadPublicArenaByCode } from '../services/arenaService';
 
 export function usePublishedArena(roomCode) {
@@ -11,6 +11,18 @@ export function usePublishedArena(roomCode) {
     async function loadArena() {
       if (!roomCode) {
         if (isMounted) setState({ isLoading: false, arena: null, bubbles: [], error: null });
+        return;
+      }
+
+      if (!isSupabaseConfigured || !supabaseClient) {
+        if (isMounted) {
+          setState({
+            isLoading: false,
+            arena: null,
+            bubbles: [],
+            error: { code: 'network', message: 'Configuration Supabase manquante (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).' },
+          });
+        }
         return;
       }
 
