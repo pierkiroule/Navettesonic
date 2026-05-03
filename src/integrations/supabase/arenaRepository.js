@@ -6,7 +6,7 @@ export async function findPublishedArenaByInviteCode({ supabase, inviteCode }) {
     .select('*')
     .eq('invite_code', inviteCode)
     .eq('is_active', true)
-    .eq('status', 'published')
+    .in('status', ['published', 'running'])
     .maybeSingle();
 }
 

@@ -46,7 +46,13 @@ export async function createHostArena({ supabase, userId, title }) {
     const invite_code = generateRoomSlug();
     const { data, error } = await insertArena({
       supabase,
-      arena: { owner_id: userId, invite_code, title: title || 'Mon arène', status: 'draft', is_active: true },
+      arena: {
+        owner_id: userId,
+        invite_code,
+        title: title || 'Mon arène',
+        status: arenaDomainService.toDbStatus(arenaDomainService.ARENA_STATUSES.DRAFT),
+        is_active: true,
+      },
     });
     if (error?.code === '23505') continue;
     if (error) return fail(error.message, error);
@@ -61,7 +67,13 @@ export async function publishArena({ supabase, arenaId, userId, origin }) {
   if (!arenaDomainService.canTransition({ fromStatus: 'draft', toStatus: 'published', actorRole: arenaDomainService.ACTOR_ROLES.OWNER })) {
     return fail('Transition draft → published non autorisée.');
   }
-  const { data, error } = await updateArenaStatus({ supabase, arenaId, ownerId: userId, status: 'published', isActive: true });
+  const { data, error } = await updateArenaStatus({
+    supabase,
+    arenaId,
+    ownerId: userId,
+    status: arenaDomainService.toDbStatus(arenaDomainService.ARENA_STATUSES.PUBLISHED),
+    isActive: true,
+  });
   if (error) return fail(error.message, error);
   const roomSlug = normalizeRoomSlug(data?.invite_code);
   return ok({ arena: data, roomSlug, visitorUrl: buildRoomUrl({ origin, roomSlug }) });
@@ -73,7 +85,13 @@ export async function archiveArena({ supabase, arenaId, userId }) {
   if (!arenaDomainService.canTransition({ fromStatus: 'published', toStatus: 'archived', actorRole: arenaDomainService.ACTOR_ROLES.OWNER })) {
     return fail('Transition published → archived non autorisée.');
   }
-  const { data, error } = await updateArenaStatus({ supabase, arenaId, ownerId: userId, status: 'archived', isActive: false });
+  const { data, error } = await updateArenaStatus({
+    supabase,
+    arenaId,
+    ownerId: userId,
+    status: arenaDomainService.toDbStatus(arenaDomainService.ARENA_STATUSES.ARCHIVED),
+    isActive: false,
+  });
   return error ? fail(error.message, error) : ok(data);
 }
 
