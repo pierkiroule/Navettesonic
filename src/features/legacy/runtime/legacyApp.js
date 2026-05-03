@@ -184,12 +184,14 @@ export function initLegacyApp({ callbacks } = {}) {
           let traceRailDirection = 1;
           let traceDepthTags = [];
           let isTraceDepthTaggingMode = false;
+          let traceEditPointIndex = -1;
           let traceExitConfirmUntil = 0;
           let isTraceCamControlGestureActive = false;
           const TRACE_DEPTH_TAG_MIN_DISTANCE = 90;
           const TRACE_DRAW_POINT_MIN_DISTANCE = 10;
           const TRACE_DEPTH_LEVELS = ['front', 'above', 'below'];
           let traceCurrentDepthLevel = 2;
+          const TRACE_POINT_HIT_RADIUS = 22;
           const traceOverviewZoomMin = 0.06;
           const traceOverviewZoomMax = 1.3;
           const traceCameraControl = {
@@ -3077,6 +3079,18 @@ export function initLegacyApp({ callbacks } = {}) {
               updateTraceCamControlsVisibility();
           }
 
+          function syncTraceDepthTagsWithPath() {
+              traceDepthTags = traceRailPath.map((point, index) => {
+                  const existing = traceDepthTags[index];
+                  return {
+                      index,
+                      x: point.x,
+                      y: point.y,
+                      depthLayer: existing?.depthLayer || TRACE_DEPTH_LEVELS[traceCurrentDepthLevel - 1] || 'front'
+                  };
+              });
+          }
+
           function launchTraceRailAutopilot() {
               setTraceListeningMode(false);
               isTraceDepthTaggingMode = false;
@@ -3919,38 +3933,24 @@ export function initLegacyApp({ callbacks } = {}) {
                   return;
               }
               if (isTraceListeningMode) {
-                  if (false && isTraceDepthTaggingMode) {
-                      if (!traceRailPath.length) return;
-                      let nearestIndex = 0;
-                      let nearestDistance = Infinity;
-                      for (let i = 0; i < traceRailPath.length; i++) {
-                          const p = traceRailPath[i];
-                          const d = Math.hypot(pos.x - p.x, pos.y - p.y);
-                          if (d < nearestDistance) { nearestDistance = d; nearestIndex = i; }
-                      }
-                      const nearestPoint = traceRailPath[nearestIndex];
-                      const tooClose = traceDepthTags.some((tag) => Math.hypot(nearestPoint.x - tag.x, nearestPoint.y - tag.y) < TRACE_DEPTH_TAG_MIN_DISTANCE);
-                      if (tooClose) {
-                          ui.textContent = "Balise trop proche d'une autre. Espace davantage les points.";
-                          return;
-                      }
-                      const levelInput = Number(window.prompt('Niveau profondeur pour ce point ? (1=surface, 2=milieu, 3=profondeur)', '2'));
-                      if (![1,2,3].includes(levelInput)) return;
-                      const depthLayer = TRACE_DEPTH_LEVELS[levelInput - 1] || 'front';
-                      traceDepthTags.push({ index: nearestIndex, x: nearestPoint.x, y: nearestPoint.y, depthLayer });
-                      traceDepthTags.sort((a,b)=>a.index-b.index);
-                      ui.textContent = `Balise profondeur ${levelInput} ajoutée. Appuie sur ✅ pour lancer.`;
-                      return;
-                  }
+                  traceEditPointIndex = -1;
                   setDrawingTraceRail(true);
-                  if (!traceRailPath.length) {
+                  if (!traceRailPath.length || !isTraceRailAutopilot) {
+                      for (let i = 0; i < traceRailPath.length; i++) {
+                          if (Math.hypot(pos.x - traceRailPath[i].x, pos.y - traceRailPath[i].y) <= TRACE_POINT_HIT_RADIUS) {
+                              traceEditPointIndex = i;
+                              traceDepthTags[i].depthLayer = TRACE_DEPTH_LEVELS[traceCurrentDepthLevel - 1] || 'front';
+                              return;
+                          }
+                      }
                       traceRailPath = [pos];
                       traceDepthTags = [{ index: 0, x: pos.x, y: pos.y, depthLayer: TRACE_DEPTH_LEVELS[traceCurrentDepthLevel - 1] || 'front' }];
                   } else {
                       const last = traceRailPath[traceRailPath.length - 1];
                       if (!last || Math.hypot(pos.x - last.x, pos.y - last.y) > TRACE_DRAW_POINT_MIN_DISTANCE) {
                           traceRailPath.push(pos);
-                          traceDepthTags.push({ index: traceRailPath.length - 1, x: pos.x, y: pos.y, depthLayer: TRACE_DEPTH_LEVELS[traceCurrentDepthLevel - 1] || 'front' });
+                          syncTraceDepthTagsWithPath();
+                          traceDepthTags[traceRailPath.length - 1].depthLayer = TRACE_DEPTH_LEVELS[traceCurrentDepthLevel - 1] || 'front';
                       }
                   }
                   traceExitConfirmUntil = 0;
@@ -4007,6 +4007,10 @@ export function initLegacyApp({ callbacks } = {}) {
               if (shouldLockSceneInteractions()) return;
               const pos = getMousePos(e);
               mouseWorld = pos;
+              if (isTraceListeningMode && traceEditPointIndex >= 0 && traceRailPath[traceEditPointIndex]) {
+                  traceRailPath[traceEditPointIndex] = { x: pos.x, y: pos.y };
+                  syncTraceDepthTagsWithPath();
+              }
               if (isDraggingBubble && selectedBubble) {
                   selectedBubble.x = pos.x;
                   selectedBubble.y = pos.y;
@@ -4034,6 +4038,7 @@ export function initLegacyApp({ callbacks } = {}) {
               cancelFishLongPress();
               if (isDrawingTraceRail) {
                   setDrawingTraceRail(false);
+                  traceEditPointIndex = -1;
                   finalizeTraceRailFromDraft();
               }
               const draggedBubbleId = isDraggingBubble && selectedBubble?.id ? selectedBubble.id : null;
@@ -4147,6 +4152,11 @@ export function initLegacyApp({ callbacks } = {}) {
           traceDepthSlider?.addEventListener('input', () => {
               const next = Number(traceDepthSlider.value);
               if ([1, 2, 3].includes(next)) traceCurrentDepthLevel = next;
+          });
+          traceDepthSlider?.addEventListener('change', () => {
+              if (traceEditPointIndex >= 0 && traceDepthTags[traceEditPointIndex]) {
+                  traceDepthTags[traceEditPointIndex].depthLayer = TRACE_DEPTH_LEVELS[traceCurrentDepthLevel - 1] || 'front';
+              }
           });
           window.addEventListener('touchcancel', () => { isTraceCamControlGestureActive = false; }, { passive: true });
           const traceCamDragZone = traceCamControls?.querySelector('[data-trace-cam-drag-zone]');
