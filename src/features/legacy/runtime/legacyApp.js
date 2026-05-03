@@ -194,6 +194,7 @@ export function initLegacyApp({ callbacks } = {}) {
           let traceCurrentDepthLevel = 2;
           let traceCurrentSpeedLevel = 2;
           const TRACE_MAX_POINTS = 30;
+          const TRACE_FIXED_POINT_COUNT = 20;
           const TRACE_POINT_HIT_RADIUS = 22;
           const traceOverviewZoomMin = 0.06;
           const traceOverviewZoomMax = 1.3;
@@ -3026,6 +3027,23 @@ export function initLegacyApp({ callbacks } = {}) {
               traceRailSmoothPath = buildSmoothedTraceRail(closed);
           }
 
+          function ensureDefaultTraceCircuit() {
+              if (traceRailPath.length === TRACE_FIXED_POINT_COUNT) return;
+              const radius = ARENA_RADIUS * 0.56;
+              traceRailPath = Array.from({ length: TRACE_FIXED_POINT_COUNT }, (_, i) => {
+                  const a = (i / TRACE_FIXED_POINT_COUNT) * Math.PI * 2;
+                  return { x: Math.cos(a) * radius, y: Math.sin(a) * radius };
+              });
+              traceDepthTags = traceRailPath.map((p, index) => ({
+                  index,
+                  x: p.x,
+                  y: p.y,
+                  depthLayer: 'front',
+                  speedLevel: 2
+              }));
+              rebuildTraceLoopFromControlPoints();
+          }
+
           function shouldLockSceneInteractions() {
               return isTraceCamControlGestureActive;
           }
@@ -3118,14 +3136,13 @@ export function initLegacyApp({ callbacks } = {}) {
               setTraceListeningMode(true);
               setDrawingTraceRail(false);
               traceExitConfirmUntil = 0;
-              traceRailPath = [];
-              traceRailSmoothPath = [];
-              traceDepthTags = [];
+              ensureDefaultTraceCircuit();
               isTraceDepthTaggingMode = false;
               traceRailTargetIndex = 0;
               traceRailDirection = 1;
-              ui.textContent = 'Mode tracé activé : touche l’océan pour dessiner.';
-              helperTips.textContent = 'Étape 2/4 : trace ton chemin. Étape 3 : valide avec ✅.';
+              isTraceRailAutopilot = true;
+              ui.textContent = 'Mode tracé activé : circuit prédefini lancé. Déplace les balises pour améliorer.';
+              helperTips.textContent = 'Fais glisser les balises existantes (20 fixes) pour sculpter le parcours.';
               updateTraceCamControlsVisibility();
           }
 
@@ -3950,36 +3967,23 @@ export function initLegacyApp({ callbacks } = {}) {
               if (isTraceListeningMode) {
                   traceEditPointIndex = -1;
                   setDrawingTraceRail(true);
-                  if (!traceRailPath.length || !isTraceRailAutopilot) {
-                      for (let i = 0; i < traceRailPath.length; i++) {
-                          if (Math.hypot(pos.x - traceRailPath[i].x, pos.y - traceRailPath[i].y) <= TRACE_POINT_HIT_RADIUS) {
-                              traceEditPointIndex = i;
-                              traceDepthTags[i].depthLayer = TRACE_DEPTH_LEVELS[traceCurrentDepthLevel - 1] || 'front';
-                              traceDepthTags[i].speedLevel = traceCurrentSpeedLevel;
-                              return;
-                          }
-                      }
-                      traceRailPath = [pos];
-                      traceDepthTags = [{ index: 0, x: pos.x, y: pos.y, depthLayer: TRACE_DEPTH_LEVELS[traceCurrentDepthLevel - 1] || 'front', speedLevel: traceCurrentSpeedLevel }];
-                  } else {
-                      const last = traceRailPath[traceRailPath.length - 1];
-                      if (traceRailPath.length >= TRACE_MAX_POINTS) {
-                          ui.textContent = 'Circuit limité à 30 balises.';
-                          return;
-                      }
-                      if (!last || Math.hypot(pos.x - last.x, pos.y - last.y) > TRACE_DRAW_POINT_MIN_DISTANCE) {
-                          traceRailPath.push(pos);
-                          syncTraceDepthTagsWithPath();
-                  rebuildTraceLoopFromControlPoints();
-                          traceDepthTags[traceRailPath.length - 1].depthLayer = TRACE_DEPTH_LEVELS[traceCurrentDepthLevel - 1] || 'front';
-                          traceDepthTags[traceRailPath.length - 1].speedLevel = traceCurrentSpeedLevel;
-                          rebuildTraceLoopFromControlPoints();
+                  ensureDefaultTraceCircuit();
+                  let nearestIndex = 0;
+                  let nearestDist = Infinity;
+                  for (let i = 0; i < traceRailPath.length; i++) {
+                      const d = Math.hypot(pos.x - traceRailPath[i].x, pos.y - traceRailPath[i].y);
+                      if (d < nearestDist) {
+                          nearestDist = d;
+                          nearestIndex = i;
                       }
                   }
+                  traceEditPointIndex = nearestIndex;
+                  traceDepthTags[nearestIndex].depthLayer = TRACE_DEPTH_LEVELS[traceCurrentDepthLevel - 1] || 'front';
+                  traceDepthTags[nearestIndex].speedLevel = traceCurrentSpeedLevel;
                   traceExitConfirmUntil = 0;
                   isTethered = false;
-                  ui.textContent = 'Trace en cours… Étape 3/4 : valide avec ✅ pour lancer la traversée.';
-                  helperTips.textContent = 'Ajoute des points en glissant, puis appuie sur ✅.';
+                  ui.textContent = 'Édition du circuit : déplace les balises existantes.';
+                  helperTips.textContent = '20 balises fixes : ajuste forme, profondeur et vitesse.';
                   updateTraceCamControlsVisibility();
                   return;
               }
