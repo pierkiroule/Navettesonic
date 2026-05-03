@@ -2383,7 +2383,7 @@ export function initLegacyApp({ callbacks } = {}) {
 
           function refreshAuthUi(message = '') {
               if (message) setAuthStatus(message, false);
-              if (currentSession?.user) {
+              if (currentSession?.user && !isAnonymousSession()) {
                   authSessionInfo.textContent = `Connecté: ${currentSession.user.email || currentSession.user.id}`;
                   if (authCredentialsBlock) authCredentialsBlock.hidden = true;
                   if (authEmailInput) authEmailInput.value = currentSession.user.email || '';
@@ -2391,7 +2391,9 @@ export function initLegacyApp({ callbacks } = {}) {
                   if (authSignOutBtn) authSignOutBtn.hidden = false;
                   if (authSignOutBtn) authSignOutBtn.disabled = false;
               } else {
-                  authSessionInfo.textContent = 'Aucune session active.';
+                  authSessionInfo.textContent = isAnonymousSession()
+                      ? 'Session invitée active. Connecte-toi ou crée un compte pour publier et inviter.'
+                      : 'Aucune session active.';
                   if (authCredentialsBlock) authCredentialsBlock.hidden = false;
                   if (authSignOutBtn) authSignOutBtn.hidden = true;
                   if (authSignOutBtn) authSignOutBtn.disabled = true;
@@ -2578,9 +2580,9 @@ export function initLegacyApp({ callbacks } = {}) {
           }
 
           async function createArenaFromProfile() {
-              if (!currentSession?.user?.id) {
-                  setArenaSessionStatus('Connecte-toi pour créer une arène.', true);
-                  setAuthStatus('Connexion requise pour créer une arène.', true);
+              if (!currentSession?.user?.id || isAnonymousSession()) {
+                  setArenaSessionStatus('Connecte-toi avec un compte pour créer une arène.', true);
+                  setAuthStatus('Connexion/inscription requise pour créer une arène.', true);
                   return;
               }
               setArenaSessionStatus('Préparation de ton arène…');
@@ -2714,12 +2716,13 @@ export function initLegacyApp({ callbacks } = {}) {
           }
 
           async function createArenaInviteFromProfile() {
-              if (!currentSession?.user?.id) {
+              if (!currentSession?.user?.id || isAnonymousSession()) {
                   const localInviteCode = normalizeRoomSlug(currentArenaInviteCode || generateReadableInviteCode());
                   currentArenaInviteCode = localInviteCode;
                   if (arenaInviteCodeInput) arenaInviteCodeInput.value = localInviteCode;
                   renderArenaInvitePreview(localInviteCode);
-                  setArenaSessionStatus('Lien hublo•° prêt ✅ (mode local)');
+                  setArenaSessionStatus('Lien hublo•° local prêt ✅. Connecte-toi pour activer les invitations multi.', false);
+                  setAuthStatus('Connecte-toi ou inscris-toi pour activer les invitations multi.', true);
                   return;
               }
               const ensured = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: false });
@@ -2747,6 +2750,10 @@ export function initLegacyApp({ callbacks } = {}) {
               setArenaSessionStatus('Lien hublo•° prêt ✅');
           }
 
+          function isAnonymousSession(session = currentSession) {
+              return Boolean(session?.user?.is_anonymous);
+          }
+
           async function restoreSession() {
               if (isInviteGuestMode) {
                   currentSession = null;
@@ -2757,14 +2764,6 @@ export function initLegacyApp({ callbacks } = {}) {
               if (!client) return;
               const { data } = await client.auth.getSession();
               currentSession = data?.session || null;
-              if (!currentSession?.user) {
-                  const { data: anonData, error: anonError } = await client.auth.signInAnonymously();
-                  if (anonError) {
-                      console.warn('[legacyApp] anonymous sign-in failed', anonError);
-                  } else if (anonData?.session) {
-                      currentSession = anonData.session;
-                  }
-              }
               if (!currentSession?.user) {
                   currentArenaInviteCode = '';
                   currentArenaParticipants = 1;
