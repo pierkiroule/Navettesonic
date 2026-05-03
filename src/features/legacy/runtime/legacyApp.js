@@ -180,10 +180,22 @@ export function initLegacyApp({ callbacks } = {}) {
           let isDrawingTraceRail = false;
           let isTraceRailAutopilot = false;
           let traceRailPath = [];
+          let traceRailSmoothPath = [];
           let traceRailTargetIndex = 0;
           let traceRailDirection = 1;
+          let traceDepthTags = [];
+          let isTraceDepthTaggingMode = false;
+          let traceEditPointIndex = -1;
           let traceExitConfirmUntil = 0;
           let isTraceCamControlGestureActive = false;
+          const TRACE_DEPTH_TAG_MIN_DISTANCE = 90;
+          const TRACE_DRAW_POINT_MIN_DISTANCE = 10;
+          const TRACE_DEPTH_LEVELS = ['front', 'above', 'below'];
+          let traceCurrentDepthLevel = 2;
+          let traceCurrentSpeedLevel = 2;
+          const TRACE_MAX_POINTS = 30;
+          const TRACE_FIXED_POINT_COUNT = 20;
+          const TRACE_POINT_HIT_RADIUS = 22;
           const traceOverviewZoomMin = 0.06;
           const traceOverviewZoomMax = 1.3;
           const traceCameraControl = {
@@ -3009,6 +3021,29 @@ export function initLegacyApp({ callbacks } = {}) {
               return sampleTraceBezierSegments(buildTraceBezierSegments(points, 0.24), 16);
           }
 
+          function rebuildTraceLoopFromControlPoints() {
+              if (traceRailPath.length < 2) { traceRailSmoothPath = [...traceRailPath]; return; }
+              const closed = [...traceRailPath, traceRailPath[0]];
+              traceRailSmoothPath = buildSmoothedTraceRail(closed);
+          }
+
+          function ensureDefaultTraceCircuit() {
+              if (traceRailPath.length === TRACE_FIXED_POINT_COUNT) return;
+              const radius = ARENA_RADIUS * 0.56;
+              traceRailPath = Array.from({ length: TRACE_FIXED_POINT_COUNT }, (_, i) => {
+                  const a = (i / TRACE_FIXED_POINT_COUNT) * Math.PI * 2;
+                  return { x: Math.cos(a) * radius, y: Math.sin(a) * radius };
+              });
+              traceDepthTags = traceRailPath.map((p, index) => ({
+                  index,
+                  x: p.x,
+                  y: p.y,
+                  depthLayer: 'front',
+                  speedLevel: 2
+              }));
+              rebuildTraceLoopFromControlPoints();
+          }
+
           function shouldLockSceneInteractions() {
               return isTraceCamControlGestureActive;
           }
@@ -3024,7 +3059,7 @@ export function initLegacyApp({ callbacks } = {}) {
           }
 
           function getTraceOverviewBaseZoom() {
-              return Math.max(traceOverviewZoomMin, Math.min(0.55, Math.min(w, h) / (ARENA_RADIUS * 2.05)));
+              return Math.max(traceOverviewZoomMin, Math.min(0.8, Math.min(w, h) / (ARENA_RADIUS * 1.55)));
           }
 
           function clampTraceZoomScale(nextScale) {
@@ -3060,13 +3095,38 @@ export function initLegacyApp({ callbacks } = {}) {
 
           function finalizeTraceRailFromDraft() {
               if (traceRailPath.length < 2) return;
+              rebuildTraceLoopFromControlPoints();
               if (isDrawingTraceRail) setDrawingTraceRail(false);
+              isTraceDepthTaggingMode = false;
+              isTraceRailAutopilot = true;
               setTraceListeningMode(false);
-              traceRailPath = buildSmoothedTraceRail(traceRailPath);
+              traceRailTargetIndex = 0;
+              traceRailDirection = 1;
+              ui.textContent = 'Parcours lancé automatiquement. Utilise ▶︎/⏸ pour pause/reprise.';
+              helperTips.textContent = 'Tracer par points : chaque point garde sa profondeur (slider 1/2/3).';
+              updateTraceCamControlsVisibility();
+          }
+
+          function syncTraceDepthTagsWithPath() {
+              traceDepthTags = traceRailPath.map((point, index) => {
+                  const existing = traceDepthTags[index];
+                  return {
+                      index,
+                      x: point.x,
+                      y: point.y,
+                      depthLayer: existing?.depthLayer || TRACE_DEPTH_LEVELS[traceCurrentDepthLevel - 1] || 'front',
+                      speedLevel: existing?.speedLevel || traceCurrentSpeedLevel
+                  };
+              });
+          }
+
+          function launchTraceRailAutopilot() {
+              setTraceListeningMode(false);
+              isTraceDepthTaggingMode = false;
               isTraceRailAutopilot = true;
               traceRailTargetIndex = 0;
               traceRailDirection = 1;
-              ui.textContent = 'Voyage sonore auto lancé : tracé plume Bézier validé.';
+              ui.textContent = 'Voyage sonore auto lancé : tracé + balises profondeur validés.';
               helperTips.textContent = 'Traversée active. Étape 4/4 : appuie sur ⏹ pour stopper et quitter.';
               updateTraceCamControlsVisibility();
           }
@@ -3076,11 +3136,13 @@ export function initLegacyApp({ callbacks } = {}) {
               setTraceListeningMode(true);
               setDrawingTraceRail(false);
               traceExitConfirmUntil = 0;
-              traceRailPath = [];
+              ensureDefaultTraceCircuit();
+              isTraceDepthTaggingMode = false;
               traceRailTargetIndex = 0;
               traceRailDirection = 1;
-              ui.textContent = 'Mode tracé activé : touche l’océan pour dessiner.';
-              helperTips.textContent = 'Étape 2/4 : trace ton chemin. Étape 3 : valide avec ✅.';
+              isTraceRailAutopilot = true;
+              ui.textContent = 'Mode tracé activé : circuit prédefini lancé. Déplace les balises pour améliorer.';
+              helperTips.textContent = 'Fais glisser les balises existantes (20 fixes) pour sculpter le parcours.';
               updateTraceCamControlsVisibility();
           }
 
@@ -3089,6 +3151,9 @@ export function initLegacyApp({ callbacks } = {}) {
               setDrawingTraceRail(false);
               setTraceListeningMode(false);
               traceRailPath = [];
+              traceRailSmoothPath = [];
+              traceDepthTags = [];
+              isTraceDepthTaggingMode = false;
               traceRailTargetIndex = 0;
               traceRailDirection = 1;
               traceExitConfirmUntil = 0;
@@ -3099,22 +3164,16 @@ export function initLegacyApp({ callbacks } = {}) {
           }
 
           function applyTraceCameraAction(action) {
-              if (action === 'trace-arm') {
-                  armTraceFlow();
-                  return;
-              }
-              if (action === 'trace-launch') {
-                  if (traceRailPath.length > 1) finalizeTraceRailFromDraft();
-                  return;
-              }
-              if (action === 'trace-stop') {
-                  stopTraceFlow();
+              if (action === 'trace-playpause') {
+                  if (traceRailPath.length < 2) return;
+              rebuildTraceLoopFromControlPoints();
+                  isTraceRailAutopilot = !isTraceRailAutopilot;
+                  ui.textContent = isTraceRailAutopilot ? 'Parcours en lecture.' : 'Parcours en pause.';
                   return;
               }
               if (!(isTraceListeningMode || isDrawingTraceRail || isTraceRailAutopilot)) return;
               const baseZoom = getTraceOverviewBaseZoom();
               const worldZoom = Math.max(traceOverviewZoomMin, Math.min(traceOverviewZoomMax, baseZoom * traceCameraControl.zoomScale));
-              const panStep = Math.max(26, 44 / Math.max(0.3, worldZoom));
               if (action === 'zoom-in') {
                   traceCameraControl.zoomScale = clampTraceZoomScale(traceCameraControl.zoomScale * 1.14);
                   return;
@@ -3122,15 +3181,6 @@ export function initLegacyApp({ callbacks } = {}) {
               if (action === 'zoom-out') {
                   traceCameraControl.zoomScale = clampTraceZoomScale(traceCameraControl.zoomScale / 1.14);
                   return;
-              }
-              if (action === 'up') {
-                  traceCameraControl.panY -= panStep;
-              } else if (action === 'down') {
-                  traceCameraControl.panY += panStep;
-              } else if (action === 'left') {
-                  traceCameraControl.panX -= panStep;
-              } else if (action === 'right') {
-                  traceCameraControl.panX += panStep;
               }
           }
 
@@ -3890,6 +3940,8 @@ export function initLegacyApp({ callbacks } = {}) {
               mouseWorld = pos;
               cancelFishLongPress();
               ensureAllAudioRunning();
+
+
               if (isTraceRailAutopilot) {
                   const now = performance.now();
                   if (now <= traceExitConfirmUntil) {
@@ -3897,6 +3949,7 @@ export function initLegacyApp({ callbacks } = {}) {
                       setTraceListeningMode(false);
                       setDrawingTraceRail(false);
                       traceRailPath = [];
+              traceRailSmoothPath = [];
                       traceRailTargetIndex = 0;
                       traceRailDirection = 1;
                       traceExitConfirmUntil = 0;
@@ -3912,19 +3965,25 @@ export function initLegacyApp({ callbacks } = {}) {
                   return;
               }
               if (isTraceListeningMode) {
+                  traceEditPointIndex = -1;
                   setDrawingTraceRail(true);
-                  if (!traceRailPath.length) {
-                      traceRailPath = [pos];
-                  } else {
-                      const last = traceRailPath[traceRailPath.length - 1];
-                      if (!last || Math.hypot(pos.x - last.x, pos.y - last.y) > 10) {
-                          traceRailPath.push(pos);
+                  ensureDefaultTraceCircuit();
+                  let nearestIndex = 0;
+                  let nearestDist = Infinity;
+                  for (let i = 0; i < traceRailPath.length; i++) {
+                      const d = Math.hypot(pos.x - traceRailPath[i].x, pos.y - traceRailPath[i].y);
+                      if (d < nearestDist) {
+                          nearestDist = d;
+                          nearestIndex = i;
                       }
                   }
+                  traceEditPointIndex = nearestIndex;
+                  traceDepthTags[nearestIndex].depthLayer = TRACE_DEPTH_LEVELS[traceCurrentDepthLevel - 1] || 'front';
+                  traceDepthTags[nearestIndex].speedLevel = traceCurrentSpeedLevel;
                   traceExitConfirmUntil = 0;
                   isTethered = false;
-                  ui.textContent = 'Trace en cours… Étape 3/4 : valide avec ✅ pour lancer la traversée.';
-                  helperTips.textContent = 'Ajoute des points en glissant, puis appuie sur ✅.';
+                  ui.textContent = 'Édition du circuit : déplace les balises existantes.';
+                  helperTips.textContent = '20 balises fixes : ajuste forme, profondeur et vitesse.';
                   updateTraceCamControlsVisibility();
                   return;
               }
@@ -3975,11 +4034,10 @@ export function initLegacyApp({ callbacks } = {}) {
               if (shouldLockSceneInteractions()) return;
               const pos = getMousePos(e);
               mouseWorld = pos;
-              if (isDrawingTraceRail) {
-                  const lastPoint = traceRailPath[traceRailPath.length - 1];
-                  if (!lastPoint || Math.hypot(pos.x - lastPoint.x, pos.y - lastPoint.y) > 8) {
-                      traceRailPath.push(pos);
-                  }
+              if (isTraceListeningMode && traceEditPointIndex >= 0 && traceRailPath[traceEditPointIndex]) {
+                  traceRailPath[traceEditPointIndex] = { x: pos.x, y: pos.y };
+                  syncTraceDepthTagsWithPath();
+                  rebuildTraceLoopFromControlPoints();
               }
               if (isDraggingBubble && selectedBubble) {
                   selectedBubble.x = pos.x;
@@ -4008,9 +4066,8 @@ export function initLegacyApp({ callbacks } = {}) {
               cancelFishLongPress();
               if (isDrawingTraceRail) {
                   setDrawingTraceRail(false);
-                  ui.textContent = 'Tracé prêt. Étape 3/4 : appuie sur ✅ pour lancer.';
-                  helperTips.textContent = 'Étape 4/4 : utilise ⏹ pour stopper et quitter le mode tracé.';
-                  updateTraceFlowButtons();
+                  traceEditPointIndex = -1;
+                  finalizeTraceRailFromDraft();
               }
               const draggedBubbleId = isDraggingBubble && selectedBubble?.id ? selectedBubble.id : null;
               isTethered = false;
@@ -4061,6 +4118,8 @@ export function initLegacyApp({ callbacks } = {}) {
           window.addEventListener('touchcancel', onEnd);
 
           const traceCamButtons = traceCamControls?.querySelectorAll('[data-trace-cam-action]');
+          const traceDepthSlider = traceCamControls?.querySelector('#traceDepthSlider');
+          const traceSpeedSlider = traceCamControls?.querySelector('#traceSpeedSlider');
           traceCamButtons?.forEach((button) => {
               let repeatTimer = null;
               let repeatInterval = null;
@@ -4119,6 +4178,22 @@ export function initLegacyApp({ callbacks } = {}) {
           window.addEventListener('pointerup', () => { isTraceCamControlGestureActive = false; }, { passive: true });
           window.addEventListener('pointercancel', () => { isTraceCamControlGestureActive = false; }, { passive: true });
           window.addEventListener('touchend', () => { isTraceCamControlGestureActive = false; }, { passive: true });
+          traceDepthSlider?.addEventListener('input', () => {
+              const next = Number(traceDepthSlider.value);
+              if ([1, 2, 3].includes(next)) traceCurrentDepthLevel = next;
+          });
+          traceDepthSlider?.addEventListener('change', () => {
+              if (traceEditPointIndex >= 0 && traceDepthTags[traceEditPointIndex]) {
+                  traceDepthTags[traceEditPointIndex].depthLayer = TRACE_DEPTH_LEVELS[traceCurrentDepthLevel - 1] || 'front';
+              }
+          });
+          traceSpeedSlider?.addEventListener('input', () => {
+              const next = Number(traceSpeedSlider.value);
+              if ([1, 2, 3].includes(next)) traceCurrentSpeedLevel = next;
+              if (traceEditPointIndex >= 0 && traceDepthTags[traceEditPointIndex]) {
+                  traceDepthTags[traceEditPointIndex].speedLevel = traceCurrentSpeedLevel;
+              }
+          });
           window.addEventListener('touchcancel', () => { isTraceCamControlGestureActive = false; }, { passive: true });
           const traceCamDragZone = traceCamControls?.querySelector('[data-trace-cam-drag-zone]');
           const stopTraceCamMenuDrag = () => {
@@ -5162,23 +5237,26 @@ export function initLegacyApp({ callbacks } = {}) {
               updateArenaMembraneDynamics();
               if (traceExitConfirmUntil && performance.now() > traceExitConfirmUntil) {
                   traceExitConfirmUntil = 0;
-                  if (isTraceRailAutopilot) {
-                      ui.textContent = 'Voyage sonore auto lancé : aller-retour lissé.';
-                  }
+    
               }
-              if (isTraceRailAutopilot && traceRailPath.length > 1 && !isInteractionPaused) {
-                  const target = traceRailPath[Math.min(traceRailTargetIndex, traceRailPath.length - 1)];
+              if (isTraceRailAutopilot && traceRailSmoothPath.length > 1 && !isInteractionPaused) {
+                  const target = traceRailSmoothPath[Math.min(traceRailTargetIndex, traceRailSmoothPath.length - 1)];
                   const dx = target.x - ship.x;
                   const dy = target.y - ship.y;
                   const dist = Math.hypot(dx, dy);
                   if (dist < 20) {
-                      if (traceRailTargetIndex >= traceRailPath.length - 1) {
-                          traceRailDirection = -1;
-                      } else if (traceRailTargetIndex <= 0) {
-                          traceRailDirection = 1;
+                      traceRailTargetIndex += 1;
+                      if (traceRailTargetIndex >= traceRailSmoothPath.length) traceRailTargetIndex = 0;
+                      const nearestTag = traceDepthTags.reduce((best, tag) => {
+                          const d = Math.hypot(tag.x - target.x, tag.y - target.y);
+                          return d < best.d ? { d, tag } : best;
+                      }, { d: Infinity, tag: null }).tag;
+                      if (nearestTag) {
+                          if (nearestTag.depthLayer !== fishDepthLayer) fishDepthLayer = nearestTag.depthLayer;
+                          const speedFactor = nearestTag.speedLevel === 1 ? 0.55 : (nearestTag.speedLevel === 3 ? 1.45 : 1);
+                          ship.vx *= speedFactor;
+                          ship.vy *= speedFactor;
                       }
-                      traceRailTargetIndex += traceRailDirection;
-                      traceRailTargetIndex = Math.max(0, Math.min(traceRailPath.length - 1, traceRailTargetIndex));
                   } else if (dist > 0.001) {
                       ship.vx += (dx / dist) * 0.36;
                       ship.vy += (dy / dist) * 0.36;
@@ -5885,14 +5963,15 @@ export function initLegacyApp({ callbacks } = {}) {
               ctx.lineJoin = 'round';
               ctx.setLineDash(isRailBeingDrawn ? [] : [6, 10]);
               ctx.beginPath();
-              ctx.moveTo(traceRailPath[0].x, traceRailPath[0].y);
+              const displayPath = traceRailSmoothPath.length ? traceRailSmoothPath : traceRailPath;
+              ctx.moveTo(displayPath[0].x, displayPath[0].y);
               if (draftSegments.length) {
                   for (const seg of draftSegments) {
                       ctx.bezierCurveTo(seg.c1.x, seg.c1.y, seg.c2.x, seg.c2.y, seg.p2.x, seg.p2.y);
                   }
               } else {
-                  for (let i = 1; i < traceRailPath.length; i++) {
-                      ctx.lineTo(traceRailPath[i].x, traceRailPath[i].y);
+                  for (let i = 1; i < displayPath.length; i++) {
+                      ctx.lineTo(displayPath[i].x, displayPath[i].y);
                   }
               }
               ctx.stroke();
@@ -5923,6 +6002,25 @@ export function initLegacyApp({ callbacks } = {}) {
                       ctx.fill();
                   }
                   ctx.restore();
+              }
+
+
+              if (traceDepthTags.length) {
+                  for (const tag of traceDepthTags) {
+                      const level = Math.max(1, TRACE_DEPTH_LEVELS.indexOf(tag.depthLayer) + 1);
+                      ctx.fillStyle = 'rgba(26, 36, 56, 0.78)';
+                      ctx.beginPath();
+                      ctx.arc(tag.x, tag.y, 11, 0, Math.PI * 2);
+                      ctx.fill();
+                      ctx.strokeStyle = 'rgba(196, 238, 255, 0.9)';
+                      ctx.lineWidth = 1.8;
+                      ctx.stroke();
+                      ctx.fillStyle = 'rgba(226, 248, 255, 0.95)';
+                      ctx.font = 'bold 11px sans-serif';
+                      ctx.textAlign = 'center';
+                      ctx.textBaseline = 'middle';
+                      ctx.fillText(String(level), tag.x, tag.y + 0.5);
+                  }
               }
 
               if (isTraceRailAutopilot) {
