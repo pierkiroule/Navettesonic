@@ -182,8 +182,13 @@ export function initLegacyApp({ callbacks } = {}) {
           let traceRailPath = [];
           let traceRailTargetIndex = 0;
           let traceRailDirection = 1;
+          let traceDepthTags = [];
+          let isTraceDepthTaggingMode = false;
           let traceExitConfirmUntil = 0;
           let isTraceCamControlGestureActive = false;
+          const TRACE_DEPTH_TAG_MIN_DISTANCE = 90;
+          const TRACE_DRAW_POINT_MIN_DISTANCE = 10;
+          const TRACE_DEPTH_LEVELS = ['front', 'above', 'below'];
           const traceOverviewZoomMin = 0.06;
           const traceOverviewZoomMax = 1.3;
           const traceCameraControl = {
@@ -3061,12 +3066,21 @@ export function initLegacyApp({ callbacks } = {}) {
           function finalizeTraceRailFromDraft() {
               if (traceRailPath.length < 2) return;
               if (isDrawingTraceRail) setDrawingTraceRail(false);
-              setTraceListeningMode(false);
               traceRailPath = buildSmoothedTraceRail(traceRailPath);
+              isTraceDepthTaggingMode = true;
+              traceDepthTags = [];
+              ui.textContent = 'Tracé validé. Ajoute des balises de profondeur (1/2/3) puis appuie sur ✅.';
+              helperTips.textContent = 'Tap sur le tracé pour poser une balise (espacement minimum requis).';
+              updateTraceCamControlsVisibility();
+          }
+
+          function launchTraceRailAutopilot() {
+              setTraceListeningMode(false);
+              isTraceDepthTaggingMode = false;
               isTraceRailAutopilot = true;
               traceRailTargetIndex = 0;
               traceRailDirection = 1;
-              ui.textContent = 'Voyage sonore auto lancé : tracé plume Bézier validé.';
+              ui.textContent = 'Voyage sonore auto lancé : tracé + balises profondeur validés.';
               helperTips.textContent = 'Traversée active. Étape 4/4 : appuie sur ⏹ pour stopper et quitter.';
               updateTraceCamControlsVisibility();
           }
@@ -3077,6 +3091,8 @@ export function initLegacyApp({ callbacks } = {}) {
               setDrawingTraceRail(false);
               traceExitConfirmUntil = 0;
               traceRailPath = [];
+              traceDepthTags = [];
+              isTraceDepthTaggingMode = false;
               traceRailTargetIndex = 0;
               traceRailDirection = 1;
               ui.textContent = 'Mode tracé activé : touche l’océan pour dessiner.';
@@ -3089,6 +3105,8 @@ export function initLegacyApp({ callbacks } = {}) {
               setDrawingTraceRail(false);
               setTraceListeningMode(false);
               traceRailPath = [];
+              traceDepthTags = [];
+              isTraceDepthTaggingMode = false;
               traceRailTargetIndex = 0;
               traceRailDirection = 1;
               traceExitConfirmUntil = 0;
@@ -3104,7 +3122,11 @@ export function initLegacyApp({ callbacks } = {}) {
                   return;
               }
               if (action === 'trace-launch') {
-                  if (traceRailPath.length > 1) finalizeTraceRailFromDraft();
+                  if (isTraceDepthTaggingMode && traceRailPath.length > 1) {
+                      launchTraceRailAutopilot();
+                  } else if (traceRailPath.length > 1) {
+                      finalizeTraceRailFromDraft();
+                  }
                   return;
               }
               if (action === 'trace-stop') {
@@ -3890,6 +3912,8 @@ export function initLegacyApp({ callbacks } = {}) {
               mouseWorld = pos;
               cancelFishLongPress();
               ensureAllAudioRunning();
+
+
               if (isTraceRailAutopilot) {
                   const now = performance.now();
                   if (now <= traceExitConfirmUntil) {
@@ -3912,12 +3936,35 @@ export function initLegacyApp({ callbacks } = {}) {
                   return;
               }
               if (isTraceListeningMode) {
+                  if (isTraceDepthTaggingMode) {
+                      if (!traceRailPath.length) return;
+                      let nearestIndex = 0;
+                      let nearestDistance = Infinity;
+                      for (let i = 0; i < traceRailPath.length; i++) {
+                          const p = traceRailPath[i];
+                          const d = Math.hypot(pos.x - p.x, pos.y - p.y);
+                          if (d < nearestDistance) { nearestDistance = d; nearestIndex = i; }
+                      }
+                      const nearestPoint = traceRailPath[nearestIndex];
+                      const tooClose = traceDepthTags.some((tag) => Math.hypot(nearestPoint.x - tag.x, nearestPoint.y - tag.y) < TRACE_DEPTH_TAG_MIN_DISTANCE);
+                      if (tooClose) {
+                          ui.textContent = "Balise trop proche d'une autre. Espace davantage les points.";
+                          return;
+                      }
+                      const levelInput = Number(window.prompt('Niveau profondeur pour ce point ? (1=surface, 2=milieu, 3=profondeur)', '2'));
+                      if (![1,2,3].includes(levelInput)) return;
+                      const depthLayer = TRACE_DEPTH_LEVELS[levelInput - 1] || 'front';
+                      traceDepthTags.push({ index: nearestIndex, x: nearestPoint.x, y: nearestPoint.y, depthLayer });
+                      traceDepthTags.sort((a,b)=>a.index-b.index);
+                      ui.textContent = `Balise profondeur ${levelInput} ajoutée. Appuie sur ✅ pour lancer.`;
+                      return;
+                  }
                   setDrawingTraceRail(true);
                   if (!traceRailPath.length) {
                       traceRailPath = [pos];
                   } else {
                       const last = traceRailPath[traceRailPath.length - 1];
-                      if (!last || Math.hypot(pos.x - last.x, pos.y - last.y) > 10) {
+                      if (!last || Math.hypot(pos.x - last.x, pos.y - last.y) > TRACE_DRAW_POINT_MIN_DISTANCE) {
                           traceRailPath.push(pos);
                       }
                   }
@@ -3977,7 +4024,7 @@ export function initLegacyApp({ callbacks } = {}) {
               mouseWorld = pos;
               if (isDrawingTraceRail) {
                   const lastPoint = traceRailPath[traceRailPath.length - 1];
-                  if (!lastPoint || Math.hypot(pos.x - lastPoint.x, pos.y - lastPoint.y) > 8) {
+                  if (!lastPoint || Math.hypot(pos.x - lastPoint.x, pos.y - lastPoint.y) > TRACE_DRAW_POINT_MIN_DISTANCE) {
                       traceRailPath.push(pos);
                   }
               }
@@ -5162,9 +5209,7 @@ export function initLegacyApp({ callbacks } = {}) {
               updateArenaMembraneDynamics();
               if (traceExitConfirmUntil && performance.now() > traceExitConfirmUntil) {
                   traceExitConfirmUntil = 0;
-                  if (isTraceRailAutopilot) {
-                      ui.textContent = 'Voyage sonore auto lancé : aller-retour lissé.';
-                  }
+    
               }
               if (isTraceRailAutopilot && traceRailPath.length > 1 && !isInteractionPaused) {
                   const target = traceRailPath[Math.min(traceRailTargetIndex, traceRailPath.length - 1)];
@@ -5179,6 +5224,8 @@ export function initLegacyApp({ callbacks } = {}) {
                       }
                       traceRailTargetIndex += traceRailDirection;
                       traceRailTargetIndex = Math.max(0, Math.min(traceRailPath.length - 1, traceRailTargetIndex));
+                      const activeDepthTag = traceDepthTags.filter((tag) => tag.index <= traceRailTargetIndex).at(-1);
+                      if (activeDepthTag && activeDepthTag.depthLayer !== fishDepthLayer) fishDepthLayer = activeDepthTag.depthLayer;
                   } else if (dist > 0.001) {
                       ship.vx += (dx / dist) * 0.36;
                       ship.vy += (dy / dist) * 0.36;
@@ -5923,6 +5970,25 @@ export function initLegacyApp({ callbacks } = {}) {
                       ctx.fill();
                   }
                   ctx.restore();
+              }
+
+
+              if (traceDepthTags.length) {
+                  for (const tag of traceDepthTags) {
+                      const level = Math.max(1, TRACE_DEPTH_LEVELS.indexOf(tag.depthLayer) + 1);
+                      ctx.fillStyle = 'rgba(26, 36, 56, 0.78)';
+                      ctx.beginPath();
+                      ctx.arc(tag.x, tag.y, 11, 0, Math.PI * 2);
+                      ctx.fill();
+                      ctx.strokeStyle = 'rgba(196, 238, 255, 0.9)';
+                      ctx.lineWidth = 1.8;
+                      ctx.stroke();
+                      ctx.fillStyle = 'rgba(226, 248, 255, 0.95)';
+                      ctx.font = 'bold 11px sans-serif';
+                      ctx.textAlign = 'center';
+                      ctx.textBaseline = 'middle';
+                      ctx.fillText(String(level), tag.x, tag.y + 0.5);
+                  }
               }
 
               if (isTraceRailAutopilot) {
