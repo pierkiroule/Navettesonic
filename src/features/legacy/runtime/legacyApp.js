@@ -2722,7 +2722,7 @@ export function initLegacyApp({ callbacks } = {}) {
                   setArenaSessionStatus('Lien hublo•° prêt ✅ (mode local)');
                   return;
               }
-              const ensured = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: true });
+              const ensured = await ensureArenaBoundToCurrentSession({ createIfMissing: true, silent: false });
               if (!ensured?.arena?.id) {
                   const fallbackInviteCode = normalizeRoomSlug(arenaInviteCodeInput?.value || currentArenaInviteCode || '');
                   if (fallbackInviteCode) {
