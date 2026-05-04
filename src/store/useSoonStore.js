@@ -202,7 +202,7 @@ export const useSoonStore = create((set, get) => ({
           targetY,
           angle,
           swimPhase,
-          depth: fishDepth,
+          depth: depth || fishDepth,
           mouthPull: nextMouthPull,
           turnAmount: nextTurnAmount,
           maxSpeed: state.fish.maxSpeed || 3.1,

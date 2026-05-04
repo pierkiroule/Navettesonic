@@ -35,6 +35,9 @@ export default function SoonCanvas({
   circuitAutopilot,
   path,
   eyesClosed,
+  viewZoom,
+  visualLight,
+  depth,
   onFishTarget,
   onTickFish,
   onSelectBubble,
@@ -74,6 +77,9 @@ export default function SoonCanvas({
     circuitAutopilot,
     path,
     eyesClosed,
+  viewZoom,
+  visualLight,
+  depth,
   });
 
   useEffect(() => {
@@ -87,8 +93,11 @@ export default function SoonCanvas({
       circuitAutopilot,
       path,
       eyesClosed,
+      viewZoom,
+      visualLight,
+      depth,
     };
-  }, [mode, bubbles, fish, selectedBubbleId, path, eyesClosed]);
+  }, [mode, bubbles, fish, selectedBubbleId, path, eyesClosed, viewZoom, visualLight, depth]);
 
   useEffect(() => {
     let frame = 0;
@@ -353,7 +362,7 @@ export default function SoonCanvas({
 
     ctx.save();
     ctx.translate(rect.width / 2, rect.height / 2);
-    ctx.scale(camera.zoom, camera.zoom);
+    ctx.scale(camera.zoom * (stateRef.current.viewZoom || 1), camera.zoom * (stateRef.current.viewZoom || 1));
     ctx.translate(-camera.x + driftX, -camera.y + driftY);
   }
 

@@ -1,9 +1,11 @@
 import { useState } from "react";
 import SidePanel from "../components/SidePanel.jsx";
 import SoonCanvas from "../components/SoonCanvas.jsx";
+import Profile from "./Profile.jsx";
 import { useSoonStore } from "../store/useSoonStore.js";
 
 export default function SoonApp({ onBack }) {
+  const [page, setPage] = useState("arena");
   const [viewZoom, setViewZoom] = useState(1);
   const [swimSpeed, setSwimSpeed] = useState(1);
   const [depth, setDepth] = useState(1);
@@ -29,6 +31,10 @@ export default function SoonApp({ onBack }) {
   const toggle = (key) =>
     setActiveSlider((cur) => (cur === key ? null : key));
 
+  if (page === "profile") {
+    return <Profile onBack={() => setPage("arena")} />;
+  }
+
   return (
     <main className="soon-app">
 
@@ -50,7 +56,7 @@ export default function SoonApp({ onBack }) {
       Odysséo
     </button>
 
-    <button onClick={() => setPage && setPage("profile")}>
+    <button onClick={() => setPage("profile")}>
       Perso
     </button>
 
@@ -73,7 +79,7 @@ export default function SoonApp({ onBack }) {
         viewZoom={viewZoom}
         depth={depth}
         onFishTarget={setFishTarget}
-        onTickFish={() => tickFish({ swimSpeed })}
+        onTickFish={() => tickFish({ swimSpeed, depth })}
       />
 
       {/* COCKPIT */}
