@@ -78,72 +78,53 @@ export function getCircuitSpeedValue(speed) {
 }
 
 export function createSlalomCircuitFromBubbles(bubbles = []) {
-  const usable = bubbles.filter((bubble) =>
-    Number.isFinite(bubble.x) &&
-    Number.isFinite(bubble.y)
-  );
+  try {
+    const usable = Array.isArray(bubbles)
+      ? bubbles.filter((bubble) =>
+          Number.isFinite(bubble.x) && Number.isFinite(bubble.y)
+        )
+      : [];
 
-  if (usable.length < 2) {
+    if (usable.length < 2) {
+      return createDefaultTraceCircuit();
+    }
+
+    const sorted = [...usable].sort((a, b) => {
+      const aa = Math.atan2(a.y || 0, a.x || 0);
+      const bb = Math.atan2(b.y || 0, b.x || 0);
+      return aa - bb;
+    });
+
+    const beacons = sorted.map((bubble, index) => {
+      const angle = Math.atan2(bubble.y || 0, bubble.x || 0);
+      const distance = Math.max(
+        180,
+        Math.hypot(bubble.x || 0, bubble.y || 0)
+      );
+
+      const side = index % 2 === 0 ? -1 : 1;
+      const tangent = angle + Math.PI / 2;
+      const slalomOffset = 72 + (bubble.r || 70) * 0.32;
+      const radialBreath = index % 2 === 0 ? 0.88 : 1.12;
+
+      return {
+        id: `auto-beacon-${bubble.id || index}`,
+        x:
+          Math.cos(angle) * distance * radialBreath +
+          Math.cos(tangent) * slalomOffset * side,
+        y:
+          Math.sin(angle) * distance * radialBreath +
+          Math.sin(tangent) * slalomOffset * side,
+        depth: bubble.depth || ((index % 3) + 1),
+        speed: index % 2 === 0 ? 1 : 2,
+        auto: true,
+        bubbleId: bubble.id,
+      };
+    });
+
+    return beacons.length >= 3 ? beacons : createDefaultTraceCircuit();
+  } catch (error) {
+    console.warn("[Soon] fallback circuit slalom", error);
     return createDefaultTraceCircuit();
   }
-
-  const sorted = [...usable].sort((a, b) => {
-    const aa = Math.atan2(a.y, a.x);
-    const bb = Math.atan2(b.y, b.x);
-    return aa - bb;
-  });
-
-  const beacons = [];
-
-  sorted.forEach((bubble, index) => {
-    const angle = Math.atan2(bubble.y, bubble.x);
-    const distance = Math.hypot(bubble.x, bubble.y) || 180;
-
-    const side = index % 2 === 0 ? -1 : 1;
-    const slalomOffset = 72 + (bubble.r || 70) * 0.34;
-
-    const tangent = angle + Math.PI / 2;
-    const radialBreath = index % 2 === 0 ? 0.86 : 1.12;
-
-    const baseX = Math.cos(angle) * distance * radialBreath;
-    const baseY = Math.sin(angle) * distance * radialBreath;
-
-    const x = baseX + Math.cos(tangent) * slalomOffset * side;
-    const y = baseY + Math.sin(tangent) * slalomOffset * side;
-
-    beacons.push({
-      id: `auto-beacon-${bubble.id || index}`,
-      x,
-      y,
-      depth: bubble.depth || ((index % 3) + 1),
-      speed: index % 2 === 0 ? 1 : 2,
-      auto: true,
-      bubbleId: bubble.id,
-    });
-  });
-
-  if (beacons.length === 2) {
-    const a = beacons[0];
-    const b = beacons[1];
-
-    beacons.push({
-      id: "auto-beacon-between-1",
-      x: (a.x + b.x) / 2 + 120,
-      y: (a.y + b.y) / 2 - 80,
-      depth: 2,
-      speed: 2,
-      auto: true,
-    });
-
-    beacons.push({
-      id: "auto-beacon-between-2",
-      x: (a.x + b.x) / 2 - 120,
-      y: (a.y + b.y) / 2 + 80,
-      depth: 3,
-      speed: 1,
-      auto: true,
-    });
-  }
-
-  return beacons;
 }

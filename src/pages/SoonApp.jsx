@@ -26,6 +26,7 @@ export default function SoonApp({ onBack }) {
     addBeacon,
     moveBeacon,
     updateBeacon,
+    autoGenerateTraceCircuit,
     startCircuitAutopilot,
     stopCircuitAutopilot,
     updateBubble,

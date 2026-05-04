@@ -30,7 +30,7 @@ const defaultFish = {
 };
 
 const initialState = {
-  mode: saved?.mode || "compo",
+  mode: ["intro", "compo", "reso"].includes(saved?.mode) ? saved.mode : "compo",
   bubbles: defaultPack.bubbles.map((bubble) => ({ ...bubble })),
   fish: {
     ...defaultFish,
