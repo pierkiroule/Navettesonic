@@ -19,11 +19,13 @@ export default function SoonApp({ onBack }) {
     path,
     resonanceNotes,
     eyesClosed,
+    toggleEyesClosed,
     setMode,
     setFishTarget,
     tickFish,
     selectBubble,
     selectBeacon,
+    addBeacon,
     moveBeacon,
     updateBeacon,
     startCircuitAutopilot,
@@ -49,9 +51,7 @@ export default function SoonApp({ onBack }) {
   return (
     <main className={eyesClosed ? "soon-app eyes-closed" : "soon-app"}>
       <header className="soon-topbar">
-        <button className="ghost-btn" type="button" onClick={onBack}>
-          ← Accueil
-        </button>
+        <div className="topbar-spacer" />
 
         <div>
           <strong>Soon•°</strong>
@@ -87,13 +87,14 @@ export default function SoonApp({ onBack }) {
         onTickFish={tickFish}
         onSelectBubble={selectBubble}
         onSelectBeacon={selectBeacon}
+        onAddBeacon={addBeacon}
         onMoveBeacon={moveBeacon}
         onMoveBubble={updateBubble}
         onAddBubble={addBubble}
         onAddPathPoint={addPathPoint}
       />
 
-      <ModeDock />
+      <ModeDock onIntro={onBack} />
 
       <SidePanel
         mode={mode}
