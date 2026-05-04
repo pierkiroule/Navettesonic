@@ -1,20 +1,19 @@
 import { useState } from "react";
 import { SOON_MODES } from "../core/soonModes.js";
 import BubbleEditor from "./BubbleEditor.jsx";
-import ResonancePanel from "./ResonancePanel.jsx";
 
 export default function SidePanel({
   mode,
   selectedBubble,
   selectedBeacon,
   circuitAutopilot,
+  eyesClosed,
+  onToggleEyesClosed,
   onUpdateBeacon,
   onStartCircuitAutopilot,
   onStopCircuitAutopilot,
   onUpdateBubble,
   onDeleteBubble,
-  notes,
-  onAddNote,
 }) {
   const [open, setOpen] = useState(false);
   const currentMode = SOON_MODES.find((item) => item.id === mode);
@@ -78,8 +77,8 @@ export default function SidePanel({
             <>
               <section className="help-card compact-help">
                 <p>
-                  Trace une boucle de voyage. Déplace les balises, règle leur
-                  profondeur et lance l’écoute automatique.
+                  Trace un circuit de résonance. Déplace les balises, règle leur
+                  profondeur, leur vitesse, puis lance le voyage.
                 </p>
 
                 {selectedBeacon && (
@@ -115,12 +114,19 @@ export default function SidePanel({
                 )}
 
                 <div className="panel-row">
+                  <button
+                    className={eyesClosed ? "danger-btn play-btn" : "secondary-btn play-btn"}
+                    type="button"
+                    onClick={onToggleEyesClosed}
+                  >
+                    {eyesClosed ? "💡 Lumière" : "🌙 Lumière"}
+                  </button>
                   {!circuitAutopilot && (
                     <button
                       className="secondary-btn play-btn"
                       onClick={onStartCircuitAutopilot}
                     >
-                      ▶ Voyage
+                      ▶ Lancer
                     </button>
                   )}
 
@@ -137,12 +143,10 @@ export default function SidePanel({
 
               <section className="help-card compact-help">
                 <p>
-                  Écoute à l’aveugle. Laisse le poisson traverser l’arène,
-                  puis écris ce qui résonne.
+                  
+                  
                 </p>
               </section>
-
-              <ResonancePanel notes={notes} onAdd={onAddNote} />
             </>
           )}
         </aside>

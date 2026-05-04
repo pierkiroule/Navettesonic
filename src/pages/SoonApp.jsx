@@ -17,7 +17,6 @@ export default function SoonApp({ onBack }) {
     selectedBeaconId,
     circuitAutopilot,
     path,
-    resonanceNotes,
     eyesClosed,
     toggleEyesClosed,
     setMode,
@@ -35,7 +34,6 @@ export default function SoonApp({ onBack }) {
     addBubble,
     addPathPoint,
     clearPath,
-    addResonanceNote,
   } = useSoonStore();
 
   const selectedBubble =
@@ -106,8 +104,6 @@ export default function SoonApp({ onBack }) {
         onStopCircuitAutopilot={stopCircuitAutopilot}
         onUpdateBubble={(patch) => updateBubble(selectedBubble.id, patch)}
         onDeleteBubble={() => deleteBubble(selectedBubble.id)}
-        notes={resonanceNotes}
-        onAddNote={addResonanceNote}
         onClearPath={clearPath}
       />
     </main>
