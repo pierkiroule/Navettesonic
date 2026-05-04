@@ -14,7 +14,7 @@ export const SOON_MODES = [
   {
     id: "reso",
     icon: "◌",
-    label: "Réso•°",
-    text: "Trace le voyage, écoute à l’aveugle et note tes impressions.",
+    label: "Odysséo•°",
+    text: "Trace le circuit et lance le voyage du poisson-plume.",
   },
 ];
