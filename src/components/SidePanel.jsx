@@ -7,8 +7,6 @@ export default function SidePanel({
   selectedBubble,
   selectedBeacon,
   circuitAutopilot,
-  eyesClosed,
-  onToggleEyesClosed,
   onUpdateBeacon,
   onStartCircuitAutopilot,
   onStopCircuitAutopilot,
@@ -114,13 +112,6 @@ export default function SidePanel({
                 )}
 
                 <div className="panel-row">
-                  <button
-                    className={eyesClosed ? "danger-btn play-btn" : "secondary-btn play-btn"}
-                    type="button"
-                    onClick={onToggleEyesClosed}
-                  >
-                    {eyesClosed ? "💡 Lumière" : "🌙 Lumière"}
-                  </button>
                   {!circuitAutopilot && (
                     <button
                       className="secondary-btn play-btn"

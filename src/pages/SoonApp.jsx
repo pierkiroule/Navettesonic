@@ -18,7 +18,6 @@ export default function SoonApp({ onBack }) {
     circuitAutopilot,
     path,
     eyesClosed,
-    toggleEyesClosed,
     setMode,
     setFishTarget,
     tickFish,

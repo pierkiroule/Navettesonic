@@ -57,11 +57,6 @@ function lerpAngle(current, target, amount) {
 export const useSoonStore = create((set, get) => ({
   ...initialState,
 
-  toggleEyesClosed: () =>
-    set((state) => ({
-      eyesClosed: !state.eyesClosed,
-    })),
-
   setMode: (mode) => {
     set({
       mode,

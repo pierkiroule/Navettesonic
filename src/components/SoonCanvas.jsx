@@ -931,7 +931,7 @@ export default function SoonCanvas({
     ctx.textAlign = "center";
 
     ctx.fillText(
-      "Silence des yeux · cherche les échos",
+      "Réso•° · suis le circuit",
       rect.width / 2,
       rect.height / 2 + 98
     );
