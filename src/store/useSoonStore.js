@@ -4,6 +4,7 @@ import { clearState, loadState, saveState } from "../core/storage.js";
 import { clampToCircle, makeId } from "../core/geometry.js";
 import {
   createDefaultTraceCircuit,
+  createSlalomCircuitFromBubbles,
   getCircuitSpeedValue,
   smoothLoopPoint,
 } from "../core/traceCircuit.js";
@@ -36,7 +37,7 @@ const initialState = {
     ...(saved?.fish || {}),
   },
   selectedBubbleId: null,
-  traceCircuit: saved?.traceCircuit || createDefaultTraceCircuit(),
+  traceCircuit: saved?.traceCircuit || createSlalomCircuitFromBubbles(saved?.bubbles || defaultPack.bubbles),
   selectedBeaconId: null,
   circuitAutopilot: false,
   circuitSegmentIndex: 0,
@@ -252,14 +253,26 @@ export const useSoonStore = create((set, get) => ({
     saveState(get());
   },
 
-  resetTraceCircuit: () => {
-    set({
-      traceCircuit: createDefaultTraceCircuit(),
+  autoGenerateTraceCircuit: () => {
+    set((state) => ({
+      traceCircuit: createSlalomCircuitFromBubbles(state.bubbles),
       selectedBeaconId: null,
       circuitAutopilot: false,
       circuitSegmentIndex: 0,
       circuitSegmentT: 0,
-    });
+    }));
+
+    saveState(get());
+  },
+
+  resetTraceCircuit: () => {
+    set((state) => ({
+      traceCircuit: createSlalomCircuitFromBubbles(state.bubbles),
+      selectedBeaconId: null,
+      circuitAutopilot: false,
+      circuitSegmentIndex: 0,
+      circuitSegmentT: 0,
+    }));
 
     saveState(get());
   },

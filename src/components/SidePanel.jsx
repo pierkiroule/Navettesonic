@@ -10,6 +10,7 @@ export default function SidePanel({
   onUpdateBeacon,
   onStartCircuitAutopilot,
   onStopCircuitAutopilot,
+  onAutoGenerateTraceCircuit,
   onUpdateBubble,
   onDeleteBubble,
 }) {
@@ -112,6 +113,13 @@ export default function SidePanel({
                 )}
 
                 <div className="panel-row">
+                  <button
+                    className="secondary-btn play-btn"
+                    type="button"
+                    onClick={onAutoGenerateTraceCircuit}
+                  >
+                    ✦ Auto
+                  </button>
                   {!circuitAutopilot && (
                     <button
                       className="secondary-btn play-btn"

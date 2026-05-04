@@ -101,6 +101,7 @@ export default function SoonApp({ onBack }) {
         onUpdateBeacon={(patch) => updateBeacon(selectedBeacon.id, patch)}
         onStartCircuitAutopilot={startCircuitAutopilot}
         onStopCircuitAutopilot={stopCircuitAutopilot}
+        onAutoGenerateTraceCircuit={autoGenerateTraceCircuit}
         onUpdateBubble={(patch) => updateBubble(selectedBubble.id, patch)}
         onDeleteBubble={() => deleteBubble(selectedBubble.id)}
         onClearPath={clearPath}
