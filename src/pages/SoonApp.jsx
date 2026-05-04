@@ -33,12 +33,31 @@ export default function SoonApp({ onBack }) {
     <main className="soon-app">
 
       {/* TOP NAV */}
-      <header className="top-nav">
-        <button onClick={() => setMode("intro")} className={mode==="intro"?"active":""}>Intro</button>
-        <button onClick={() => setMode("compo")} className={mode==="compo"?"active":""}>Compo</button>
-        <button onClick={() => setMode("reso")} className={mode==="reso"?"active":""}>Odysséo</button>
-        <button onClick={onBack}>Perso</button>
-      </header>
+      
+
+<header className="top-nav">
+  <div className="top-nav-inner">
+
+    <button onClick={onBack}>
+      Intro
+    </button>
+
+    <button onClick={() => setMode("compo")} className={mode==="compo"?"active":""}>
+      Compo
+    </button>
+
+    <button onClick={() => setMode("reso")} className={mode==="reso"?"active":""}>
+      Odysséo
+    </button>
+
+    <button onClick={() => setPage && setPage("profile")}>
+      Perso
+    </button>
+
+  </div>
+</header>
+
+
 
       {/* CANVAS */}
       <SoonCanvas

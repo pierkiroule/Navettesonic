@@ -1741,3 +1741,33 @@ button {
 .slider.speed input { accent-color: #f472b6; }
 .slider.depth input { accent-color: #34d399; }
 
+
+.top-nav {
+  position: fixed;
+  top: 10px;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.top-nav-inner {
+  display: flex;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(0,0,0,0.5);
+  border-radius: 12px;
+}
+
+.top-nav button {
+  color: white;
+  background: transparent;
+  border: none;
+  font-size: 0.75rem;
+}
+
+.top-nav button.active {
+  color: #7dd3fc;
+}
+
