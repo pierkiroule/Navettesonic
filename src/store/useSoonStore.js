@@ -42,7 +42,6 @@ const initialState = {
   circuitSegmentIndex: 0,
   circuitSegmentT: 0,
   path: saved?.path || [],
-  resonanceNotes: saved?.resonanceNotes || [],
   eyesClosed: false,
 };
 
@@ -58,10 +57,15 @@ function lerpAngle(current, target, amount) {
 export const useSoonStore = create((set, get) => ({
   ...initialState,
 
+  toggleEyesClosed: () =>
+    set((state) => ({
+      eyesClosed: !state.eyesClosed,
+    })),
+
   setMode: (mode) => {
     set({
       mode,
-      eyesClosed: mode === "reso",
+      eyesClosed: false,
       selectedBubbleId: null,
       selectedBeaconId: null,
       circuitAutopilot: get().circuitAutopilot,
@@ -360,23 +364,6 @@ export const useSoonStore = create((set, get) => ({
     saveState(get());
   },
 
-  addResonanceNote: (text) => {
-    if (!text.trim()) return;
-
-    set((state) => ({
-      resonanceNotes: [
-        ...state.resonanceNotes,
-        {
-          id: makeId("note"),
-          text: text.trim(),
-          createdAt: new Date().toISOString(),
-        },
-      ],
-    }));
-
-    saveState(get());
-  },
-
   importSoonData: (data) => {
     if (!data || !Array.isArray(data.bubbles)) return;
 
@@ -396,10 +383,7 @@ export const useSoonStore = create((set, get) => ({
       selectedBubbleId: null,
       selectedBeaconId: null,
       path: Array.isArray(data.path) ? data.path : [],
-      resonanceNotes: Array.isArray(data.resonanceNotes)
-        ? data.resonanceNotes
-        : [],
-      eyesClosed: data.mode === "reso",
+      eyesClosed: Boolean(data.eyesClosed),
     }));
 
     saveState(get());
@@ -419,7 +403,6 @@ export const useSoonStore = create((set, get) => ({
       circuitSegmentIndex: 0,
       circuitSegmentT: 0,
       path: [],
-      resonanceNotes: [],
       eyesClosed: false,
     });
   },

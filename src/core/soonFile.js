@@ -15,8 +15,7 @@ export function exportSoonFile(state) {
       },
       traceCircuit: state.traceCircuit,
       path: state.path,
-      resonanceNotes: state.resonanceNotes,
-    },
+      },
   };
 
   const blob = new Blob([JSON.stringify(payload, null, 2)], {

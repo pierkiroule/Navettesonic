@@ -6,7 +6,6 @@ export function saveState(state) {
     bubbles: state.bubbles,
     fish: state.fish,
     path: state.path,
-    resonanceNotes: state.resonanceNotes,
   };
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
