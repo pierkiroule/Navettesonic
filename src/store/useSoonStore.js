@@ -39,7 +39,8 @@ const initialState = {
   traceCircuit: saved?.traceCircuit || createDefaultTraceCircuit(),
   selectedBeaconId: null,
   circuitAutopilot: false,
-  networkTargetBeaconId: null,
+  circuitSegmentIndex: 0,
+  circuitSegmentT: 0,
   path: saved?.path || [],
   resonanceNotes: saved?.resonanceNotes || [],
   eyesClosed: false,
@@ -57,15 +58,10 @@ function lerpAngle(current, target, amount) {
 export const useSoonStore = create((set, get) => ({
   ...initialState,
 
-  toggleEyesClosed: () =>
-    set((state) => ({
-      eyesClosed: !state.eyesClosed,
-    })),
-
   setMode: (mode) => {
     set({
       mode,
-      eyesClosed: false,
+      eyesClosed: mode === "reso",
       selectedBubbleId: null,
       selectedBeaconId: null,
       circuitAutopilot: get().circuitAutopilot,
@@ -95,36 +91,33 @@ export const useSoonStore = create((set, get) => ({
       let targetX = state.fish.targetX;
       let targetY = state.fish.targetY;
       let fishDepth = state.fish.depth || 1;
+      let circuitSegmentIndex = state.circuitSegmentIndex || 0;
+      let circuitSegmentT = state.circuitSegmentT || 0;
       const circuitAutopilot = Boolean(state.circuitAutopilot);
 
-      if (circuitAutopilot && state.traceCircuit?.length > 0) {
-        let targetBeacon =
-          state.traceCircuit.find(
-            (beacon) => beacon.id === state.networkTargetBeaconId
-          ) || null;
+      if (circuitAutopilot && state.traceCircuit?.length > 1) {
+        const currentBeacon =
+          state.traceCircuit[circuitSegmentIndex % state.traceCircuit.length];
 
-        const distanceToTarget = targetBeacon
-          ? Math.hypot(
-              (targetBeacon.x || 0) - (state.fish.x || 0),
-              (targetBeacon.y || 0) - (state.fish.y || 0)
-            )
-          : Infinity;
+        const speedStep = getCircuitSpeedValue(currentBeacon?.speed || 2);
 
-        if (!targetBeacon || distanceToTarget < 54) {
-          const candidates = state.traceCircuit.filter(
-            (beacon) => beacon.id !== targetBeacon?.id
-          );
+        circuitSegmentT += speedStep;
 
-          const pool = candidates.length ? candidates : state.traceCircuit;
-
-          targetBeacon = pool[Math.floor(Math.random() * pool.length)];
+        while (circuitSegmentT >= 1) {
+          circuitSegmentT -= 1;
+          circuitSegmentIndex =
+            (circuitSegmentIndex + 1) % state.traceCircuit.length;
         }
 
-        targetX = targetBeacon.x;
-        targetY = targetBeacon.y;
-        fishDepth = targetBeacon.depth || fishDepth;
+        const circuitPoint = smoothLoopPoint(
+          state.traceCircuit,
+          circuitSegmentIndex,
+          circuitSegmentT
+        );
 
-        state.networkTargetBeaconId = targetBeacon.id;
+        targetX = circuitPoint.x;
+        targetY = circuitPoint.y;
+        fishDepth = circuitPoint.depth || fishDepth;
       }
 
       const currentAngle = Number.isFinite(state.fish.angle)
@@ -197,6 +190,8 @@ export const useSoonStore = create((set, get) => ({
 
       return {
         circuitAutopilot,
+        circuitSegmentIndex,
+        circuitSegmentT,
         fish: {
           ...state.fish,
           x: safe.x,
@@ -263,7 +258,9 @@ export const useSoonStore = create((set, get) => ({
       traceCircuit: createDefaultTraceCircuit(),
       selectedBeaconId: null,
       circuitAutopilot: false,
-            });
+      circuitSegmentIndex: 0,
+      circuitSegmentT: 0,
+    });
 
     saveState(get());
   },
@@ -278,7 +275,9 @@ export const useSoonStore = create((set, get) => ({
     set((state) => ({
       mode: "reso",
       circuitAutopilot: true,
-              selectedBubbleId: null,
+      circuitSegmentIndex: 0,
+      circuitSegmentT: 0,
+      selectedBubbleId: null,
       fish: {
         ...state.fish,
         targetX: first.x,
@@ -291,7 +290,6 @@ export const useSoonStore = create((set, get) => ({
   stopCircuitAutopilot: () => {
     set({
       circuitAutopilot: false,
-      networkTargetBeaconId: null,
     });
   },
 
@@ -401,7 +399,7 @@ export const useSoonStore = create((set, get) => ({
       resonanceNotes: Array.isArray(data.resonanceNotes)
         ? data.resonanceNotes
         : [],
-      eyesClosed: Boolean(data.eyesClosed),
+      eyesClosed: data.mode === "reso",
     }));
 
     saveState(get());
@@ -418,7 +416,9 @@ export const useSoonStore = create((set, get) => ({
       traceCircuit: createDefaultTraceCircuit(),
       selectedBeaconId: null,
       circuitAutopilot: false,
-              path: [],
+      circuitSegmentIndex: 0,
+      circuitSegmentT: 0,
+      path: [],
       resonanceNotes: [],
       eyesClosed: false,
     });
