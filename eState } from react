@@ -1,0 +1,589 @@
+[33md06c823[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mclean-local-soon[m[33m)[m Rename Reso mode to Odysseo
+[33mf228d9e[m Add automatic slalom circuit generation
+[33m3e335ea[m Generate slalom circuit from sound bubbles
+[33mbe32aa2[m Remove light and journal controls from Reso
+[33mb1fcdf4[m Remove resonance journal logic
+[33m380d400[m Remove resonance journal UI
+[33m4ceb775[m Restore Reso as circuit mode
+[33m44b494d[m Restore stable Reso circuit baseline
+[33m0c680a9[m Replace circuit autopilot with random beacon network
+[33m7a3aa12[m Simplify Soon navigation and stabilize build
+[33m142be28[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m Merge pull request #229 from pierkiroule/codex/improve-trace-listening-mode
+[33me3959de[m[33m ([m[1;31morigin/codex/improve-trace-listening-mode[m[33m)[m Use fixed 20-point default trace circuit for in-place editing
+[33m0dc282b[m Switch trace autopilot to infinite smooth loop with max 30 waypoints
+[33mb02a278[m Enable real-time round-trip trace point editing on touch
+[33mc7e2416[m Simplify trace-listening controls to point path with auto-start
+[33m8cc6208[m Add depth tagging step before trace autopilot launch
+[33mcb13a05[m Merge pull request #228 from pierkiroule/codex/corriger-bug-preparation-arene
+[33m1800fd5[m[33m ([m[1;31morigin/codex/corriger-bug-preparation-arene[m[33m)[m Fix auth flow for arena invite preparation
+[33m305bb11[m Merge pull request #227 from pierkiroule/codex/fix-invitation-system-bug
+[33m45483dc[m[33m ([m[1;31morigin/codex/fix-invitation-system-bug[m[33m)[m Fix invite generation to surface arena binding errors
+[33m7f0d450[m Merge pull request #226 from pierkiroule/codex/verify-application-and-supabase-connection
+[33m09cfeaa[m[33m ([m[1;31morigin/codex/verify-application-and-supabase-connection[m[33m)[m Handle missing Supabase config in visitor invite flow
+[33m9c6525b[m Fix arena status mapping for Supabase invite/access flow
+[33mcc0200d[m Merge pull request #225 from pierkiroule/codex/set-app-url-as-visitors-link-dopgqu
+[33mc658db8[m[33m ([m[1;31morigin/codex/set-app-url-as-visitors-link-dopgqu[m[33m)[m Use production base URL for legacy visitor invite links
+[33m9c4d33d[m Auto-create anonymous session on app entry
+[33m7ea331f[m Merge pull request #224 from pierkiroule/codex/set-app-url-as-visitors-link
+[33m27524c7[m[33m ([m[1;31morigin/codex/set-app-url-as-visitors-link[m[33m)[m Use production Vercel URL as default visitor link base
+[33mcd21ab5[m Merge pull request #223 from pierkiroule/codex/fix-invitation-link-generation-issue-n60wfn
+[33macb4472[m[33m ([m[1;31morigin/codex/fix-invitation-link-generation-issue-n60wfn[m[33m)[m Fallback to existing invite code when arena provisioning fails
+[33m8b739d2[m Merge pull request #222 from pierkiroule/codex/fix-invitation-link-generation-issue
+[33m1eeac43[m[33m ([m[1;31morigin/codex/fix-invitation-link-generation-issue[m[33m)[m Relax hublo invite code minimum length
+[33mcebb71c[m Merge pull request #221 from pierkiroule/codex/simplify-profile-page-for-invitations
+[33mb0e6bc0[m[33m ([m[1;31morigin/codex/simplify-profile-page-for-invitations[m[33m)[m Remove auth lock for Soon experience access
+[33m94e7f49[m Remove duplicate hublo link block from profile
+[33m12c3cfd[m Fix hublo invite generation in local mode
+[33mf524184[m Simplify profile view to hublo invitation flow
+[33m2c50b3c[m Merge pull request #220 from pierkiroule/revert-218-codex/update-routing-logic-and-create-landing-page
+[33mc66aeeb[m[33m ([m[1;31morigin/revert-218-codex/update-routing-logic-and-create-landing-page[m[33m)[m Revert "Explicit path routing + Home landing; gate LegacyShell behind `?legacy=1`"
+[33ma51d455[m Merge pull request #218 from pierkiroule/codex/update-routing-logic-and-create-landing-page
+[33m20d63bc[m[33m ([m[1;31morigin/codex/update-routing-logic-and-create-landing-page[m[33m)[m Refactor AppRouter to explicit routes with legacy compatibility flag
+[33m20fbb4f[m Merge pull request #217 from pierkiroule/codex/finalize-mvp-scope-and-update-documentation
+[33m0b46f0c[m[33m ([m[1;31morigin/codex/finalize-mvp-scope-and-update-documentation[m[33m)[m Align MVP docs and UI copy to read-only published model
+[33m5a6ee42[m Merge pull request #215 from pierkiroule/codex/find-efficient-way-to-implement-visitor-view
+[33md58c66d[m[33m ([m[1;31morigin/codex/find-efficient-way-to-implement-visitor-view[m[33m)[m Clarify hublo invite UX in legacy profile flow
+[33med90b7f[m Add hublo visitor link alias and UI wording
+[33mf7680a6[m Merge pull request #214 from pierkiroule/codex/optimize-and-clean-app-architecture
+[33m0d41798[m[33m ([m[1;31morigin/codex/optimize-and-clean-app-architecture[m[33m)[m docs: list obsolete file candidates for cleanup
+[33m1df30a3[m docs: add safe architecture simplification plan
+[33mfeba6b5[m Merge pull request #211 from pierkiroule/codex/implement-user-experience-flow-for-soon
+[33me73f466[m[33m ([m[1;31morigin/codex/implement-user-experience-flow-for-soon[m[33m)[m docs: clarify host and visitor soon experience flow
+[33m922bd28[m Merge pull request #210 from pierkiroule/codex/update-profile-to-add-invitation-section
+[33m042907e[m[33m ([m[1;31morigin/codex/update-profile-to-add-invitation-section[m[33m)[m Ajouter une section Invitation dans le profil Soon
+[33m91b008e[m Merge pull request #208 from pierkiroule/codex/implement-new-ux-flow
+[33me493ac5[m[33m ([m[1;31morigin/codex/implement-new-ux-flow[m[33m)[m feat(arena): add visitor invite button and generated invitation link
+[33mbdd5692[m docs(ux): align host and visitor pages with README flow
+[33mc3b394c[m feat(legacy): remove obsolete mode selection screen and open arena directly
+[33mc1e0cf5[m refactor(ux): simplify routing and clean arena copy
+[33md1d6438[m fix(routing): handle conflicting entry params and normalize room parsing
+[33mf1ade4a[m feat(ux): align host and visitor pages with MVP flow
+[33m2c9b5f7[m Merge pull request #207 from pierkiroule/codex/add-toast-notifications-for-various-states
+[33m95d2bfd[m[33m ([m[1;31morigin/codex/add-toast-notifications-for-various-states[m[33m)[m feat(arena): add publication and copy feedback toasts
+[33mb76106f[m Merge pull request #206 from pierkiroule/codex/creer-ecran-arenaeditorpage
+[33me5a06e7[m[33m ([m[1;31morigin/codex/creer-ecran-arenaeditorpage[m[33m)[m feat(arena): build ArenaEditorPage with publication CTA
+[33m8fafa1d[m Merge pull request #205 from pierkiroule/codex/add-react-components-modebadge-and-others
+[33md9034e3[m[33m ([m[1;31morigin/codex/add-react-components-modebadge-and-others[m[33m)[m Add arena UI component stubs and exports
+[33m222c483[m Merge pull request #204 from pierkiroule/codex/create-ui-glossary-in-docs/ui-copy.md
+[33me8b7e3b[m[33m ([m[1;31morigin/codex/create-ui-glossary-in-docs/ui-copy.md[m[33m)[m docs: add UI glossary and deprecate legacy terms
+[33m941e653[m Merge pull request #203 from pierkiroule/codex/maquetter-deux-shells-distincts
+[33mf5312da[m[33m ([m[1;31morigin/codex/maquetter-deux-shells-distincts[m[33m)[m feat(arena): maquetter shells hôte et visiteur
+[33m8a3ccdd[m Merge pull request #202 from pierkiroule/codex/define-standard-messages-for-ux-errors
+[33mababc53[m[33m ([m[1;31morigin/codex/define-standard-messages-for-ux-errors[m[33m)[m Define standard visitor UX states for room link failures
+[33m9667dec[m Merge pull request #201 from pierkiroule/codex/formalize-draft-to-published-transitions
+[33m9441f92[m[33m ([m[1;31morigin/codex/formalize-draft-to-published-transitions[m[33m)[m Formalize arena state transitions and visitor read-only policy
+[33m93580f1[m Merge pull request #200 from pierkiroule/codex/ecrire-docs/mvp-flow.md-avec-parcours-figes
+[33me3948a8[m[33m ([m[1;31morigin/codex/ecrire-docs/mvp-flow.md-avec-parcours-figes[m[33m)[m docs: add fixed MVP host and visitor flows
+[33mbd3073e[m Merge pull request #199 from pierkiroule/codex/add-contribution-guidelines-and-test-strategy
+[33maf473c0[m[33m ([m[1;31morigin/codex/add-contribution-guidelines-and-test-strategy[m[33m)[m docs: add contribution guide and refresh architecture README
+[33m96e8efb[m Merge pull request #198 from pierkiroule/codex/remove-legacy-sections-and-simplify-code
+[33m63347be[m[33m ([m[1;31morigin/codex/remove-legacy-sections-and-simplify-code[m[33m)[m chore(legacy): retire la modale invité et ajouter le tracker migration
+[33me77aa22[m Merge pull request #197 from pierkiroule/codex/create-supabase-integration-and-migrate-db-logic
+[33m4b82dd1[m[33m ([m[1;31morigin/codex/create-supabase-integration-and-migrate-db-logic[m[33m)[m Refactor arena DB access into Supabase repository
+[33m3e6ecd3[m Merge pull request #196 from pierkiroule/codex/update-supabase-policies-and-tests
+[33m7021da9[m[33m ([m[1;31morigin/codex/update-supabase-policies-and-tests[m[33m)[m Harden active arena RLS policies and verify invariants
+[33m216cfe7[m Merge pull request #195 from pierkiroule/codex/create-arena-components-and-hooks
+[33m181f4b8[m[33m ([m[1;31morigin/codex/create-arena-components-and-hooks[m[33m)[m feat(arena): add editor and visitor pages with dedicated hooks
+[33mbdf3348[m Merge pull request #194 from pierkiroule/codex/define-explicit-boundary-in-legacy-feature
+[33m675b62a[m[33m ([m[1;31morigin/codex/define-explicit-boundary-in-legacy-feature[m[33m)[m feat(legacy): enforce runtime API boundary for bootstrap
+[33mc3be40b[m Merge pull request #193 from pierkiroule/codex/normalize-project-structure-and-import-rules
+[33m3bc7fd3[m[33m ([m[1;31morigin/codex/normalize-project-structure-and-import-rules[m[33m)[m refactor: normaliser l'arborescence applicative
+[33mb79bf0b[m Merge pull request #192 from pierkiroule/codex/create-mvp-scope.md-documentation
+[33m39a01d5[m[33m ([m[1;31morigin/codex/create-mvp-scope.md-documentation[m[33m)[m Add MVP scope and Definition of Done checklist
+[33mfb73138[m Merge pull request #190 from pierkiroule/codex/update-readme-to-reflect-new-product-concept
+[33m09830f8[m[33m ([m[1;31morigin/codex/update-readme-to-reflect-new-product-concept[m[33m)[m docs: replace README with new Soon arena flow
+[33m6a7d7f8[m Merge pull request #189 from pierkiroule/codex/refactor-multi-user-mode-to-visitor-link-only
+[33m4836b2d[m[33m ([m[1;31morigin/codex/refactor-multi-user-mode-to-visitor-link-only[m[33m)[m Simplify arena model to published readonly visitor flow
+[33md9c19c7[m Refocus arena multi flow to readonly visitor links
+[33m0efeb81[m Merge pull request #188 from pierkiroule/codex/fix-page-bugs
+[33m7b7c1dc[m[33m ([m[1;31morigin/codex/fix-page-bugs[m[33m)[m Use press handlers for all multi-room admin buttons
+[33m0c10713[m Fix touch activation for create multi-room button
+[33mbed5362[m Fix multi-room admin controls visibility in mode selector
+[33m2b899ca[m Merge pull request #187 from pierkiroule/codex/fix-arena-not-found-error-p3ul26
+[33m593e753[m[33m ([m[1;31morigin/codex/fix-arena-not-found-error-p3ul26[m[33m)[m Harden soon arena auth ownership and invite columns
+[33ma60770e[m Fix invite URL parsing for local mode
+[33md3e0c2c[m Merge pull request #186 from pierkiroule/codex/fix-arena-not-found-error
+[33mfbabf76[m[33m ([m[1;31morigin/codex/fix-arena-not-found-error[m[33m)[m Fix shared room creation fallback causing guest arena not found
+[33m721fb1e[m Merge pull request #185 from pierkiroule/codex/fix-touch-ui-for-guest-username-entry
+[33m7f551e7[m[33m ([m[1;31morigin/codex/fix-touch-ui-for-guest-username-entry[m[33m)[m Fix guest pseudo input on touch invite flow
+[33me66eff9[m Merge pull request #184 from pierkiroule/codex/fix-guest-user-access-bugs
+[33made5b20[m[33m ([m[1;31morigin/codex/fix-guest-user-access-bugs[m[33m)[m Fix invite guest flow to stay in arena view
+[33maaa945e[m Merge pull request #183 from pierkiroule/codex/patch-alignment-to-supabase-model
+[33mf8484be[m[33m ([m[1;31morigin/codex/patch-alignment-to-supabase-model[m[33m)[m Fix room-link runtime sync and host role handling
+[33m61cc8c9[m Align arena flow to room-link guest model
+[33m3e42497[m Merge pull request #182 from pierkiroule/codex/refactor-multi-user-invitation-system
+[33m3b325fa[m[33m ([m[1;31morigin/codex/refactor-multi-user-invitation-system[m[33m)[m Finalize guest room-link flow and host guest role panel
+[33mcf72aff[m Force direct guest room entry on invite links
+[33md2811c7[m Add guest nickname gate for room invite flow
+[33m95518fb[m Simplify multiplayer invites to link-first guest flow
+[33ma698d4e[m Merge pull request #181 from pierkiroule/codex/audit-and-refactor-navettesonic-for-supabase
+[33m9e1538e[m[33m ([m[1;31morigin/codex/audit-and-refactor-navettesonic-for-supabase[m[33m)[m Refactor multiplayer to arenas schema with service layer
+[33m85d2bb7[m Merge pull request #180 from pierkiroule/codex/add-multiplayer-selection-step
+[33m7364197[m[33m ([m[1;31morigin/codex/add-multiplayer-selection-step[m[33m)[m Always create fresh multiplayer room to avoid stale participants
+[33ma65f3a7[m Make mode selection mandatory and add explicit admin room launch flow
+[33m43f6d8c[m Consolidate mode-selection flow and fix navigation path
+[33m4d98ae9[m Merge pull request #179 from pierkiroule/codex/fix-user-visibility-issue-in-multiplayer
+[33m2e2a6d3[m[33m ([m[1;31morigin/codex/fix-user-visibility-issue-in-multiplayer[m[33m)[m Fix guest bubble persistence when joining arena fallback
+[33ma17113e[m Merge pull request #178 from pierkiroule/codex/afficher-plusieurs-poissons-plume-en-mode-multi
+[33mb9e0fd9[m[33m ([m[1;31morigin/codex/afficher-plusieurs-poissons-plume-en-mode-multi[m[33m)[m Replace simulated guest fish with real arena player fish
+[33m609f0c8[m Fix multi-view guest fish IDs visibility
+[33maf0f0b2[m Merge pull request #176 from pierkiroule/codex/implement-visual-multiuser-feature-in-legacyapp.js
+[33m37fb235[m[33m ([m[1;31morigin/codex/implement-visual-multiuser-feature-in-legacyapp.js[m[33m)[m fix(legacy): simplify arena invite flow to invite/join only
+[33m7c3d253[m feat(legacy): add visual guest fish school around owner ship
+[33me64f409[m Merge pull request #175 from pierkiroule/codex/implement-arena-bubble-features-and-policies
+[33mc09da1c[m[33m ([m[1;31morigin/codex/implement-arena-bubble-features-and-policies[m[33m)[m Add arena fish claim RPC and ownership constraints
+[33m603c0d9[m Merge pull request #174 from pierkiroule/codex/fix-invitation-bug-in-profile
+[33m3084ca2[m[33m ([m[1;31morigin/codex/fix-invitation-bug-in-profile[m[33m)[m Reorganize profile invite section with share preview actions
+[33mfc00bbb[m Handle missing invite token column with arena-code fallback
+[33mb80b9cf[m Fix arena invite fallback when invited_by column missing
+[33me2b9a32[m Merge pull request #173 from pierkiroule/codex/audit-repo-for-optimal-structure
+[33m7d16c11[m[33m ([m[1;31morigin/codex/audit-repo-for-optimal-structure[m[33m)[m refactor(legacy): split shell into focused React components
+[33mca1f6af[m refactor(legacy): extract DOM refs collector from legacy runtime
+[33ma77eb0b[m refactor(legacy): split monolithic runtime constants into modules
+[33m14b88dc[m docs: add architecture audit and React multifile target
+[33m6d271ec[m Merge pull request #172 from pierkiroule/codex/redeploy-vercel-to-sync-database
+[33md219fd4[m[33m ([m[1;31morigin/codex/redeploy-vercel-to-sync-database[m[33m)[m fix: don't block arena flows on schema false-positives
+[33mf165563[m fix: make soonbase schema checks accurate and refresh supabase client
+[33m17f521c[m docs: add vercel redeploy + supabase resync procedure
+[33mbc8a3ce[m Merge pull request #171 from pierkiroule/codex/simplify-multiuser-arena-ids
+[33m4de16ba[m[33m ([m[1;31morigin/codex/simplify-multiuser-arena-ids[m[33m)[m Add tests to verify front/Supabase schema correspondence
+[33ma5dccc6[m Add profile diagnostics and basic soonbase verification tests
+[33mdd61861[m Add post-migration Soonbase schema verification SQL
+[33mdf7841d[m Add repair migration to normalize soonbase arena schema
+[33md88a9fa[m Add soonbase schema health checks before multiuser actions
+[33mb9a4ed4[m Simplify multiuser arena UX around invite codes
+[33m8092ea4[m Merge pull request #169 from pierkiroule/codex/add-multiuser-arena-support-in-sql-schema
+[33me83541e[m[33m ([m[1;31morigin/codex/add-multiuser-arena-support-in-sql-schema[m[33m)[m Replace Supabase CDN with npm module bootstrap
+[33mffe17cb[m Merge pull request #168 from pierkiroule/codex/share-link-to-existing-arena
+[33m33f0006[m[33m ([m[1;31morigin/codex/share-link-to-existing-arena[m[33m)[m Fix wording for shared arena invitation flow
+[33mf1f9f4e[m Merge pull request #167 from pierkiroule/codex/refactor-createarenainvitefromprofile
+[33m7bfef11[m[33m ([m[1;31morigin/codex/refactor-createarenainvitefromprofile[m[33m)[m Improve legacy arena invite SQL error handling
+[33m348c733[m Merge pull request #166 from pierkiroule/codex/refactor-arena-synchronization-logic
+[33m25d9c4c[m[33m ([m[1;31morigin/codex/refactor-arena-synchronization-logic[m[33m)[m Fix legacy arena sync to stay local for guest sessions
+[33mafe1dd5[m Merge pull request #165 from pierkiroule/codex/update-bubble-patch-handling-for-arenaid
+[33m5303cdd[m[33m ([m[1;31morigin/codex/update-bubble-patch-handling-for-arenaid[m[33m)[m Fix arena-scoped pending bubble patch writes
+[33m71064ef[m Merge pull request #164 from pierkiroule/codex/centralize-supabase-writes-in-helpers
+[33m4cad34b[m[33m ([m[1;31morigin/codex/centralize-supabase-writes-in-helpers[m[33m)[m Refactor arena bubble Supabase writes with explicit error handling
+[33m692d2f2[m Merge pull request #163 from pierkiroule/codex/fix-missing-supabase-tables-for-arena
+[33m27d6206[m[33m ([m[1;31morigin/codex/fix-missing-supabase-tables-for-arena[m[33m)[m fix: auto-surface existing owner arena on session sync
+[33m85d7ac9[m docs: add multiuser arena migration troubleshooting
+[33mda5a33b[m Merge pull request #162 from pierkiroule/codex/fix-arena-availability-issue
+[33m7cde867[m[33m ([m[1;31morigin/codex/fix-arena-availability-issue[m[33m)[m Add multi-user integrity hardening migration
+[33m4218533[m Fix false missing-table arena error detection
+[33m8fa04d1[m Merge pull request #161 from pierkiroule/codex/fix-session-management-consistency
+[33mc26e941[m[33m ([m[1;31morigin/codex/fix-session-management-consistency[m[33m)[m Fix arena session coherence for launch and invite flows
+[33m8067482[m Merge pull request #160 from pierkiroule/codex/fix-creation-error-for-soon-arena
+[33m2f37585[m[33m ([m[1;31morigin/codex/fix-creation-error-for-soon-arena[m[33m)[m Add RPC-based arena join fallback for invite codes
+[33mdb657f4[m Handle missing Supabase arena tables with friendly status
+[33m2bc81de[m Merge pull request #159 from pierkiroule/codex/add-indexes-and-constraints-to-user_purchases
+[33m8534811[m[33m ([m[1;31morigin/codex/add-indexes-and-constraints-to-user_purchases[m[33m)[m Add user_purchases constraints and FK indexes
+[33m1b96080[m Merge pull request #158 from pierkiroule/codex/confirm-database-structure-and-logic-updates
+[33mc55e228[m[33m ([m[1;31morigin/codex/confirm-database-structure-and-logic-updates[m[33m)[m fix(arena): ignorer les updates bubble obsolètes côté client
+[33mb52dc03[m Merge pull request #157 from pierkiroule/codex/create-invitations-table-with-policies
+[33m754fc22[m[33m ([m[1;31morigin/codex/create-invitations-table-with-policies[m[33m)[m Add invite expiration/quota and owner-only invite controls
+[33m954c8b6[m Merge pull request #156 from pierkiroule/codex/activer-rls-et-creer-des-policies
+[33mb0b2af5[m[33m ([m[1;31morigin/codex/activer-rls-et-creer-des-policies[m[33m)[m Add RLS policies for profiles, sessions, explorations, and purchases
+[33m408c8c6[m Merge pull request #155 from pierkiroule/codex/integrate-soon_arenas-and-check-foreign-keys
+[33m0ede56c[m[33m ([m[1;31morigin/codex/integrate-soon_arenas-and-check-foreign-keys[m[33m)[m Add migration to align soon arena FK and role constraints
+[33m9ebcd8c[m Merge pull request #154 from pierkiroule/codex/create-soon_arena_members-and-soon_arena_invites
+[33m5d7902a[m[33m ([m[1;31morigin/codex/create-soon_arena_members-and-soon_arena_invites[m[33m)[m Add arena invites model, owner-only policy, and owner-only invite UI
+[33md1dae70[m Merge pull request #153 from pierkiroule/codex/corriger-bug-de-la-page-profil
+[33mec942bf[m[33m ([m[1;31morigin/codex/corriger-bug-de-la-page-profil[m[33m)[m Fix profile view positioning to restore native scrolling
+[33me894f29[m Fix touch listeners leaking into profile scroll
+[33m2432715[m Fix profile touch and vertical scrolling behavior
+[33m637fb04[m Merge pull request #152 from pierkiroule/codex/afficher-l-invitation-au-menu-multiplayer
+[33md406489[m[33m ([m[1;31morigin/codex/afficher-l-invitation-au-menu-multiplayer[m[33m)[m Fix profile scroll by limiting touchstart handler to experience view
+[33mce17b46[m Move multiplayer controls into dedicated profile section
+[33mcf49758[m Center multiplayer invitation panel for easier verification
+[33m848ca4e[m Move multiplayer invite controls into right burger drawer
+[33m572b3cd[m Fix profile bottom spacing for multiplayer invite card
+[33m29bf669[m Merge pull request #151 from pierkiroule/codex/add-last-write-wins-strategy
+[33me96fbde[m Merge pull request #150 from pierkiroule/codex/implement-minimal-ux-flow-in-legacymarkup.html-and-legacyapp
+[33m4f41ff8[m[33m ([m[1;31morigin/codex/add-last-write-wins-strategy[m[33m)[m Add LWW versioning and light lock fields for arena bubbles
+[33m1e03f3a[m[33m ([m[1;31morigin/codex/implement-minimal-ux-flow-in-legacymarkup.html-and-legacyapp[m[33m)[m Add minimal multi-arena create/join UX in legacy runtime
+[33mf319b51[m Merge pull request #149 from pierkiroule/codex/add-arenasync-layer-to-legacyapp.js
+[33m1a52527[m[33m ([m[1;31morigin/codex/add-arenasync-layer-to-legacyapp.js[m[33m)[m feat(legacy): add arena realtime sync for bubbles
+[33mcc6d14f[m Merge pull request #148 from pierkiroule/codex/create-supabase-tables-for-multi-state
+[33m4dc391a[m[33m ([m[1;31morigin/codex/create-supabase-tables-for-multi-state[m[33m)[m Add Supabase soon arena multi-state schema and RLS
+[33mfc77b53[m Merge pull request #145 from pierkiroule/codex/add-5th-bubble-to-launch-and-echollection
+[33mdbfa15c[m[33m ([m[1;31morigin/codex/add-5th-bubble-to-launch-and-echollection[m[33m)[m Add Baladhaikua as 5th starter and collection bubble
+[33m2e0c629[m Merge pull request #143 from pierkiroule/codex/add-new-sound-to-bubble-collection
+[33m6b6a3d3[m[33m ([m[1;31morigin/codex/add-new-sound-to-bubble-collection[m[33m)[m feat: add Sax bucket sample and start with 4th bubble
+[33m3b3c673[m fix: retry playback for file-based startup bubbles
+[33m9979409[m fix: use bucket file samples for initial bubbles
+[33me4bd41a[m feat: add Tech mp3 to bubble sample collection
+[33mecd4ae5[m feat: add Scani mp3 to bubble sample collection
+[33maa43013[m feat: add Drill mp3 to bubble sample collection
+[33mb6afc32[m Merge pull request #140 from pierkiroule/codex/add-animated-starfish-character
+[33m4445590[m[33m ([m[1;31morigin/codex/add-animated-starfish-character[m[33m)[m Trigger starfish resonance wave at 50% spin progress
+[33me889d7a[m Slow starfish spin/wave and add 10s echo blur effect
+[33m3f57eaf[m Add starfish spin shockwave and global echo-delay trigger
+[33m68943e2[m Soften and articulate starfish arm sway animation
+[33m919af36[m Adjust starfish size, remove face, and randomize arena drift
+[33m895139c[m Add animated companion starfish near the fish
+[33m83911f7[m Merge pull request #139 from pierkiroule/codex/modifier-menu-zoom-fleches-du-mode-tracer
+[33m8487df9[m[33m ([m[1;31morigin/codex/modifier-menu-zoom-fleches-du-mode-tracer[m[33m)[m Réorganise les boutons tracé: bas d’écran + validation après tracé
+[33m9582f24[m Clarifie le flow UX du mode tracé par étapes
+[33mccdd094[m Améliore la robustesse tactile du mode tracer
+[33m502bfdc[m Renforce le mode plume tactile et validation via bouton 🪶
+[33m41ebd5a[m Place les flèches sur le contour de l’arène
+[33m5212ed9[m Refonte du menu caméra en mode tracer
+[33m9bec07d[m Merge pull request #138 from pierkiroule/codex/adjust-tips-position-and-menu-behavior
+[33m5b92130[m[33m ([m[1;31morigin/codex/adjust-tips-position-and-menu-behavior[m[33m)[m Improve bottom nav behavior and bubble edit accessibility
+[33m577dbaa[m Merge pull request #137 from pierkiroule/codex/optimize-and-fix-tracing-mode
+[33m84e5f6b[m[33m ([m[1;31morigin/codex/optimize-and-fix-tracing-mode[m[33m)[m Améliore le mode Tracer l’écoute (zoom + précision tactile)
+[33m6cf2c28[m Merge pull request #136 from pierkiroule/codex/add-summary-table-for-touch-interactions
+[33m7c7d220[m[33m ([m[1;31morigin/codex/add-summary-table-for-touch-interactions[m[33m)[m Corrige scroll vertical et précise les gestes du tuto
+[33m07a59f1[m Corrige la responsivité du tableau de la modale Tuto
+[33m7d08e17[m Ajoute un tableau pédagogique des gestes dans la modale Tuto
+[33m819ef46[m Merge pull request #135 from pierkiroule/codex/move-background-music-to-tuto-modal
+[33m040d673[m[33m ([m[1;31morigin/codex/move-background-music-to-tuto-modal[m[33m)[m Move musicsoon playback to tutorial modal with 5s fade out
+[33mdbb266e[m Merge pull request #134 from pierkiroule/codex/verifier-et-corriger-la-zone-de-detection-tactile
+[33md28c15b[m[33m ([m[1;31morigin/codex/verifier-et-corriger-la-zone-de-detection-tactile[m[33m)[m Adjust fish touch zone to mouth-to-tail capsule
+[33m691e11a[m Fix fish touch hitbox alignment and size
+[33m554d030[m Merge pull request #133 from pierkiroule/codex/modifier-l-intensite-et-couleur-du-poisson
+[33m11bbc96[m[33m ([m[1;31morigin/codex/modifier-l-intensite-et-couleur-du-poisson[m[33m)[m Ajuste l'apparence du poisson selon la profondeur
+[33m7260cca[m Merge pull request #132 from pierkiroule/codex/fix-interactive-zone-for-fish-object
+[33m6343877[m[33m ([m[1;31morigin/codex/fix-interactive-zone-for-fish-object[m[33m)[m Improve fish tap hit area with circular interaction zone
+[33m1dbf7bf[m Merge pull request #131 from pierkiroule/codex/implement-long-tap-interaction-for-fish-depth
+[33mbe57f68[m[33m ([m[1;31morigin/codex/implement-long-tap-interaction-for-fish-depth[m[33m)[m Show fish depth toast above fish
+[33m4fb1a9a[m Add fish long-press depth switching
+[33m27ebefa[m Merge pull request #130 from pierkiroule/codex/remove-dolphin-mode-and-keep-ear-and-bird
+[33m4dcb4ac[m[33m ([m[1;31morigin/codex/remove-dolphin-mode-and-keep-ear-and-bird[m[33m)[m Retire le mode dauphin de l'interface d'écoute
+[33m6acda10[m Merge pull request #129 from pierkiroule/codex/implement-fish-plume-constraint-for-sound-bubbles
+[33m1bc83f0[m[33m ([m[1;31morigin/codex/implement-fish-plume-constraint-for-sound-bubbles[m[33m)[m Empêcher la traversée des bulles du niveau courant
+[33m53687c7[m Merge pull request #128 from pierkiroule/codex/add-halo-animation-option-to-menu
+[33ma217fbe[m[33m ([m[1;31morigin/codex/add-halo-animation-option-to-menu[m[33m)[m Add animated halo style option for sound bubbles
+[33md02ce40[m Merge pull request #127 from pierkiroule/codex/fix-double-tap-zone-on-fish
+[33m474538b[m[33m ([m[1;31morigin/codex/fix-double-tap-zone-on-fish[m[33m)[m Increase fish double-tap detection zone
+[33mf5bbcb2[m Fix fish double-tap hit area alignment
+[33mb805320[m Merge pull request #126 from pierkiroule/codex/add-rebound-effect-and-drag-simulation
+[33m4f2cb52[m[33m ([m[1;31morigin/codex/add-rebound-effect-and-drag-simulation[m[33m)[m Boost dolphin mode bounce, bubble deformation, and speed trails
+[33m9894163[m Merge pull request #125 from pierkiroule/codex/fix-double-tap-fish-bubble-deposit-feature
+[33mfcc1e16[m[33m ([m[1;31morigin/codex/fix-double-tap-fish-bubble-deposit-feature[m[33m)[m Fix fish double-tap opening bubble menu near bubbles
+[33m67d75ed[m Merge pull request #124 from pierkiroule/codex/allow-fish-to-move-sound-bubbles
+[33mf364c53[m[33m ([m[1;31morigin/codex/allow-fish-to-move-sound-bubbles[m[33m)[m Ajoute un vrai switch on/off pour le mode dauphin
+[33m8831bad[m Ajoute rebonds bulles/lucioles et trainée des bulles
+[33m019dec0[m Ajoute les collisions bulles en navigation dauphin
+[33m337506f[m Merge pull request #123 from pierkiroule/codex/supprimer-le-compte-a-rebours-en-mode
+[33m5bcafed[m[33m ([m[1;31morigin/codex/supprimer-le-compte-a-rebours-en-mode[m[33m)[m Supprime le compte à rebours du mode écoute
+[33m68282ce[m Merge pull request #122 from pierkiroule/codex/add-mode-button-and-update-styles
+[33m88574d4[m[33m ([m[1;31morigin/codex/add-mode-button-and-update-styles[m[33m)[m Keep Tuto/🐬/🪶/👂 mode controls on a single bar
+[33m37dacc5[m Restore dolphin mode chip in legacy experience modes
+[33m97a9203[m Harmonize legacy mode chip active states
+[33m575f595[m Merge pull request #121 from pierkiroule/codex/centraliser-etat-de-mode-combine-et-ajuster-ui
+[33md30c070[m[33m ([m[1;31morigin/codex/centraliser-etat-de-mode-combine-et-ajuster-ui[m[33m)[m Centraliser les états silence/trace de l'UI legacy
+[33m4e938c3[m Merge pull request #119 from pierkiroule/codex/modifier-logique-de-depot-des-triangles
+[33ma89ce26[m[33m ([m[1;31morigin/codex/modifier-logique-de-depot-des-triangles[m[33m)[m Corriger le dépôt sur la bulle effectivement traversée
+[33mff3a548[m Corriger dépôt traversée bulle et rendu triangle en bulle
+[33m341f569[m Refondre le dépôt automatique des lucioles dans les bulles
+[33md06a6c7[m Merge pull request #118 from pierkiroule/codex/reviser-interactions-tactiles-et-conflits
+[33m365188e[m[33m ([m[1;31morigin/codex/reviser-interactions-tactiles-et-conflits[m[33m)[m Unpause touch flow when bubble drop is blocked by pulsing triangle
+[33m8dd16ff[m Fix touch flow by blocking bubble drop instead of panel open
+[33m68a8e9d[m Block bubble placement while halo triangle is active
+[33m7d96591[m Merge pull request #116 from pierkiroule/codex/reparer-fonctionnalite-bulle-sonore
+[33m8093a50[m[33m ([m[1;31morigin/codex/reparer-fonctionnalite-bulle-sonore[m[33m)[m Fix fish long-press to reopen sound bubble creation
+[33m66a922a[m Merge pull request #115 from pierkiroule/codex/remove-status-text-from-ui
+[33ma9e9d84[m[33m ([m[1;31morigin/codex/remove-status-text-from-ui[m[33m)[m Hide all legacy status text overlays
+[33md258020[m Merge pull request #114 from pierkiroule/codex/update-tips-message-positioning-and-styling
+[33mff01e3a[m[33m ([m[1;31morigin/codex/update-tips-message-positioning-and-styling[m[33m)[m Place les helper tips en bas au-dessus du menu
+[33mf6751cc[m Ajuste la position et lisibilité des helper tips
+[33m5dc6010[m Merge pull request #113 from pierkiroule/codex/remove-remaining-fireflies-information-messages
+[33mbc3dad1[m[33m ([m[1;31morigin/codex/remove-remaining-fireflies-information-messages[m[33m)[m Supprime les messages de nouvelle luciole en bas
+[33m9339f1d[m Retire le compteur de lucioles restantes
+[33me3a0f3c[m Merge pull request #112 from pierkiroule/codex/add-modal-link-for-tutorial-in-soon
+[33m3c8e391[m[33m ([m[1;31morigin/codex/add-modal-link-for-tutorial-in-soon[m[33m)[m Ajoute une modale Tuto•° dans la vue Soon
+[33m64510f6[m Merge pull request #111 from pierkiroule/codex/update-bottom-menu-organization-with-emojis
+[33m410e5f6[m[33m ([m[1;31morigin/codex/update-bottom-menu-organization-with-emojis[m[33m)[m Fix top mode controls visibility in Soon view
+[33m6f752ce[m Move Soon mode controls to top of experience view
+[33m39ad703[m Remove Échohypnose entry from bottom menu
+[33m661e3d8[m Update bottom menu items to emoji labels
+[33md98129c[m Merge pull request #110 from pierkiroule/codex/regrouper-et-deplacer-les-boutons-silence-et-tracer
+[33md9423b6[m[33m ([m[1;31morigin/codex/regrouper-et-deplacer-les-boutons-silence-et-tracer[m[33m)[m Déplacer les modes d'écoute dans le menu bas
+[33m13b8d2f[m Merge pull request #107 from pierkiroule/codex/add-temporary-logs-to-legacyapp.js
+[33ma947d2e[m[33m ([m[1;31morigin/codex/add-temporary-logs-to-legacyapp.js[m[33m)[m Add temporary diagnostics around legacy experience navigation
+[33m39085d6[m Merge pull request #106 from pierkiroule/codex/corriger-chevauchements-des-menus
+[33m2f4a1be[m[33m ([m[1;31morigin/codex/corriger-chevauchements-des-menus[m[33m)[m Fix trace camera controls overlapping bottom navigation
+[33ma682e2a[m Merge pull request #105 from pierkiroule/codex/transformer-le-menu-en-menu-retractable
+[33mb6c83a4[m[33m ([m[1;31morigin/codex/transformer-le-menu-en-menu-retractable[m[33m)[m Ajoute un menu bas rétractable glissant
+[33m514feed[m Merge pull request #104 from pierkiroule/codex/add-pinch-zoom-and-pan-functionality
+[33m772edec[m[33m ([m[1;31morigin/codex/add-pinch-zoom-and-pan-functionality[m[33m)[m Make trace camera controls circular draggable and hide after trace
+[33mdfc3634[m Replace trace pinch gesture with discrete camera buttons
+[33m83d1c69[m Add two-finger pinch camera tool in trace listening mode
+[33m78a97bf[m Merge pull request #103 from pierkiroule/codex/investigate-missing-silence-buttons-at-launch
+[33m35dd19a[m[33m ([m[1;31morigin/codex/investigate-missing-silence-buttons-at-launch[m[33m)[m Fix intermittent missing legacy controls on startup
+[33m43efa9f[m Merge pull request #102 from pierkiroule/codex/add-audio-reactive-fish-fin-morphing-effect
+[33m8ab5e93[m[33m ([m[1;31morigin/codex/add-audio-reactive-fish-fin-morphing-effect[m[33m)[m refactor: remove wing sparkle particles from fish effect
+[33m7a9088d[m fix: fade fin morph effect with distance and silence
+[33md5634b7[m feat: add audio-reactive fin morphing wings and sparkles
+[33m9d70703[m Merge pull request #100 from pierkiroule/codex/implement-angular-distortion-system
+[33me95a425[m[33m ([m[1;31morigin/codex/implement-angular-distortion-system[m[33m)[m Make arena collision response very soft and slow
+[33m6afdd80[m Soften membrane rebound and increase deformation response
+[33m103e4a4[m Add deformable arena membrane with impact bounce
+[33m378c1f4[m Merge pull request #99 from pierkiroule/codex/refactor-rendering-in-legacyapp.js
+[33m6de4fb4[m[33m ([m[1;31morigin/codex/refactor-rendering-in-legacyapp.js[m[33m)[m Refine arena boundary rendering with breathing multi-pass halo
+[33m2daa11a[m Merge pull request #98 from pierkiroule/codex/update-tracer-mode-with-subtle-feather-trails
+[33m08f39c6[m[33m ([m[1;31morigin/codex/update-tracer-mode-with-subtle-feather-trails[m[33m)[m Ajuster le rail: épais au tracé puis discret en pointillé
+[33mb122eea[m Affiner le rail Tracer l’écoute avec un tracé plume discret
+[33m4fc36e2[m Merge pull request #97 from pierkiroule/codex/add-bezier-curve-path-tracing-feature
+[33m033dee8[m[33m ([m[1;31morigin/codex/add-bezier-curve-path-tracing-feature[m[33m)[m feat: confirm exit tap during trace autopilot
+[33mf292e1a[m feat: switch trace rail to smoothed ping-pong autopilot
+[33m05325a1[m fix: harden interactive target detection for experience controls
+[33m9ba0380[m fix: restore silence and trace button interactivity
+[33m3a73333[m feat: add closed bezier trace rail with arena overview
+[33mf44f733[m Merge pull request #96 from pierkiroule/codex/add-blue-trace-listening-button
+[33m60c2045[m[33m ([m[1;31morigin/codex/add-blue-trace-listening-button[m[33m)[m feat(experience): add Tracer l'écoute rail autopilot button
+[33mf4d93cc[m Merge pull request #94 from pierkiroule/codex/refactor-app-structure-for-maintainability
+[33m26c116f[m[33m ([m[1;31morigin/codex/refactor-app-structure-for-maintainability[m[33m)[m refactor: reorganize app into feature-based legacy module
+[33m9347d27[m Merge pull request #93 from pierkiroule/codex/improve-audio-reactive-effects-in-soon-experience
+[33m8632675[m[33m ([m[1;31morigin/codex/improve-audio-reactive-effects-in-soon-experience[m[33m)[m Enhance Soon audio-reactive fish and marine ambience
+[33m4ee6dfa[m Merge pull request #92 from pierkiroule/codex/simplify-profile-page-content
+[33m9ff22f4[m[33m ([m[1;31morigin/codex/simplify-profile-page-content[m[33m)[m Corriger le défilement vertical sur les vues scrollables
+[33m29abab1[m Ajouter l'édition du profil (pseudo et présentation)
+[33m6a4e1cd[m Retirer le bouton profil non pertinent
+[33ma58b827[m Corriger le scroll vertical de la page profil
+[33m54b7708[m Masquer les champs d'authentification lorsque connecté
+[33m64a09d1[m Affiner la page profil et rediriger la connexion vers Soon experience
+[33m5256dcd[m Merge pull request #91 from pierkiroule/codex/replace-profile-icon-with-bubble-icon
+[33m1409cb6[m[33m ([m[1;31morigin/codex/replace-profile-icon-with-bubble-icon[m[33m)[m Replace profile menu icon with bubble emoji
+[33mdd059ad[m Merge pull request #90 from pierkiroule/codex/update-subtitle-and-menu-items
+[33mff85001[m[33m ([m[1;31morigin/codex/update-subtitle-and-menu-items[m[33m)[m Fix Echohypnose view visibility regression
+[33m6858d25[m Refactor Echohypnose into dedicated view and update bottom nav
+[33mfc2994a[m Merge pull request #89 from pierkiroule/codex/optimize-audio-capture-system
+[33m7f621e8[m[33m ([m[1;31morigin/codex/optimize-audio-capture-system[m[33m)[m Capture entire fish audio ecosystem in recorder bus
+[33m57ff41d[m Merge pull request #88 from pierkiroule/codex/adjust-lucioles-spacing-and-triangle-elasticity
+[33m4b75c21[m[33m ([m[1;31morigin/codex/adjust-lucioles-spacing-and-triangle-elasticity[m[33m)[m Affiner l'accroche des lucioles et l'animation des triangles
+[33m7871fba[m Merge pull request #87 from pierkiroule/codex/update-silence-button-text-and-graphics
+[33m9652d10[m[33m ([m[1;31morigin/codex/update-silence-button-text-and-graphics[m[33m)[m Update silence button label and add silence compass indicator
+[33m8179829[m Merge pull request #86 from pierkiroule/codex/find-meaning-of-red-line-on-fish
+[33m3681116[m[33m ([m[1;31morigin/codex/find-meaning-of-red-line-on-fish[m[33m)[m Remove fish sonar pointer indicator
+[33mf11b00a[m Merge pull request #85 from pierkiroule/codex/remove-feather-from-fish-and-add-particle-system
+[33m3eb2632[m[33m ([m[1;31morigin/codex/remove-feather-from-fish-and-add-particle-system[m[33m)[m Refactor fish plume into mouth-to-tail bubble particle trail
+[33me07c449[m Merge pull request #84 from pierkiroule/codex/adjust-fish-feather-design
+[33mee0d377[m[33m ([m[1;31morigin/codex/adjust-fish-feather-design[m[33m)[m Corriger en profondeur l'alignement de la plume au repos
+[33m0858363[m Fixer la plume dans le sillage depuis la pointe de queue
+[33mee58333[m Affiner et allonger la plume du poisson au repos
+[33m381759e[m Merge pull request #83 from pierkiroule/codex/refactoriser-bouton-silence-des-yeux
+[33mce1bf59[m[33m ([m[1;31morigin/codex/refactoriser-bouton-silence-des-yeux[m[33m)[m Affiner le bouton silence et ajouter un halo sonar directionnel
+[33m5572568[m Merge pull request #82 from pierkiroule/codex/implement-silence-des-yeux-experience
+[33m164c78b[m[33m ([m[1;31morigin/codex/implement-silence-des-yeux-experience[m[33m)[m fix: fiabiliser la creation mp3 et le fallback
+[33m09a49ef[m fix: corriger le flux Silence des Yeux et la synchro profil
+[33md508797[m feat: ajouter la traversée Silence des Yeux
+[33m467ecd0[m Merge pull request #81 from pierkiroule/codex/fix-fish-movement-and-improve-tail-design
+[33md4a5f0a[m[33m ([m[1;31morigin/codex/fix-fish-movement-and-improve-tail-design[m[33m)[m Fix fish tether control and refine trailing plume rendering
+[33m99dbb4a[m Merge pull request #80 from pierkiroule/codex/implement-background-music-for-fish-movement-3dh9m4
+[33mb8f0c06[m[33m ([m[1;31morigin/codex/implement-background-music-for-fish-movement-3dh9m4[m[33m)[m Merge branch 'main' into codex/implement-background-music-for-fish-movement-3dh9m4
+[33m2a370ff[m Fix intro music autoplay by triggering on user press
+[33m213d107[m Merge pull request #77 from pierkiroule/codex/implement-audio-only-recording-feature-grw285
+[33mf851390[m[33m ([m[1;31morigin/codex/implement-audio-only-recording-feature-grw285[m[33m)[m feat(legacy): add echohypnotic audio-only recording mode
+[33m8e7d979[m Merge pull request #75 from pierkiroule/codex/modifier-la-mecanique-de-collecte-des-lucioles
+[33m9a3e8fe[m[33m ([m[1;31morigin/codex/modifier-la-mecanique-de-collecte-des-lucioles[m[33m)[m Refonte mécanique lucioles: plume, verrou vocal et halo triangulaire
+[33mab35aeb[m Merge pull request #74 from pierkiroule/codex/add-lucioles-and-sound-bubble-mechanics
+[33m31a42aa[m[33m ([m[1;31morigin/codex/add-lucioles-and-sound-bubble-mechanics[m[33m)[m Spawn fireflies progressively every 15 seconds
+[33me83398f[m Play triangle vocals sequentially with 60s cooldown
+[33mbee3b62[m Implement 3-firefly release and triangle-triggered playback
+[33me435d08[m Merge pull request #73 from pierkiroule/codex/fix-fish-tail-positioning
+[33m411d39b[m[33m ([m[1;31morigin/codex/fix-fish-tail-positioning[m[33m)[m Align tail filament to wake path and tip-anchored firefly wagons
+[33m1c4e780[m Make tail filament longer softer and near-transparent plume
+[33m023ba6c[m Fix tail filament anchor to stay at fish tail
+[33m8bfda24[m Merge pull request #72 from pierkiroule/codex/simplify-firefly-gameplay-mechanics
+[33m8b6e176[m[33m ([m[1;31morigin/codex/simplify-firefly-gameplay-mechanics[m[33m)[m Restore bucket vocal playback in simplified firefly loop
+[33m32ef6ac[m Simplify firefly gameplay and remove medusa flowers
+[33m65ae9bc[m Merge pull request #71 from pierkiroule/codex/add-rule-for-pink-firefly-interaction
+[33m8e884d0[m[33m ([m[1;31morigin/codex/add-rule-for-pink-firefly-interaction[m[33m)[m Add pink firefly bubble deposit gameplay rule
+[33m6e6e984[m Merge pull request #70 from pierkiroule/codex/fix-lucioles-attachment-and-dispersion-bug
+[33mc2ed329[m[33m ([m[1;31morigin/codex/fix-lucioles-attachment-and-dispersion-bug[m[33m)[m Fix firefly tail softness and medusa blossom release flow
+[33m93d3a57[m Merge pull request #69 from pierkiroule/codex/remove-duplicate-tip-phrase
+[33ma76edbd[m[33m ([m[1;31morigin/codex/remove-duplicate-tip-phrase[m[33m)[m Remove duplicate fish double-tap helper text
+[33mf1481f1[m Merge pull request #68 from pierkiroule/codex/rename-immersoon-button-to-soon-experience
+[33m70566de[m[33m ([m[1;31morigin/codex/rename-immersoon-button-to-soon-experience[m[33m)[m Rename immerSoon button label to Soon experience
+[33m97952bf[m Merge pull request #67 from pierkiroule/codex/fix-fermer-button-on-echohypnose-modal
+[33mfa6ad73[m[33m ([m[1;31morigin/codex/fix-fermer-button-on-echohypnose-modal[m[33m)[m Use tap-safe handlers for Echohypnose modal buttons
+[33mb11d864[m Merge pull request #66 from pierkiroule/codex/ameliorer-la-mecanique-du-systeme-lucioles
+[33ma4cf656[m[33m ([m[1;31morigin/codex/ameliorer-la-mecanique-du-systeme-lucioles[m[33m)[m Soften firefly drift and restore fluid poetic tail filament
+[33mbd410e9[m Rename immersion button label to Soon•° expérience
+[33mec9368f[m Remove firefly networking and keep tail filament behind fish
+[33m645e4a7[m Fix Echohypnose modal close on touch interactions
+[33mcd66b6e[m Refine firefly tail collection and medusa trigger gameplay
+[33mf3e8ad6[m Merge pull request #65 from pierkiroule/codex/ameliorer-la-page-de-profil
+[33mdc8fd78[m[33m ([m[1;31morigin/codex/ameliorer-la-page-de-profil[m[33m)[m Refonte la page profil en version professionnelle
+[33me2e082c[m Merge pull request #64 from pierkiroule/codex/fix-connection-error-for-echohypnose_session_history
+[33mc6acb54[m[33m ([m[1;31morigin/codex/fix-connection-error-for-echohypnose_session_history[m[33m)[m Add fallback sync to user_purchases schema
+[33m1fa5996[m Remove manual Supabase key field and add DB connection indicator
+[33m25f3046[m Add repair migration for missing session history table
+[33m4e66be8[m Show missing history table status as non-error
+[33m1a9d29f[m Handle missing Supabase session history table gracefully
+[33md396edc[m Merge pull request #62 from pierkiroule/codex/refactor-profile-page-to-minimalist
+[33m59af97d[m[33m ([m[1;31morigin/codex/refactor-profile-page-to-minimalist[m[33m)[m Add visible sign-in action to minimal profile form
+[33me3c7b89[m Declare Vite Supabase env fallbacks in legacy app
+[33m0f75c89[m Unblock signup by adding minimal Supabase key setup
+[33mbd7a394[m Fix signup by restoring Supabase config fallback
+[33md98287e[m Simplify profile page to signup-only layout
+[33mf87cca8[m Merge pull request #61 from pierkiroule/codex/fix-sync-issues-with-auth-session
+[33m7491e30[m[33m ([m[1;31morigin/codex/fix-sync-issues-with-auth-session[m[33m)[m Use robust press binding for auth buttons on mobile
+[33mc4ff8f1[m Fix mobile auth buttons touch handling
+[33m56b9326[m Fix auth/session sync flow and harden signup/signin actions
+[33m85216dd[m Merge pull request #60 from pierkiroule/codex/connect-to-supabase-with-github-actions
+[33meac4ed5[m[33m ([m[1;31morigin/codex/connect-to-supabase-with-github-actions[m[33m)[m Fix signup button touch interactions
+[33mf1e9551[m Gate immersoon access to registered users
+[33m5536012[m Simplify profile around auth, purchases and session history
+[33m9654304[m Sync profile collection with Supabase data
+[33m016b01f[m Merge pull request #59 from pierkiroule/codex/enhance-user-profile-for-session-history
+[33m8e26466[m[33m ([m[1;31morigin/codex/enhance-user-profile-for-session-history[m[33m)[m Add GitHub Action to push Supabase migrations
+[33m3e31008[m Merge pull request #58 from pierkiroule/codex/modifier-le-sous-titre-de-l-accueil
+[33m4328a4e[m[33m ([m[1;31morigin/codex/modifier-le-sous-titre-de-l-accueil[m[33m)[m Fix Échohypnose modal close behavior
+[33m0c5848c[m Add Échohypnose modal and restart hero video on play
+[33me440250[m Refine home hero controls and immersion CTA
+[33me3a4456[m Update home subtitle text
+[33mf073384[m Merge pull request #57 from pierkiroule/codex/ajouter-des-lucioles-rouges-pulsantes
+[33m320f465[m[33m ([m[1;31morigin/codex/ajouter-des-lucioles-rouges-pulsantes[m[33m)[m Limiter le fil à 3 lucioles et repousser les autres
+[33mac63f58[m Supprimer la logique triangle des lucioles
+[33m4057fd3[m Verrouiller les lucioles sur le fil et réparer la timeline bucket
+[33m71a4f51[m Stabiliser la farandole et rejouer les vocaux bucket en timeline
+[33m0ae6e0d[m Rendre la farandole des lucioles fluide en train de perles
+[33m8607f5d[m Corriger l'accroche des lucioles en farandole sur la queue
+[33m89770a6[m Refondre les lucioles en bulles rouges attachées à la queue
+[33m9641761[m Merge pull request #56 from pierkiroule/codex/retrouver-le-fichier-soon.mp4
+[33m8eef95f[m[33m ([m[1;31morigin/codex/retrouver-le-fichier-soon.mp4[m[33m)[m Fix homepage intro video path and static asset location
+[33mc03d9e5[m Merge pull request #55 from pierkiroule/codex/add-red-fireflies-with-interactions
+[33mf114a12[m[33m ([m[1;31morigin/codex/add-red-fireflies-with-interactions[m[33m)[m Retire le trigger solo et soude les paires de lucioles
+[33mfb9ccd1[m Ajuste les triangles de lucioles: plus doux, stables et séquencés
+[33m3b058e3[m Ajoute des triangles vivants de lucioles rouges
+[33mac306e8[m Merge pull request #54 from pierkiroule/codex/transform-red-triangles-to-floating-fireflies
+[33mde397dd[m[33m ([m[1;31morigin/codex/transform-red-triangles-to-floating-fireflies[m[33m)[m Fix firefly bucket playback fallback and audio element reuse
+[33m268300b[m Replace arena triangles with floating red fireflies
+[33m10d6a18[m Merge pull request #53 from pierkiroule/codex/link-triangle-to-random-audio-from-bucket
+[33me28af9a[m[33m ([m[1;31morigin/codex/link-triangle-to-random-audio-from-bucket[m[33m)[m Guide and auto-load Soonbucket tracks for arena triangles
+[33m234a4d9[m Relax probe messaging when Supabase key is missing
+[33m6f54390[m Add profile bucket file readability diagnostics
+[33mac1efc4[m Harden Soonbucket playback URL resolution
+[33mbee04cb[m Use random Soonbucket tracks for arena triangle playback
+[33m620c751[m Merge pull request #52 from pierkiroule/codex/verify-app-is-using-react-vite
+[33mdbc68c3[m[33m ([m[1;31morigin/codex/verify-app-is-using-react-vite[m[33m)[m Consolidate React Vite app and remove obsolete scaffold
+[33m5b20914[m Migrate app entry to React Vite while preserving legacy UX
+[33mdf752f5[m Merge pull request #51 from pierkiroule/codex/refactor-app-to-react-vite
+[33m0570658[m[33m ([m[1;31morigin/codex/refactor-app-to-react-vite[m[33m)[m Enhance home immersion flow with video and sound toggle
+[33mafd4182[m Merge pull request #49 from pierkiroule/codex/add-red-triangles-with-audio-trigger
+[33m51b0e48[m[33m ([m[1;31morigin/codex/add-red-triangles-with-audio-trigger[m[33m)[m Ajoute URL Supabase par défaut pour fallback Soonbucket
+[33m5e9e137[m Utilise les URLs publiques Soonbucket pour les vocaux Sooncut
+[33m2aeb06c[m Charge les vocaux Sooncut depuis Supabase pour les triangles
+[33m93cbebd[m Corrige l'affichage: triangles rouges dans l'arène HTML
+[33me94a52d[m Ajoute 10 triangles rouges interactifs dans l'arène Sooncut
+[33mbf3c199[m Merge pull request #48 from pierkiroule/codex/supprimer-les-tags-et-haikus
+[33m7ed35c9[m[33m ([m[1;31morigin/codex/supprimer-les-tags-et-haikus[m[33m)[m Retire le système Resotag/Haiku de la scène
+[33m0af615a[m Merge pull request #47 from pierkiroule/codex/implement-lucioles-audio-interaction-feature
+[33m4fca6f8[m[33m ([m[1;31morigin/codex/implement-lucioles-audio-interaction-feature[m[33m)[m refactor: remove haiku copy and switch to vocal fireflies messaging
+[33me053604[m feat(experience): add sooncut firefly triangle audio sequences
+[33m72bc45f[m Merge pull request #46 from pierkiroule/codex/add-audio-reactive-halo-effect
+[33mb074add[m[33m ([m[1;31morigin/codex/add-audio-reactive-halo-effect[m[33m)[m Add aurora-like audio-reactive halo around hero video
+[33mc3ef08c[m Merge pull request #45 from pierkiroule/codex/refactor-app-to-structured-multifile-mvp
+[33m381fad9[m[33m ([m[1;31morigin/codex/refactor-app-to-structured-multifile-mvp[m[33m)[m refactor: restructure app into MVP architecture
+[33m400e3b0[m Merge pull request #44 from pierkiroule/codex/task-title-sm18k2
+[33m3561dc6[m[33m ([m[1;31morigin/codex/task-title-sm18k2[m[33m)[m Update home branding text and remove logo
+[33m35f9c8e[m Merge pull request #43 from pierkiroule/codex/task-title-rht0vj
+[33m2823770[m[33m ([m[1;31morigin/codex/task-title-rht0vj[m[33m)[m restore: revenir à la version monofichier du commit 36
+[33mafcef08[m Merge pull request #42 from pierkiroule/revert-36-codex/task-title-n5ohxe
+[33m6f868c5[m[33m ([m[1;31morigin/revert-36-codex/task-title-n5ohxe[m[33m)[m Revert "Add Supabase profile card, storage upload, store simulation and .env template"
+[33m3e1325d[m Merge pull request #40 from pierkiroule/codex/task-title-qww0ys
+[33mda057cb[m[33m ([m[1;31morigin/codex/task-title-qww0ys[m[33m)[m Merge branch 'main' into codex/task-title-qww0ys
+[33m4921300[m Refactor experience into decoupled audio and scene engines
+[33m540f862[m Merge pull request #39 from pierkiroule/codex/task-title-wmkjgw
+[33mb10a08b[m[33m ([m[1;31morigin/codex/task-title-wmkjgw[m[33m)[m Add sample config and safe default bubble validation
+[33mcdd4fc2[m Merge pull request #38 from pierkiroule/codex/task-title-dodwp5
+[33m6c692d9[m[33m ([m[1;31morigin/codex/task-title-dodwp5[m[33m)[m fix(experience): rename state store file to jsx for vite parsing
+[33m707a166[m feat(experience): centralize state and extract interaction hooks
+[33mdce8102[m Merge pull request #37 from pierkiroule/codex/task-title-2nmpbg
+[33m368130a[m[33m ([m[1;31morigin/codex/task-title-2nmpbg[m[33m)[m Scaffold Vite React app and split views into feature components
+[33mae83e02[m Merge pull request #36 from pierkiroule/codex/task-title-n5ohxe
+[33m67ab64f[m Merge pull request #35 from pierkiroule/codex/task-title-k8e72t
+[33ma6badef[m[33m ([m[1;31morigin/codex/task-title-k8e72t[m[33m)[m Merge branch 'main' into codex/task-title-k8e72t
+[33m6277bf0[m Merge pull request #31 from pierkiroule/codex/task-title-1dffw4
+[33m4429aa5[m[33m ([m[1;31morigin/codex/task-title-1dffw4[m[33m)[m Merge branch 'main' into codex/task-title-1dffw4
+[33m1150bab[m[33m ([m[1;31morigin/codex/task-title-n5ohxe[m[33m)[m feat: ajouter auth/session et store audio simulé avec Soonbucket
+[33m6bb5a0d[m feat: ajouter auth/session et store audio simulé avec Soonbucket
+[33m57c4f53[m feat: connecter le profil au bucket Supabase Soonbucket
+[33mc49db43[m docs: préparer la config Supabase et variables d'environnement
+[33m3513390[m Merge pull request #34 from pierkiroule/codex/task-title-de4ak1
+[33m279079a[m[33m ([m[1;31morigin/codex/task-title-de4ak1[m[33m)[m Replace remaining Soono references with Soon
+[33m593a013[m Merge pull request #33 from pierkiroule/codex/task-title-pcv272
+[33m156a9e6[m[33m ([m[1;31morigin/codex/task-title-pcv272[m[33m)[m Mute and pause hero video when leaving home view
+[33ma580b9e[m Remove homepage logo image from hero section
+[33m758d584[m Update hero video to soon.mp4 with circular mask
+[33m5a38871[m Add files via upload
+[33m187ab68[m Merge pull request #32 from pierkiroule/codex/task-title-rmalzr
+[33mbe67bb5[m[33m ([m[1;31morigin/codex/task-title-rmalzr[m[33m)[m chore: éviter l'ajout de binaires non pris en charge
+[33mcda4011[m feat: refondre l'identité visuelle Soon en logo SVG animé
+[33m5fa9bc5[m chore: supprimer les fichiers obsolètes
+[33m8055db0[m Merge pull request #30 from pierkiroule/codex/update-bubble-styles-and-audio-filename-display
+[33m4053fb1[m[33m ([m[1;31morigin/codex/update-bubble-styles-and-audio-filename-display[m[33m)[m Merge pull request #27 from pierkiroule/main
+[33mc12faf0[m Add a pulsing word state and simplify fish interactions
+[33m088adac[m Improve haiku generation and word attachment mechanics
+[33m51c0be5[m Add a haiku generation system triggered by collecting words
+[33m15c82e4[m Merge pull request #29 from pierkiroule/codex/position-bubbles-and-enhance-fireflies
+[33mfb77d3c[m[33m ([m[1;31morigin/codex/position-bubbles-and-enhance-fireflies[m[33m)[m Précharger 3 bulles et améliorer les lucioles
+[33m039bce5[m Merge pull request #28 from pierkiroule/codex/add-progressive-word-spray-system
+[33m9b8f43f[m[33m ([m[1;31morigin/codex/add-progressive-word-spray-system[m[33m)[m Ralentit la libération des resotags à un mot toutes les 30s
+[33m6823aee[m Adoucit les resotags en lucioles avec révélation temporaire
+[33mca9be16[m Ajoute le système de resotags progressifs autour des bulles
+[33mc1bcf15[m Add interactive properties panel for sound bubbles with customization options
+[33mdfed589[m Add ten new nature sound samples to the collection
+[33m64d838c[m Add poetic visual effects that react to the fish's movement
+[33me1c1af2[m Remove beak-like dorsal fin from fish illustration
+[33mee888dd[m Move eyes to sides and remove mouth shape from fish
+[33mc92f78f[m Enhance fish animation with flowing plumes and undulating body movement
+[33m30ad806[m Add project documentation describing setup and deployment
+[33m3d3357a[m Change video source from soono2.mp4 to soono3.mp4
+[33m814986f[m Merge pull request #26 from pierkiroule/codex/task-title-gqkgup
+[33m653f2a7[m Add files via upload
+[33mb1b8389[m[33m ([m[1;31morigin/codex/task-title-gqkgup[m[33m)[m Fix hero video audio controls on home screen
+[33m10731ec[m Merge pull request #25 from pierkiroule/codex/task-title-voun7k
+[33md20f8e1[m[33m ([m[1;31morigin/codex/task-title-voun7k[m[33m)[m Met à jour la source vidéo vers soono2.mp4
+[33m71b731a[m Merge pull request #24 from pierkiroule/codex/task-title-swxyk6
+[33m07d1eed[m[33m ([m[1;31morigin/codex/task-title-swxyk6[m[33m)[m Fixe le chevauchement du menu bas sur le bouton d'immersion
+[33m8715ab9[m Update video source in index.html
+[33mf354a50[m Add files via upload
+[33m57ba08e[m Merge pull request #23 from pierkiroule/codex/task-title-tbqfqn
+[33m5288a6e[m[33m ([m[1;31morigin/codex/task-title-tbqfqn[m[33m)[m Ajoute des messages pédagogiques pour guider l'exploration
+[33mdbb3c0c[m Merge pull request #22 from pierkiroule/codex/task-title-o7ii0e
+[33mb181f34[m[33m ([m[1;31morigin/codex/task-title-o7ii0e[m[33m)[m Refond le design de l'accueil en version épurée et centrée
+[33m846f2e1[m Ajoute le logo responsive sur l'accueil
+[33m4c7c791[m Merge pull request #21 from pierkiroule/codex/task-title-783l01
+[33mbf2c0b2[m Add files via upload
+[33md211a4b[m[33m ([m[1;31morigin/codex/task-title-783l01[m[33m)[m Adoucir la demo sonore avec 10 textures méditatives
+[33m655eae8[m Merge pull request #20 from pierkiroule/codex/task-title-kwi2j7
+[33m95e5477[m[33m ([m[1;31morigin/codex/task-title-kwi2j7[m[33m)[m Remplace le placeholder par la vidéo Soono arrondie
+[33m597b4d9[m Merge pull request #19 from pierkiroule/codex/task-title-fofcs8
+[33m041dda4[m Add files via upload
+[33m42ad2ab[m Create list.html
+[33m1be7b46[m[33m ([m[1;31morigin/codex/task-title-fofcs8[m[33m)[m Refonte UX avec accueil, navigation et collection sonore démo
+[33m02c928c[m Merge pull request #17 from pierkiroule/codex/create-a-cosmic-aquatic-ambiance
+[33m7acb6b2[m[33m ([m[1;31morigin/codex/create-a-cosmic-aquatic-ambiance[m[33m)[m Ajoute une résonance cosmoaquatique audioreactive subtile
+[33m19a5eca[m Merge pull request #15 from pierkiroule/codex/remove-top-screen-threads-and-launch-bubbles
+[33m0cfd806[m[33m ([m[1;31morigin/codex/remove-top-screen-threads-and-launch-bubbles[m[33m)[m Supprime les traits en haut et démarre sans bulles
+[33m5dbb971[m Merge pull request #14 from pierkiroule/codex/update-bubble-styles-and-audio-filename-display
+[33m83c31a0[m Simplifier les bulles sonores en deux styles bleutés
+[33m7634c20[m Merge pull request #12 from pierkiroule/codex/simulate-aquatic-surface-effects
+[33m6c3cea4[m[33m ([m[1;31morigin/codex/simulate-aquatic-surface-effects[m[33m)[m Ajoute effets de surface aquatique et scintillements
+[33m178e6af[m Merge pull request #9 from pierkiroule/codex/task-title-ntevpy
+[33m7963af0[m[33m ([m[1;31morigin/codex/task-title-ntevpy[m[33m)[m Allow fish to pass through above/below depth bubbles
+[33m1eafb3b[m Fix bubble depth layering over fish
+[33mb7ca578[m Merge pull request #8 from pierkiroule/codex/task-title-etco2x
+[33m8bc2f42[m[33m ([m[1;31morigin/codex/task-title-etco2x[m[33m)[m Add 3D depth distance handling for bubble audio
+[33md96727d[m Merge pull request #7 from pierkiroule/codex/task-title-3hmxs1
+[33m25359b7[m[33m ([m[1;31morigin/codex/task-title-3hmxs1[m[33m)[m Ajoute le sélecteur de profondeur des bulles sonores
+[33m31a6a7d[m Merge pull request #6 from pierkiroule/codex/task-title
+[33m380288d[m[33m ([m[1;31morigin/codex/task-title[m[33m)[m Implémente une spatialisation audio binaurale des bulles
+[33mfefd3e7[m Merge pull request #5 from pierkiroule/codex/add-micro-bubble-particle-effects
+[33mfd541b0[m[33m ([m[1;31morigin/codex/add-micro-bubble-particle-effects[m[33m)[m Simplify fish wake to 3-5 minimalist bubble circles
+[33mecafca8[m Add micro-bubble wake particle effect behind fish
+[33mb8bfef4[m Merge pull request #4 from pierkiroule/codex/adjust-fish-speed-and-enhance-appearance
+[33m529217f[m[33m ([m[1;31morigin/codex/adjust-fish-speed-and-enhance-appearance[m[33m)[m Ralentir le poisson et fluidifier son animation
+[33m5aa2773[m Merge pull request #3 from pierkiroule/codex/add-audio-functionality-for-fish-and-bubbles
+[33mfc59e37[m[33m ([m[1;31morigin/codex/add-audio-functionality-for-fish-and-bubbles[m[33m)[m Ajoute des bulles sonores ambiantes à volume selon distance
+[33m98fdc64[m Merge pull request #2 from pierkiroule/codex/add-sound-bubble-deposit-feature
+[33m2137535[m[33m ([m[1;31morigin/codex/add-sound-bubble-deposit-feature[m[33m)[m Corrige l'import audio depuis le panneau tactile
+[33m9c73b5c[m Ajoute les bulles sonores sur double tap du poisson
+[33m4d180f9[m Merge pull request #1 from pierkiroule/codex/replace-arrow-with-minimal-fish-svg
+[33m1d47d0e[m[33m ([m[1;31morigin/codex/replace-arrow-with-minimal-fish-svg[m[33m)[m Remplacer la navette par un poisson minimaliste animé
+[33m18a38cc[m Add initial HTML structure for bubble manipulation
+[33mdeb0101[m Initial commit

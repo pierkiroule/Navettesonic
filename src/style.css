@@ -1480,3 +1480,264 @@ button {
     font-size: 0.66rem !important;
   }
 }
+
+.topbar {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.topbar-inner {
+  display: flex;
+  gap: 8px;
+  padding: 6px 10px;
+  backdrop-filter: blur(8px);
+  background: rgba(15,23,42,0.5);
+  border-radius: 12px;
+  pointer-events: all;
+}
+
+.topbar button {
+  background: rgba(255,255,255,0.08);
+  border: none;
+  color: white;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+.topbar button.active {
+  background: rgba(125,211,252,0.4);
+}
+
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  padding: 8px;
+}
+
+.speedo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.speedo input {
+  flex: 1;
+}
+
+.speedo span {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.7);
+}
+
+
+.mode-switch {
+  display: flex;
+  gap: 6px;
+}
+
+.mode-switch button {
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+.mode-switch button:hover {
+  opacity: 1;
+}
+
+
+/* TOPBAR FIX */
+.topbar {
+  position: fixed;
+  top: 10px;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.topbar-inner {
+  display: flex;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(10px);
+
+  box-shadow: 0 0 20px rgba(0,0,0,0.4);
+}
+
+/* boutons visibles */
+.topbar button {
+  background: rgba(255,255,255,0.08);
+  border: none;
+  color: white;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+
+.topbar button.active {
+  background: rgba(125,211,252,0.4);
+}
+
+/* modes */
+.mode-switch {
+  display: flex;
+  gap: 6px;
+}
+
+/* éviter que le canvas masque tout */
+.soon-canvas {
+  position: absolute;
+  z-index: 0;
+}
+
+
+.topbar-inner {
+  max-width: 95%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.topbar-inner::-webkit-scrollbar {
+  display: none;
+}
+
+.topbar button {
+  flex-shrink: 0;
+}
+
+.mode-switch {
+  flex-shrink: 0;
+}
+
+
+.topbar button {
+  padding: 5px 6px;
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+
+.topbar button.active {
+  opacity: 1;
+}
+
+
+.bottom-bar {
+  position: fixed;
+  bottom: 12px;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.speedo {
+  width: 90%;
+  max-width: 400px;
+  background: rgba(15,23,42,0.6);
+  backdrop-filter: blur(8px);
+  border-radius: 14px;
+  padding: 8px 10px;
+}
+
+.speedo input {
+  width: 100%;
+}
+
+.speedo span {
+  display: block;
+  text-align: right;
+  font-size: 0.7rem;
+  margin-top: 2px;
+}
+
+
+/* COCKPIT BASE */
+.cockpit {
+  position: fixed;
+  bottom: 14px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 10;
+}
+
+/* BOUTONS RONDS */
+.cockpit-buttons {
+  display: flex;
+  gap: 14px;
+}
+
+.bubble-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  font-size: 20px;
+  color: white;
+  background: rgba(15,23,42,0.7);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 0 12px rgba(0,0,0,0.4);
+}
+
+.bubble-btn.active {
+  transform: scale(1.15);
+}
+
+/* COULEURS */
+.bubble-btn.zoom { box-shadow: 0 0 12px rgba(56,189,248,0.6); }
+.bubble-btn.speed { box-shadow: 0 0 12px rgba(244,114,182,0.6); }
+.bubble-btn.depth { box-shadow: 0 0 12px rgba(52,211,153,0.6); }
+
+/* PANEL SLIDER */
+.slider-panel {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.25s ease;
+}
+
+.slider-panel.open {
+  max-height: 80px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* SLIDER */
+.slider {
+  width: 90%;
+  max-width: 420px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(15,23,42,0.7);
+  backdrop-filter: blur(10px);
+}
+
+.slider input {
+  width: 100%;
+  height: 4px;
+}
+
+.slider span {
+  display: block;
+  font-size: 0.65rem;
+  text-align: right;
+  opacity: 0.8;
+}
+
+/* couleurs */
+.slider.zoom input { accent-color: #38bdf8; }
+.slider.speed input { accent-color: #f472b6; }
+.slider.depth input { accent-color: #34d399; }
+

@@ -1,12 +1,15 @@
 import { useState } from "react";
-import ModeDock from "../components/ModeDock.jsx";
 import SidePanel from "../components/SidePanel.jsx";
 import SoonCanvas from "../components/SoonCanvas.jsx";
-import Profile from "./Profile.jsx";
 import { useSoonStore } from "../store/useSoonStore.js";
 
 export default function SoonApp({ onBack }) {
-  const [page, setPage] = useState("arena");
+  const [viewZoom, setViewZoom] = useState(1);
+  const [swimSpeed, setSwimSpeed] = useState(1);
+  const [depth, setDepth] = useState(1);
+
+  // "zoom" | "speed" | "depth" | null
+  const [activeSlider, setActiveSlider] = useState(null);
 
   const {
     mode,
@@ -21,56 +24,23 @@ export default function SoonApp({ onBack }) {
     setMode,
     setFishTarget,
     tickFish,
-    selectBubble,
-    selectBeacon,
-    addBeacon,
-    moveBeacon,
-    updateBeacon,
-    autoGenerateTraceCircuit,
-    startCircuitAutopilot,
-    stopCircuitAutopilot,
-    updateBubble,
-    deleteBubble,
-    addBubble,
-    addPathPoint,
-    clearPath,
   } = useSoonStore();
 
-  const selectedBubble =
-    bubbles.find((bubble) => bubble.id === selectedBubbleId) || null;
-
-  const selectedBeacon =
-    traceCircuit.find((beacon) => beacon.id === selectedBeaconId) || null;
-
-  if (page === "profile") {
-    return <Profile onBack={() => setPage("arena")} />;
-  }
+  const toggle = (key) =>
+    setActiveSlider((cur) => (cur === key ? null : key));
 
   return (
-    <main className={eyesClosed ? "soon-app eyes-closed" : "soon-app"}>
-      <header className="soon-topbar">
-        <div className="topbar-spacer" />
+    <main className="soon-app">
 
-        <div>
-          <strong>Soon•°</strong>
-          <span>
-            {mode === "reso"
-              ? circuitAutopilot
-                ? `voyage résonant · P${fish.depth || 1}`
-                : `résonance · P${fish.depth || 1}`
-              : `composition · P${fish.depth || 1}`}
-          </span>
-        </div>
-
-        <button
-          className="ghost-btn"
-          type="button"
-          onClick={() => setPage("profile")}
-        >
-          Profil
-        </button>
+      {/* TOP NAV */}
+      <header className="top-nav">
+        <button onClick={() => setMode("intro")} className={mode==="intro"?"active":""}>Intro</button>
+        <button onClick={() => setMode("compo")} className={mode==="compo"?"active":""}>Compo</button>
+        <button onClick={() => setMode("reso")} className={mode==="reso"?"active":""}>Odysséo</button>
+        <button onClick={onBack}>Perso</button>
       </header>
 
+      {/* CANVAS */}
       <SoonCanvas
         mode={mode}
         bubbles={bubbles}
@@ -81,32 +51,87 @@ export default function SoonApp({ onBack }) {
         circuitAutopilot={circuitAutopilot}
         path={path}
         eyesClosed={eyesClosed}
+        viewZoom={viewZoom}
+        depth={depth}
         onFishTarget={setFishTarget}
-        onTickFish={tickFish}
-        onSelectBubble={selectBubble}
-        onSelectBeacon={selectBeacon}
-        onAddBeacon={addBeacon}
-        onMoveBeacon={moveBeacon}
-        onMoveBubble={updateBubble}
-        onAddBubble={addBubble}
-        onAddPathPoint={addPathPoint}
+        onTickFish={() => tickFish({ swimSpeed })}
       />
 
-      <ModeDock onIntro={onBack} />
+      {/* COCKPIT */}
+      <div className="cockpit">
 
-      <SidePanel
-        mode={mode}
-        selectedBubble={selectedBubble}
-        selectedBeacon={selectedBeacon}
-        circuitAutopilot={circuitAutopilot}
-        onUpdateBeacon={(patch) => updateBeacon(selectedBeacon.id, patch)}
-        onStartCircuitAutopilot={startCircuitAutopilot}
-        onStopCircuitAutopilot={stopCircuitAutopilot}
-        onAutoGenerateTraceCircuit={autoGenerateTraceCircuit}
-        onUpdateBubble={(patch) => updateBubble(selectedBubble.id, patch)}
-        onDeleteBubble={() => deleteBubble(selectedBubble.id)}
-        onClearPath={clearPath}
-      />
+        {/* BOUTONS */}
+        <div className="cockpit-buttons">
+          <button
+            className={`bubble-btn zoom ${activeSlider==="zoom"?"active":""}`}
+            onClick={() => toggle("zoom")}
+            title="Zoom"
+          >🔍</button>
+
+          <button
+            className={`bubble-btn speed ${activeSlider==="speed"?"active":""}`}
+            onClick={() => toggle("speed")}
+            title="Vitesse"
+          >⚡</button>
+
+          <button
+            className={`bubble-btn depth ${activeSlider==="depth"?"active":""}`}
+            onClick={() => toggle("depth")}
+            title="Profondeur"
+          >🌊</button>
+        </div>
+
+        {/* SLIDERS */}
+        <div className={`slider-panel ${activeSlider ? "open" : ""}`}>
+
+          {activeSlider === "zoom" && (
+            <div className="slider zoom">
+              <input
+                type="range"
+                min="0.3"
+                max="3"
+                step="0.1"
+                value={viewZoom}
+                onChange={(e) => setViewZoom(Number(e.target.value))}
+              />
+              <span>Zoom {viewZoom.toFixed(1)}×</span>
+            </div>
+          )}
+
+          {activeSlider === "speed" && (
+            <div className="slider speed">
+              <input
+                type="range"
+                min="0.3"
+                max="2.5"
+                step="0.1"
+                value={swimSpeed}
+                onChange={(e) => setSwimSpeed(Number(e.target.value))}
+              />
+              <span>Speed {swimSpeed.toFixed(1)}×</span>
+            </div>
+          )}
+
+          {activeSlider === "depth" && (
+            <div className="slider depth">
+              <input
+                type="range"
+                min="0.5"
+                max="2"
+                step="0.1"
+                value={depth}
+                onChange={(e) => setDepth(Number(e.target.value))}
+              />
+              <span>Depth {depth.toFixed(1)}</span>
+            </div>
+          )}
+
+        </div>
+
+      </div>
+
+      <SidePanel />
+
     </main>
   );
 }
