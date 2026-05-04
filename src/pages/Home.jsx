@@ -4,19 +4,15 @@ export default function Home({ onEnter }) {
       <section className="home-card old-home-card">
         <p className="kicker">Soon•°</p>
 
-        <div className="home-video-orb placeholder-orb" aria-label="Placeholder poisson-plume">
-          <div className="placeholder-water">
-            <span className="placeholder-bubble b1" />
-            <span className="placeholder-bubble b2" />
-            <span className="placeholder-bubble b3" />
-
-            <div className="placeholder-fish">
-              <span className="fish-body" />
-              <span className="fish-tail" />
-              <span className="fish-wing left" />
-              <span className="fish-wing right" />
-            </div>
-          </div>
+        <div className="home-video-orb" aria-label="Vidéo Soon">
+          <video
+            className="home-orb-video"
+            src="/video/soon2.mp4"
+            autoPlay
+            muted
+            loop
+            playsInline
+          />
         </div>
 
         <h1>L’odyssée sonore du poisson-plume</h1>
