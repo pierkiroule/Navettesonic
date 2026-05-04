@@ -1,0 +1,96 @@
+              if (speed > 0.08) {
+                  const angleVitesse = Math.atan2(ship.vy, ship.vx);
+                  let diff = angleVitesse - ship.angle;
+                  while (diff < -Math.PI) diff += Math.PI * 2;
+                  while (diff > Math.PI) diff -= Math.PI * 2;
+                  ship.angle += diff * ship.turnEase;
+              }
+
+              const shouldShowArenaOverview = isTraceListeningMode || isDrawingTraceRail;
+              if (shouldShowArenaOverview) {
+                  const baseZoom = getTraceOverviewBaseZoom();
+                  const desiredZoom = Math.max(traceOverviewZoomMin, Math.min(traceOverviewZoomMax, baseZoom * traceCameraControl.zoomScale));
+                  camera.targetX = traceCameraControl.panX;
+                  camera.targetY = traceCameraControl.panY;
+                  camera.targetZoom = desiredZoom;
+              } else {
+                  camera.targetX = ship.x + ship.vx * 10;
+                  camera.targetY = ship.y + ship.vy * 10;
+                  camera.targetZoom = 1;
+              }
+              camera.x += (camera.targetX - camera.x) * camera.ease;
+              camera.y += (camera.targetY - camera.y) * camera.ease;
+              camera.zoom += (camera.targetZoom - camera.zoom) * camera.zoomEase;
+
+              updateAudioListener();
+              updateWakeParticles(speed);
+              updateSurfaceEffects(speed);
+              updateResonanceWaves();
+              updatePoetryEffects(speed);
+              updateArenaFireflies();
+              updateGuestFishSchool(now);
+              updateCompanionStarfish(now);
+              handleStarfishFishCollision(now);
+              updateStarfishResonanceWaves();
+          }
+
+          function updateWakeParticles(speed) {
+              const now = performance.now();
+              const speedNorm = Math.min(1, speed / ship.maxSpeed);
+              const dolphinBoost = 1;
+              ship.wakeEmitter += (0.24 + speedNorm * 0.95) * dolphinBoost;
+
+              const mouth = getShipMouthPosition();
+              const tail = getShipTailPosition();
+              const flowX = tail.x - mouth.x;
+              const flowY = tail.y - mouth.y;
+              const flowLen = Math.hypot(flowX, flowY) || 1;
+              const dirX = flowX / flowLen;
+              const dirY = flowY / flowLen;
+              const tangentX = -dirY;
+              const tangentY = dirX;
+              const targetCount = Math.min(MAX_WAKE_PARTICLES, 10 + Math.round(speedNorm * 16 * dolphinBoost));
+
+              while (WAKE_PARTICLES.length < targetCount) spawnWakeParticle(mouth, tail, dirX, dirY, tangentX, tangentY, now, speedNorm);
+              while (ship.wakeEmitter >= 1) {
+                  ship.wakeEmitter -= 1;
+                  if (WAKE_PARTICLES.length >= MAX_WAKE_PARTICLES) break;
+                  spawnWakeParticle(mouth, tail, dirX, dirY, tangentX, tangentY, now, speedNorm);
+              }
+
+              for (let i = WAKE_PARTICLES.length - 1; i >= 0; i--) {
+                  const p = WAKE_PARTICLES[i];
+                  p.age = now - p.bornAt;
+                  const t = p.age / p.life;
+                  if (t >= 1) {
+                      WAKE_PARTICLES.splice(i, 1);
+                      continue;
+                  }
+                  p.vx *= 0.989;
+                  p.vy *= 0.989;
+                  p.x += p.vx;
+                  p.y += p.vy;
+              }
+              if (WAKE_PARTICLES.length > MAX_WAKE_PARTICLES) WAKE_PARTICLES.splice(0, WAKE_PARTICLES.length - MAX_WAKE_PARTICLES);
+          }
+
+          function spawnWakeParticle(mouth, tail, dirX, dirY, tangentX, tangentY, now, speedNorm) {
+              const dolphinBoost = 1;
+              const along = Math.random() * 0.2;
+              const jitter = 1.2 + Math.random() * 2.1;
+              WAKE_PARTICLES.push({
+                  x: mouth.x + (tail.x - mouth.x) * along + tangentX * (Math.random() - 0.5) * jitter,
+                  y: mouth.y + (tail.y - mouth.y) * along + tangentY * (Math.random() - 0.5) * jitter,
+                  vx: dirX * (0.22 + Math.random() * 0.48 + speedNorm * 0.3 * dolphinBoost) + tangentX * (Math.random() - 0.5) * 0.05,
+                  vy: dirY * (0.22 + Math.random() * 0.48 + speedNorm * 0.3 * dolphinBoost) + tangentY * (Math.random() - 0.5) * 0.05,
+                  age: 0, life: 640 + Math.random() * 360, size: 0.9 + Math.random() * 1.8 * dolphinBoost,
+                  alpha: 0.22 + Math.random() * 0.28, bornAt: now
+              });
+          }
+
+          function updateSurfaceEffects(speed) {
+              const now = performance.now();
+              const speedNorm = Math.min(1, speed / ship.maxSpeed);
+              ship.rippleEmitter += 0.025 + speedNorm * 0.2;
+
+              while (ship.rippleEmitter >= 1) {

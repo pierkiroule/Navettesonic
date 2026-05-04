@@ -1,0 +1,46 @@
+              const audioReactive = Math.max(
+                  nearest.zoneMix || 0,
+                  nearest.currentVolume || 0,
+                  sampleBubbleEnergy(nearest) * 0.95
+              );
+              return { bubble: nearest, dx, dy, distanceRatio, audioReactive };
+          }
+
+          function drawClassicFishFins(finFlap, bodyHueMid) {
+              ctx.shadowBlur = 6;
+              ctx.save();
+              ctx.translate(-7, 2);
+              ctx.rotate(-0.38 + finFlap);
+              const finGradL = ctx.createLinearGradient(0, -1, -12, 14);
+              finGradL.addColorStop(0, `hsla(${bodyHueMid}, 80%, 82%, 0.70)`);
+              finGradL.addColorStop(1, `hsla(${bodyHueMid + 12}, 78%, 88%, 0)`);
+              ctx.fillStyle = finGradL;
+              ctx.shadowColor = `hsla(${bodyHueMid}, 80%, 80%, 0.3)`;
+              ctx.beginPath();
+              ctx.moveTo(0, -1);
+              ctx.bezierCurveTo(-10, 0, -14, 7, -8, 15);
+              ctx.bezierCurveTo(-4, 10, -1, 4, 0, -1);
+              ctx.fill();
+              ctx.restore();
+
+              ctx.save();
+              ctx.translate(7, 2);
+              ctx.rotate(0.38 - finFlap);
+              const finGradR = ctx.createLinearGradient(0, -1, 12, 14);
+              finGradR.addColorStop(0, `hsla(${bodyHueMid}, 80%, 82%, 0.70)`);
+              finGradR.addColorStop(1, `hsla(${bodyHueMid + 12}, 78%, 88%, 0)`);
+              ctx.fillStyle = finGradR;
+              ctx.shadowColor = `hsla(${bodyHueMid}, 80%, 80%, 0.3)`;
+              ctx.beginPath();
+              ctx.moveTo(0, -1);
+              ctx.bezierCurveTo(10, 0, 14, 7, 8, 15);
+              ctx.bezierCurveTo(4, 10, 1, 4, 0, -1);
+              ctx.fill();
+              ctx.restore();
+          }
+
+          function updateCompanionStarfish(now) {
+              if (now >= companionStarfish.driftChangeAt) {
+                  const heading = Math.random() * Math.PI * 2;
+                  const speed = 0.18 + Math.random() * 0.38;
+                  companionStarfish.targetVx = Math.cos(heading) * speed;

@@ -1,0 +1,231 @@
+                  drawBubbleShape();
+                  ctx.stroke();
+
+                  // Selection ring
+                  if (b === selectedBubble) {
+                      const pulse = (Math.sin(performance.now() * 0.004) + 1) * 0.5;
+                      ctx.strokeStyle = `hsla(${bHue}, 90%, 88%, ${0.45 + pulse * 0.35})`;
+                      ctx.lineWidth = 1.8;
+                      ctx.setLineDash([7, 5]);
+                      ctx.lineDashOffset = performance.now() * 0.04;
+                      ctx.beginPath();
+                      drawBubbleShape(10 + pulse * 3);
+                      ctx.stroke();
+                      ctx.setLineDash([]);
+                      ctx.lineDashOffset = 0;
+                  }
+
+                  if (b.label) {
+                      const maxWidth = b.r * 1.42;
+                      const fontSize = Math.max(11, Math.min(15, b.r * 0.25));
+                      ctx.font = `600 ${fontSize}px system-ui, -apple-system, Segoe UI, Roboto, sans-serif`;
+                      ctx.textAlign = 'center';
+                      ctx.textBaseline = 'middle';
+                      ctx.fillStyle = isSurface ? 'rgba(235, 248, 255, 0.95)' : 'rgba(220, 237, 255, 0.82)';
+                      let text = b.label;
+                      while (ctx.measureText(text).width > maxWidth && text.length > 6) text = `${text.slice(0, -2)}…`;
+                      ctx.fillText(text, b.x, b.y, maxWidth);
+                  }
+
+                  ctx.restore();
+              };
+
+              if (!heavySilenceMode) {
+                  BUBBLES.filter((b) => b.layer === 'below').forEach(drawBubble);
+                  drawBreathWaves();
+                  drawDriftMotes();
+                  drawMarineParticles();
+                  drawArenaFireflies();
+                  drawSurfaceSparkles();
+                  drawResonanceWaves();
+                  drawStarfishResonanceWaves();
+                  drawWakeParticles();
+                  drawRipples();
+                  drawTraceRailPath();
+                  drawLuminousTrail();
+              }
+              drawCompanionStarfish(performance.now() * 0.001, audioReactiveState.energy);
+              getVisibleGuestFish().forEach((fish) => drawGuestFish(ctx, fish));
+
+              const nearestBubbleData = getNearestBubbleForShip();
+              const bubbleProximity = nearestBubbleData ? nearestBubbleData.distanceRatio : 0;
+              const bubbleAudioInfluence = nearestBubbleData ? nearestBubbleData.audioReactive : 0;
+              const distanceFalloff = Math.pow(Math.max(0, bubbleProximity), 1.35);
+              const localAudioGate = Math.max(0, (bubbleAudioInfluence - 0.05) / 0.95);
+              const wingTarget = distanceFalloff * localAudioGate;
+              audioReactiveState.wingPresence += (wingTarget - audioReactiveState.wingPresence) * 0.16;
+              const wingPresence = Math.max(0, Math.min(1, audioReactiveState.wingPresence));
+
+              ctx.save();
+              ctx.translate(ship.x, ship.y);
+              ctx.rotate(ship.angle + Math.PI / 2);
+              const swimT = performance.now() * 0.001;
+              const reactiveBass = audioReactiveState.bass;
+              const reactiveMids = audioReactiveState.mids;
+              const reactiveHighs = audioReactiveState.highs;
+              const reactiveEnergy = audioReactiveState.energy;
+              const fishDepthVisuals = {
+                  1: { brightness: 1, saturation: 1, blur: 0 },
+                  2: { brightness: 0.8, saturation: 0.75, blur: 0.9 },
+                  3: { brightness: 0.62, saturation: 0.5, blur: 1.8 },
+              };
+              const fishDepthVisual = fishDepthVisuals[getFishDepthIndex()] || fishDepthVisuals[1];
+              ctx.filter = `saturate(${fishDepthVisual.saturation}) brightness(${fishDepthVisual.brightness}) blur(${fishDepthVisual.blur}px)`;
+              const glide = Math.min(1, (Math.hypot(ship.vx, ship.vy) / ship.maxSpeed) + reactiveBass * AUDIO_REACTIVITY.fishVelocityBoost);
+              const wag = Math.sin(swimT * 9.5) * (0.16 + glide * 0.22);
+              const finMorph = Math.min(1, wingPresence * (0.72 + reactiveMids * 0.28));
+              const finFlap = Math.sin(swimT * (7.2 + reactiveMids * 1.8 + bubbleAudioInfluence * 2.1 * wingPresence) + 0.5) * (0.14 + glide * 0.10 + reactiveMids * AUDIO_REACTIVITY.fishFinBoost * 0.1 + finMorph * 0.24);
+              const bodyBreath = Math.sin(swimT * 2.5) * 0.65;
+              const shimmerPulse = Math.min(1.2, (Math.sin(swimT * (2.2 + reactiveHighs * 0.8 + bubbleAudioInfluence * 0.9 * wingPresence)) + 1) * 0.5 + reactiveHighs * 0.42);
+              const bodyUndulate = Math.sin(swimT * 5.8) * (0.03 + glide * 0.055);
+              const bodyHueTop = 186 + Math.sin(swimT * 1.7) * 8;
+              const bodyHueMid = 198 + Math.sin(swimT * 1.3 + 1.4) * 12;
+              const bodyHueLow = 210 + Math.sin(swimT * 1.9 + 2.1) * 10;
+
+              // --- AURA GLOW (reduced + closer to fish contour) ---
+              const sonarPulse = 0.08;
+              const auraR = 22 + shimmerPulse * 4.2 + reactiveBass * 4.5;
+              const auraGrad = ctx.createRadialGradient(0, 2, 0, 0, 2, auraR);
+              auraGrad.addColorStop(0, `hsla(${bodyHueMid}, 88%, 80%, ${0.12 + shimmerPulse * 0.08 + reactiveEnergy * AUDIO_REACTIVITY.fishGlowBoost * 0.22})`);
+              auraGrad.addColorStop(0.6, `hsla(${bodyHueLow}, 84%, 72%, ${0.05 + shimmerPulse * 0.05})`);
+              auraGrad.addColorStop(1, 'rgba(0,0,0,0)');
+              ctx.fillStyle = auraGrad;
+              ctx.beginPath();
+              ctx.ellipse(0, 2, auraR * 0.95, auraR * 1.1, 0, 0, Math.PI * 2);
+              ctx.fill();
+
+              // --- BODY ---
+              ctx.shadowBlur = 22;
+              ctx.shadowColor = `hsla(${bodyHueMid}, 95%, 85%, 0.58)`;
+              const bu = bodyUndulate;
+              const bodyGrad = ctx.createLinearGradient(-10, -18, 10, 24);
+              bodyGrad.addColorStop(0,    `hsla(${bodyHueTop}, 90%, 95%, ${0.88 + shimmerPulse * 0.12})`);
+              bodyGrad.addColorStop(0.38, `hsla(${bodyHueMid}, 85%, 80%, ${0.78 + shimmerPulse * 0.12})`);
+              bodyGrad.addColorStop(0.72, `hsla(${bodyHueLow}, 80%, 68%, ${0.76 + shimmerPulse * 0.14})`);
+              bodyGrad.addColorStop(1,    `hsla(${bodyHueLow + 14}, 75%, 58%, 0.80)`);
+              ctx.fillStyle = bodyGrad;
+              traceFishBodyPath(ctx, bu, bodyBreath);
+              ctx.fill();
+
+              // --- IRIDESCENT SHEEN ---
+              const sheenGrad = ctx.createLinearGradient(-10, -18, 8, 4);
+              sheenGrad.addColorStop(0, `rgba(255, 255, 255, ${0.26 + shimmerPulse * 0.22})`);
+              sheenGrad.addColorStop(0.45, `rgba(200, 245, 255, ${0.10 + shimmerPulse * 0.10})`);
+              sheenGrad.addColorStop(1, 'rgba(180, 220, 255, 0)');
+              ctx.fillStyle = sheenGrad;
+              traceFishBodyPath(ctx, bu, bodyBreath);
+              ctx.fill();
+
+              // --- CONTOUR HALO + SONAR PEAK ---
+              ctx.save();
+              ctx.globalCompositeOperation = 'screen';
+              ctx.shadowBlur = 10 + sonarPulse * 12;
+              ctx.shadowColor = `hsla(${bodyHueMid + 4}, 94%, 78%, ${0.28 + sonarPulse * 0.42})`;
+              ctx.strokeStyle = `hsla(${bodyHueMid + 6}, 92%, 84%, ${0.28 + sonarPulse * 0.42})`;
+              ctx.lineWidth = 1.1 + sonarPulse * 1.2;
+              traceFishBodyPath(ctx, bu, bodyBreath);
+              ctx.stroke();
+
+              ctx.restore();
+
+              // --- PECTORAL FINS / AUDIO WINGS ---
+              if (wingPresence < 0.08) {
+                  drawClassicFishFins(finFlap, bodyHueMid);
+              } else {
+                  const wingSpan = 12 + finMorph * 22;
+                  const wingLength = 15 + finMorph * 30;
+                  const wingDrift = Math.sin(swimT * (4.4 + bubbleAudioInfluence * 2.2)) * (0.8 + finMorph * 1.4);
+                  const wingAlpha = 0.35 + wingPresence * 0.65;
+                  ctx.shadowBlur = 8 + finMorph * 10;
+                  ctx.save();
+                  ctx.globalCompositeOperation = 'screen';
+                  ctx.translate(-7, 2);
+                  ctx.rotate(-0.38 + finFlap - wingDrift * 0.03);
+                  const finGradL = ctx.createLinearGradient(0, -2, -wingSpan, wingLength);
+                  finGradL.addColorStop(0, `hsla(${196 + bubbleAudioInfluence * 10}, 92%, 80%, ${(0.66 + finMorph * 0.16) * wingAlpha})`);
+                  finGradL.addColorStop(0.52, `hsla(${216 + bubbleAudioInfluence * 8}, 94%, 68%, ${(0.55 + finMorph * 0.2) * wingAlpha})`);
+                  finGradL.addColorStop(1, `hsla(${328 + finMorph * 12}, 96%, 72%, 0)`);
+                  ctx.fillStyle = finGradL;
+                  ctx.shadowColor = `hsla(${206 + finMorph * 16}, 96%, 76%, ${(0.35 + finMorph * 0.45) * wingAlpha})`;
+                  ctx.beginPath();
+                  ctx.moveTo(0, -1);
+                  ctx.bezierCurveTo(-wingSpan * 0.56, -1.5 - finMorph * 1.2, -wingSpan * 1.18, wingLength * 0.52, -wingSpan * 0.58, wingLength);
+                  ctx.bezierCurveTo(-wingSpan * 0.25, wingLength * 0.66, -2, 5 + finMorph * 2.8, 0, -1);
+                  ctx.fill();
+                  ctx.restore();
+
+                  ctx.save();
+                  ctx.globalCompositeOperation = 'screen';
+                  ctx.translate(7, 2);
+                  ctx.rotate(0.38 - finFlap + wingDrift * 0.03);
+                  const finGradR = ctx.createLinearGradient(0, -2, wingSpan, wingLength);
+                  finGradR.addColorStop(0, `hsla(${196 + bubbleAudioInfluence * 10}, 92%, 80%, ${(0.66 + finMorph * 0.16) * wingAlpha})`);
+                  finGradR.addColorStop(0.52, `hsla(${216 + bubbleAudioInfluence * 8}, 94%, 68%, ${(0.55 + finMorph * 0.2) * wingAlpha})`);
+                  finGradR.addColorStop(1, `hsla(${328 + finMorph * 12}, 96%, 72%, 0)`);
+                  ctx.fillStyle = finGradR;
+                  ctx.shadowColor = `hsla(${206 + finMorph * 16}, 96%, 76%, ${(0.35 + finMorph * 0.45) * wingAlpha})`;
+                  ctx.beginPath();
+                  ctx.moveTo(0, -1);
+                  ctx.bezierCurveTo(wingSpan * 0.56, -1.5 - finMorph * 1.2, wingSpan * 1.18, wingLength * 0.52, wingSpan * 0.58, wingLength);
+                  ctx.bezierCurveTo(wingSpan * 0.25, wingLength * 0.66, 2, 5 + finMorph * 2.8, 0, -1);
+                  ctx.fill();
+                  ctx.restore();
+
+              }
+
+              // --- TAIL with feathered tips ---
+              ctx.save();
+              ctx.translate(0, 20);
+              ctx.rotate(wag);
+              ctx.shadowBlur = 10;
+              ctx.shadowColor = `hsla(${bodyHueLow}, 85%, 80%, 0.45)`;
+              const tailGrad = ctx.createLinearGradient(0, 0, 0, 26);
+              tailGrad.addColorStop(0, `hsla(${bodyHueMid}, 84%, 80%, 0.92)`);
+              tailGrad.addColorStop(1, `hsla(${bodyHueLow + 10}, 80%, 74%, 0)`);
+              ctx.fillStyle = tailGrad;
+              ctx.beginPath();
+              ctx.moveTo(0, 0);
+              ctx.bezierCurveTo(-7, 5, -9, 14, -3.5, 22);
+              ctx.quadraticCurveTo(0, 18, 3.5, 22);
+              ctx.bezierCurveTo(9, 14, 7, 5, 0, 0);
+              ctx.fill();
+              // Left feather tip
+              const tipGrad = ctx.createLinearGradient(0, 18, -6, 36);
+              tipGrad.addColorStop(0, `hsla(${bodyHueTop}, 90%, 90%, 0.65)`);
+              tipGrad.addColorStop(1, `hsla(${bodyHueTop + 8}, 88%, 94%, 0)`);
+              ctx.fillStyle = tipGrad;
+              ctx.beginPath();
+              ctx.moveTo(-1.5, 18);
+              ctx.bezierCurveTo(-5, 23, -8, 31, -4.5, 36);
+              ctx.quadraticCurveTo(-2, 30, -1.5, 18);
+              ctx.fill();
+              // Right feather tip
+              const tipGrad2 = ctx.createLinearGradient(0, 18, 6, 36);
+              tipGrad2.addColorStop(0, `hsla(${bodyHueTop}, 90%, 90%, 0.65)`);
+              tipGrad2.addColorStop(1, `hsla(${bodyHueTop + 8}, 88%, 94%, 0)`);
+              ctx.fillStyle = tipGrad2;
+              ctx.beginPath();
+              ctx.moveTo(1.5, 18);
+              ctx.bezierCurveTo(5, 23, 8, 31, 4.5, 36);
+              ctx.quadraticCurveTo(2, 30, 1.5, 18);
+              ctx.fill();
+              ctx.restore();
+
+              ctx.shadowBlur = 0;
+
+              // --- BIOLUMINESCENT SPOTS ---
+              const spotT = swimT * 3.2;
+              [
+                  { x: -4.5, y: -1, r: 1.1, ph: 0.0 },
+                  { x:  4.2, y:  1, r: 0.9, ph: 1.4 },
+                  { x: -2.0, y:  7, r: 0.85, ph: 2.6 },
+                  { x:  3.0, y: -6, r: 0.75, ph: 3.8 },
+                  { x:  0.5, y:  3, r: 0.6,  ph: 0.7 },
+              ].forEach((s) => {
+                  const sp = (Math.sin(spotT + s.ph) + 1) * 0.5;
+                  ctx.fillStyle = `rgba(175, 255, 235, ${0.10 + sp * 0.20})`;
+                  ctx.shadowBlur = 7;
+                  ctx.shadowColor = 'rgba(160, 255, 230, 0.55)';
+                  ctx.beginPath();
+                  ctx.arc(s.x, s.y, s.r * (1 + sp * 0.35), 0, Math.PI * 2);
+                  ctx.fill();
