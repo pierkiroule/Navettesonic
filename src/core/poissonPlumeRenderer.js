@@ -18,17 +18,20 @@ const BODY = {
 
 function getSpinePoint(t, d) {
   const y = lerp(BODY.startY, BODY.endY, t);
+  const headAttenuation = 0.08 + Math.pow(t, 1.35) * 0.92;
+  const ropeAmplitude = Math.pow(t, 1.55);
+  const basePhase = d.swimT * (4.2 + d.glide * 2.6);
+  const tailWave = Math.sin(t * Math.PI * 2.9 - basePhase) * (0.85 + d.glide * 2.5);
+  const subWave = Math.sin(t * Math.PI * 5.4 - basePhase * 1.32 + 0.45) * (0.2 + d.glide * 0.85);
+  const ropeWave = (tailWave + subWave) * ropeAmplitude;
 
-  const wave =
-    Math.sin(t * Math.PI * 2.25 + d.swimT * (3.7 + d.glide * 2.2)) *
-    Math.sin(t * Math.PI) *
-    (0.9 + d.glide * 2.0);
+  const wave = ropeWave * headAttenuation;
 
   const turn =
     d.bend *
     Math.sin(t * Math.PI) *
-    (7.5 + d.glide * 6) *
-    (0.12 + t * 0.88);
+    (7.5 + d.glide * 6.8) *
+    (0.06 + t * 0.94);
 
   return { x: wave + turn, y };
 }
@@ -212,12 +215,12 @@ function drawFins(ctx, d) {
     const rootX = p.x + n.x * w * side * 0.95;
     const rootY = p.y + n.y * w * side * 0.95;
 
-    const length = 16 + d.finMorph * 20;
-    const span = 8 + d.finMorph * 14;
+    const length = 18 + d.finMorph * 22 + d.glide * 4;
+    const span = 9 + d.finMorph * 15;
 
     ctx.save();
     ctx.translate(rootX, rootY);
-    ctx.rotate(side * (0.58 + d.finFlap * side + curl * 0.06));
+    ctx.rotate(side * (0.5 + d.finFlap * side + curl * 0.08 + d.bend * 0.1));
 
     const grad = ctx.createLinearGradient(0, 0, side * span, length);
     grad.addColorStop(0, `hsla(${190 + d.audioInfluence * 12}, 94%, 90%, ${0.3 + d.finMorph * 0.16})`);
@@ -255,8 +258,8 @@ function drawTail(ctx, d) {
   const n = getSpineNormal(1, d);
 
   const wag =
-    Math.sin(d.swimT * (7 + d.glide * 2.6)) * (3.8 + d.glide * 5.0) +
-    d.bend * 6.5;
+    Math.sin(d.swimT * (7.4 + d.glide * 3.1)) * (4.6 + d.glide * 6.2) +
+    d.bend * 7.2;
 
   const rootX = tip.x;
   const rootY = tip.y + 2;
@@ -278,9 +281,9 @@ function drawTail(ctx, d) {
   ctx.fill();
 
   const feathers = [
-    { side: -1, len: 28, span: 5.8, rot: -0.24, alpha: 0.36 },
-    { side: 1, len: 34, span: 5.2, rot: 0, alpha: 0.42 },
-    { side: 1, len: 28, span: 5.8, rot: 0.24, alpha: 0.36 },
+    { side: -1, len: 30, span: 6.2, rot: -0.29, alpha: 0.38 },
+    { side: 1, len: 37, span: 5.4, rot: 0, alpha: 0.45 },
+    { side: 1, len: 30, span: 6.2, rot: 0.29, alpha: 0.38 },
   ];
 
   ctx.save();
@@ -328,6 +331,31 @@ function drawDorsalLine(ctx, d) {
 
   ctx.stroke();
 
+  ctx.restore();
+}
+
+function drawBackSail(ctx, d) {
+  const root = getSpinePoint(0.46, d);
+  const n = getSpineNormal(0.46, d);
+  const crestLift = 11 + d.glide * 6 + d.reactiveHighs * 4;
+  const trailLift = 18 + d.glide * 8;
+
+  ctx.save();
+  ctx.translate(root.x, root.y);
+  ctx.rotate(d.bend * 0.2);
+
+  const grad = ctx.createLinearGradient(0, 0, -n.x * 10, -trailLift);
+  grad.addColorStop(0, `hsla(${d.bodyHueMid + 10}, 90%, 82%, 0.28)`);
+  grad.addColorStop(0.42, `hsla(${d.bodyHueTop + 16}, 94%, 92%, 0.16)`);
+  grad.addColorStop(1, `hsla(${d.bodyHueTop + 36}, 98%, 98%, 0)`);
+
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(-2, -1);
+  ctx.quadraticCurveTo(-6, -crestLift * 0.55, -0.2, -trailLift);
+  ctx.quadraticCurveTo(3.6, -crestLift * 0.65, 2.4, 0.8);
+  ctx.closePath();
+  ctx.fill();
   ctx.restore();
 }
 
@@ -459,6 +487,7 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
   const depthScale = depth === 1 ? 1.42 : depth === 2 ? 1.32 : 1.22;
   const depthAlpha = depth === 1 ? 1 : depth === 2 ? 0.9 : 0.78;
   const fluidScale = 1 + Math.sin(swimT * 3.1) * 0.006;
+  const ropeStretch = 1 + Math.sin(swimT * (6.2 + glide * 2.2) - glide * 0.8) * (0.012 + glide * 0.018);
 
   ctx.save();
 
@@ -467,8 +496,8 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
   ctx.globalAlpha *= depthAlpha;
 
   ctx.scale(
-    depthScale * fluidScale * (1 - mouthPull * 0.02),
-    depthScale * (1 + mouthPull * 0.025)
+    depthScale * fluidScale * ropeStretch * (1 - mouthPull * 0.02),
+    depthScale * (1 / ropeStretch) * (1 + mouthPull * 0.025)
   );
 
   ctx.shadowBlur = 0;
@@ -478,6 +507,7 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
   drawTail(ctx, d);
   drawFins(ctx, d);
   drawBody(ctx, d);
+  drawBackSail(ctx, d);
   drawDorsalLine(ctx, d);
   drawHead(ctx, d, mouthPull);
 
