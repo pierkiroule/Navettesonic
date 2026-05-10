@@ -18,19 +18,20 @@ const BODY = {
 
 function getSpinePoint(t, d) {
   const y = lerp(BODY.startY, BODY.endY, t);
-  const headAttenuation = 0.2 + Math.pow(t, 1.1) * 0.8;
+  const headAttenuation = 0.08 + Math.pow(t, 1.35) * 0.92;
+  const ropeAmplitude = Math.pow(t, 1.55);
+  const basePhase = d.swimT * (4.2 + d.glide * 2.6);
+  const tailWave = Math.sin(t * Math.PI * 2.9 - basePhase) * (0.85 + d.glide * 2.5);
+  const subWave = Math.sin(t * Math.PI * 5.4 - basePhase * 1.32 + 0.45) * (0.2 + d.glide * 0.85);
+  const ropeWave = (tailWave + subWave) * ropeAmplitude;
 
-  const wave =
-    Math.sin(t * Math.PI * 2.25 + d.swimT * (3.7 + d.glide * 2.2)) *
-    Math.sin(t * Math.PI) *
-    (0.9 + d.glide * 2.0) *
-    headAttenuation;
+  const wave = ropeWave * headAttenuation;
 
   const turn =
     d.bend *
     Math.sin(t * Math.PI) *
-    (7.5 + d.glide * 6) *
-    (0.12 + t * 0.88);
+    (7.5 + d.glide * 6.8) *
+    (0.06 + t * 0.94);
 
   return { x: wave + turn, y };
 }
@@ -486,6 +487,7 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
   const depthScale = depth === 1 ? 1.42 : depth === 2 ? 1.32 : 1.22;
   const depthAlpha = depth === 1 ? 1 : depth === 2 ? 0.9 : 0.78;
   const fluidScale = 1 + Math.sin(swimT * 3.1) * 0.006;
+  const ropeStretch = 1 + Math.sin(swimT * (6.2 + glide * 2.2) - glide * 0.8) * (0.012 + glide * 0.018);
 
   ctx.save();
 
@@ -494,8 +496,8 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
   ctx.globalAlpha *= depthAlpha;
 
   ctx.scale(
-    depthScale * fluidScale * (1 - mouthPull * 0.02),
-    depthScale * (1 + mouthPull * 0.025)
+    depthScale * fluidScale * ropeStretch * (1 - mouthPull * 0.02),
+    depthScale * (1 / ropeStretch) * (1 + mouthPull * 0.025)
   );
 
   ctx.shadowBlur = 0;
