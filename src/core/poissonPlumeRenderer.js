@@ -2,247 +2,391 @@ function safeNumber(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
 }
 
-function traceFishBodyPath(ctx, bodyUndulate = 0, bodyBreath = 0) {
-  const bu = safeNumber(bodyUndulate, 0);
-  const br = safeNumber(bodyBreath, 0);
+function clamp01(v) {
+  return Math.max(0, Math.min(1, v));
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+const BODY = {
+  startY: -48,
+  endY: 54,
+  steps: 30,
+};
+
+function getSpinePoint(t, d) {
+  const y = lerp(BODY.startY, BODY.endY, t);
+
+  const wave =
+    Math.sin(t * Math.PI * 2.25 + d.swimT * (3.7 + d.glide * 2.2)) *
+    Math.sin(t * Math.PI) *
+    (0.9 + d.glide * 2.0);
+
+  const turn =
+    d.bend *
+    Math.sin(t * Math.PI) *
+    (7.5 + d.glide * 6) *
+    (0.12 + t * 0.88);
+
+  return { x: wave + turn, y };
+}
+
+function getSpineNormal(t, d) {
+  const a = getSpinePoint(Math.max(0, t - 0.012), d);
+  const b = getSpinePoint(Math.min(1, t + 0.012), d);
+
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+
+  return { x: -dy / len, y: dx / len };
+}
+
+function getBodyWidth(t, breath = 0) {
+  const head = Math.exp(-Math.pow((t - 0.12) / 0.16, 2)) * 8.4;
+  const chest = Math.exp(-Math.pow((t - 0.34) / 0.24, 2)) * 5.5;
+  const taper = Math.pow(1 - t, 1.45) * 1.2;
+
+  return Math.max(
+    0.65,
+    head + chest + taper + breath * Math.sin(t * Math.PI) * 0.3
+  );
+}
+
+function traceBody(ctx, d) {
+  const left = [];
+  const right = [];
+
+  for (let i = 0; i <= BODY.steps; i++) {
+    const t = i / BODY.steps;
+    const p = getSpinePoint(t, d);
+    const n = getSpineNormal(t, d);
+    const w = getBodyWidth(t, d.bodyBreath);
+
+    left.push({ x: p.x + n.x * w, y: p.y + n.y * w });
+    right.push({ x: p.x - n.x * w, y: p.y - n.y * w });
+  }
 
   ctx.beginPath();
-  ctx.moveTo(0, -24);
-  ctx.bezierCurveTo(10 + bu * 20, -18, 13 + br * 0.4, -5, 10, 8);
-  ctx.bezierCurveTo(7, 20, 2.5, 27, 0, 30);
-  ctx.bezierCurveTo(-2.5, 27, -7, 20, -10, 8);
-  ctx.bezierCurveTo(-13 - br * 0.4, -5, -10 - bu * 20, -18, 0, -24);
+  ctx.moveTo(left[0].x, left[0].y);
+
+  for (let i = 1; i < left.length; i++) ctx.lineTo(left[i].x, left[i].y);
+  for (let i = right.length - 1; i >= 0; i--) ctx.lineTo(right[i].x, right[i].y);
+
   ctx.closePath();
 }
 
-function drawClassicFishFins(ctx, finFlap, bodyHueMid) {
-  ctx.save();
-  ctx.shadowBlur = 0;
-
-  ctx.save();
-  ctx.translate(-7, 2);
-  ctx.rotate(-0.38 + finFlap);
-
-  const finGradL = ctx.createLinearGradient(0, -1, -12, 14);
-  finGradL.addColorStop(0, `hsla(${bodyHueMid}, 80%, 82%, 0.70)`);
-  finGradL.addColorStop(1, `hsla(${bodyHueMid + 12}, 78%, 88%, 0)`);
-
-  ctx.fillStyle = finGradL;
-  ctx.shadowColor = "transparent";
-
-  ctx.beginPath();
-  ctx.moveTo(0, -1);
-  ctx.bezierCurveTo(-10, 0, -14, 7, -8, 15);
-  ctx.bezierCurveTo(-4, 10, -1, 4, 0, -1);
-  ctx.fill();
-
-  ctx.restore();
-
-  ctx.save();
-  ctx.translate(7, 2);
-  ctx.rotate(0.38 - finFlap);
-
-  const finGradR = ctx.createLinearGradient(0, -1, 12, 14);
-  finGradR.addColorStop(0, `hsla(${bodyHueMid}, 80%, 82%, 0.70)`);
-  finGradR.addColorStop(1, `hsla(${bodyHueMid + 12}, 78%, 88%, 0)`);
-
-  ctx.fillStyle = finGradR;
-  ctx.shadowColor = "transparent";
-
-  ctx.beginPath();
-  ctx.moveTo(0, -1);
-  ctx.bezierCurveTo(10, 0, 14, 7, 8, 15);
-  ctx.bezierCurveTo(4, 10, 1, 4, 0, -1);
-  ctx.fill();
-
-  ctx.restore();
-  ctx.restore();
-}
-
-function drawAudioWings(ctx, data) {
-  const {
-    finFlap,
-    finMorph,
-    wingDrift,
-    wingAlpha,
-    bubbleAudioInfluence,
-  } = data;
-
-  const wingSpan = 12 + finMorph * 22;
-  const wingLength = 15 + finMorph * 30;
-
-  ctx.save();
-  ctx.shadowBlur = 0;
-
-  ctx.save();
-  ctx.globalCompositeOperation = "source-over";
-  ctx.translate(-7, 2);
-  ctx.rotate(-0.38 + finFlap - wingDrift * 0.03);
-
-  const finGradL = ctx.createLinearGradient(0, -2, -wingSpan, wingLength);
-  finGradL.addColorStop(
-    0,
-    `hsla(${196 + bubbleAudioInfluence * 10}, 92%, 80%, ${(0.66 + finMorph * 0.16) * wingAlpha})`
-  );
-  finGradL.addColorStop(
-    0.52,
-    `hsla(${216 + bubbleAudioInfluence * 8}, 94%, 68%, ${(0.55 + finMorph * 0.2) * wingAlpha})`
-  );
-  finGradL.addColorStop(1, `hsla(${328 + finMorph * 12}, 96%, 72%, 0)`);
-
-  ctx.fillStyle = finGradL;
-  ctx.shadowColor = "transparent";
-
-  ctx.beginPath();
-  ctx.moveTo(0, -1);
-  ctx.bezierCurveTo(
-    -wingSpan * 0.56,
-    -1.5 - finMorph * 1.2,
-    -wingSpan * 1.18,
-    wingLength * 0.52,
-    -wingSpan * 0.58,
-    wingLength
-  );
-  ctx.bezierCurveTo(
-    -wingSpan * 0.25,
-    wingLength * 0.66,
-    -2,
-    5 + finMorph * 2.8,
-    0,
-    -1
-  );
-  ctx.fill();
-  ctx.restore();
-
-  ctx.save();
-  ctx.globalCompositeOperation = "source-over";
-  ctx.translate(7, 2);
-  ctx.rotate(0.38 - finFlap + wingDrift * 0.03);
-
-  const finGradR = ctx.createLinearGradient(0, -2, wingSpan, wingLength);
-  finGradR.addColorStop(
-    0,
-    `hsla(${196 + bubbleAudioInfluence * 10}, 92%, 80%, ${(0.66 + finMorph * 0.16) * wingAlpha})`
-  );
-  finGradR.addColorStop(
-    0.52,
-    `hsla(${216 + bubbleAudioInfluence * 8}, 94%, 68%, ${(0.55 + finMorph * 0.2) * wingAlpha})`
-  );
-  finGradR.addColorStop(1, `hsla(${328 + finMorph * 12}, 96%, 72%, 0)`);
-
-  ctx.fillStyle = finGradR;
-  ctx.shadowColor = "transparent";
-
-  ctx.beginPath();
-  ctx.moveTo(0, -1);
-  ctx.bezierCurveTo(
-    wingSpan * 0.56,
-    -1.5 - finMorph * 1.2,
-    wingSpan * 1.18,
-    wingLength * 0.52,
-    wingSpan * 0.58,
-    wingLength
-  );
-  ctx.bezierCurveTo(
-    wingSpan * 0.25,
-    wingLength * 0.66,
-    2,
-    5 + finMorph * 2.8,
-    0,
-    -1
-  );
-  ctx.fill();
-  ctx.restore();
-
-  ctx.restore();
-}
-
-function drawTail(ctx, data) {
-  const { wag, bodyHueTop, bodyHueMid, bodyHueLow } = data;
-
-  ctx.save();
-  ctx.translate(0, 20);
-  ctx.rotate(wag);
-
-  ctx.shadowBlur = 0;
-  ctx.shadowColor = "transparent";
-
-  const tailGrad = ctx.createLinearGradient(0, 0, 0, 26);
-  tailGrad.addColorStop(0, `hsla(${bodyHueMid}, 84%, 80%, 0.92)`);
-  tailGrad.addColorStop(1, `hsla(${bodyHueLow + 10}, 80%, 74%, 0)`);
-
-  ctx.fillStyle = tailGrad;
-
+function tracePlume(ctx, side, length, span, curl = 0) {
   ctx.beginPath();
   ctx.moveTo(0, 0);
-  ctx.bezierCurveTo(-7, 5, -9, 14, -3.5, 22);
-  ctx.quadraticCurveTo(0, 18, 3.5, 22);
-  ctx.bezierCurveTo(9, 14, 7, 5, 0, 0);
-  ctx.fill();
 
-  const tipGrad = ctx.createLinearGradient(0, 18, -6, 36);
-  tipGrad.addColorStop(0, `hsla(${bodyHueTop}, 90%, 90%, 0.65)`);
-  tipGrad.addColorStop(1, `hsla(${bodyHueTop + 8}, 88%, 94%, 0)`);
+  ctx.bezierCurveTo(
+    side * span * 0.35,
+    length * 0.12,
+    side * span * (1.05 + curl * 0.16),
+    length * 0.48,
+    side * span * 0.58,
+    length
+  );
 
-  ctx.fillStyle = tipGrad;
-  ctx.beginPath();
-  ctx.moveTo(-1.5, 18);
-  ctx.bezierCurveTo(-5, 23, -8, 31, -4.5, 36);
-  ctx.quadraticCurveTo(-2, 30, -1.5, 18);
-  ctx.fill();
+  ctx.bezierCurveTo(
+    side * span * 0.24,
+    length * 0.82,
+    side * span * 0.06,
+    length * 0.42,
+    0,
+    0
+  );
 
-  const tipGrad2 = ctx.createLinearGradient(0, 18, 6, 36);
-  tipGrad2.addColorStop(0, `hsla(${bodyHueTop}, 90%, 90%, 0.65)`);
-  tipGrad2.addColorStop(1, `hsla(${bodyHueTop + 8}, 88%, 94%, 0)`);
+  ctx.closePath();
+}
 
-  ctx.fillStyle = tipGrad2;
-  ctx.beginPath();
-  ctx.moveTo(1.5, 18);
-  ctx.bezierCurveTo(5, 23, 8, 31, 4.5, 36);
-  ctx.quadraticCurveTo(2, 30, 1.5, 18);
-  ctx.fill();
+function drawBubbleTrail(ctx, d) {
+  const intensity = clamp01(
+    0.22 + d.glide * 0.28 + d.reactiveEnergy * 0.2 + d.mouthPull * 0.14
+  );
+
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+
+  for (let i = 0; i < 20; i++) {
+    const p = i / 19;
+    const flow = (p + d.swimT * (0.085 + d.glide * 0.04)) % 1;
+    const t = Math.min(1, flow * 0.68);
+
+    const sp = getSpinePoint(t, d);
+    const n = getSpineNormal(t, d);
+
+    const side = Math.sin(i * 12.9898) > 0 ? 1 : -1;
+    const spread = getBodyWidth(t, d.bodyBreath) * 0.76 + flow * 4.8;
+    const drift = Math.sin(d.swimT * 2.1 + i * 0.8) * (0.25 + flow);
+
+    const x = sp.x + n.x * side * spread + drift;
+    const y = sp.y + n.y * side * spread - flow * 4;
+
+    const pop = flow > 0.82 ? (flow - 0.82) / 0.18 : 0;
+    const r = (1.0 * (1 - flow) + 0.1) * (1 - pop * 0.6);
+
+    const alpha =
+      intensity *
+      (0.13 * (1 - flow) + 0.045) *
+      (1 - pop * 0.75) *
+      (0.75 + d.reactiveHighs * 0.3);
+
+    ctx.strokeStyle = `hsla(${d.bodyHueTop + 8 + flow * 32}, 95%, 92%, ${alpha})`;
+    ctx.lineWidth = 0.22 + (1 - flow) * 0.14;
+
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
 
   ctx.restore();
 }
 
-function drawBioluminescentSpots(ctx, swimT) {
-  const spotT = swimT * 3.2;
+function drawBody(ctx, d) {
+  const grad = ctx.createLinearGradient(-14, BODY.startY, 14, BODY.endY);
 
-  [
-    { x: -4.5, y: -1, r: 1.1, ph: 0.0 },
-    { x: 4.2, y: 1, r: 0.9, ph: 1.4 },
-    { x: -2.0, y: 7, r: 0.85, ph: 2.6 },
-    { x: 3.0, y: -6, r: 0.75, ph: 3.8 },
-    { x: 0.5, y: 3, r: 0.6, ph: 0.7 },
-  ].forEach((spot) => {
-    const pulse = (Math.sin(spotT + spot.ph) + 1) * 0.5;
+  grad.addColorStop(0, `hsla(${d.bodyHueTop}, 92%, 96%, ${0.9 + d.shimmerPulse * 0.05})`);
+  grad.addColorStop(0.34, `hsla(${d.bodyHueMid}, 88%, 84%, ${0.78 + d.shimmerPulse * 0.08})`);
+  grad.addColorStop(0.74, `hsla(${d.bodyHueLow}, 82%, 72%, ${0.7 + d.shimmerPulse * 0.08})`);
+  grad.addColorStop(1, `hsla(${d.bodyHueLow + 14}, 78%, 62%, 0.64)`);
 
-    ctx.fillStyle = `rgba(175, 255, 235, 0.035)`;
-    ctx.shadowBlur = 0;
-    ctx.shadowColor = "transparent";
+  ctx.fillStyle = grad;
+  traceBody(ctx, d);
+  ctx.fill();
 
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+
+  const glow = ctx.createRadialGradient(-4, -36, 1, -3, -18, 62);
+  glow.addColorStop(0, `rgba(255,255,255,${0.3 + d.reactiveHighs * 0.07})`);
+  glow.addColorStop(0.35, "rgba(215,255,250,0.12)");
+  glow.addColorStop(1, "rgba(255,255,255,0)");
+
+  ctx.fillStyle = glow;
+  traceBody(ctx, d);
+  ctx.fill();
+
+  ctx.strokeStyle = `hsla(${d.bodyHueTop + 18}, 90%, 96%, 0.07)`;
+  ctx.lineWidth = 0.45;
+
+  for (let i = -1; i <= 1; i++) {
     ctx.beginPath();
-    ctx.arc(spot.x, spot.y, spot.r * (1 + pulse * 0.35), 0, Math.PI * 2);
-    ctx.fill();
-  });
 
-  ctx.shadowBlur = 0;
+    for (let j = 0; j <= 14; j++) {
+      const t = j / 14;
+      const p = getSpinePoint(t, d);
+      const n = getSpineNormal(t, d);
+      const offset = i * 1.4 * Math.sin(t * Math.PI);
+
+      const x = p.x + n.x * offset;
+      const y = p.y + n.y * offset;
+
+      if (j === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+
+    ctx.stroke();
+  }
+
+  ctx.restore();
+
+  ctx.strokeStyle = `hsla(${d.bodyHueTop}, 90%, 96%, 0.18)`;
+  ctx.lineWidth = 0.55;
+  traceBody(ctx, d);
+  ctx.stroke();
 }
 
-function drawSideEyes(ctx) {
+function drawFins(ctx, d) {
+  const t = 0.38;
+  const p = getSpinePoint(t, d);
+  const n = getSpineNormal(t, d);
+  const w = getBodyWidth(t, d.bodyBreath);
+
+  [-1, 1].forEach((side) => {
+    const curl = Math.sin(d.swimT * 2.3 + side * 1.7) * 0.3;
+
+    const rootX = p.x + n.x * w * side * 0.95;
+    const rootY = p.y + n.y * w * side * 0.95;
+
+    const length = 16 + d.finMorph * 20;
+    const span = 8 + d.finMorph * 14;
+
+    ctx.save();
+    ctx.translate(rootX, rootY);
+    ctx.rotate(side * (0.58 + d.finFlap * side + curl * 0.06));
+
+    const grad = ctx.createLinearGradient(0, 0, side * span, length);
+    grad.addColorStop(0, `hsla(${190 + d.audioInfluence * 12}, 94%, 90%, ${0.3 + d.finMorph * 0.16})`);
+    grad.addColorStop(0.5, `hsla(${d.bodyHueMid + 22}, 92%, 78%, ${0.18 + d.finMorph * 0.12})`);
+    grad.addColorStop(1, `hsla(${d.bodyHueMid + 52}, 96%, 88%, 0)`);
+
+    ctx.fillStyle = grad;
+    tracePlume(ctx, side, length, span, curl);
+    ctx.fill();
+
+    ctx.globalCompositeOperation = "screen";
+    ctx.strokeStyle = `hsla(${d.bodyHueMid + 18}, 95%, 94%, ${0.1 + d.finMorph * 0.06})`;
+    ctx.lineWidth = 0.42;
+    ctx.lineCap = "round";
+
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.bezierCurveTo(
+      side * span * 0.14,
+      length * 0.24,
+      side * span * 0.45,
+      length * 0.56,
+      side * span * 0.52,
+      length * 0.88
+    );
+    ctx.stroke();
+
+    ctx.restore();
+  });
+}
+
+function drawTail(ctx, d) {
+  const base = getSpinePoint(0.92, d);
+  const tip = getSpinePoint(1, d);
+  const n = getSpineNormal(1, d);
+
+  const wag =
+    Math.sin(d.swimT * (7 + d.glide * 2.6)) * (3.8 + d.glide * 5.0) +
+    d.bend * 6.5;
+
+  const rootX = tip.x;
+  const rootY = tip.y + 2;
+
+  const tx = rootX + wag;
+  const ty = rootY + 8;
+
+  const baseGrad = ctx.createLinearGradient(base.x, base.y, tx, ty);
+  baseGrad.addColorStop(0, `hsla(${d.bodyHueMid}, 88%, 82%, 0.46)`);
+  baseGrad.addColorStop(1, `hsla(${d.bodyHueTop + 20}, 90%, 92%, 0)`);
+
+  ctx.fillStyle = baseGrad;
+
+  ctx.beginPath();
+  ctx.moveTo(base.x + n.x * 2.7, base.y + n.y * 2.7);
+  ctx.quadraticCurveTo(rootX + wag * 0.35, rootY + 4, tx - 1.5, ty + 1.5);
+  ctx.quadraticCurveTo(rootX + wag * 0.35, rootY + 4, base.x - n.x * 2.7, base.y - n.y * 2.7);
+  ctx.closePath();
+  ctx.fill();
+
+  const feathers = [
+    { side: -1, len: 28, span: 5.8, rot: -0.24, alpha: 0.36 },
+    { side: 1, len: 34, span: 5.2, rot: 0, alpha: 0.42 },
+    { side: 1, len: 28, span: 5.8, rot: 0.24, alpha: 0.36 },
+  ];
+
+  ctx.save();
+  ctx.translate(tx, ty);
+  ctx.rotate(wag * 0.015);
+
+  feathers.forEach((f, i) => {
+    const curl = Math.sin(d.swimT * 2 + i * 1.3) * 0.3;
+
+    ctx.save();
+    ctx.rotate(f.rot + curl * 0.07);
+
+    const grad = ctx.createLinearGradient(0, 0, f.side * f.span, f.len);
+    grad.addColorStop(0, `hsla(${d.bodyHueMid}, 90%, 86%, ${f.alpha})`);
+    grad.addColorStop(0.52, `hsla(${d.bodyHueTop + 18}, 92%, 92%, ${f.alpha * 0.5})`);
+    grad.addColorStop(1, `hsla(${d.bodyHueTop + 36}, 95%, 96%, 0)`);
+
+    ctx.fillStyle = grad;
+    tracePlume(ctx, f.side, f.len, f.span, curl);
+    ctx.fill();
+
+    ctx.restore();
+  });
+
+  ctx.restore();
+}
+
+function drawDorsalLine(ctx, d) {
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  ctx.lineCap = "round";
+
+  ctx.strokeStyle = `hsla(${d.bodyHueTop + 12}, 95%, 96%, ${0.15 + d.reactiveHighs * 0.07})`;
+  ctx.lineWidth = 0.85;
+
+  ctx.beginPath();
+
+  for (let i = 0; i <= 20; i++) {
+    const t = i / 20;
+    const p = getSpinePoint(t, d);
+
+    if (i === 0) ctx.moveTo(p.x, p.y);
+    else ctx.lineTo(p.x, p.y);
+  }
+
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawHead(ctx, d, mouthPull = 0) {
+  const head = getSpinePoint(0.1, d);
+  const nose = getSpinePoint(0.0, d);
+  const n = getSpineNormal(0.1, d);
+  const w = getBodyWidth(0.1, d.bodyBreath);
+
   ctx.save();
 
-  ctx.beginPath();
-  ctx.ellipse(-4.8, -13, 1.25, 2.1, -0.18, 0, Math.PI * 2);
-  ctx.ellipse(4.8, -13, 1.25, 2.1, 0.18, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(10, 20, 35, 0.48)";
+  // front lumineux centré sur la tête
+  const headGlow = ctx.createRadialGradient(head.x, head.y - 2, 1, head.x, head.y, w * 1.15);
+  headGlow.addColorStop(0, "rgba(255,255,255,0.18)");
+  headGlow.addColorStop(0.6, "rgba(255,255,255,0.06)");
+  headGlow.addColorStop(1, "rgba(255,255,255,0)");
+
+  ctx.fillStyle = headGlow;
+  traceBody(ctx, d);
   ctx.fill();
 
+  // bouche fixée au nez, pas décalée
+  ctx.strokeStyle = "rgba(15, 35, 52, 0.22)";
+  ctx.lineWidth = 0.58;
+  ctx.lineCap = "round";
+
   ctx.beginPath();
-  ctx.arc(-5.1, -13.8, 0.42, 0, Math.PI * 2);
-  ctx.arc(4.5, -13.8, 0.42, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
-  ctx.fill();
+  ctx.moveTo(nose.x - 1.2, nose.y + 2.2);
+  ctx.quadraticCurveTo(
+    nose.x,
+    nose.y + 2.55 + mouthPull * 0.9,
+    nose.x + 1.2,
+    nose.y + 2.2
+  );
+  ctx.stroke();
+
+  const blink = Math.pow(Math.max(0, Math.sin(d.swimT * 0.82)), 34);
+  const eyeScale = 1 - blink * 0.68;
+
+  [-1, 1].forEach((side) => {
+    const ex = head.x + n.x * w * side * 0.92;
+    const ey = head.y + n.y * w * side * 0.92;
+
+    ctx.save();
+    ctx.translate(ex, ey);
+    ctx.rotate(side * 0.18);
+
+    ctx.fillStyle = "rgba(5, 14, 28, 0.66)";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 1.2, 1.95 * eyeScale, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "rgba(255,255,255,0.84)";
+    ctx.beginPath();
+    ctx.arc(-0.3 * side, -0.6, 0.32, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  });
 
   ctx.restore();
 }
@@ -261,33 +405,6 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
   const speed = Math.hypot(vx, vy);
   const mouthPull = safeNumber(fish.mouthPull, 0);
   const turnAmount = safeNumber(fish.turnAmount, 0);
-  const depth = Math.max(1, Math.min(3, Math.round(safeNumber(fish.depth, 1))));
-
-  const depthVisuals = {
-    1: {
-      scale: 1.5,
-      alpha: 1,
-      brightness: 1.06,
-      saturation: 1.08,
-      auraBoost: 1,
-    },
-    2: {
-      scale: 1.42,
-      alpha: 0.9,
-      brightness: 0.86,
-      saturation: 0.86,
-      auraBoost: 1.25,
-    },
-    3: {
-      scale: 1.34,
-      alpha: 0.78,
-      brightness: 0.68,
-      saturation: 0.66,
-      auraBoost: 1.65,
-    },
-  };
-
-  const depthVisual = depthVisuals[depth];
 
   const audio = options.audio || {};
   const reactiveBass = safeNumber(audio.bass);
@@ -298,86 +415,71 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
   const proximity = safeNumber(options.proximity, 0.42);
   const audioInfluence = safeNumber(options.audioInfluence, 0.28);
 
+  const glide = clamp01(speed / maxSpeed + reactiveBass * 0.22 + mouthPull * 0.22);
+
+  const bend =
+    clamp01(Math.abs(turnAmount)) *
+    Math.sign(turnAmount || Math.sin(swimT * 0.7)) *
+    (0.16 + glide * 0.76);
+
   const wingPresence = Math.max(
     0.18,
     Math.min(1, Math.pow(proximity, 1.35) * Math.max(0.28, audioInfluence))
   );
 
-  const glide = Math.min(1, speed / maxSpeed + reactiveBass * 0.22 + mouthPull * 0.22);
-  const wag =
-    Math.sin(swimT * (8.4 + mouthPull * 4.2)) *
-    (0.13 + glide * 0.24 + turnAmount * 0.12);
   const finMorph = Math.min(1, wingPresence * (0.72 + reactiveMids * 0.28));
 
   const finFlap =
-    Math.sin(swimT * (7.2 + reactiveMids * 1.8 + audioInfluence * 2.1 * wingPresence) + 0.5) *
-    (0.12 + glide * 0.12 + reactiveMids * 0.055 + finMorph * 0.22 + turnAmount * 0.08);
+    Math.sin(swimT * (7 + reactiveMids * 1.5 + audioInfluence * 1.7) + 0.5) *
+    (0.08 + glide * 0.08 + reactiveMids * 0.04 + finMorph * 0.16 + Math.abs(turnAmount) * 0.06);
 
-  const bodyBreath = Math.sin(swimT * 2.5) * 0.65;
-  const shimmerPulse = Math.min(
-    1.2,
-    (Math.sin(swimT * (2.2 + reactiveHighs * 0.8 + audioInfluence * 0.9 * wingPresence)) + 1) * 0.5 +
-      reactiveHighs * 0.42
-  );
+  const d = {
+    swimT,
+    glide,
+    bend,
+    bodyBreath: Math.sin(swimT * 2.3) * 0.34,
+    finFlap,
+    finMorph,
+    bodyHueTop: 184 + Math.sin(swimT * 1.6) * 7,
+    bodyHueMid: 198 + Math.sin(swimT * 1.2 + 1.4) * 10,
+    bodyHueLow: 214 + Math.sin(swimT * 1.8 + 2.1) * 9,
+    shimmerPulse:
+      Math.min(
+        1.2,
+        (Math.sin(swimT * (2.1 + reactiveHighs * 0.7 + audioInfluence * 0.8)) + 1) * 0.5 +
+          reactiveHighs * 0.36
+      ),
+    reactiveHighs,
+    reactiveEnergy,
+    audioInfluence,
+    mouthPull,
+  };
 
-  const bodyUndulate = Math.sin(swimT * 5.8) * (0.03 + glide * 0.055);
-
-  const bodyHueTop = 186 + Math.sin(swimT * 1.7) * 8;
-  const bodyHueMid = 198 + Math.sin(swimT * 1.3 + 1.4) * 12;
-  const bodyHueLow = 210 + Math.sin(swimT * 1.9 + 2.1) * 10;
+  const depth = Math.max(1, Math.min(3, Math.round(safeNumber(fish.depth, 1))));
+  const depthScale = depth === 1 ? 1.42 : depth === 2 ? 1.32 : 1.22;
+  const depthAlpha = depth === 1 ? 1 : depth === 2 ? 0.9 : 0.78;
+  const fluidScale = 1 + Math.sin(swimT * 3.1) * 0.006;
 
   ctx.save();
 
   ctx.translate(x, y);
   ctx.rotate(angle + Math.PI / 2);
-  ctx.globalAlpha *= depthVisual.alpha;
-  ctx.scale(
-    depthVisual.scale * (1 - mouthPull * 0.035),
-    depthVisual.scale * (1 + mouthPull * 0.055)
-  );
+  ctx.globalAlpha *= depthAlpha;
 
+  ctx.scale(
+    depthScale * fluidScale * (1 - mouthPull * 0.02),
+    depthScale * (1 + mouthPull * 0.025)
+  );
 
   ctx.shadowBlur = 0;
   ctx.shadowColor = "transparent";
 
-  const bodyGrad = ctx.createLinearGradient(-10, -18, 10, 24);
-  bodyGrad.addColorStop(0, `hsla(${bodyHueTop}, 90%, 95%, ${0.88 + shimmerPulse * 0.12})`);
-  bodyGrad.addColorStop(0.38, `hsla(${bodyHueMid}, 85%, 80%, ${0.78 + shimmerPulse * 0.12})`);
-  bodyGrad.addColorStop(0.72, `hsla(${bodyHueLow}, 80%, 68%, ${0.76 + shimmerPulse * 0.14})`);
-  bodyGrad.addColorStop(1, `hsla(${bodyHueLow + 14}, 75%, 58%, 0.8)`);
+  drawBubbleTrail(ctx, d);
+  drawTail(ctx, d);
+  drawFins(ctx, d);
+  drawBody(ctx, d);
+  drawDorsalLine(ctx, d);
+  drawHead(ctx, d, mouthPull);
 
-  ctx.fillStyle = bodyGrad;
-  traceFishBodyPath(ctx, bodyUndulate, bodyBreath);
-  ctx.fill();
-
-
-  if (wingPresence < 0.18) {
-    drawClassicFishFins(ctx, finFlap, bodyHueMid);
-  } else {
-    const wingDrift = Math.sin(swimT * (4.4 + audioInfluence * 2.2)) * (0.8 + finMorph * 1.4);
-    const wingAlpha = 0.35 + wingPresence * 0.65;
-
-    drawAudioWings(ctx, {
-      finFlap,
-      finMorph,
-      wingDrift,
-      wingAlpha,
-      bubbleAudioInfluence: audioInfluence,
-    });
-  }
-
-  drawTail(ctx, {
-    wag,
-    bodyHueTop,
-    bodyHueMid,
-    bodyHueLow,
-  });
-
-  ctx.shadowBlur = 0;
-
-  drawBioluminescentSpots(ctx, swimT);
-  drawSideEyes(ctx);
-
-  ctx.globalAlpha = 1;
   ctx.restore();
 }
