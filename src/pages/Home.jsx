@@ -7,7 +7,7 @@ export default function Home({ onEnter }) {
         <div className="home-video-orb" aria-label="Vidéo Soon">
           <video
             className="home-orb-video"
-            src="/video/soon2.mp4"
+            src="/video/soon.mp4"
             autoPlay
             muted
             loop
