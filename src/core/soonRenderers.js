@@ -38,7 +38,9 @@ export function drawScene(ctx, rect, time, refs) {
   drawFireflies(ctx, time);
   drawPlumeTrail(ctx);
   drawResonanceBubbles(ctx, time);
-  drawFish(ctx, current.fish, time);
+  if (current.interactionMode !== "edit") {
+    drawFish(ctx, current.fish, time);
+  }
 
   exitWorld(ctx);
 

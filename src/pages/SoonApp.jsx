@@ -63,14 +63,6 @@ export default function SoonApp({ onBack }) {
       Perso
     </button>
 
-    <button
-      onClick={() => setInteractionMode((prev) => (prev === "swim" ? "edit" : "swim"))}
-      className={interactionMode === "edit" ? "active" : ""}
-      title={interactionMode === "edit" ? "Mode Éditer" : "Mode Nager"}
-    >
-      {interactionMode === "edit" ? "Éditer" : "Nager"}
-    </button>
-
   </div>
 </header>
 
@@ -91,7 +83,10 @@ export default function SoonApp({ onBack }) {
         viewZoom={viewZoom}
         depth={depth}
         onFishTarget={setFishTarget}
-        onTickFish={() => tickFish({ swimSpeed, depth })}
+        onTickFish={() => {
+          if (interactionMode === "edit") return;
+          tickFish({ swimSpeed, depth });
+        }}
         onSetFishDepth={setFishDepth}
         onCycleBubbleDepth={(id) => {
           const bubble = bubbles.find((item) => item.id === id);
@@ -99,6 +94,16 @@ export default function SoonApp({ onBack }) {
           updateBubble(id, { depth: (Math.round(bubble.depth || 1) % 3) + 1 });
         }}
       />
+
+      <div style={{ display: "flex", justifyContent: "center", marginTop: 10 }}>
+        <button
+          onClick={() => setInteractionMode((prev) => (prev === "swim" ? "edit" : "swim"))}
+          className={interactionMode === "edit" ? "active" : ""}
+          title={interactionMode === "edit" ? "Mode Éditer" : "Mode Nager"}
+        >
+          {interactionMode === "edit" ? "Mode Éditer" : "Mode Nager"}
+        </button>
+      </div>
 
       {/* COCKPIT */}
       <div className="cockpit">

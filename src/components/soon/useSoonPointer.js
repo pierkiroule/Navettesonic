@@ -139,7 +139,7 @@ export function useSoonPointer({
       onSelectBubble(null);
     }
 
-    if (!current.circuitAutopilot) {
+    if (!isEditMode && !current.circuitAutopilot) {
       onFishTarget(point.x, point.y);
     }
 
@@ -155,8 +155,8 @@ export function useSoonPointer({
       last &&
       Math.hypot(last.x - point.x, last.y - point.y) < 48;
 
-    if (isDoubleTap && current.mode === "compo" && isEditMode) {
-      onAddBubble(point.x, point.y);
+    if (isDoubleTap && isEditMode && hit) {
+      onCycleBubbleDepth(hit.id);
     }
 
     pointerRef.current.lastTapAt = now;
@@ -199,7 +199,9 @@ export function useSoonPointer({
       clearLongPress();
     }
 
-    onFishTarget(point.x, point.y);
+    if (!isEditMode) {
+      onFishTarget(point.x, point.y);
+    }
 
     if (isEditMode && current.mode === "reso") {
       onAddPathPoint(point);
