@@ -13,6 +13,10 @@ import { updateFireflyGame } from "../../core/fireflyGame.js";
 import { updateEcosystemFx } from "../../core/ecosystemFx.js";
 import { updateBubbleAudioTriggers } from "../../core/soonAudioTriggers.js";
 import { drawScene } from "../../core/soonRenderers.js";
+import {
+  getCharacterWorldEffects,
+  updateCharacters,
+} from "../../core/characters/characterEngine.js";
 
 export function useSoonCanvasLoop({
   canvasRef,
@@ -35,12 +39,17 @@ export function useSoonCanvasLoop({
       }
 
       const ctx = canvas.getContext("2d");
-      const rect = resizeCanvas(canvas, ctx);
+      if (!ctx) {
+        frame = requestAnimationFrame(loop);
+        return;
+      }
 
-      const current = stateRef.current;
+      const rect = resizeCanvas(canvas, ctx);
+      const current = stateRef.current || {};
       const isEditMode = current.interactionMode === "edit";
 
       updateArena(arenaRef, rect);
+
       if (isEditMode) {
         if (!wasEditMode) {
           resetEditCamera(cameraRef, rect, arenaRef.current.radius);
@@ -49,33 +58,40 @@ export function useSoonCanvasLoop({
       } else {
         followFishCamera(cameraRef, arenaRef, current.fish, rect);
       }
+
       wasEditMode = isEditMode;
 
-      if (!isEditMode) {
-        onTickFish();
-      }
-
-      const next = stateRef.current;
-
-      if (!isEditMode) {
-        updateAmbientMix(next.bubbles, next.fish);
-      }
-
-      updateFireflyGame({
-        fish: next.fish,
-        mode: next.mode,
-        bubbles: next.bubbles,
+      updateCharacters({
+        fish: isEditMode ? null : current.fish,
+        arenaRadius: arenaRef.current.radius,
       });
+
+      const worldFx = getCharacterWorldEffects();
+
+      if (!isEditMode) {
+        onTickFish?.();
+      }
+
+      const next = stateRef.current || {};
+
+      if (!isEditMode) {
+        updateAmbientMix(next.bubbles || [], next.fish || null);
+        updateBubbleAudioTriggers(next, activeBubbleAudioRef);
+
+        updateFireflyGame({
+          fish: next.fish,
+          mode: next.mode,
+          bubbles: next.bubbles || [],
+        });
+      }
 
       updateEcosystemFx({
-        fish: next.fish,
-        bubbles: next.bubbles,
+        fish: isEditMode ? null : next.fish,
+        bubbles: next.bubbles || [],
         mode: next.mode,
       });
 
-      if (!isEditMode) {
-        updateBubbleAudioTriggers(next, activeBubbleAudioRef);
-      }
+      ctx.filter = "none";
 
       drawScene(ctx, rect, performance.now(), {
         stateRef,
@@ -85,11 +101,29 @@ export function useSoonCanvasLoop({
         exitWorld,
       });
 
+      if (worldFx.blur > 0.1) {
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.globalCompositeOperation = "source-over";
+        ctx.globalAlpha = 0.98;
+        ctx.filter = `blur(${worldFx.blur}px)`;
+        ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height);
+        ctx.filter = "none";
+        ctx.restore();
+      }
+
       frame = requestAnimationFrame(loop);
     }
 
     frame = requestAnimationFrame(loop);
 
     return () => cancelAnimationFrame(frame);
-  }, [canvasRef, cameraRef, arenaRef, stateRef, activeBubbleAudioRef, onTickFish]);
+  }, [
+    canvasRef,
+    cameraRef,
+    arenaRef,
+    stateRef,
+    activeBubbleAudioRef,
+    onTickFish,
+  ]);
 }
