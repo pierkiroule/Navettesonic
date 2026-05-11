@@ -1,6 +1,7 @@
 import { distance, getBubbleVisualRadius } from "./geometry.js";
 import { sampleSmoothCircuit } from "./traceCircuit.js";
 import { drawPoissonPlume } from "./poissonPlumeRenderer.js";
+import { drawCharacters } from "./characters/characterEngine.js";
 import {
   drawFireflies,
   drawPlacedTriangles,
@@ -46,7 +47,9 @@ export function drawScene(ctx, rect, time, refs) {
   drawPlumeTrail(ctx);
   drawResonanceBubbles(ctx, time);
   if (current.interactionMode !== "edit") {
-    drawFish(ctx, current.fish, time);
+    drawCharacters(ctx, time);
+
+drawFish(ctx, current.fish, time);
   }
 
   exitWorld(ctx);
