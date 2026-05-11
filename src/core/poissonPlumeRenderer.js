@@ -99,23 +99,27 @@ function traceBody(ctx, d) {
 }
 
 function tracePlume(ctx, side, length, span, curl = 0) {
+  const asym = 1 + side * 0.08 + curl * 0.12;
+  const root = span * 0.2;
+  const tipSway = side * span * (0.46 + curl * 0.22);
+
   ctx.beginPath();
   ctx.moveTo(0, 0);
 
   ctx.bezierCurveTo(
-    side * span * 0.35,
-    length * 0.12,
-    side * span * (1.05 + curl * 0.16),
-    length * 0.48,
-    side * span * 0.58,
-    length
+    side * root * asym,
+    length * 0.1,
+    side * span * (0.82 + curl * 0.14),
+    length * 0.5,
+    tipSway,
+    length * 0.98
   );
 
   ctx.bezierCurveTo(
-    side * span * 0.24,
-    length * 0.82,
-    side * span * 0.06,
-    length * 0.42,
+    side * span * (0.2 + curl * 0.06),
+    length * 0.9,
+    side * root * 0.72,
+    length * 0.36,
     0,
     0
   );
@@ -232,8 +236,8 @@ function drawFins(ctx, d) {
     const rootX = p.x + n.x * w * side * 0.95;
     const rootY = p.y + n.y * w * side * 0.95;
 
-    const length = 18 + d.finMorph * 22 + d.glide * 4;
-    const span = 9 + d.finMorph * 15;
+    const length = 24 + d.finMorph * 32 + d.glide * 6;
+    const span = 10 + d.finMorph * 18;
 
     ctx.save();
     ctx.translate(rootX, rootY);
@@ -265,25 +269,39 @@ function drawFins(ctx, d) {
     );
     ctx.stroke();
 
+    ctx.strokeStyle = `hsla(${d.bodyHueTop + 26}, 95%, 97%, ${0.07 + d.finMorph * 0.05})`;
+    ctx.lineWidth = 0.34;
+    ctx.beginPath();
+    ctx.moveTo(side * span * 0.06, length * 0.06);
+    ctx.bezierCurveTo(
+      side * span * 0.25,
+      length * 0.22,
+      side * span * 0.18,
+      length * 0.6,
+      side * span * 0.38,
+      length * 0.92
+    );
+    ctx.stroke();
+
     ctx.restore();
   });
 }
 
 function drawTail(ctx, d) {
   const base = getSpinePoint(0.88, d);
-  const root = getSpinePoint(0.98, d);
+  const root = getSpinePoint(0.94, d);
   const tip = getSpinePoint(1, d);
-  const n = getSpineNormal(0.98, d);
+  const n = getSpineNormal(1, d);
+  const tng = { x: n.y, y: -n.x };
 
   const wag =
     Math.sin(d.swimT * (7.2 + d.glide * 2.8)) * (3.8 + d.glide * 5.2) +
     d.bend * 5.8;
 
-  const tailRootX = tip.x + wag * 0.25;
-  const tailRootY = tip.y + 3;
-
-  const featherX = tip.x + wag;
-  const featherY = tip.y + 10;
+  const tailRootX = tip.x + wag * 0.12;
+  const tailRootY = tip.y + tng.y * 2.4 + n.y * 0.8;
+  const featherX = tip.x + wag * 0.28 + tng.x * 3.4;
+  const featherY = tip.y + wag * 0.02 + tng.y * 3.4 + n.y * 0.6;
 
   // pédoncule souple
   const baseGrad = ctx.createLinearGradient(base.x, base.y, featherX, featherY);
@@ -294,8 +312,8 @@ function drawTail(ctx, d) {
   ctx.beginPath();
   ctx.moveTo(base.x + n.x * 2.4, base.y + n.y * 2.4);
   ctx.bezierCurveTo(
-    root.x + wag * 0.12,
-    root.y + 4,
+    root.x + tng.x * 1.6 + wag * 0.04,
+    root.y + tng.y * 1.6,
     tailRootX,
     tailRootY,
     featherX - 1.2,
@@ -304,8 +322,8 @@ function drawTail(ctx, d) {
   ctx.bezierCurveTo(
     tailRootX,
     tailRootY,
-    root.x + wag * 0.12,
-    root.y + 4,
+    root.x - tng.x * 1.6 + wag * 0.04,
+    root.y - tng.y * 1.6,
     base.x - n.x * 2.4,
     base.y - n.y * 2.4
   );
@@ -322,7 +340,7 @@ function drawTail(ctx, d) {
 
   ctx.save();
   ctx.translate(featherX, featherY);
-  ctx.rotate(wag * 0.012 + d.bend * 0.12);
+  ctx.rotate(Math.atan2(tng.y, tng.x) + wag * 0.006 + d.bend * 0.08 - Math.PI / 2);
 
   feathers.forEach((f, i) => {
     const curl = Math.sin(d.swimT * 2 + i * 1.35) * 0.3;
@@ -410,19 +428,39 @@ function drawHead(ctx, d, mouthPull = 0) {
   traceBody(ctx, d);
   ctx.fill();
 
-  ctx.strokeStyle = "rgba(15, 35, 52, 0.22)";
-  ctx.lineWidth = 0.58;
-  ctx.lineCap = "round";
+  const tn = getSpineNormal(0.02, d);
+  const tt = { x: tn.y, y: -tn.x };
+  const mouthCx = nose.x + tt.x * 1.15;
+  const mouthCy = nose.y + tt.y * 1.15;
+  const mouthLong = 1.25 + mouthPull * 0.2;
+  const mouthWide = 0.72 + Math.abs(mouthPull) * 0.12;
 
+  const snoutPearl = ctx.createRadialGradient(mouthCx, mouthCy, 0.1, mouthCx, mouthCy, 3.8);
+  snoutPearl.addColorStop(0, "rgba(255,255,255,0.26)");
+  snoutPearl.addColorStop(0.55, "rgba(216,250,255,0.11)");
+  snoutPearl.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = snoutPearl;
   ctx.beginPath();
-  ctx.moveTo(nose.x - 1.2, nose.y + 2.2);
+  ctx.arc(mouthCx, mouthCy, 3.6, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(14, 32, 48, 0.22)";
+  ctx.beginPath();
+  ctx.moveTo(mouthCx + tt.x * mouthLong, mouthCy + tt.y * mouthLong);
   ctx.quadraticCurveTo(
-    nose.x,
-    nose.y + 2.55 + mouthPull * 0.9,
-    nose.x + 1.2,
-    nose.y + 2.2
+    mouthCx + tn.x * mouthWide,
+    mouthCy + tn.y * mouthWide,
+    mouthCx - tt.x * mouthLong,
+    mouthCy - tt.y * mouthLong
   );
-  ctx.stroke();
+  ctx.quadraticCurveTo(
+    mouthCx - tn.x * mouthWide * 0.92,
+    mouthCy - tn.y * mouthWide * 0.92,
+    mouthCx + tt.x * mouthLong,
+    mouthCy + tt.y * mouthLong
+  );
+  ctx.closePath();
+  ctx.fill();
 
   const blink = Math.pow(Math.max(0, Math.sin(d.swimT * 0.82)), 34);
   const eyeScale = 1 - blink * 0.68;
@@ -515,7 +553,7 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
   };
 
   const depth = Math.max(1, Math.min(3, Math.round(safeNumber(fish.depth, 1))));
-  const depthScale = depth === 1 ? 1.42 : depth === 2 ? 1.32 : 1.22;
+  const depthScale = depth === 1 ? 1.26 : depth === 2 ? 1.18 : 1.08;
   const depthAlpha = depth === 1 ? 1 : depth === 2 ? 0.9 : 0.78;
 
   const fluidScale = 1 + Math.sin(swimT * 3.1) * 0.006;
