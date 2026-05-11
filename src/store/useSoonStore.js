@@ -106,6 +106,8 @@ const defaultFish = {
   turnAmount: 0,
   pullLagX: 0,
   pullLagY: 0,
+  bodyFlex: 0,
+  bodyWaveBoost: 0,
 };
 
 const initialState = {
@@ -265,6 +267,7 @@ export const useSoonStore = create((set, get) => ({
       while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
       const turnStrength = Math.min(1, Math.abs(angleDiff) / 0.9);
+      const turnDirection = Math.sign(angleDiff || 0);
 
       const angle =
         speed > 0.035
@@ -274,6 +277,17 @@ export const useSoonStore = create((set, get) => ({
               0.045 + Math.min(0.08, speed * 0.009) + turnStrength * 0.035
             )
           : currentAngle;
+
+      const rawAngularVelocity = speed > 0.03 ? angleDiff : 0;
+      const previousFlex = state.fish.bodyFlex || 0;
+      const targetFlex = rawAngularVelocity * 0.95;
+      const nextBodyFlex = previousFlex + (targetFlex - previousFlex) * 0.2;
+
+      const prevWaveBoost = state.fish.bodyWaveBoost || 0;
+      const waveDrive =
+        Math.min(1, speed / 2.6) * (0.45 + Math.abs(nextBodyFlex) * 0.9);
+      const nextBodyWaveBoost =
+        prevWaveBoost + (waveDrive - prevWaveBoost) * 0.12;
 
       const mouthPull = state.fish.mouthPull || 0;
       const nextMouthPull = mouthPull + (pullNorm - mouthPull) * 0.12;
@@ -308,7 +322,9 @@ export const useSoonStore = create((set, get) => ({
           swimPhase,
           depth: clampDepth(fishDepth),
           mouthPull: nextMouthPull,
-          turnAmount: nextTurnAmount,
+          turnAmount: nextTurnAmount * turnDirection,
+          bodyFlex: nextBodyFlex,
+          bodyWaveBoost: nextBodyWaveBoost,
           maxSpeed: state.fish.maxSpeed || 3.1,
           pullLagX: lagX,
           pullLagY: lagY,

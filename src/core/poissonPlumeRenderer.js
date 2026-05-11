@@ -28,18 +28,22 @@ function getSpinePoint(t, d) {
 
   const mainWave =
     Math.sin(t * Math.PI * 2.65 - phase) *
-    (0.58 + d.glide * 2 + straightGlide * 0.52) *
+    (0.46 + d.glide * 1.9 + straightGlide * 0.45 + d.waveBoost * 0.5) *
     tailWeight;
 
   const subWave =
     Math.sin(t * Math.PI * 5.1 - phase * 1.24 + 0.6) *
-    (0.11 + d.glide * 0.58 + straightGlide * 0.14) *
+    (0.08 + d.glide * 0.52 + straightGlide * 0.12 + d.waveBoost * 0.12) *
     tailWeight;
+
+  const ropeLag = Math.pow(t, 1.9);
+  const flexTwist = d.flex * Math.pow(t, 1.35) * (10 + d.glide * 13);
 
   const turnCurve =
     d.bend *
     Math.pow(t, 1.47) *
-    (14 + d.glide * 14);
+    (14 + d.glide * 14) *
+    (0.74 + ropeLag * 0.46);
 
   const bodyArc =
     d.bend *
@@ -49,7 +53,8 @@ function getSpinePoint(t, d) {
   const x =
     (mainWave + subWave) * headLock +
     turnCurve +
-    bodyArc;
+    bodyArc +
+    flexTwist;
 
   return { x, y };
 }
@@ -504,6 +509,8 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
   const speed = Math.hypot(vx, vy);
   const mouthPull = safeNumber(fish.mouthPull, 0);
   const turnAmount = safeNumber(fish.turnAmount, 0);
+  const bodyFlex = safeNumber(fish.bodyFlex, 0);
+  const bodyWaveBoost = safeNumber(fish.bodyWaveBoost, 0);
 
   const audio = options.audio || {};
   const reactiveBass = safeNumber(audio.bass);
@@ -519,7 +526,7 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
   const bend =
     clamp01(Math.abs(turnAmount)) *
     Math.sign(turnAmount || Math.sin(swimT * 0.7)) *
-    (0.28 + glide * 1.25);
+    (0.24 + glide * 1.32);
 
   const wingPresence = Math.max(
     0.18,
@@ -551,6 +558,8 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
     reactiveEnergy,
     audioInfluence,
     mouthPull,
+    flex: bodyFlex,
+    waveBoost: bodyWaveBoost,
   };
 
   const depth = Math.max(1, Math.min(3, Math.round(safeNumber(fish.depth, 1))));
