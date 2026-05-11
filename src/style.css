@@ -2022,3 +2022,23 @@ button {
 .soon-app.edit-mode .slider-panel {
   display: none;
 }
+
+.odysseo-cockpit .mode-toggle.active {
+  box-shadow: 0 0 18px rgba(125, 211, 252, 0.7);
+}
+
+.odysseo-cockpit .bubble-btn {
+  min-width: 46px;
+}
+
+.odysseo-cockpit .mode-toggle {
+  width: auto;
+  min-width: 92px;
+  padding-inline: 12px;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.odysseo-cockpit .mode-toggle.active {
+  box-shadow: 0 0 18px rgba(125, 211, 252, 0.7);
+}

@@ -7,6 +7,7 @@ import { useSoonStore } from "../store/useSoonStore.js";
 export default function SoonApp({ onBack }) {
   const [page, setPage] = useState("arena");
   const [interactionMode, setInteractionMode] = useState("swim");
+  const [odysseoMode, setOdysseoMode] = useState("compose");
   const [viewZoom, setViewZoom] = useState(1);
   const [swimSpeed, setSwimSpeed] = useState(1);
   const [editorOpenKey, setEditorOpenKey] = useState(0);
@@ -16,6 +17,7 @@ export default function SoonApp({ onBack }) {
     mode,
     bubbles,
     fish,
+    fishTrail,
     selectedBubbleId,
     traceCircuit,
     selectedBeaconId,
@@ -45,7 +47,10 @@ export default function SoonApp({ onBack }) {
   const selectedBeacon =
     traceCircuit.find((beacon) => beacon.id === selectedBeaconId) || null;
 
-  const isEditMode = interactionMode === "edit";
+  const isOdysseo = mode === "reso";
+  const isOdysseoCompose = isOdysseo && odysseoMode === "compose";
+  const isOdysseoTravel = isOdysseo && odysseoMode === "travel";
+  const isEditMode = interactionMode === "edit" || isOdysseoCompose;
 
   const toggleSlider = (key) => {
     setActiveSlider((current) => (current === key ? null : key));
@@ -116,9 +121,11 @@ export default function SoonApp({ onBack }) {
 
       <SoonCanvas
         mode={mode}
-        interactionMode={interactionMode}
+        interactionMode={isOdysseoCompose ? "circuit" : interactionMode}
+        odysseoMode={odysseoMode}
         bubbles={bubbles}
         fish={fish}
+        fishTrail={fishTrail}
         selectedBubbleId={selectedBubbleId}
         traceCircuit={traceCircuit}
         selectedBeaconId={selectedBeaconId}
@@ -142,42 +149,54 @@ export default function SoonApp({ onBack }) {
         onCycleBubbleDepth={cycleBubbleDepth}
       />
 
-      <div className="cockpit">
-        <div className="cockpit-buttons">
-          <button
-            type="button"
-            className={`bubble-btn mode-toggle ${isEditMode ? "active" : ""}`}
-            onClick={toggleInteractionMode}
-            title={isEditMode ? "Passer en mode nager" : "Passer en mode éditer"}
-            aria-label={isEditMode ? "Mode éditer actif" : "Mode nager actif"}
-          >
-            {isEditMode ? "✏️" : "🐟"}
-          </button>
+      {isOdysseo ? (
+        <div className="cockpit odysseo-cockpit">
+          <div className="cockpit-buttons">
+            <button
+              type="button"
+              className={`bubble-btn mode-toggle ${isOdysseoCompose ? "active" : ""}`}
+              onClick={() => {
+                setOdysseoMode("compose");
+                stopCircuitAutopilot();
+                setActiveSlider(null);
+              }}
+              title="Composer le parcours"
+            >
+              🧭 Composer
+            </button>
 
-          {!isEditMode && (
-            <>
-              <button
-                type="button"
-                className={`bubble-btn zoom ${activeSlider === "zoom" ? "active" : ""}`}
-                onClick={() => toggleSlider("zoom")}
-                title="Zoom"
-              >
-                🔍
-              </button>
+            <button
+              type="button"
+              className={`bubble-btn mode-toggle ${isOdysseoTravel ? "active" : ""}`}
+              onClick={() => {
+                setOdysseoMode("travel");
+                startCircuitAutopilot();
+                setActiveSlider(null);
+              }}
+              title="Écouter la traversée"
+            >
+              ▶ Écouter
+            </button>
 
-              <button
-                type="button"
-                className={`bubble-btn speed ${activeSlider === "speed" ? "active" : ""}`}
-                onClick={() => toggleSlider("speed")}
-                title="Vitesse"
-              >
-                ⚡
-              </button>
-            </>
-          )}
-        </div>
+            <button
+              type="button"
+              className={`bubble-btn zoom ${activeSlider === "zoom" ? "active" : ""}`}
+              onClick={() => toggleSlider("zoom")}
+              title="Zoom"
+            >
+              🔍
+            </button>
 
-        {!isEditMode && (
+            <button
+              type="button"
+              className={`bubble-btn speed ${activeSlider === "speed" ? "active" : ""}`}
+              onClick={() => toggleSlider("speed")}
+              title="Vitesse"
+            >
+              ⚡
+            </button>
+          </div>
+
           <div className={`slider-panel ${activeSlider ? "open" : ""}`}>
             {activeSlider === "zoom" && (
               <div className="slider zoom">
@@ -203,12 +222,80 @@ export default function SoonApp({ onBack }) {
                   value={swimSpeed}
                   onChange={(event) => setSwimSpeed(Number(event.target.value))}
                 />
-                <span>Vitesse {swimSpeed.toFixed(1)}×</span>
+                <span>Traversée {swimSpeed.toFixed(1)}×</span>
               </div>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="cockpit">
+          <div className="cockpit-buttons">
+            <button
+              type="button"
+              className={`bubble-btn mode-toggle ${isEditMode ? "active" : ""}`}
+              onClick={toggleInteractionMode}
+              title={isEditMode ? "Passer en mode nager" : "Passer en mode éditer"}
+              aria-label={isEditMode ? "Mode éditer actif" : "Mode nager actif"}
+            >
+              {isEditMode ? "✏️" : "🐟"}
+            </button>
+
+            {!isEditMode && (
+              <>
+                <button
+                  type="button"
+                  className={`bubble-btn zoom ${activeSlider === "zoom" ? "active" : ""}`}
+                  onClick={() => toggleSlider("zoom")}
+                  title="Zoom"
+                >
+                  🔍
+                </button>
+
+                <button
+                  type="button"
+                  className={`bubble-btn speed ${activeSlider === "speed" ? "active" : ""}`}
+                  onClick={() => toggleSlider("speed")}
+                  title="Vitesse"
+                >
+                  ⚡
+                </button>
+              </>
+            )}
+          </div>
+
+          {!isEditMode && (
+            <div className={`slider-panel ${activeSlider ? "open" : ""}`}>
+              {activeSlider === "zoom" && (
+                <div className="slider zoom">
+                  <input
+                    type="range"
+                    min="0.3"
+                    max="3"
+                    step="0.1"
+                    value={viewZoom}
+                    onChange={(event) => setViewZoom(Number(event.target.value))}
+                  />
+                  <span>Zoom {viewZoom.toFixed(1)}×</span>
+                </div>
+              )}
+
+              {activeSlider === "speed" && (
+                <div className="slider speed">
+                  <input
+                    type="range"
+                    min="0.3"
+                    max="2.5"
+                    step="0.1"
+                    value={swimSpeed}
+                    onChange={(event) => setSwimSpeed(Number(event.target.value))}
+                  />
+                  <span>Vitesse {swimSpeed.toFixed(1)}×</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <SidePanel
         mode={mode}

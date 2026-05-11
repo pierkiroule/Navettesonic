@@ -32,9 +32,25 @@ function getMouth(fish) {
 }
 
 function getTail(fish) {
+  const spine = fish?.spine;
+
+  if (Array.isArray(spine) && spine.length >= 2) {
+    const tail = spine[spine.length - 1];
+    const prev = spine[spine.length - 2];
+
+    const angle = Math.atan2(tail.y - prev.y, tail.x - prev.x);
+
+    return {
+      x: tail.x,
+      y: tail.y,
+      angle,
+    };
+  }
+
   return {
     x: fish.x - Math.cos(fish.angle) * 30,
     y: fish.y - Math.sin(fish.angle) * 30,
+    angle: fish.angle,
   };
 }
 

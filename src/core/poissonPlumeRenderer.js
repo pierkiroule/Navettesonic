@@ -473,12 +473,12 @@ function drawHead(ctx, d, mouthPull = 0) {
     ctx.translate(ex, ey);
     ctx.rotate(side * 0.18);
 
-    ctx.fillStyle = "rgba(5, 14, 28, 0.66)";
+    ctx.fillStyle = "rgba(5, 14, 28, 0.46)";
     ctx.beginPath();
     ctx.ellipse(0, 0, 1.2, 1.95 * eyeScale, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = "rgba(255,255,255,0.84)";
+    ctx.fillStyle = "rgba(255,255,255,0.38)";
     ctx.beginPath();
     ctx.arc(-0.3 * side, -0.6, 0.32, 0, Math.PI * 2);
     ctx.fill();

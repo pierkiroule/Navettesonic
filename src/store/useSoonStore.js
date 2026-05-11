@@ -1,3 +1,4 @@
+import { updateSnakeFishToTarget, createInitialSpine } from "../core/fishSnakeMotion.js";
 import { create } from "zustand";
 import { defaultPack } from "../data/defaultPack.js";
 import { clearState, loadState, saveState } from "../core/storage.js";
@@ -113,7 +114,9 @@ const initialState = {
     ...defaultFish,
     ...(saved?.fish || {}),
   },
+  fishTrail: saved?.fishTrail || [],
   selectedBubbleId: null,
+  fishTrail: [],
   traceCircuit: saved?.traceCircuit || createSlalomCircuitFromBubbles(saved?.bubbles || defaultPack.bubbles),
   selectedBeaconId: null,
   circuitAutopilot: false,
@@ -147,6 +150,18 @@ export const useSoonStore = create((set, get) => ({
     saveState(get());
   },
 
+  startFishTrailAt: (x, y) => {
+    set(() => ({
+      fishTrail: startFishTrailAt(x, y),
+    }));
+  },
+
+  addFishTrailPoint: (x, y) => {
+    set((state) => ({
+      fishTrail: addFishTrailPoint(state.fishTrail || [], x, y),
+    }));
+  },
+
   setFishTarget: (x, y) => {
     const state = get();
 
@@ -176,8 +191,31 @@ export const useSoonStore = create((set, get) => ({
     saveState(get());
   },
 
-  tickFish: () => {
+  tickFish: ({ swimSpeed = 1 } = {}) => {
     set((state) => {
+      if (state.fishTrail?.length) {
+        const result = updateSnakeFishToTarget({
+          fish: {
+            ...state.fish,
+            spine:
+              state.fish.spine ||
+              createInitialSpine(state.fish.x || 0, state.fish.y || 0),
+          },
+          trail: state.fishTrail,
+          arenaRadius: DEFAULT_ARENA_RADIUS,
+          swimSpeed,
+        });
+
+        const pushedBubbles = separateBubblesByDepth(
+          pushBubblesFromFish(state.bubbles, result.fish, result.fish.depth),
+        );
+
+        return {
+          fish: result.fish,
+          fishTrail: result.trail,
+          bubbles: pushedBubbles,
+        };
+      }
       let targetX = state.fish.targetX;
       let targetY = state.fish.targetY;
       let fishDepth = clampDepth(state.fish.depth || 1);
@@ -380,7 +418,6 @@ export const useSoonStore = create((set, get) => ({
     const first = state.traceCircuit[0];
 
     set((state) => ({
-      mode: "reso",
       circuitAutopilot: true,
       circuitSegmentIndex: 0,
       circuitSegmentT: 0,

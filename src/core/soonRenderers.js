@@ -15,6 +15,7 @@ import {
 export function drawScene(ctx, rect, time, refs) {
   const { stateRef, arenaRef, cameraRef, enterWorld, exitWorld } = refs;
   const current = stateRef.current;
+  const isCircuitMode = current.interactionMode === "circuit";
 
   drawOcean(ctx, rect, time, current);
   drawDepthVeil(ctx, rect, current.fish);

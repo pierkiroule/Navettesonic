@@ -72,7 +72,7 @@ export function useSoonPointer({
   function findBeaconAt(point) {
     return [...(stateRef.current.traceCircuit || [])]
       .reverse()
-      .find((beacon) => distance(beacon, point) <= 26);
+      .find((beacon) => distance(beacon, point) <= 46);
   }
 
   function isDoubleTapScreen(event, key = "global") {
@@ -172,6 +172,23 @@ export function useSoonPointer({
     rememberTapScreen(event, "edit-empty");
   }
 
+  function handleCircuitPointerDown(event, point) {
+    const beaconHit = findBeaconAt(point);
+
+    onSelectBubble?.(null);
+
+    if (beaconHit) {
+      onSelectBeacon?.(beaconHit.id);
+      pointerRef.current.dragBeaconId = beaconHit.id;
+      pointerRef.current.panEnabled = false;
+      return;
+    }
+
+    onSelectBeacon?.(null);
+    pointerRef.current.panEnabled = true;
+    pointerRef.current.panStart = point;
+  }
+
   function handlePointerDown(event) {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -182,6 +199,7 @@ export function useSoonPointer({
     const point = getSafeWorldFromEvent(event);
     const current = stateRef.current;
     const isEditMode = current.interactionMode === "edit";
+    const isCircuitMode = current.interactionMode === "circuit";
 
     pointerRef.current.down = true;
     pointerRef.current.pointerId = event.pointerId;
@@ -192,6 +210,16 @@ export function useSoonPointer({
     pointerRef.current.panStart = null;
     pointerRef.current.pinchDistance = null;
     pointerRef.current.startPoint = point;
+
+    if (isCircuitMode) {
+      handleCircuitPointerDown(event, point, current);
+      return;
+    }
+
+    if (isCircuitMode) {
+      handleCircuitPointerDown(event, point, current);
+      return;
+    }
 
     if (isEditMode) {
       handleEditPointerDown(event, point, current);
@@ -206,6 +234,7 @@ export function useSoonPointer({
 
     const current = stateRef.current;
     const isEditMode = current.interactionMode === "edit";
+    const isCircuitMode = current.interactionMode === "circuit";
     const point = getSafeWorldFromEvent(event);
 
     if (!pointerRef.current.down && !(pointerRef.current.activePointers?.size > 0)) {
@@ -256,7 +285,7 @@ export function useSoonPointer({
     const moved =
       start && Math.hypot(start.x - point.x, start.y - point.y) > MOVE_CANCEL;
 
-    if (isEditMode && pointerRef.current.dragBeaconId) {
+    if ((isEditMode || isCircuitMode) && pointerRef.current.dragBeaconId) {
       onMoveBeacon?.(pointerRef.current.dragBeaconId, point.x, point.y);
       return;
     }
@@ -274,7 +303,7 @@ export function useSoonPointer({
       return;
     }
 
-    if (isEditMode && pointerRef.current.panEnabled) {
+    if ((isEditMode || isCircuitMode) && pointerRef.current.panEnabled) {
       const panStart = pointerRef.current.panStart;
 
       if (panStart) {
@@ -291,8 +320,12 @@ export function useSoonPointer({
       return;
     }
 
-    if (!isEditMode) {
+    if (!isEditMode && !isCircuitMode) {
       onFishTarget?.(point.x, point.y);
+
+      if (current.mode === "reso") {
+        onAddPathPoint?.(point);
+      }
     }
   }
 
