@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { defaultPack } from "../data/defaultPack.js";
 import { clearState, loadState, saveState } from "../core/storage.js";
-import { clampToCircle, makeId } from "../core/geometry.js";
+import { clampToCircle, getBubblePhysicsRadius, makeId } from "../core/geometry.js";
 import {
   createDefaultTraceCircuit,
   createSlalomCircuitFromBubbles,
@@ -35,9 +35,7 @@ export function pushBubblesFromFish(bubbles = [], fish = {}, fishDepth = 1) {
 
   return bubbles.map((bubble) => {
     if (clampDepth(bubble.depth) !== depth) return bubble;
-    const depthScale =
-      depth === 1 ? 1.07 : depth === 2 ? 1 : 0.9;
-    const bubbleRadius = Math.max(12, (bubble.r || 0) * depthScale);
+    const bubbleRadius = getBubblePhysicsRadius(bubble);
     const collideWith = [head, body];
     let pushX = 0;
     let pushY = 0;

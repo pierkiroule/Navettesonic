@@ -1,4 +1,9 @@
-import { clampToCircle, distance, screenToWorld } from "../../core/geometry.js";
+import {
+  clampToCircle,
+  distance,
+  getBubbleHitRadius,
+  screenToWorld,
+} from "../../core/geometry.js";
 import { playBubbleSound } from "../../core/audioEngine.js";
 
 export function useSoonPointer({
@@ -49,7 +54,7 @@ export function useSoonPointer({
   function findBubbleAt(point) {
     return [...(stateRef.current.bubbles || [])]
       .reverse()
-      .find((bubble) => distance(bubble, point) <= bubble.r);
+      .find((bubble) => distance(bubble, point) <= getBubbleHitRadius(bubble));
   }
 
   function findBeaconAt(point) {
