@@ -12,6 +12,58 @@ import {
 const saved = loadState();
 
 const DEFAULT_ARENA_RADIUS = 1200;
+const FISH_COLLISION_RADIUS = 34;
+
+function clampDepth(depth) {
+  return Math.max(1, Math.min(3, Math.round(depth || 1)));
+}
+
+export function pushBubblesFromFish(bubbles = [], fish = {}, fishDepth = 1) {
+  const depth = clampDepth(fishDepth);
+  const fishX = fish.x || 0;
+  const fishY = fish.y || 0;
+
+  return bubbles.map((bubble) => {
+    if (clampDepth(bubble.depth) !== depth) return bubble;
+    const bubbleRadius = Math.max(12, bubble.r || 0);
+    const dx = (bubble.x || 0) - fishX;
+    const dy = (bubble.y || 0) - fishY;
+    const d = Math.hypot(dx, dy) || 0.0001;
+    const overlap = FISH_COLLISION_RADIUS + bubbleRadius - d;
+    if (overlap <= 0) return bubble;
+
+    const push = overlap * 0.22;
+    const safe = clampToCircle(
+      { x: (bubble.x || 0) + (dx / d) * push, y: (bubble.y || 0) + (dy / d) * push },
+      DEFAULT_ARENA_RADIUS * 1.6
+    );
+
+    return { ...bubble, x: safe.x, y: safe.y };
+  });
+}
+
+function separateBubblesByDepth(bubbles = []) {
+  const next = bubbles.map((bubble) => ({ ...bubble }));
+  for (let iteration = 0; iteration < 2; iteration += 1) {
+    for (let i = 0; i < next.length; i += 1) {
+      for (let j = i + 1; j < next.length; j += 1) {
+        const a = next[i];
+        const b = next[j];
+        if (clampDepth(a.depth) !== clampDepth(b.depth)) continue;
+        const dx = (b.x || 0) - (a.x || 0);
+        const dy = (b.y || 0) - (a.y || 0);
+        const d = Math.hypot(dx, dy) || 0.0001;
+        const overlap = (a.r || 0) + (b.r || 0) + 6 - d;
+        if (overlap <= 0) continue;
+        const shift = overlap * 0.08;
+        const safeA = clampToCircle({ x: a.x - (dx / d) * shift, y: a.y - (dy / d) * shift }, DEFAULT_ARENA_RADIUS * 1.6);
+        const safeB = clampToCircle({ x: b.x + (dx / d) * shift, y: b.y + (dy / d) * shift }, DEFAULT_ARENA_RADIUS * 1.6);
+        a.x = safeA.x; a.y = safeA.y; b.x = safeB.x; b.y = safeB.y;
+      }
+    }
+  }
+  return next;
+}
 
 const defaultFish = {
   x: 0,
@@ -86,11 +138,24 @@ export const useSoonStore = create((set, get) => ({
     }));
   },
 
+  setFishDepth: (depth) => {
+    set((state) => {
+      if (state.circuitAutopilot) return state;
+      return {
+        fish: {
+          ...state.fish,
+          depth: clampDepth(depth),
+        },
+      };
+    });
+    saveState(get());
+  },
+
   tickFish: () => {
     set((state) => {
       let targetX = state.fish.targetX;
       let targetY = state.fish.targetY;
-      let fishDepth = state.fish.depth || 1;
+      let fishDepth = clampDepth(state.fish.depth || 1);
       let circuitSegmentIndex = state.circuitSegmentIndex || 0;
       let circuitSegmentT = state.circuitSegmentT || 0;
       const circuitAutopilot = Boolean(state.circuitAutopilot);
@@ -117,7 +182,7 @@ export const useSoonStore = create((set, get) => ({
 
         targetX = circuitPoint.x;
         targetY = circuitPoint.y;
-        fishDepth = circuitPoint.depth || fishDepth;
+        fishDepth = clampDepth(circuitPoint.depth || fishDepth);
       }
 
       const currentAngle = Number.isFinite(state.fish.angle)
@@ -188,10 +253,15 @@ export const useSoonStore = create((set, get) => ({
         Math.min(0.16, speed * 0.011) +
         nextTurnAmount * 0.025;
 
+      const pushedBubbles = separateBubblesByDepth(
+        pushBubblesFromFish(state.bubbles, safe, fishDepth)
+      );
+
       return {
         circuitAutopilot,
         circuitSegmentIndex,
         circuitSegmentT,
+        bubbles: pushedBubbles,
         fish: {
           ...state.fish,
           x: safe.x,
@@ -202,7 +272,7 @@ export const useSoonStore = create((set, get) => ({
           targetY,
           angle,
           swimPhase,
-          depth: fishDepth,
+          depth: clampDepth(fishDepth),
           mouthPull: nextMouthPull,
           turnAmount: nextTurnAmount,
           maxSpeed: state.fish.maxSpeed || 3.1,
@@ -294,7 +364,7 @@ export const useSoonStore = create((set, get) => ({
         ...state.fish,
         targetX: first.x,
         targetY: first.y,
-        depth: first.depth || 1,
+        depth: clampDepth(first.depth || 1),
       },
     }));
   },
@@ -315,12 +385,12 @@ export const useSoonStore = create((set, get) => ({
       y: safe.y,
       r: 72,
       hue: Math.floor(160 + Math.random() * 160),
-      depth: 1,
+      depth: clampDepth(get().fish?.depth || 1),
       sampleId: "tone-water",
     };
 
     set((state) => ({
-      bubbles: defaultPack.bubbles.map((bubble) => ({ ...bubble })),
+      bubbles: [...state.bubbles, bubble],
       selectedBubbleId: bubble.id,
       selectedBeaconId: null,
     }));
@@ -334,6 +404,9 @@ export const useSoonStore = create((set, get) => ({
         if (bubble.id !== id) return bubble;
 
         const next = { ...bubble, ...patch };
+        if ("depth" in patch) {
+          next.depth = clampDepth(patch.depth);
+        }
 
         if ("x" in patch || "y" in patch) {
           const safe = clampToCircle(

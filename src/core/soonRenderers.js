@@ -29,7 +29,7 @@ export function drawScene(ctx, rect, time, refs) {
       drawTraceCircuit(ctx, current.traceCircuit, current.selectedBeaconId, time);
     }
 
-    drawBubbles(ctx, current.bubbles, current.selectedBubbleId, time);
+    drawBubbles(ctx, current.bubbles, current.selectedBubbleId, current.mode, time);
   } else {
     drawEyesClosedEchoes(ctx, current.bubbles, current.fish, time);
   }
@@ -208,15 +208,16 @@ export function drawTraceCircuit(ctx, circuit, selectedBeaconId, time) {
   ctx.restore();
 }
 
-export function drawBubbles(ctx, bubbles = [], selectedBubbleId, time) {
+export function drawBubbles(ctx, bubbles = [], selectedBubbleId, mode, time) {
   ctx.save();
 
   bubbles.forEach((bubble) => {
     const selected = bubble.id === selectedBubbleId;
     const pulse = Math.sin(time * 0.003 + bubble.x * 0.01) * 5;
-    const depthScale = 0.82 + bubble.depth * 0.12;
+    const depth = Math.round(bubble.depth || 1);
+    const depthScale = depth === 1 ? 1.07 : depth === 2 ? 1 : 0.9;
     const radius = bubble.r * depthScale;
-    const alpha = 0.34 + bubble.depth * 0.12;
+    const alpha = depth === 1 ? 0.58 : depth === 2 ? 0.46 : 0.32;
 
     const glow = ctx.createRadialGradient(
       bubble.x,
@@ -253,6 +254,11 @@ export function drawBubbles(ctx, bubbles = [], selectedBubbleId, time) {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(bubble.label, bubble.x, bubble.y);
+    if (selected || mode === "compo") {
+      ctx.fillStyle = "rgba(226, 232, 240, 0.68)";
+      ctx.font = "700 10px system-ui";
+      ctx.fillText(`P${depth}`, bubble.x, bubble.y + radius + 18);
+    }
 
     drawNestedDepositFigure(ctx, bubble, radius, bubble.deposits || [], time);
   });
@@ -472,9 +478,30 @@ export function drawCameraVignette(ctx, rect, fish) {
 }
 
 export function drawHud(ctx, rect, current) {
-  if (!current.eyesClosed) return;
+  const fishDepth = Math.round(current?.fish?.depth || 1);
+  const showDepth = current.mode === "compo" || current.mode === "reso";
 
   ctx.save();
+
+  if (showDepth) {
+    ctx.fillStyle = "rgba(2, 6, 23, 0.66)";
+    ctx.strokeStyle = "rgba(186, 230, 253, 0.42)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(rect.width - 90, 18, 64, 30, 14);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "rgba(226, 232, 240, 0.9)";
+    ctx.font = "700 12px system-ui";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`P${fishDepth}`, rect.width - 58, 33);
+  }
+
+  if (!current.eyesClosed) {
+    ctx.restore();
+    return;
+  }
 
   ctx.fillStyle = "rgba(226, 232, 240, 0.78)";
   ctx.font = "500 18px Georgia";

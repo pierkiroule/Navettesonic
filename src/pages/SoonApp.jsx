@@ -26,6 +26,8 @@ export default function SoonApp({ onBack }) {
     setMode,
     setFishTarget,
     tickFish,
+    setFishDepth,
+    updateBubble,
   } = useSoonStore();
 
   const toggle = (key) =>
@@ -80,6 +82,12 @@ export default function SoonApp({ onBack }) {
         depth={depth}
         onFishTarget={setFishTarget}
         onTickFish={() => tickFish({ swimSpeed, depth })}
+        onSetFishDepth={setFishDepth}
+        onCycleBubbleDepth={(id) => {
+          const bubble = bubbles.find((item) => item.id === id);
+          if (!bubble) return;
+          updateBubble(id, { depth: (Math.round(bubble.depth || 1) % 3) + 1 });
+        }}
       />
 
       {/* COCKPIT */}
