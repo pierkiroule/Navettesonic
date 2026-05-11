@@ -28,226 +28,163 @@ export function useSoonPointer({
   onCycleBubbleDepth,
   onOpenBubbleEditor,
 }) {
-  const LONG_PRESS_MS = 520;
-  const LONG_PRESS_CANCEL_DISTANCE = 12;
+  const LONG_PRESS_MS = 500;
+  const LONG_PRESS_CANCEL_DISTANCE = 10;
+  const DRAG_START_DISTANCE = 12;
+  const DOUBLE_TAP_MS = 300;
+  const DOUBLE_TAP_DISTANCE = 40;
 
   function clearLongPress() {
-    if (pointerRef.current.longPressTimer) {
-      clearTimeout(pointerRef.current.longPressTimer);
-    }
+    if (pointerRef.current.longPressTimer) clearTimeout(pointerRef.current.longPressTimer);
     pointerRef.current.longPressTimer = null;
     pointerRef.current.longPressStartPoint = null;
     pointerRef.current.longPressTargetType = null;
     pointerRef.current.longPressTargetId = null;
   }
+  const isEditMode = (s) => s.interactionMode === "edit";
+  const isTraceMode = (s) => isEditMode(s) && s.mode === "reso" && s.editTool === "trace";
+
   function getWorldFromEvent(event) {
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-
-    return screenToWorld({
-      clientX: event.clientX,
-      clientY: event.clientY,
-      rect,
-      camera: cameraRef.current,
-    });
+    const rect = canvasRef.current.getBoundingClientRect();
+    return screenToWorld({ clientX: event.clientX, clientY: event.clientY, rect, camera: cameraRef.current });
   }
-
   function getSafeWorldFromEvent(event) {
-    const point = getWorldFromEvent(event);
-    return clampToCircle(point, arenaRef.current.radius - 70);
+    return clampToCircle(getWorldFromEvent(event), arenaRef.current.radius - 70);
   }
-
   function findBubbleAt(point) {
     const state = stateRef.current;
     const fishDepth = normalizeDepth(state?.fish?.depth);
     const bubbles = [...(state?.bubbles || [])].reverse();
-    const sortByNearest = (a, b) => distance(a, point) - distance(b, point);
     const inHitArea = (bubble) => distance(bubble, point) <= getBubbleHitRadius(bubble);
-
-    const sameDepthCandidates = bubbles
-      .filter((bubble) => normalizeDepth(bubble?.depth) === fishDepth)
-      .filter(inHitArea)
-      .sort(sortByNearest);
-
-    if (sameDepthCandidates.length > 0) return sameDepthCandidates[0];
-
-    const fallbackCandidates = bubbles.filter(inHitArea).sort(sortByNearest);
-    return fallbackCandidates[0] || null;
+    const sameDepth = bubbles.filter((b) => normalizeDepth(b?.depth) === fishDepth).filter(inHitArea);
+    return sameDepth[0] || bubbles.find(inHitArea) || null;
   }
-
   function findBeaconAt(point) {
-    return [...(stateRef.current.traceCircuit || [])]
-      .reverse()
-      .find((beacon) => distance(beacon, point) <= 26);
+    return [...(stateRef.current.traceCircuit || [])].reverse().find((beacon) => distance(beacon, point) <= 26);
   }
 
   function handlePointerDown(event) {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     canvas.setPointerCapture(event.pointerId);
 
     const point = getSafeWorldFromEvent(event);
     const current = stateRef.current;
-    const isEditMode = current.interactionMode === "edit";
-
-    const hit = isEditMode ? findBubbleAt(point) : null;
-    const beaconHit = isEditMode && current.mode === "reso" ? findBeaconAt(point) : null;
+    const edit = isEditMode(current);
+    const hitBubble = edit ? findBubbleAt(point) : null;
+    const hitBeacon = edit && current.mode === "reso" ? findBeaconAt(point) : null;
 
     pointerRef.current.down = true;
+    pointerRef.current.activePointers = pointerRef.current.activePointers || new Map();
+    pointerRef.current.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     pointerRef.current.pointerId = event.pointerId;
+    pointerRef.current.longPressStartPoint = point;
+    pointerRef.current.panStart = point;
     pointerRef.current.dragBubbleId = null;
     pointerRef.current.pendingBubbleId = null;
     pointerRef.current.dragBeaconId = null;
-    pointerRef.current.longPressStartPoint = point;
-    pointerRef.current.longPressTargetType = hit ? "bubble" : "fish";
-    pointerRef.current.longPressTargetId = hit ? hit.id : null;
-    pointerRef.current.activePointers = pointerRef.current.activePointers || new Map();
-    pointerRef.current.activePointers.set(event.pointerId, {
-      x: event.clientX,
-      y: event.clientY,
-    });
-    pointerRef.current.panStart = point;
-    pointerRef.current.panEnabled = isEditMode && !hit;
+    pointerRef.current.gesture = "tap_candidate";
+    pointerRef.current.longPressTargetType = hitBubble ? "bubble" : "empty";
+    pointerRef.current.longPressTargetId = hitBubble ? hitBubble.id : null;
 
     clearLongPress();
     pointerRef.current.longPressTimer = setTimeout(() => {
       const nowState = stateRef.current;
-      if (!pointerRef.current.down) return;
+      if (!pointerRef.current.down || pointerRef.current.gesture === "pinch_zoom") return;
       if (pointerRef.current.dragBubbleId || pointerRef.current.dragBeaconId) return;
-
-      if (
-        isEditMode &&
-        pointerRef.current.longPressTargetType === "bubble" &&
-        pointerRef.current.longPressTargetId
-      ) {
+      if (isEditMode(nowState) && pointerRef.current.longPressTargetType === "bubble" && pointerRef.current.longPressTargetId) {
         onCycleBubbleDepth(pointerRef.current.longPressTargetId);
-      } else {
+      } else if (!isEditMode(nowState)) {
         const nextDepth = ((Math.round(nowState.fish?.depth || 1) % 3) || 0) + 1;
         onSetFishDepth(nextDepth);
-        pointerRef.current.fishDepthHudUntil = Date.now() + 1800;
       }
       clearLongPress();
     }, LONG_PRESS_MS);
 
-    if (isEditMode && beaconHit) {
-      onSelectBeacon(beaconHit.id);
-      pointerRef.current.dragBeaconId = beaconHit.id;
+    if (edit && hitBeacon) {
+      onSelectBeacon(hitBeacon.id);
+      pointerRef.current.dragBeaconId = hitBeacon.id;
+      pointerRef.current.gesture = "drag_beacon";
+      return;
+    }
+    if (edit && hitBubble) {
+      onSelectBubble(hitBubble.id);
+      pointerRef.current.pendingBubbleId = hitBubble.id;
       return;
     }
 
-    if (isEditMode && hit) {
-      onSelectBubble(hit.id);
-
-      pointerRef.current.pendingBubbleId = hit.id;
-
-      return;
-    }
-
-    if (isEditMode) {
+    if (edit) {
       onSelectBubble(null);
+      if (isTraceMode(current)) {
+        onAddPathPoint(point);
+        pointerRef.current.gesture = "draw_path";
+      } else {
+        pointerRef.current.gesture = "pan_camera";
+      }
+      return;
     }
 
-    if (!isEditMode && !current.circuitAutopilot) {
-      onFishTarget(point.x, point.y);
-    }
-
-    if (isEditMode && current.mode === "reso") {
-      onAddPathPoint(point);
-    }
+    if (!current.circuitAutopilot) onFishTarget(point.x, point.y);
 
     const now = Date.now();
     const last = pointerRef.current.lastTapPos;
-
-    const isDoubleTap =
-      now - pointerRef.current.lastTapAt < 360 &&
-      last &&
-      Math.hypot(last.x - point.x, last.y - point.y) < 48;
-
-    if (isDoubleTap && isEditMode) {
-      if (hit) {
-        onSelectBubble(hit.id);
-        onOpenBubbleEditor?.(hit.id);
-      } else {
-        onAddBubble(point.x, point.y);
-      }
-    }
-
+    const isDoubleTap = now - pointerRef.current.lastTapAt < DOUBLE_TAP_MS && last && Math.hypot(last.x - point.x, last.y - point.y) < DOUBLE_TAP_DISTANCE;
+    if (isDoubleTap) onSetFishDepth(((Math.round(current.fish?.depth || 1) % 3) || 0) + 1);
     pointerRef.current.lastTapAt = now;
     pointerRef.current.lastTapPos = point;
   }
 
   function handlePointerMove(event) {
     if (!pointerRef.current.down && !(pointerRef.current.activePointers?.size > 0)) return;
-
     pointerRef.current.activePointers = pointerRef.current.activePointers || new Map();
-    pointerRef.current.activePointers.set(event.pointerId, {
-      x: event.clientX,
-      y: event.clientY,
-    });
+    pointerRef.current.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
     const point = getSafeWorldFromEvent(event);
     const current = stateRef.current;
+    const edit = isEditMode(current);
 
-    const isEditMode = current.interactionMode === "edit";
-
-    if (isEditMode && pointerRef.current.activePointers.size >= 2) {
-      const values = [...pointerRef.current.activePointers.values()];
-      const a = values[0];
-      const b = values[1];
-      const midClient = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    if (edit && pointerRef.current.activePointers.size >= 2) {
+      const [a, b] = [...pointerRef.current.activePointers.values()];
       const dist = Math.hypot(a.x - b.x, a.y - b.y);
       const rect = canvasRef.current.getBoundingClientRect();
-      const centerWorld = screenToWorld({
-        clientX: midClient.x,
-        clientY: midClient.y,
-        rect,
-        camera: cameraRef.current,
-      });
-
+      const centerWorld = screenToWorld({ clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2, rect, camera: cameraRef.current });
       if (pointerRef.current.pinchDistance) {
         const factor = dist / pointerRef.current.pinchDistance;
-        if (Number.isFinite(factor) && factor > 0) {
-          zoomEditCameraAt(cameraRef, factor, centerWorld, rect, arenaRef.current.radius);
-        }
+        if (Number.isFinite(factor) && factor > 0) zoomEditCameraAt(cameraRef, factor, centerWorld, rect, arenaRef.current.radius);
       }
       pointerRef.current.pinchDistance = dist;
-      pointerRef.current.panEnabled = false;
+      pointerRef.current.gesture = "pinch_zoom";
       clearLongPress();
       return;
     }
     pointerRef.current.pinchDistance = null;
 
-    if (isEditMode && pointerRef.current.dragBeaconId) {
+    if (edit && pointerRef.current.dragBeaconId) {
+      pointerRef.current.gesture = "drag_beacon";
       clearLongPress();
       onMoveBeacon(pointerRef.current.dragBeaconId, point.x, point.y);
       return;
     }
 
-    if (isEditMode && pointerRef.current.pendingBubbleId) {
+    if (edit && pointerRef.current.pendingBubbleId) {
       const start = pointerRef.current.longPressStartPoint;
-      if (start && Math.hypot(start.x - point.x, start.y - point.y) > LONG_PRESS_CANCEL_DISTANCE) {
+      if (start && Math.hypot(start.x - point.x, start.y - point.y) > DRAG_START_DISTANCE) {
         pointerRef.current.dragBubbleId = pointerRef.current.pendingBubbleId;
         pointerRef.current.pendingBubbleId = null;
+        pointerRef.current.gesture = "drag_bubble";
         clearLongPress();
       }
     }
 
-    if (isEditMode && pointerRef.current.dragBubbleId) {
-      clearLongPress();
-      onMoveBubble(pointerRef.current.dragBubbleId, {
-        x: point.x,
-        y: point.y,
-      });
+    if (edit && pointerRef.current.dragBubbleId) {
+      onMoveBubble(pointerRef.current.dragBubbleId, { x: point.x, y: point.y });
       return;
     }
 
-    if (isEditMode && pointerRef.current.panEnabled) {
+    if (edit && pointerRef.current.gesture === "pan_camera") {
       const start = pointerRef.current.panStart;
       if (start) {
-        const dx = point.x - start.x;
-        const dy = point.y - start.y;
-        panEditCamera(cameraRef, dx, dy);
+        panEditCamera(cameraRef, point.x - start.x, point.y - start.y);
         const rect = canvasRef.current.getBoundingClientRect();
         clampEditCamera(cameraRef, rect, arenaRef.current.radius);
       }
@@ -255,21 +192,41 @@ export function useSoonPointer({
       clearLongPress();
       return;
     }
-    const start = pointerRef.current.longPressStartPoint;
-    if (start && Math.hypot(start.x - point.x, start.y - point.y) > LONG_PRESS_CANCEL_DISTANCE) {
-      clearLongPress();
-    }
 
-    if (!isEditMode) {
-      onFishTarget(point.x, point.y);
-    }
-
-    if (isEditMode && current.mode === "reso") {
+    if (edit && pointerRef.current.gesture === "draw_path" && isTraceMode(current)) {
       onAddPathPoint(point);
+      clearLongPress();
+      return;
     }
+
+    const start = pointerRef.current.longPressStartPoint;
+    if (start && Math.hypot(start.x - point.x, start.y - point.y) > LONG_PRESS_CANCEL_DISTANCE) clearLongPress();
+
+    if (!edit) onFishTarget(point.x, point.y);
   }
 
   function handlePointerUp(event) {
+    const current = stateRef.current;
+    const point = getSafeWorldFromEvent(event);
+    const edit = isEditMode(current);
+
+    if (edit && pointerRef.current.gesture === "tap_candidate") {
+      const hit = findBubbleAt(point);
+      const now = Date.now();
+      const last = pointerRef.current.lastTapPos;
+      const isDoubleTap = now - pointerRef.current.lastTapAt < DOUBLE_TAP_MS && last && Math.hypot(last.x - point.x, last.y - point.y) < DOUBLE_TAP_DISTANCE;
+      if (isDoubleTap) {
+        if (hit) {
+          onSelectBubble(hit.id);
+          onOpenBubbleEditor?.(hit.id);
+        } else if (current.mode === "compo") {
+          onAddBubble(point.x, point.y);
+        }
+      }
+      pointerRef.current.lastTapAt = now;
+      pointerRef.current.lastTapPos = point;
+    }
+
     clearLongPress();
     pointerRef.current.activePointers?.delete(event.pointerId);
     pointerRef.current.down = (pointerRef.current.activePointers?.size || 0) > 0;
@@ -278,24 +235,15 @@ export function useSoonPointer({
       pointerRef.current.dragBubbleId = null;
       pointerRef.current.pendingBubbleId = null;
       pointerRef.current.dragBeaconId = null;
-      pointerRef.current.panEnabled = false;
       pointerRef.current.panStart = null;
       pointerRef.current.pinchDistance = null;
+      pointerRef.current.gesture = "idle";
     }
 
-    try {
-      canvasRef.current?.releasePointerCapture(event.pointerId);
-    } catch {}
+    try { canvasRef.current?.releasePointerCapture(event.pointerId); } catch {}
   }
 
-  function cleanupPointer() {
-    clearLongPress();
-  }
+  function cleanupPointer() { clearLongPress(); }
 
-  return {
-    handlePointerDown,
-    handlePointerMove,
-    handlePointerUp,
-    cleanupPointer,
-  };
+  return { handlePointerDown, handlePointerMove, handlePointerUp, cleanupPointer };
 }

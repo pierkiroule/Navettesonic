@@ -7,6 +7,7 @@ import { useSoonStore } from "../store/useSoonStore.js";
 export default function SoonApp({ onBack }) {
   const [page, setPage] = useState("arena");
   const [interactionMode, setInteractionMode] = useState("swim");
+  const [editTool, setEditTool] = useState("navigate");
   const [viewZoom, setViewZoom] = useState(1);
   const [swimSpeed, setSwimSpeed] = useState(1);
   const [depth, setDepth] = useState(1);
@@ -86,6 +87,7 @@ export default function SoonApp({ onBack }) {
       <SoonCanvas
         mode={mode}
         interactionMode={interactionMode}
+        editTool={editTool}
         bubbles={bubbles}
         fish={fish}
         selectedBubbleId={selectedBubbleId}
@@ -138,6 +140,28 @@ export default function SoonApp({ onBack }) {
             aria-pressed={interactionMode === "edit"}
           >
             Éditer
+          </button>
+          <button
+            type="button"
+            className={`mode-switch-button ${interactionMode === "edit" && editTool === "navigate" ? "active" : ""}`}
+            onClick={() => {
+              setInteractionMode("edit");
+              setEditTool("navigate");
+            }}
+            aria-pressed={interactionMode === "edit" && editTool === "navigate"}
+          >
+            Naviguer
+          </button>
+          <button
+            type="button"
+            className={`mode-switch-button ${interactionMode === "edit" && editTool === "trace" ? "active" : ""}`}
+            onClick={() => {
+              setInteractionMode("edit");
+              setEditTool("trace");
+            }}
+            aria-pressed={interactionMode === "edit" && editTool === "trace"}
+          >
+            Tracer
           </button>
         </div>
       </div>
