@@ -30,10 +30,14 @@ export default function SoonApp({ onBack }) {
     tickFish,
     setFishDepth,
     selectBubble,
+    selectBeacon,
+    moveBeacon,
     updateBeacon,
     startCircuitAutopilot,
     stopCircuitAutopilot,
     autoGenerateTraceCircuit,
+    addBubble,
+    addPathPoint,
     updateBubble,
     deleteBubble,
   } = useSoonStore();
@@ -98,6 +102,16 @@ export default function SoonApp({ onBack }) {
           tickFish({ swimSpeed, depth });
         }}
         onSetFishDepth={setFishDepth}
+        onSelectBubble={selectBubble}
+        onSelectBeacon={selectBeacon}
+        onMoveBeacon={moveBeacon}
+        onMoveBubble={(id, pos) => updateBubble(id, pos)}
+        onAddBubble={addBubble}
+        onAddPathPoint={addPathPoint}
+        onOpenBubbleEditor={(id) => {
+          selectBubble(id);
+          setEditorOpenKey((value) => value + 1);
+        }}
         onCycleBubbleDepth={(id) => {
           const bubble = bubbles.find((item) => item.id === id);
           if (!bubble) return;

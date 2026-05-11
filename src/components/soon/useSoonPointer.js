@@ -26,6 +26,7 @@ export function useSoonPointer({
   onAddPathPoint,
   onSetFishDepth,
   onCycleBubbleDepth,
+  onOpenBubbleEditor,
 }) {
   const LONG_PRESS_MS = 520;
   const LONG_PRESS_CANCEL_DISTANCE = 12;
@@ -166,6 +167,7 @@ export function useSoonPointer({
     if (isDoubleTap && isEditMode) {
       if (hit) {
         onSelectBubble(hit.id);
+        onOpenBubbleEditor?.(hit.id);
       } else {
         onAddBubble(point.x, point.y);
       }

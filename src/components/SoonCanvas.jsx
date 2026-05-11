@@ -26,6 +26,7 @@ export default function SoonCanvas({
   onAddPathPoint,
   onSetFishDepth,
   onCycleBubbleDepth,
+  onOpenBubbleEditor,
 }) {
   const canvasRef = useRef(null);
 
@@ -137,6 +138,7 @@ export default function SoonCanvas({
     onAddPathPoint,
     onSetFishDepth,
     onCycleBubbleDepth,
+    onOpenBubbleEditor,
   });
 
   useEffect(() => cleanupPointer, [cleanupPointer]);
