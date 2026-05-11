@@ -1,0 +1,49 @@
+import {
+  playBubbleSound,
+  stopBubbleSound,
+  updateAmbientMix,
+} from "./audioEngine.js";
+
+function sameDepth(fish, bubble) {
+  return Math.round(fish?.depth || 1) === Math.round(bubble?.depth || 1);
+}
+
+export function updateBubbleAudioTriggers(current, activeBubbleAudioRef) {
+  const fish = current.fish;
+  const bubbles = current.bubbles || [];
+
+  if (!fish || !bubbles.length) return;
+
+  const activeNow = new Set();
+
+  bubbles.forEach((bubble) => {
+    if (!sameDepth(fish, bubble)) return;
+
+    const dx = (bubble.x || 0) - (fish.x || 0);
+    const dy = (bubble.y || 0) - (fish.y || 0);
+    const d = Math.hypot(dx, dy);
+
+    const triggerRadius = (bubble.r || 70) + 85;
+    const isNear = d <= triggerRadius;
+
+    if (!isNear) return;
+
+    activeNow.add(bubble.id);
+
+    if (!activeBubbleAudioRef.current.has(bubble.id)) {
+      playBubbleSound(bubble);
+    }
+  });
+
+  activeBubbleAudioRef.current.forEach((bubbleId) => {
+    if (!activeNow.has(bubbleId)) {
+      stopBubbleSound(bubbleId);
+    }
+  });
+
+  activeBubbleAudioRef.current = activeNow;
+
+  updateAmbientMix({
+    near: activeNow.size > 0,
+  });
+}

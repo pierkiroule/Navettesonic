@@ -1,0 +1,86 @@
+export function resizeCanvas(canvas, ctx) {
+  const rect = canvas.getBoundingClientRect();
+  const ratio = window.devicePixelRatio || 1;
+
+  const width = Math.floor(rect.width * ratio);
+  const height = Math.floor(rect.height * ratio);
+
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
+
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+  return rect;
+}
+
+export function updateArena(arenaRef, rect) {
+  const maxScreen = Math.max(rect.width, rect.height);
+  arenaRef.current.radius = maxScreen * 1.5;
+}
+
+export function followFishCamera(cameraRef, arenaRef, fish, rect) {
+  if (!fish) return;
+
+  const camera = cameraRef.current;
+  const arenaRadius = arenaRef.current.radius;
+
+  const speed = Math.hypot(fish.vx || 0, fish.vy || 0);
+  const speedNorm = Math.min(1, speed / 18);
+  const depth = Math.max(1, Math.min(3, Math.round(fish.depth || 1)));
+
+  const lookAhead = 90 + speedNorm * 180;
+  const angle = Number.isFinite(fish.angle)
+    ? fish.angle
+    : Math.atan2(fish.vy || 0, fish.vx || 1);
+
+  const targetRawX = fish.x + Math.cos(angle) * lookAhead * speedNorm;
+  const targetRawY = fish.y + Math.sin(angle) * lookAhead * speedNorm;
+
+  const t = performance.now() * 0.001;
+  const breath = Math.sin(t * 0.42) * 0.018;
+
+  const depthZoom = depth === 1 ? 1 : depth === 2 ? 0.94 : 0.88;
+  const speedZoom = 1 - speedNorm * 0.08;
+  const targetZoom = depthZoom * speedZoom + breath;
+
+  const marginX = rect.width * 0.42 / targetZoom;
+  const marginY = rect.height * 0.42 / targetZoom;
+
+  const maxCameraX = Math.max(0, arenaRadius - marginX);
+  const maxCameraY = Math.max(0, arenaRadius - marginY);
+
+  const targetX = Math.max(-maxCameraX, Math.min(maxCameraX, targetRawX));
+  const targetY = Math.max(-maxCameraY, Math.min(maxCameraY, targetRawY));
+
+  const positionEase = 0.035 + speedNorm * 0.045;
+  const zoomEase = 0.025 + speedNorm * 0.025;
+
+  camera.x += (targetX - camera.x) * positionEase;
+  camera.y += (targetY - camera.y) * positionEase;
+  camera.zoom += (targetZoom - camera.zoom) * zoomEase;
+}
+
+export function enterWorld(ctx, rect, cameraRef, stateRef) {
+  const camera = cameraRef.current;
+  const fish = stateRef.current.fish || {};
+
+  const speed = Math.hypot(fish.vx || 0, fish.vy || 0);
+  const speedNorm = Math.min(1, speed / 18);
+  const t = performance.now() * 0.001;
+
+  const driftX = Math.sin(t * 0.33) * 4 * (0.25 + speedNorm);
+  const driftY = Math.cos(t * 0.27) * 4 * (0.25 + speedNorm);
+
+  const viewZoom = stateRef.current.viewZoom || 1;
+
+  ctx.save();
+  ctx.translate(rect.width / 2, rect.height / 2);
+  ctx.scale(camera.zoom * viewZoom, camera.zoom * viewZoom);
+  ctx.translate(-camera.x + driftX, -camera.y + driftY);
+}
+
+export function exitWorld(ctx) {
+  ctx.restore();
+}

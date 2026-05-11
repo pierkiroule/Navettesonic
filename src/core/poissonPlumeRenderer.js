@@ -18,22 +18,39 @@ const BODY = {
 
 function getSpinePoint(t, d) {
   const y = lerp(BODY.startY, BODY.endY, t);
-  const headAttenuation = 0.08 + Math.pow(t, 1.35) * 0.92;
-  const ropeAmplitude = Math.pow(t, 1.55);
-  const basePhase = d.swimT * (4.2 + d.glide * 2.6);
-  const tailWave = Math.sin(t * Math.PI * 2.9 - basePhase) * (0.85 + d.glide * 2.5);
-  const subWave = Math.sin(t * Math.PI * 5.4 - basePhase * 1.32 + 0.45) * (0.2 + d.glide * 0.85);
-  const ropeWave = (tailWave + subWave) * ropeAmplitude;
 
-  const wave = ropeWave * headAttenuation;
+  const tailWeight = Math.pow(t, 1.85);
+  const midWeight = Math.sin(t * Math.PI);
+  const headLock = Math.pow(t, 1.35);
 
-  const turn =
+  const phase = d.swimT * (4.2 + d.glide * 2.8);
+
+  const mainWave =
+    Math.sin(t * Math.PI * 2.9 - phase) *
+    (0.8 + d.glide * 2.6) *
+    tailWeight;
+
+  const subWave =
+    Math.sin(t * Math.PI * 5.6 - phase * 1.35 + 0.6) *
+    (0.18 + d.glide * 0.75) *
+    tailWeight;
+
+  const turnCurve =
     d.bend *
-    Math.sin(t * Math.PI) *
-    (7.5 + d.glide * 6.8) *
-    (0.06 + t * 0.94);
+    Math.pow(t, 1.55) *
+    (12 + d.glide * 12);
 
-  return { x: wave + turn, y };
+  const bodyArc =
+    d.bend *
+    midWeight *
+    (4 + d.glide * 5);
+
+  const x =
+    (mainWave + subWave) * headLock +
+    turnCurve +
+    bodyArc;
+
+  return { x, y };
 }
 
 function getSpineNormal(t, d) {
@@ -253,52 +270,69 @@ function drawFins(ctx, d) {
 }
 
 function drawTail(ctx, d) {
-  const base = getSpinePoint(0.92, d);
+  const base = getSpinePoint(0.88, d);
+  const root = getSpinePoint(0.98, d);
   const tip = getSpinePoint(1, d);
-  const n = getSpineNormal(1, d);
+  const n = getSpineNormal(0.98, d);
 
   const wag =
-    Math.sin(d.swimT * (7.4 + d.glide * 3.1)) * (4.6 + d.glide * 6.2) +
-    d.bend * 7.2;
+    Math.sin(d.swimT * (7.2 + d.glide * 2.8)) * (3.8 + d.glide * 5.2) +
+    d.bend * 5.8;
 
-  const rootX = tip.x;
-  const rootY = tip.y + 2;
+  const tailRootX = tip.x + wag * 0.25;
+  const tailRootY = tip.y + 3;
 
-  const tx = rootX + wag;
-  const ty = rootY + 8;
+  const featherX = tip.x + wag;
+  const featherY = tip.y + 10;
 
-  const baseGrad = ctx.createLinearGradient(base.x, base.y, tx, ty);
-  baseGrad.addColorStop(0, `hsla(${d.bodyHueMid}, 88%, 82%, 0.46)`);
+  // pédoncule souple
+  const baseGrad = ctx.createLinearGradient(base.x, base.y, featherX, featherY);
+  baseGrad.addColorStop(0, `hsla(${d.bodyHueMid}, 88%, 82%, 0.48)`);
   baseGrad.addColorStop(1, `hsla(${d.bodyHueTop + 20}, 90%, 92%, 0)`);
 
   ctx.fillStyle = baseGrad;
-
   ctx.beginPath();
-  ctx.moveTo(base.x + n.x * 2.7, base.y + n.y * 2.7);
-  ctx.quadraticCurveTo(rootX + wag * 0.35, rootY + 4, tx - 1.5, ty + 1.5);
-  ctx.quadraticCurveTo(rootX + wag * 0.35, rootY + 4, base.x - n.x * 2.7, base.y - n.y * 2.7);
+  ctx.moveTo(base.x + n.x * 2.4, base.y + n.y * 2.4);
+  ctx.bezierCurveTo(
+    root.x + wag * 0.12,
+    root.y + 4,
+    tailRootX,
+    tailRootY,
+    featherX - 1.2,
+    featherY
+  );
+  ctx.bezierCurveTo(
+    tailRootX,
+    tailRootY,
+    root.x + wag * 0.12,
+    root.y + 4,
+    base.x - n.x * 2.4,
+    base.y - n.y * 2.4
+  );
   ctx.closePath();
   ctx.fill();
 
+  // panache plumeux attaché à la pointe
   const feathers = [
-    { side: -1, len: 30, span: 6.2, rot: -0.29, alpha: 0.38 },
-    { side: 1, len: 37, span: 5.4, rot: 0, alpha: 0.45 },
-    { side: 1, len: 30, span: 6.2, rot: 0.29, alpha: 0.38 },
+    { side: -1, len: 30, span: 6.0, rot: -0.3, alpha: 0.36 },
+    { side: -1, len: 36, span: 5.0, rot: -0.06, alpha: 0.42 },
+    { side: 1, len: 36, span: 5.0, rot: 0.06, alpha: 0.42 },
+    { side: 1, len: 30, span: 6.0, rot: 0.3, alpha: 0.36 },
   ];
 
   ctx.save();
-  ctx.translate(tx, ty);
-  ctx.rotate(wag * 0.015);
+  ctx.translate(featherX, featherY);
+  ctx.rotate(wag * 0.012 + d.bend * 0.12);
 
   feathers.forEach((f, i) => {
-    const curl = Math.sin(d.swimT * 2 + i * 1.3) * 0.3;
+    const curl = Math.sin(d.swimT * 2 + i * 1.35) * 0.3;
 
     ctx.save();
     ctx.rotate(f.rot + curl * 0.07);
 
     const grad = ctx.createLinearGradient(0, 0, f.side * f.span, f.len);
     grad.addColorStop(0, `hsla(${d.bodyHueMid}, 90%, 86%, ${f.alpha})`);
-    grad.addColorStop(0.52, `hsla(${d.bodyHueTop + 18}, 92%, 92%, ${f.alpha * 0.5})`);
+    grad.addColorStop(0.52, `hsla(${d.bodyHueTop + 18}, 92%, 92%, ${f.alpha * 0.52})`);
     grad.addColorStop(1, `hsla(${d.bodyHueTop + 36}, 95%, 96%, 0)`);
 
     ctx.fillStyle = grad;
@@ -336,17 +370,16 @@ function drawDorsalLine(ctx, d) {
 
 function drawBackSail(ctx, d) {
   const root = getSpinePoint(0.46, d);
-  const n = getSpineNormal(0.46, d);
   const crestLift = 11 + d.glide * 6 + d.reactiveHighs * 4;
   const trailLift = 18 + d.glide * 8;
 
   ctx.save();
   ctx.translate(root.x, root.y);
-  ctx.rotate(d.bend * 0.2);
+  ctx.rotate(d.bend * 0.12);
 
-  const grad = ctx.createLinearGradient(0, 0, -n.x * 10, -trailLift);
-  grad.addColorStop(0, `hsla(${d.bodyHueMid + 10}, 90%, 82%, 0.28)`);
-  grad.addColorStop(0.42, `hsla(${d.bodyHueTop + 16}, 94%, 92%, 0.16)`);
+  const grad = ctx.createLinearGradient(0, 0, -6, -trailLift);
+  grad.addColorStop(0, `hsla(${d.bodyHueMid + 10}, 90%, 82%, 0.22)`);
+  grad.addColorStop(0.42, `hsla(${d.bodyHueTop + 16}, 94%, 92%, 0.12)`);
   grad.addColorStop(1, `hsla(${d.bodyHueTop + 36}, 98%, 98%, 0)`);
 
   ctx.fillStyle = grad;
@@ -356,6 +389,7 @@ function drawBackSail(ctx, d) {
   ctx.quadraticCurveTo(3.6, -crestLift * 0.65, 2.4, 0.8);
   ctx.closePath();
   ctx.fill();
+
   ctx.restore();
 }
 
@@ -367,7 +401,6 @@ function drawHead(ctx, d, mouthPull = 0) {
 
   ctx.save();
 
-  // front lumineux centré sur la tête
   const headGlow = ctx.createRadialGradient(head.x, head.y - 2, 1, head.x, head.y, w * 1.15);
   headGlow.addColorStop(0, "rgba(255,255,255,0.18)");
   headGlow.addColorStop(0.6, "rgba(255,255,255,0.06)");
@@ -377,7 +410,6 @@ function drawHead(ctx, d, mouthPull = 0) {
   traceBody(ctx, d);
   ctx.fill();
 
-  // bouche fixée au nez, pas décalée
   ctx.strokeStyle = "rgba(15, 35, 52, 0.22)";
   ctx.lineWidth = 0.58;
   ctx.lineCap = "round";
@@ -448,7 +480,7 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
   const bend =
     clamp01(Math.abs(turnAmount)) *
     Math.sign(turnAmount || Math.sin(swimT * 0.7)) *
-    (0.16 + glide * 0.76);
+    (0.28 + glide * 1.25);
 
   const wingPresence = Math.max(
     0.18,
@@ -471,12 +503,11 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
     bodyHueTop: 184 + Math.sin(swimT * 1.6) * 7,
     bodyHueMid: 198 + Math.sin(swimT * 1.2 + 1.4) * 10,
     bodyHueLow: 214 + Math.sin(swimT * 1.8 + 2.1) * 9,
-    shimmerPulse:
-      Math.min(
-        1.2,
-        (Math.sin(swimT * (2.1 + reactiveHighs * 0.7 + audioInfluence * 0.8)) + 1) * 0.5 +
-          reactiveHighs * 0.36
-      ),
+    shimmerPulse: Math.min(
+      1.2,
+      (Math.sin(swimT * (2.1 + reactiveHighs * 0.7 + audioInfluence * 0.8)) + 1) * 0.5 +
+        reactiveHighs * 0.36
+    ),
     reactiveHighs,
     reactiveEnergy,
     audioInfluence,
@@ -486,8 +517,13 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
   const depth = Math.max(1, Math.min(3, Math.round(safeNumber(fish.depth, 1))));
   const depthScale = depth === 1 ? 1.42 : depth === 2 ? 1.32 : 1.22;
   const depthAlpha = depth === 1 ? 1 : depth === 2 ? 0.9 : 0.78;
+
   const fluidScale = 1 + Math.sin(swimT * 3.1) * 0.006;
-  const ropeStretch = 1 + Math.sin(swimT * (6.2 + glide * 2.2) - glide * 0.8) * (0.012 + glide * 0.018);
+
+  const ropeStretch =
+    1 +
+    Math.sin(swimT * (6.2 + glide * 2.2) - glide * 0.8) *
+      (0.018 + glide * 0.026);
 
   ctx.save();
 
@@ -506,8 +542,8 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
   drawBubbleTrail(ctx, d);
   drawTail(ctx, d);
   drawFins(ctx, d);
-  drawBody(ctx, d);
   drawBackSail(ctx, d);
+  drawBody(ctx, d);
   drawDorsalLine(ctx, d);
   drawHead(ctx, d, mouthPull);
 
