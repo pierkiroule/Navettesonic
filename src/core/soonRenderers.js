@@ -1,4 +1,4 @@
-import { distance } from "./geometry.js";
+import { distance, getBubbleVisualRadius } from "./geometry.js";
 import { sampleSmoothCircuit } from "./traceCircuit.js";
 import { drawPoissonPlume } from "./poissonPlumeRenderer.js";
 import {
@@ -38,7 +38,9 @@ export function drawScene(ctx, rect, time, refs) {
   drawFireflies(ctx, time);
   drawPlumeTrail(ctx);
   drawResonanceBubbles(ctx, time);
-  drawFish(ctx, current.fish, time);
+  if (current.interactionMode !== "edit") {
+    drawFish(ctx, current.fish, time);
+  }
 
   exitWorld(ctx);
 
@@ -215,8 +217,7 @@ export function drawBubbles(ctx, bubbles = [], selectedBubbleId, mode, time) {
     const selected = bubble.id === selectedBubbleId;
     const pulse = Math.sin(time * 0.003 + bubble.x * 0.01) * 5;
     const depth = Math.round(bubble.depth || 1);
-    const depthScale = depth === 1 ? 1.07 : depth === 2 ? 1 : 0.9;
-    const radius = bubble.r * depthScale;
+    const radius = getBubbleVisualRadius(bubble);
     const alpha = depth === 1 ? 0.58 : depth === 2 ? 0.46 : 0.32;
 
     const glow = ctx.createRadialGradient(

@@ -6,6 +6,7 @@ import { useSoonStore } from "../store/useSoonStore.js";
 
 export default function SoonApp({ onBack }) {
   const [page, setPage] = useState("arena");
+  const [interactionMode, setInteractionMode] = useState("swim");
   const [viewZoom, setViewZoom] = useState(1);
   const [swimSpeed, setSwimSpeed] = useState(1);
   const [depth, setDepth] = useState(1);
@@ -70,6 +71,7 @@ export default function SoonApp({ onBack }) {
       {/* CANVAS */}
       <SoonCanvas
         mode={mode}
+        interactionMode={interactionMode}
         bubbles={bubbles}
         fish={fish}
         selectedBubbleId={selectedBubbleId}
@@ -81,7 +83,10 @@ export default function SoonApp({ onBack }) {
         viewZoom={viewZoom}
         depth={depth}
         onFishTarget={setFishTarget}
-        onTickFish={() => tickFish({ swimSpeed, depth })}
+        onTickFish={() => {
+          if (interactionMode === "edit") return;
+          tickFish({ swimSpeed, depth });
+        }}
         onSetFishDepth={setFishDepth}
         onCycleBubbleDepth={(id) => {
           const bubble = bubbles.find((item) => item.id === id);
@@ -89,6 +94,16 @@ export default function SoonApp({ onBack }) {
           updateBubble(id, { depth: (Math.round(bubble.depth || 1) % 3) + 1 });
         }}
       />
+
+      <div style={{ display: "flex", justifyContent: "center", marginTop: 10 }}>
+        <button
+          onClick={() => setInteractionMode((prev) => (prev === "swim" ? "edit" : "swim"))}
+          className={interactionMode === "edit" ? "active" : ""}
+          title={interactionMode === "edit" ? "Mode Éditer" : "Mode Nager"}
+        >
+          {interactionMode === "edit" ? "Mode Éditer" : "Mode Nager"}
+        </button>
+      </div>
 
       {/* COCKPIT */}
       <div className="cockpit">
