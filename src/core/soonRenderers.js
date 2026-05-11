@@ -84,20 +84,7 @@ export function drawOcean(ctx, rect, time, current) {
     ctx.fillRect(0, 0, rect.width, rect.height);
   }
 
-  ctx.save();
-  ctx.globalAlpha = current.eyesClosed ? 0.18 : 0.42;
 
-  for (let i = 0; i < 32; i += 1) {
-    const x = ((i * 113 + time * 0.012) % (rect.width + 120)) - 60;
-    const y = ((i * 79 + time * 0.006) % (rect.height + 120)) - 60;
-
-    ctx.beginPath();
-    ctx.arc(x, y, 1 + (i % 4), 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(186, 230, 253, 0.22)";
-    ctx.fill();
-  }
-
-  ctx.restore();
 }
 
 export function drawDepthVeil() {
@@ -135,21 +122,33 @@ export function drawArenaBoundary(ctx, arenaRef, time) {
 }
 
 export function drawWorldParticles(ctx, arenaRef, time) {
-  const radius = arenaRef.current.radius;
+  const radius = arenaRef.current?.radius || 1200;
 
   ctx.save();
+  ctx.globalCompositeOperation = "screen";
 
-  for (let i = 0; i < 22; i += 1) {
-    const seed = i * 928.2;
-    const a = seed + time * 0.00008 * (1 + (i % 5));
-    const r = ((i * 137) % Math.floor(radius * 0.92)) + 40;
+  for (let i = 0; i < 38; i += 1) {
+    const seed = i * 928.213;
+    const angle = i * 2.399963 + Math.sin(time * 0.00008 + i) * 0.025;
+    const r = 90 + ((i * 173) % Math.floor(radius * 0.86));
 
-    const x = Math.cos(a) * r;
-    const y = Math.sin(a * 1.11) * r;
+    const x =
+      Math.cos(angle) * r +
+      Math.sin(time * 0.00018 + seed) * 5;
+
+    const y =
+      Math.sin(angle) * r +
+      Math.cos(time * 0.00014 + seed) * 5;
+
+    const size = 0.9 + (i % 4) * 0.42;
+    const alpha =
+      0.045 +
+      (i % 5) * 0.012 +
+      (Math.sin(time * 0.001 + i) * 0.5 + 0.5) * 0.018;
 
     ctx.beginPath();
-    ctx.arc(x, y, 1.1 + (i % 3) * 0.7, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(165, 243, 252, ${0.08 + (i % 4) * 0.018})`;
+    ctx.arc(x, y, size, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(165, 243, 252, ${alpha})`;
     ctx.fill();
   }
 

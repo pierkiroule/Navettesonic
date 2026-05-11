@@ -266,14 +266,4 @@ export function drawPinkWallFish(ctx, fishes, stock, time = performance.now()) {
   fishes.forEach((fish) => drawTinyFish(ctx, fish, time));
 
   ctx.restore();
-
-  if (stock) {
-    ctx.save();
-    ctx.globalAlpha = 0.52;
-    ctx.fillStyle = "rgba(255, 228, 230, 0.62)";
-    ctx.font = "600 11px system-ui";
-    ctx.textAlign = "left";
-    ctx.fillText(`graines externes ${stock.remaining}`, -560, -560);
-    ctx.restore();
-  }
 }
