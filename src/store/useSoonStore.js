@@ -104,6 +104,8 @@ const defaultFish = {
   depth: 1,
   mouthPull: 0,
   turnAmount: 0,
+  pullLagX: 0,
+  pullLagY: 0,
 };
 
 const initialState = {
@@ -214,26 +216,33 @@ export const useSoonStore = create((set, get) => ({
         ? state.fish.angle
         : -Math.PI / 2;
 
-      // Point de bouche : le doigt tire le poisson par l'avant.
+      // Point d'accroche invisible : le tap tire un point élastique, puis le poisson suit.
+      const lagEase = circuitAutopilot ? 0.22 : 0.16;
+      const lagX = (state.fish.pullLagX ?? state.fish.targetX ?? 0) +
+        (targetX - (state.fish.pullLagX ?? state.fish.targetX ?? 0)) * lagEase;
+      const lagY = (state.fish.pullLagY ?? state.fish.targetY ?? 0) +
+        (targetY - (state.fish.pullLagY ?? state.fish.targetY ?? 0)) * lagEase;
+
+      // Point de bouche : on tire le poisson par l'avant avec un léger décalage.
       const mouthDistance = 46;
       const mouthX = state.fish.x + Math.cos(currentAngle) * mouthDistance;
       const mouthY = state.fish.y + Math.sin(currentAngle) * mouthDistance;
 
-      const pullX = targetX - mouthX;
-      const pullY = targetY - mouthY;
+      const pullX = lagX - mouthX;
+      const pullY = lagY - mouthY;
       const pullDistance = Math.hypot(pullX, pullY);
 
-      // Traction progressive : douce près du doigt, plus nette si le doigt s'éloigne.
+      // Traction progressive : douce près du doigt, plus nette quand le fil est tendu.
       const pullNorm = Math.min(1, pullDistance / 320);
       const pullForce = circuitAutopilot
-        ? 0.035 + pullNorm * 0.018
-        : 0.028 + pullNorm * 0.022;
+        ? 0.034 + pullNorm * 0.016
+        : 0.023 + pullNorm * 0.03;
 
       const desiredVx = pullX * pullForce;
       const desiredVy = pullY * pullForce;
 
-      // Le corps suit la bouche : interpolation fluide de la vitesse.
-      const fluidity = circuitAutopilot ? 0.11 : 0.14;
+      // Vitesse amortie pour un suivi souple et organique.
+      const fluidity = circuitAutopilot ? 0.1 : 0.12;
 
       const vx = state.fish.vx + (desiredVx - state.fish.vx) * fluidity;
       const vy = state.fish.vy + (desiredVy - state.fish.vy) * fluidity;
@@ -255,14 +264,14 @@ export const useSoonStore = create((set, get) => ({
       while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
       while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
-      const turnStrength = Math.min(1, Math.abs(angleDiff) / 1.2);
+      const turnStrength = Math.min(1, Math.abs(angleDiff) / 0.9);
 
       const angle =
         speed > 0.035
           ? lerpAngle(
               currentAngle,
               moveAngle,
-              0.055 + Math.min(0.055, speed * 0.006)
+              0.045 + Math.min(0.08, speed * 0.009) + turnStrength * 0.035
             )
           : currentAngle;
 
@@ -301,6 +310,8 @@ export const useSoonStore = create((set, get) => ({
           mouthPull: nextMouthPull,
           turnAmount: nextTurnAmount,
           maxSpeed: state.fish.maxSpeed || 3.1,
+          pullLagX: lagX,
+          pullLagY: lagY,
         },
       };
     });

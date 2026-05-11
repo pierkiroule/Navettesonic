@@ -13,7 +13,7 @@ function lerp(a, b, t) {
 const BODY = {
   startY: -48,
   endY: 54,
-  steps: 30,
+  steps: 36,
 };
 
 function getSpinePoint(t, d) {
@@ -23,27 +23,28 @@ function getSpinePoint(t, d) {
   const midWeight = Math.sin(t * Math.PI);
   const headLock = Math.pow(t, 1.35);
 
-  const phase = d.swimT * (4.2 + d.glide * 2.8);
+  const phase = d.swimT * (4 + d.glide * 2.35);
+  const straightGlide = Math.max(0, 1 - Math.abs(d.bend) * 1.6);
 
   const mainWave =
-    Math.sin(t * Math.PI * 2.9 - phase) *
-    (0.8 + d.glide * 2.6) *
+    Math.sin(t * Math.PI * 2.65 - phase) *
+    (0.58 + d.glide * 2 + straightGlide * 0.52) *
     tailWeight;
 
   const subWave =
-    Math.sin(t * Math.PI * 5.6 - phase * 1.35 + 0.6) *
-    (0.18 + d.glide * 0.75) *
+    Math.sin(t * Math.PI * 5.1 - phase * 1.24 + 0.6) *
+    (0.11 + d.glide * 0.58 + straightGlide * 0.14) *
     tailWeight;
 
   const turnCurve =
     d.bend *
-    Math.pow(t, 1.55) *
-    (12 + d.glide * 12);
+    Math.pow(t, 1.47) *
+    (14 + d.glide * 14);
 
   const bodyArc =
     d.bend *
-    midWeight *
-    (4 + d.glide * 5);
+    Math.pow(midWeight, 0.9) *
+    (6 + d.glide * 6.5);
 
   const x =
     (mainWave + subWave) * headLock +
