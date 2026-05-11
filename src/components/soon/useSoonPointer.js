@@ -25,6 +25,7 @@ export function useSoonPointer({
   onAddBubble,
   onSetFishDepth,
   onOpenBubbleEditor,
+  onOpenBeaconEditor,
   onDepthToast,
 }) {
   const MOVE_CANCEL = 12;
@@ -129,13 +130,23 @@ export function useSoonPointer({
   }
 
   function handleEditPointerDown(event, point, current) {
+    const editTarget = current.editTarget || "parcours";
     const hit = findBubbleAt(point);
-    const beaconHit = current.mode === "reso" ? findBeaconAt(point) : null;
+    const beaconHit = editTarget === "circuit" ? findBeaconAt(point) : null;
 
     if (beaconHit) {
+      const isDoubleTapBeacon = isDoubleTapScreen(event, `beacon:${beaconHit.id}`);
       onSelectBeacon?.(beaconHit.id);
       pointerRef.current.dragBeaconId = beaconHit.id;
+      if (isDoubleTapBeacon) {
+        onOpenBeaconEditor?.(beaconHit.id);
+      }
       rememberTapScreen(event, `beacon:${beaconHit.id}`);
+      return;
+    }
+
+    if (editTarget === "circuit") {
+      onSelectBubble?.(null);
       return;
     }
 

@@ -15,11 +15,16 @@ import {
 export function drawScene(ctx, rect, time, refs) {
   const { stateRef, arenaRef, cameraRef, enterWorld, exitWorld } = refs;
   const current = stateRef.current;
+  const isCircuitEditMode =
+    current.interactionMode === "edit" && current.editTarget === "circuit";
+  const worldAlpha = isCircuitEditMode ? 0.5 : 1;
 
   drawOcean(ctx, rect, time, current);
   drawDepthVeil(ctx, rect, current.fish);
 
   enterWorld(ctx, rect, cameraRef, stateRef);
+  ctx.save();
+  ctx.globalAlpha = worldAlpha;
 
   drawArenaBoundary(ctx, arenaRef, time);
   drawEcosystemWorld(ctx, current, time);
@@ -27,8 +32,11 @@ export function drawScene(ctx, rect, time, refs) {
   // drawFishTrail(ctx, current.fishTrail || [], time);
 
   if (!current.eyesClosed) {
-    if (current.mode === "reso") {
+    if (current.mode === "reso" || isCircuitEditMode) {
+      ctx.restore();
       drawTraceCircuit(ctx, current.traceCircuit, current.selectedBeaconId, time);
+      ctx.save();
+      ctx.globalAlpha = worldAlpha;
     }
 
     drawBubbles(
@@ -49,10 +57,12 @@ export function drawScene(ctx, rect, time, refs) {
   drawResonanceBubbles(ctx, time);
   if (current.interactionMode !== "edit") {
     drawCharacters(ctx, time);
-
-drawFish(ctx, current.fish, time);
+  }
+  if (!isCircuitEditMode) {
+    drawFish(ctx, current.fish, time);
   }
 
+  ctx.restore();
   exitWorld(ctx);
 
   if (current.eyesClosed) {

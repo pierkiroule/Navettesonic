@@ -11,6 +11,7 @@ export default function SoonCanvas({
   traceCircuit,
   selectedBeaconId,
   circuitAutopilot,
+  editTarget = "parcours",
   eyesClosed,
   viewZoom,
   visualLight,
@@ -25,6 +26,7 @@ export default function SoonCanvas({
   onSetFishDepth,
   onCycleBubbleDepth,
   onOpenBubbleEditor,
+  onOpenBeaconEditor,
 }) {
   const canvasRef = useRef(null);
   const [depthToast, setDepthToast] = useState(null);
@@ -69,6 +71,7 @@ export default function SoonCanvas({
     traceCircuit,
     selectedBeaconId,
     circuitAutopilot,
+    editTarget,
     eyesClosed,
     viewZoom,
     visualLight,
@@ -85,6 +88,7 @@ export default function SoonCanvas({
       traceCircuit,
       selectedBeaconId,
       circuitAutopilot,
+      editTarget,
       eyesClosed,
       viewZoom,
       visualLight,
@@ -99,6 +103,7 @@ export default function SoonCanvas({
     traceCircuit,
     selectedBeaconId,
     circuitAutopilot,
+    editTarget,
     eyesClosed,
     viewZoom,
     visualLight,
@@ -134,6 +139,7 @@ export default function SoonCanvas({
     onSetFishDepth,
     onCycleBubbleDepth,
     onOpenBubbleEditor,
+    onOpenBeaconEditor,
     onDepthToast: setDepthToast,
   });
 

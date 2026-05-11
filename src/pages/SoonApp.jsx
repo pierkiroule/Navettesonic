@@ -7,6 +7,7 @@ import { useSoonStore } from "../store/useSoonStore.js";
 export default function SoonApp({ onBack }) {
   const [page, setPage] = useState("arena");
   const [interactionMode, setInteractionMode] = useState("swim");
+  const [editTarget, setEditTarget] = useState("parcours");
   const [viewZoom, setViewZoom] = useState(1);
   const [swimSpeed, setSwimSpeed] = useState(1);
   const [editorOpenKey, setEditorOpenKey] = useState(0);
@@ -66,6 +67,10 @@ export default function SoonApp({ onBack }) {
     selectBubble(id);
     setEditorOpenKey((value) => value + 1);
   };
+  const openBeaconEditor = (id) => {
+    selectBeacon(id);
+    setEditorOpenKey((value) => value + 1);
+  };
 
   const cycleBubbleDepth = (id) => {
     const bubble = bubbles.find((item) => item.id === id);
@@ -121,6 +126,7 @@ export default function SoonApp({ onBack }) {
         traceCircuit={traceCircuit}
         selectedBeaconId={selectedBeaconId}
         circuitAutopilot={circuitAutopilot}
+        editTarget={editTarget}
         eyesClosed={eyesClosed}
         viewZoom={viewZoom}
         onFishTarget={setFishTarget}
@@ -135,6 +141,7 @@ export default function SoonApp({ onBack }) {
         onMoveBubble={(id, pos) => updateBubble(id, pos)}
         onAddBubble={addBubble}
         onOpenBubbleEditor={openBubbleEditor}
+        onOpenBeaconEditor={openBeaconEditor}
         onCycleBubbleDepth={cycleBubbleDepth}
       />
 
@@ -170,6 +177,26 @@ export default function SoonApp({ onBack }) {
                 ⚡
               </button>
             </>
+          )}
+          {isEditMode && (
+            <div className="edit-toggle-group">
+              <button
+                type="button"
+                className={`bubble-btn ${editTarget === "parcours" ? "active" : ""}`}
+                onClick={() => setEditTarget("parcours")}
+                title="Éditer le parcours (bulles)"
+              >
+                🫧 Parcours
+              </button>
+              <button
+                type="button"
+                className={`bubble-btn ${editTarget === "circuit" ? "active" : ""}`}
+                onClick={() => setEditTarget("circuit")}
+                title="Éditer le circuit (balises)"
+              >
+                ⟡ Circuit
+              </button>
+            </div>
           )}
         </div>
 
