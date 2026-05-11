@@ -17,8 +17,6 @@ import {
 const saved = loadState();
 
 const DEFAULT_ARENA_RADIUS = 1200;
-const FISH_GUIDE_PATH_MAX = 64;
-const FISH_BODY_NODES = 10;
 
 function clampDepth(depth) {
   return normalizeDepth(depth);
@@ -163,21 +161,11 @@ export const useSoonStore = create((set, get) => ({
     const safe = clampToCircle({ x, y }, DEFAULT_ARENA_RADIUS * 1.7);
 
     set((state) => ({
-      fish: (() => {
-        const prev = Array.isArray(state.fish.guidePath) ? state.fish.guidePath : [];
-        const last = prev[prev.length - 1];
-        const tooClose =
-          last && Math.hypot((last.x || 0) - safe.x, (last.y || 0) - safe.y) < 8;
-        const nextPath = tooClose
-          ? prev
-          : [...prev, { x: safe.x, y: safe.y }].slice(-FISH_GUIDE_PATH_MAX);
-        return {
-          ...state.fish,
-          targetX: safe.x,
-          targetY: safe.y,
-          guidePath: nextPath,
-        };
-      })(),
+      fish: {
+        ...state.fish,
+        targetX: safe.x,
+        targetY: safe.y,
+      },
     }));
   },
 
@@ -198,7 +186,6 @@ export const useSoonStore = create((set, get) => ({
     set((state) => {
       let targetX = state.fish.targetX;
       let targetY = state.fish.targetY;
-      const guidePath = Array.isArray(state.fish.guidePath) ? [...state.fish.guidePath] : [];
       let fishDepth = clampDepth(state.fish.depth || 1);
       let circuitSegmentIndex = state.circuitSegmentIndex || 0;
       let circuitSegmentT = state.circuitSegmentT || 0;
@@ -227,15 +214,6 @@ export const useSoonStore = create((set, get) => ({
         targetX = circuitPoint.x;
         targetY = circuitPoint.y;
         fishDepth = clampDepth(circuitPoint.depth || fishDepth);
-        guidePath.push({ x: targetX, y: targetY });
-        while (guidePath.length > FISH_GUIDE_PATH_MAX) guidePath.shift();
-      }
-
-      if (guidePath.length > 1) {
-        const delayedIndex = Math.max(0, guidePath.length - 1 - 8);
-        const delayed = guidePath[delayedIndex];
-        targetX = delayed.x;
-        targetY = delayed.y;
       }
 
       const currentAngle = Number.isFinite(state.fish.angle)
@@ -283,34 +261,6 @@ export const useSoonStore = create((set, get) => ({
 
       const speed = Math.hypot(vx, vy);
 
-      const prevNodes = Array.isArray(state.fish.bodyNodes) ? state.fish.bodyNodes : [];
-      const nodes = [];
-      nodes[0] = { x: safe.x, y: safe.y };
-      for (let i = 1; i < FISH_BODY_NODES; i += 1) {
-        const prev = nodes[i - 1];
-        const old = prevNodes[i] || prevNodes[i - 1] || prev;
-        const followDist = 11 + i * 2.9;
-        const dx = old.x - prev.x;
-        const dy = old.y - prev.y;
-        const d = Math.hypot(dx, dy) || 0.0001;
-        const targetX = prev.x + (dx / d) * followDist;
-        const targetY = prev.y + (dy / d) * followDist;
-        const ease = 0.34 + Math.min(0.3, speed * 0.06) + i * 0.012;
-        nodes[i] = {
-          x: old.x + (targetX - old.x) * ease,
-          y: old.y + (targetY - old.y) * ease,
-        };
-      }
-
-      const tail = nodes[nodes.length - 1] || nodes[0];
-      const neck = nodes[1] || nodes[0];
-      const ropeAngle = Math.atan2(neck.y - safe.y, neck.x - safe.x);
-      const ropeTailAngle = Math.atan2(safe.y - tail.y, safe.x - tail.x);
-      let ropeDelta = ropeTailAngle - ropeAngle;
-      while (ropeDelta > Math.PI) ropeDelta -= Math.PI * 2;
-      while (ropeDelta < -Math.PI) ropeDelta += Math.PI * 2;
-      const ropeBend = Math.max(-1, Math.min(1, ropeDelta / 1.1));
-
       // Orientation : le poisson suit la courbe du mouvement.
       const moveAngle = speed > 0.035 ? Math.atan2(vy, vx) : currentAngle;
 
@@ -347,12 +297,7 @@ export const useSoonStore = create((set, get) => ({
       const turnAmount = state.fish.turnAmount || 0;
       const nextTurnAmount = turnAmount + (turnStrength - turnAmount) * 0.1;
 
-      const guideTail =
-        guidePath.length > 2
-          ? guidePath[Math.max(0, guidePath.length - 10)]
-          : { x: state.fish.x, y: state.fish.y };
-      const guideHead = guidePath.length ? guidePath[guidePath.length - 1] : { x: lagX, y: lagY };
-      const guideAngle = Math.atan2(guideHead.y - guideTail.y, guideHead.x - guideTail.x);
+      const guideAngle = Math.atan2(vy || Math.sin(angle), vx || Math.cos(angle));
 
       const swimPhase =
         (state.fish.swimPhase || 0) +
@@ -384,10 +329,9 @@ export const useSoonStore = create((set, get) => ({
           turnAmount: nextTurnAmount * turnDirection,
           bodyFlex: nextBodyFlex,
           bodyWaveBoost: nextBodyWaveBoost,
-          guidePath,
           guideAngle,
-          bodyNodes: nodes,
-          ropeBend,
+          guidePath: [],
+          bodyNodes: [],
           maxSpeed: state.fish.maxSpeed || 3.1,
           pullLagX: lagX,
           pullLagY: lagY,
