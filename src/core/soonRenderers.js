@@ -1,7 +1,6 @@
 import { distance, getBubbleVisualRadius } from "./geometry.js";
 import { sampleSmoothCircuit } from "./traceCircuit.js";
 import { drawPoissonPlume } from "./poissonPlumeRenderer.js";
-import { drawFishTrail } from "./fishPathTrail.js";
 import { drawCharacters } from "./characters/characterEngine.js";
 import {
   drawFireflies,
