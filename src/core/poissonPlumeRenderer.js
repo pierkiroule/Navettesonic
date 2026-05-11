@@ -504,6 +504,7 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
   const vx = safeNumber(fish.vx);
   const vy = safeNumber(fish.vy);
   const angle = safeNumber(fish.angle, -Math.PI / 2);
+  const guideAngle = safeNumber(fish.guideAngle, angle);
 
   const maxSpeed = safeNumber(fish.maxSpeed, 3.1);
   const speed = Math.hypot(vx, vy);
@@ -527,6 +528,10 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
     clamp01(Math.abs(turnAmount)) *
     Math.sign(turnAmount || Math.sin(swimT * 0.7)) *
     (0.24 + glide * 1.32);
+  let pathDelta = guideAngle - angle;
+  while (pathDelta > Math.PI) pathDelta -= Math.PI * 2;
+  while (pathDelta < -Math.PI) pathDelta += Math.PI * 2;
+  const pathBend = Math.max(-1, Math.min(1, pathDelta / 0.9));
 
   const wingPresence = Math.max(
     0.18,
@@ -542,7 +547,7 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
   const d = {
     swimT,
     glide,
-    bend,
+    bend: bend + pathBend * 0.35,
     bodyBreath: Math.sin(swimT * 2.3) * 0.34,
     finFlap,
     finMorph,
@@ -558,7 +563,7 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
     reactiveEnergy,
     audioInfluence,
     mouthPull,
-    flex: bodyFlex,
+    flex: bodyFlex + pathBend * 0.5,
     waveBoost: bodyWaveBoost,
   };
 

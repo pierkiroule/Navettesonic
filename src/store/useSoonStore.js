@@ -17,6 +17,7 @@ import {
 const saved = loadState();
 
 const DEFAULT_ARENA_RADIUS = 1200;
+const FISH_GUIDE_PATH_MAX = 64;
 
 function clampDepth(depth) {
   return normalizeDepth(depth);
@@ -108,6 +109,7 @@ const defaultFish = {
   pullLagY: 0,
   bodyFlex: 0,
   bodyWaveBoost: 0,
+  guidePath: [],
 };
 
 const initialState = {
@@ -159,11 +161,21 @@ export const useSoonStore = create((set, get) => ({
     const safe = clampToCircle({ x, y }, DEFAULT_ARENA_RADIUS * 1.7);
 
     set((state) => ({
-      fish: {
-        ...state.fish,
-        targetX: safe.x,
-        targetY: safe.y,
-      },
+      fish: (() => {
+        const prev = Array.isArray(state.fish.guidePath) ? state.fish.guidePath : [];
+        const last = prev[prev.length - 1];
+        const tooClose =
+          last && Math.hypot((last.x || 0) - safe.x, (last.y || 0) - safe.y) < 8;
+        const nextPath = tooClose
+          ? prev
+          : [...prev, { x: safe.x, y: safe.y }].slice(-FISH_GUIDE_PATH_MAX);
+        return {
+          ...state.fish,
+          targetX: safe.x,
+          targetY: safe.y,
+          guidePath: nextPath,
+        };
+      })(),
     }));
   },
 
@@ -184,6 +196,7 @@ export const useSoonStore = create((set, get) => ({
     set((state) => {
       let targetX = state.fish.targetX;
       let targetY = state.fish.targetY;
+      const guidePath = Array.isArray(state.fish.guidePath) ? [...state.fish.guidePath] : [];
       let fishDepth = clampDepth(state.fish.depth || 1);
       let circuitSegmentIndex = state.circuitSegmentIndex || 0;
       let circuitSegmentT = state.circuitSegmentT || 0;
@@ -212,6 +225,15 @@ export const useSoonStore = create((set, get) => ({
         targetX = circuitPoint.x;
         targetY = circuitPoint.y;
         fishDepth = clampDepth(circuitPoint.depth || fishDepth);
+        guidePath.push({ x: targetX, y: targetY });
+        while (guidePath.length > FISH_GUIDE_PATH_MAX) guidePath.shift();
+      }
+
+      if (guidePath.length > 1) {
+        const delayedIndex = Math.max(0, guidePath.length - 1 - 8);
+        const delayed = guidePath[delayedIndex];
+        targetX = delayed.x;
+        targetY = delayed.y;
       }
 
       const currentAngle = Number.isFinite(state.fish.angle)
@@ -295,6 +317,13 @@ export const useSoonStore = create((set, get) => ({
       const turnAmount = state.fish.turnAmount || 0;
       const nextTurnAmount = turnAmount + (turnStrength - turnAmount) * 0.1;
 
+      const guideTail =
+        guidePath.length > 2
+          ? guidePath[Math.max(0, guidePath.length - 10)]
+          : { x: state.fish.x, y: state.fish.y };
+      const guideHead = guidePath.length ? guidePath[guidePath.length - 1] : { x: lagX, y: lagY };
+      const guideAngle = Math.atan2(guideHead.y - guideTail.y, guideHead.x - guideTail.x);
+
       const swimPhase =
         (state.fish.swimPhase || 0) +
         0.045 +
@@ -325,6 +354,8 @@ export const useSoonStore = create((set, get) => ({
           turnAmount: nextTurnAmount * turnDirection,
           bodyFlex: nextBodyFlex,
           bodyWaveBoost: nextBodyWaveBoost,
+          guidePath,
+          guideAngle,
           maxSpeed: state.fish.maxSpeed || 3.1,
           pullLagX: lagX,
           pullLagY: lagY,
