@@ -29,7 +29,14 @@ export function drawScene(ctx, rect, time, refs) {
       drawTraceCircuit(ctx, current.traceCircuit, current.selectedBeaconId, time);
     }
 
-    drawBubbles(ctx, current.bubbles, current.selectedBubbleId, current.mode, time);
+    drawBubbles(
+      ctx,
+      current.bubbles,
+      current.selectedBubbleId,
+      current.mode,
+      time,
+      current.interactionMode
+    );
   } else {
     drawEyesClosedEchoes(ctx, current.bubbles, current.fish, time);
   }
@@ -210,7 +217,7 @@ export function drawTraceCircuit(ctx, circuit, selectedBeaconId, time) {
   ctx.restore();
 }
 
-export function drawBubbles(ctx, bubbles = [], selectedBubbleId, mode, time) {
+export function drawBubbles(ctx, bubbles = [], selectedBubbleId, mode, time, interactionMode) {
   ctx.save();
 
   bubbles.forEach((bubble) => {
@@ -255,7 +262,7 @@ export function drawBubbles(ctx, bubbles = [], selectedBubbleId, mode, time) {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(bubble.label, bubble.x, bubble.y);
-    if (selected || mode === "compo") {
+    if (selected || mode === "compo" || interactionMode === "edit") {
       ctx.fillStyle = "rgba(226, 232, 240, 0.68)";
       ctx.font = "700 10px system-ui";
       ctx.fillText(`P${depth}`, bubble.x, bubble.y + radius + 18);

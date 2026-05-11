@@ -6,6 +6,11 @@ import {
   screenToWorld,
 } from "../../core/geometry.js";
 import { playBubbleSound } from "../../core/audioEngine.js";
+import {
+  clampEditCamera,
+  panEditCamera,
+  zoomEditCameraAt,
+} from "../../core/soonCamera.js";
 
 export function useSoonPointer({
   canvasRef,
@@ -97,6 +102,13 @@ export function useSoonPointer({
     pointerRef.current.longPressStartPoint = point;
     pointerRef.current.longPressTargetType = hit ? "bubble" : "fish";
     pointerRef.current.longPressTargetId = hit ? hit.id : null;
+    pointerRef.current.activePointers = pointerRef.current.activePointers || new Map();
+    pointerRef.current.activePointers.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+    });
+    pointerRef.current.panStart = point;
+    pointerRef.current.panEnabled = isEditMode && !hit;
 
     clearLongPress();
     pointerRef.current.longPressTimer = setTimeout(() => {
@@ -126,7 +138,6 @@ export function useSoonPointer({
 
     if (isEditMode && hit) {
       onSelectBubble(hit.id);
-      playBubbleSound(hit, current.fish);
 
       if (current.mode === "compo") {
         pointerRef.current.pendingBubbleId = hit.id;
@@ -171,10 +182,43 @@ export function useSoonPointer({
   function handlePointerMove(event) {
     if (!pointerRef.current.down) return;
 
+    pointerRef.current.activePointers = pointerRef.current.activePointers || new Map();
+    pointerRef.current.activePointers.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+    });
+
     const point = getSafeWorldFromEvent(event);
     const current = stateRef.current;
 
     const isEditMode = current.interactionMode === "edit";
+
+    if (isEditMode && pointerRef.current.activePointers.size >= 2) {
+      const values = [...pointerRef.current.activePointers.values()];
+      const a = values[0];
+      const b = values[1];
+      const midClient = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      const dist = Math.hypot(a.x - b.x, a.y - b.y);
+      const rect = canvasRef.current.getBoundingClientRect();
+      const centerWorld = screenToWorld({
+        clientX: midClient.x,
+        clientY: midClient.y,
+        rect,
+        camera: cameraRef.current,
+      });
+
+      if (pointerRef.current.pinchDistance) {
+        const factor = dist / pointerRef.current.pinchDistance;
+        if (Number.isFinite(factor) && factor > 0) {
+          zoomEditCameraAt(cameraRef, factor, centerWorld, rect, arenaRef.current.radius);
+        }
+      }
+      pointerRef.current.pinchDistance = dist;
+      pointerRef.current.panEnabled = false;
+      clearLongPress();
+      return;
+    }
+    pointerRef.current.pinchDistance = null;
 
     if (isEditMode && pointerRef.current.dragBeaconId) {
       clearLongPress();
@@ -199,6 +243,20 @@ export function useSoonPointer({
       });
       return;
     }
+
+    if (isEditMode && pointerRef.current.panEnabled) {
+      const start = pointerRef.current.panStart;
+      if (start) {
+        const dx = point.x - start.x;
+        const dy = point.y - start.y;
+        panEditCamera(cameraRef, dx, dy);
+        const rect = canvasRef.current.getBoundingClientRect();
+        clampEditCamera(cameraRef, rect, arenaRef.current.radius);
+      }
+      pointerRef.current.panStart = point;
+      clearLongPress();
+      return;
+    }
     const start = pointerRef.current.longPressStartPoint;
     if (start && Math.hypot(start.x - point.x, start.y - point.y) > LONG_PRESS_CANCEL_DISTANCE) {
       clearLongPress();
@@ -220,6 +278,10 @@ export function useSoonPointer({
     pointerRef.current.dragBubbleId = null;
     pointerRef.current.pendingBubbleId = null;
     pointerRef.current.dragBeaconId = null;
+    pointerRef.current.panEnabled = false;
+    pointerRef.current.panStart = null;
+    pointerRef.current.pinchDistance = null;
+    pointerRef.current.activePointers?.delete(event.pointerId);
 
     try {
       canvasRef.current?.releasePointerCapture(event.pointerId);
