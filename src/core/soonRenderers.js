@@ -1,6 +1,7 @@
 import { distance, getBubbleVisualRadius } from "./geometry.js";
 import { sampleSmoothCircuit } from "./traceCircuit.js";
 import { drawPoissonPlume } from "./poissonPlumeRenderer.js";
+import { drawFishTrail } from "./fishPathTrail.js";
 import { drawCharacters } from "./characters/characterEngine.js";
 import {
   drawFireflies,
@@ -24,6 +25,7 @@ export function drawScene(ctx, rect, time, refs) {
   drawArenaBoundary(ctx, arenaRef, time);
   drawEcosystemWorld(ctx, current, time);
   drawWorldParticles(ctx, arenaRef, time);
+  // drawFishTrail(ctx, current.fishTrail || [], time);
 
   if (!current.eyesClosed) {
     if (current.mode === "reso") {
@@ -44,7 +46,7 @@ export function drawScene(ctx, rect, time, refs) {
 
   drawPlacedTriangles(ctx, time);
   drawFireflies(ctx, time);
-  drawPlumeTrail(ctx);
+  // drawPlumeTrail(ctx);
   drawResonanceBubbles(ctx, time);
   if (current.interactionMode !== "edit") {
     drawCharacters(ctx, time);

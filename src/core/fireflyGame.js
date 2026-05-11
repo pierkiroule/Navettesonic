@@ -1,7 +1,7 @@
 import { FIREFLY_VOICES } from "../data/fireflyVoices.js";
 
 const MAX_FIREFLIES = 18;
-const MAX_TRAIL_POINTS = 72;
+const MAX_TRAIL_POINTS = 42;
 
 const FIREFLY_TRAIL_ATTACH_RADIUS = 42;
 const FIREFLY_ATTACHED_SPACING_TARGETS = [0.34, 0.62, 0.9];
@@ -18,6 +18,7 @@ const TRIANGLE_FRICTION = 0.94;
 
 const fireflies = [];
 const plumeTrail = [];
+let tailAttachmentCount = 0;
 const placedTriangles = [];
 const resonanceBubbles = [];
 
@@ -51,6 +52,34 @@ function rand(min, max) {
   return min + Math.random() * (max - min);
 }
 
+function ensureTailFireflies(fish) {
+  if (!fish.tailFireflies) fish.tailFireflies = [];
+  return fish.tailFireflies;
+}
+
+function attachFireflyToTail(fish, firefly) {
+  const tailFireflies = ensureTailFireflies(fish);
+
+  if (tailFireflies.some((item) => item.id === firefly.id)) return;
+
+  const index = tailFireflies.length;
+
+  tailFireflies.push({
+    id: firefly.id,
+    slot: index,
+    phase: Math.random() * Math.PI * 2,
+  });
+
+  fish.tailPower = Math.min(18, Math.max(fish.tailPower || 0, tailFireflies.length));
+}
+
+function growFishTail(fish, amount = 1) {
+  if (!fish) return;
+
+  const tailFireflies = ensureTailFireflies(fish);
+  fish.tailPower = Math.min(18, Math.max(fish.tailPower || 0, tailFireflies.length + amount));
+}
+
 function safe(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
 }
@@ -72,12 +101,24 @@ function pickVoiceFragment(type) {
   return list[Math.floor(Math.random() * list.length)] || "";
 }
 
+function attachFireflyToTailSlot(firefly) {
+  if (!firefly) return;
+
+  if (!Number.isFinite(firefly.tailSlot)) {
+    firefly.tailSlot = tailAttachmentCount;
+    firefly.tailPhase = Math.random() * Math.PI * 2;
+    tailAttachmentCount += 1;
+  }
+}
+
 function getTail(fish) {
   const angle = safe(fish.angle, -Math.PI / 2);
+  const offset = 28 + tailAttachmentCount * 8;
 
   return {
-    x: safe(fish.x) - Math.cos(angle) * 34,
-    y: safe(fish.y) - Math.sin(angle) * 34,
+    x: safe(fish.x) - Math.cos(angle) * offset,
+    y: safe(fish.y) - Math.sin(angle) * offset,
+    angle,
   };
 }
 
@@ -210,6 +251,8 @@ function attachSingleFireflyToTail(firefly, now) {
   }
 
   firefly.attached = true;
+        attachFireflyToTail(fish, firefly);
+        growFishTail(fish, 1);
   firefly.attachedOrder = attached.length;
   firefly.attachedAt = now;
   firefly.linkedCooldownUntil = now + FIREFLY_REPULSE_COOLDOWN_MS;
@@ -222,23 +265,40 @@ function attachSingleFireflyToTail(firefly, now) {
 }
 
 function updateAttachedFirefly(firefly, fish) {
-  const tail = getTail(fish);
+  attachFireflyToTailSlot(firefly);
 
-  const order = Math.max(
-    0,
-    Math.min(FIREFLY_ATTACHED_SPACING_TARGETS.length - 1, firefly.attachedOrder || 0)
-  );
+  const slot = Math.max(0, firefly.tailSlot || 0);
+  const phase = firefly.tailPhase || 0;
+  const angle = safe(fish.angle, -Math.PI / 2);
 
-  const targetRatio = FIREFLY_ATTACHED_SPACING_TARGETS[order] ?? 0.7;
-  const target = getPathPointAt(plumeTrail, targetRatio) || tail;
+  const distanceBack = 24 + slot * 16;
+  const side = slot % 2 === 0 ? 1 : -1;
 
-  const spring = 0.046;
+  const time = performance.now();
+  const wave =
+    Math.sin(time * 0.004 + phase) * 5 +
+    Math.sin(time * 0.002 + slot * 0.7) * 3;
 
-  firefly.vx += (target.x - firefly.x) * spring + (fish.vx || 0) * 0.005;
-  firefly.vy += (target.y - firefly.y) * spring + (fish.vy || 0) * 0.005;
+  const sideOffset =
+    side * (7 + Math.min(16, slot * 0.9)) + wave;
 
-  firefly.vx *= 0.9;
-  firefly.vy *= 0.9;
+  const tx =
+    safe(fish.x) -
+    Math.cos(angle) * distanceBack +
+    Math.cos(angle + Math.PI / 2) * sideOffset;
+
+  const ty =
+    safe(fish.y) -
+    Math.sin(angle) * distanceBack +
+    Math.sin(angle + Math.PI / 2) * sideOffset;
+
+  const spring = 0.07;
+
+  firefly.vx += (tx - firefly.x) * spring + (fish.vx || 0) * 0.006;
+  firefly.vy += (ty - firefly.y) * spring + (fish.vy || 0) * 0.006;
+
+  firefly.vx *= 0.83;
+  firefly.vy *= 0.83;
 
   firefly.x += firefly.vx;
   firefly.y += firefly.vy;
@@ -830,7 +890,7 @@ export function drawPlacedTriangles(ctx, time) {
     // Halo très subtil quand le triangle est déplacé.
     if (push > 0.02) {
       ctx.beginPath();
-      ctx.arc(triangle.x, triangle.y, 42 + push * 18, 0, Math.PI * 2);
+      ctx.arc(triangle.x, triangle.y, 42 + push * 34, 0, Math.PI * 2);
       ctx.strokeStyle = `rgba(245, 250, 255, ${0.08 * push})`;
       ctx.lineWidth = 1;
       ctx.stroke();
@@ -896,6 +956,7 @@ export function getFireflyDebugStats() {
 export function resetFireflyGame() {
   fireflies.length = 0;
   plumeTrail.length = 0;
+  tailAttachmentCount = 0;
   placedTriangles.length = 0;
   resonanceBubbles.length = 0;
   spawnClock = 1;
