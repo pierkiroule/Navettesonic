@@ -7,6 +7,9 @@ const FIREFLY_TRAIL_ATTACH_RADIUS = 42;
 const FIREFLY_ATTACHED_SPACING_TARGETS = [0.34, 0.62, 0.9];
 const FIREFLY_TAIL_MAX_ATTACHED = 3;
 const FIREFLY_REPULSE_COOLDOWN_MS = 900;
+const TRIANGLE_RELEASE_DELAY_MS = 3000;
+const FIREFLY_BASE_SPACING = 24;
+const FIREFLY_SPEED_SPACING_FACTOR = 18;
 const FISH_MOUTH_GUIDE_RADIUS = 58;
 const FISH_MOUTH_GUIDE_FORCE = 0.045;
 
@@ -18,11 +21,11 @@ const TRIANGLE_FRICTION = 0.94;
 
 const fireflies = [];
 const plumeTrail = [];
-let tailAttachmentCount = 0;
 const placedTriangles = [];
 const resonanceBubbles = [];
 
 let spawnClock = 1;
+let completeTriangleSince = 0;
 
 const FIREFLY_TYPES = [
   {
@@ -101,19 +104,10 @@ function pickVoiceFragment(type) {
   return list[Math.floor(Math.random() * list.length)] || "";
 }
 
-function attachFireflyToTailSlot(firefly) {
-  if (!firefly) return;
-
-  if (!Number.isFinite(firefly.tailSlot)) {
-    firefly.tailSlot = tailAttachmentCount;
-    firefly.tailPhase = Math.random() * Math.PI * 2;
-    tailAttachmentCount += 1;
-  }
-}
-
 function getTail(fish) {
   const angle = safe(fish.angle, -Math.PI / 2);
-  const offset = 28 + tailAttachmentCount * 8;
+  const attachedCount = getAttachedFirefliesSorted().length;
+  const offset = 28 + attachedCount * 8;
 
   return {
     x: safe(fish.x) - Math.cos(angle) * offset,
@@ -231,7 +225,7 @@ function updatePlumeTrail(fish) {
   }
 }
 
-function attachSingleFireflyToTail(firefly, now) {
+function attachSingleFireflyToTail(fish, firefly, now) {
   if (!firefly || firefly.attached) return false;
 
   const attached = getAttachedFirefliesSorted();
@@ -265,22 +259,24 @@ function attachSingleFireflyToTail(firefly, now) {
 }
 
 function updateAttachedFirefly(firefly, fish) {
-  attachFireflyToTailSlot(firefly);
+  if (!Number.isFinite(firefly.tailPhase)) {
+    firefly.tailPhase = Math.random() * Math.PI * 2;
+  }
 
-  const slot = Math.max(0, firefly.tailSlot || 0);
+  const slot = Math.max(0, firefly.attachedOrder || 0);
   const phase = firefly.tailPhase || 0;
   const angle = safe(fish.angle, -Math.PI / 2);
+  const fishSpeed = Math.hypot(fish.vx || 0, fish.vy || 0);
+  const dynamicSpacing = FIREFLY_BASE_SPACING + Math.min(16, fishSpeed * FIREFLY_SPEED_SPACING_FACTOR);
 
-  const distanceBack = 24 + slot * 16;
-  const side = slot % 2 === 0 ? 1 : -1;
+  const distanceBack = 26 + (slot + 1) * dynamicSpacing;
 
   const time = performance.now();
   const wave =
-    Math.sin(time * 0.004 + phase) * 5 +
-    Math.sin(time * 0.002 + slot * 0.7) * 3;
+    Math.sin(time * 0.004 + phase) * 2.2 +
+    Math.sin(time * 0.002 + slot * 0.7) * 1.4;
 
-  const sideOffset =
-    side * (7 + Math.min(16, slot * 0.9)) + wave;
+  const sideOffset = wave;
 
   const tx =
     safe(fish.x) -
@@ -292,13 +288,13 @@ function updateAttachedFirefly(firefly, fish) {
     Math.sin(angle) * distanceBack +
     Math.sin(angle + Math.PI / 2) * sideOffset;
 
-  const spring = 0.07;
+  const spring = 0.085;
 
   firefly.vx += (tx - firefly.x) * spring + (fish.vx || 0) * 0.006;
   firefly.vy += (ty - firefly.y) * spring + (fish.vy || 0) * 0.006;
 
-  firefly.vx *= 0.83;
-  firefly.vy *= 0.83;
+  firefly.vx *= 0.8;
+  firefly.vy *= 0.8;
 
   firefly.x += firefly.vx;
   firefly.y += firefly.vy;
@@ -379,7 +375,7 @@ function attractUsefulFireflyToPlume(firefly, now) {
   firefly.pushedAt = now;
 }
 
-function tryCollectFirefly(firefly, now) {
+function tryCollectFirefly(fish, firefly, now) {
   if (firefly.attached) return false;
   if (now < (firefly.linkedCooldownUntil || 0)) return false;
 
@@ -390,7 +386,7 @@ function tryCollectFirefly(firefly, now) {
 
   if (d > FIREFLY_TRAIL_ATTACH_RADIUS) return false;
 
-  return attachSingleFireflyToTail(firefly, now);
+  return attachSingleFireflyToTail(fish, firefly, now);
 }
 
 function hasCompleteHaikuTriangle() {
@@ -611,7 +607,7 @@ export function updateFireflyGame({ fish, mode }) {
 
     guideFireflyWithMouth(firefly, fish, now);
     attractUsefulFireflyToPlume(firefly, now);
-    tryCollectFirefly(firefly, now);
+    tryCollectFirefly(fish, firefly, now);
 
     const d = Math.hypot(firefly.x, firefly.y);
 
@@ -621,6 +617,7 @@ export function updateFireflyGame({ fish, mode }) {
   }
 
   if (hasCompleteHaikuTriangle()) {
+    if (!completeTriangleSince) completeTriangleSince = now;
     const points = getTrianglePoints();
     const center = getTriangleCenter(points);
 
@@ -628,7 +625,12 @@ export function updateFireflyGame({ fish, mode }) {
       spawnResonanceBubble(center.x, center.y, rand(185, 250), now);
     }
 
-    autoDetachHaikuTriangle(now);
+    if (now - completeTriangleSince >= TRIANGLE_RELEASE_DELAY_MS) {
+      autoDetachHaikuTriangle(now);
+      completeTriangleSince = 0;
+    }
+  } else {
+    completeTriangleSince = 0;
   }
 
   for (let i = resonanceBubbles.length - 1; i >= 0; i -= 1) {
@@ -956,7 +958,7 @@ export function getFireflyDebugStats() {
 export function resetFireflyGame() {
   fireflies.length = 0;
   plumeTrail.length = 0;
-  tailAttachmentCount = 0;
+  completeTriangleSince = 0;
   placedTriangles.length = 0;
   resonanceBubbles.length = 0;
   spawnClock = 1;
