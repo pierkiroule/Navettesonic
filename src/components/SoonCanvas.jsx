@@ -113,6 +113,7 @@ export default function SoonCanvas({
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
+    cleanupPointer,
   } = useSoonPointer({
     canvasRef,
     cameraRef,
