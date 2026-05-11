@@ -155,8 +155,13 @@ export function useSoonPointer({
       last &&
       Math.hypot(last.x - point.x, last.y - point.y) < 48;
 
-    if (isDoubleTap && isEditMode && hit) {
-      onCycleBubbleDepth(hit.id);
+    if (isDoubleTap && isEditMode) {
+      if (hit) {
+        onSelectBubble(hit.id);
+        onCycleBubbleDepth(hit.id);
+      } else if (current.mode === "compo") {
+        onAddBubble(point.x, point.y);
+      }
     }
 
     pointerRef.current.lastTapAt = now;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SOON_MODES } from "../core/soonModes.js";
 import BubbleEditor from "./BubbleEditor.jsx";
 
@@ -13,9 +13,15 @@ export default function SidePanel({
   onAutoGenerateTraceCircuit,
   onUpdateBubble,
   onDeleteBubble,
+  forceOpenKey = 0,
 }) {
   const [open, setOpen] = useState(false);
   const currentMode = SOON_MODES.find((item) => item.id === mode);
+
+  useEffect(() => {
+    if (!forceOpenKey) return;
+    setOpen(true);
+  }, [forceOpenKey]);
 
   if (mode === "intro") return null;
 

@@ -10,6 +10,7 @@ export default function SoonApp({ onBack }) {
   const [viewZoom, setViewZoom] = useState(1);
   const [swimSpeed, setSwimSpeed] = useState(1);
   const [depth, setDepth] = useState(1);
+  const [editorOpenKey, setEditorOpenKey] = useState(0);
 
   // "zoom" | "speed" | "depth" | null
   const [activeSlider, setActiveSlider] = useState(null);
@@ -28,8 +29,17 @@ export default function SoonApp({ onBack }) {
     setFishTarget,
     tickFish,
     setFishDepth,
+    selectBubble,
+    updateBeacon,
+    startCircuitAutopilot,
+    stopCircuitAutopilot,
+    autoGenerateTraceCircuit,
     updateBubble,
+    deleteBubble,
   } = useSoonStore();
+
+  const selectedBubble = bubbles.find((bubble) => bubble.id === selectedBubbleId) || null;
+  const selectedBeacon = traceCircuit.find((beacon) => beacon.id === selectedBeaconId) || null;
 
   const toggle = (key) =>
     setActiveSlider((cur) => (cur === key ? null : key));
@@ -91,18 +101,31 @@ export default function SoonApp({ onBack }) {
         onCycleBubbleDepth={(id) => {
           const bubble = bubbles.find((item) => item.id === id);
           if (!bubble) return;
+          setEditorOpenKey((value) => value + 1);
+          selectBubble(id);
           updateBubble(id, { depth: (Math.round(bubble.depth || 1) % 3) + 1 });
         }}
       />
 
-      <div style={{ display: "flex", justifyContent: "center", marginTop: 10 }}>
-        <button
-          onClick={() => setInteractionMode((prev) => (prev === "swim" ? "edit" : "swim"))}
-          className={interactionMode === "edit" ? "active" : ""}
-          title={interactionMode === "edit" ? "Mode Éditer" : "Mode Nager"}
-        >
-          {interactionMode === "edit" ? "Mode Éditer" : "Mode Nager"}
-        </button>
+      <div className="mode-switch-bottom">
+        <div className="mode-switch-pill" role="tablist" aria-label="Mode tactile">
+          <button
+            type="button"
+            className={`mode-switch-button ${interactionMode === "swim" ? "active" : ""}`}
+            onClick={() => setInteractionMode("swim")}
+            aria-pressed={interactionMode === "swim"}
+          >
+            Nager
+          </button>
+          <button
+            type="button"
+            className={`mode-switch-button ${interactionMode === "edit" ? "active" : ""}`}
+            onClick={() => setInteractionMode("edit")}
+            aria-pressed={interactionMode === "edit"}
+          >
+            Éditer
+          </button>
+        </div>
       </div>
 
       {/* COCKPIT */}
@@ -178,7 +201,22 @@ export default function SoonApp({ onBack }) {
 
       </div>
 
-      <SidePanel />
+      <SidePanel
+        mode={mode}
+        selectedBubble={selectedBubble}
+        selectedBeacon={selectedBeacon}
+        circuitAutopilot={circuitAutopilot}
+        onUpdateBeacon={(patch) => {
+          if (!selectedBeaconId) return;
+          updateBeacon(selectedBeaconId, patch);
+        }}
+        onStartCircuitAutopilot={startCircuitAutopilot}
+        onStopCircuitAutopilot={stopCircuitAutopilot}
+        onAutoGenerateTraceCircuit={autoGenerateTraceCircuit}
+        onUpdateBubble={(id, patch) => updateBubble(id, patch)}
+        onDeleteBubble={deleteBubble}
+        forceOpenKey={editorOpenKey}
+      />
 
     </main>
   );
