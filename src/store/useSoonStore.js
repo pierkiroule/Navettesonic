@@ -18,6 +18,7 @@ const saved = loadState();
 
 const DEFAULT_ARENA_RADIUS = 1200;
 const FISH_GUIDE_PATH_MAX = 64;
+const FISH_BODY_NODES = 10;
 
 function clampDepth(depth) {
   return normalizeDepth(depth);
@@ -110,6 +111,7 @@ const defaultFish = {
   bodyFlex: 0,
   bodyWaveBoost: 0,
   guidePath: [],
+  bodyNodes: [],
 };
 
 const initialState = {
@@ -281,6 +283,34 @@ export const useSoonStore = create((set, get) => ({
 
       const speed = Math.hypot(vx, vy);
 
+      const prevNodes = Array.isArray(state.fish.bodyNodes) ? state.fish.bodyNodes : [];
+      const nodes = [];
+      nodes[0] = { x: safe.x, y: safe.y };
+      for (let i = 1; i < FISH_BODY_NODES; i += 1) {
+        const prev = nodes[i - 1];
+        const old = prevNodes[i] || prevNodes[i - 1] || prev;
+        const followDist = 11 + i * 2.9;
+        const dx = old.x - prev.x;
+        const dy = old.y - prev.y;
+        const d = Math.hypot(dx, dy) || 0.0001;
+        const targetX = prev.x + (dx / d) * followDist;
+        const targetY = prev.y + (dy / d) * followDist;
+        const ease = 0.34 + Math.min(0.3, speed * 0.06) + i * 0.012;
+        nodes[i] = {
+          x: old.x + (targetX - old.x) * ease,
+          y: old.y + (targetY - old.y) * ease,
+        };
+      }
+
+      const tail = nodes[nodes.length - 1] || nodes[0];
+      const neck = nodes[1] || nodes[0];
+      const ropeAngle = Math.atan2(neck.y - safe.y, neck.x - safe.x);
+      const ropeTailAngle = Math.atan2(safe.y - tail.y, safe.x - tail.x);
+      let ropeDelta = ropeTailAngle - ropeAngle;
+      while (ropeDelta > Math.PI) ropeDelta -= Math.PI * 2;
+      while (ropeDelta < -Math.PI) ropeDelta += Math.PI * 2;
+      const ropeBend = Math.max(-1, Math.min(1, ropeDelta / 1.1));
+
       // Orientation : le poisson suit la courbe du mouvement.
       const moveAngle = speed > 0.035 ? Math.atan2(vy, vx) : currentAngle;
 
@@ -356,6 +386,8 @@ export const useSoonStore = create((set, get) => ({
           bodyWaveBoost: nextBodyWaveBoost,
           guidePath,
           guideAngle,
+          bodyNodes: nodes,
+          ropeBend,
           maxSpeed: state.fish.maxSpeed || 3.1,
           pullLagX: lagX,
           pullLagY: lagY,

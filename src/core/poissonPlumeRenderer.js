@@ -512,6 +512,7 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
   const turnAmount = safeNumber(fish.turnAmount, 0);
   const bodyFlex = safeNumber(fish.bodyFlex, 0);
   const bodyWaveBoost = safeNumber(fish.bodyWaveBoost, 0);
+  const ropeBend = safeNumber(fish.ropeBend, 0);
 
   const audio = options.audio || {};
   const reactiveBass = safeNumber(audio.bass);
@@ -532,6 +533,7 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
   while (pathDelta > Math.PI) pathDelta -= Math.PI * 2;
   while (pathDelta < -Math.PI) pathDelta += Math.PI * 2;
   const pathBend = Math.max(-1, Math.min(1, pathDelta / 0.9));
+  const serpentBend = pathBend * 0.48 + ropeBend * 0.72;
 
   const wingPresence = Math.max(
     0.18,
@@ -547,7 +549,7 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
   const d = {
     swimT,
     glide,
-    bend: bend + pathBend * 0.35,
+    bend: bend + serpentBend,
     bodyBreath: Math.sin(swimT * 2.3) * 0.34,
     finFlap,
     finMorph,
@@ -563,8 +565,8 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
     reactiveEnergy,
     audioInfluence,
     mouthPull,
-    flex: bodyFlex + pathBend * 0.5,
-    waveBoost: bodyWaveBoost,
+    flex: bodyFlex + serpentBend * 0.75,
+    waveBoost: bodyWaveBoost + Math.abs(ropeBend) * 0.25,
   };
 
   const depth = Math.max(1, Math.min(3, Math.round(safeNumber(fish.depth, 1))));
