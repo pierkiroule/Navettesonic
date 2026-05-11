@@ -12,7 +12,6 @@ import {
 const saved = loadState();
 
 const DEFAULT_ARENA_RADIUS = 1200;
-const FISH_COLLISION_RADIUS = 34;
 
 function clampDepth(depth) {
   return Math.max(1, Math.min(3, Math.round(depth || 1)));
@@ -22,19 +21,42 @@ export function pushBubblesFromFish(bubbles = [], fish = {}, fishDepth = 1) {
   const depth = clampDepth(fishDepth);
   const fishX = fish.x || 0;
   const fishY = fish.y || 0;
+  const fishAngle = Number.isFinite(fish.angle) ? fish.angle : -Math.PI / 2;
+  const head = {
+    x: fishX + Math.cos(fishAngle) * 36,
+    y: fishY + Math.sin(fishAngle) * 36,
+    radius: 34,
+  };
+  const body = {
+    x: fishX - Math.cos(fishAngle) * 10,
+    y: fishY - Math.sin(fishAngle) * 10,
+    radius: 40,
+  };
 
   return bubbles.map((bubble) => {
     if (clampDepth(bubble.depth) !== depth) return bubble;
-    const bubbleRadius = Math.max(12, bubble.r || 0);
-    const dx = (bubble.x || 0) - fishX;
-    const dy = (bubble.y || 0) - fishY;
-    const d = Math.hypot(dx, dy) || 0.0001;
-    const overlap = FISH_COLLISION_RADIUS + bubbleRadius - d;
-    if (overlap <= 0) return bubble;
+    const depthScale =
+      depth === 1 ? 1.07 : depth === 2 ? 1 : 0.9;
+    const bubbleRadius = Math.max(12, (bubble.r || 0) * depthScale);
+    const collideWith = [head, body];
+    let pushX = 0;
+    let pushY = 0;
 
-    const push = overlap * 0.22;
+    collideWith.forEach((zone) => {
+      const dx = (bubble.x || 0) - zone.x;
+      const dy = (bubble.y || 0) - zone.y;
+      const d = Math.hypot(dx, dy) || 0.0001;
+      const overlap = zone.radius + bubbleRadius - d;
+      if (overlap <= 0) return;
+      const push = overlap * 0.2;
+      pushX += (dx / d) * push;
+      pushY += (dy / d) * push;
+    });
+
+    if (pushX === 0 && pushY === 0) return bubble;
+
     const safe = clampToCircle(
-      { x: (bubble.x || 0) + (dx / d) * push, y: (bubble.y || 0) + (dy / d) * push },
+      { x: (bubble.x || 0) + pushX, y: (bubble.y || 0) + pushY },
       DEFAULT_ARENA_RADIUS * 1.6
     );
 
