@@ -21,7 +21,6 @@ const TRIANGLE_FRICTION = 0.94;
 
 const fireflies = [];
 const plumeTrail = [];
-let tailAttachmentCount = 0;
 const placedTriangles = [];
 const resonanceBubbles = [];
 
@@ -105,19 +104,10 @@ function pickVoiceFragment(type) {
   return list[Math.floor(Math.random() * list.length)] || "";
 }
 
-function attachFireflyToTailSlot(firefly) {
-  if (!firefly) return;
-
-  if (!Number.isFinite(firefly.tailSlot)) {
-    firefly.tailSlot = tailAttachmentCount;
-    firefly.tailPhase = Math.random() * Math.PI * 2;
-    tailAttachmentCount += 1;
-  }
-}
-
 function getTail(fish) {
   const angle = safe(fish.angle, -Math.PI / 2);
-  const offset = 28 + tailAttachmentCount * 8;
+  const attachedCount = getAttachedFirefliesSorted().length;
+  const offset = 28 + attachedCount * 8;
 
   return {
     x: safe(fish.x) - Math.cos(angle) * offset,
@@ -269,7 +259,9 @@ function attachSingleFireflyToTail(fish, firefly, now) {
 }
 
 function updateAttachedFirefly(firefly, fish) {
-  attachFireflyToTailSlot(firefly);
+  if (!Number.isFinite(firefly.tailPhase)) {
+    firefly.tailPhase = Math.random() * Math.PI * 2;
+  }
 
   const slot = Math.max(0, firefly.attachedOrder || 0);
   const phase = firefly.tailPhase || 0;
@@ -966,7 +958,6 @@ export function getFireflyDebugStats() {
 export function resetFireflyGame() {
   fireflies.length = 0;
   plumeTrail.length = 0;
-  tailAttachmentCount = 0;
   completeTriangleSince = 0;
   placedTriangles.length = 0;
   resonanceBubbles.length = 0;
