@@ -1,31 +1,62 @@
+
 import { sampleLibrary } from "../data/defaultPack.js";
+
+function clampDepth(value) {
+  return Math.max(1, Math.min(3, Math.round(Number(value) || 1)));
+}
+
+function getDepthLabel(depth) {
+  const d = clampDepth(depth);
+
+  if (d === 1) return "P1 · surface";
+  if (d === 2) return "P2 · milieu";
+  return "P3 · fond";
+}
 
 export default function BubbleEditor({ bubble, onUpdate, onDelete }) {
   if (!bubble) {
     return (
       <section className="bubble-editor empty">
-        <h3>Aucune bulle sélectionnée</h3>
-        <p>Touche une bulle pour la régler.</p>
+        <h3>Mode édition</h3>
+        <p>Touche une bulle pour afficher ses propriétés.</p>
       </section>
     );
   }
 
+  const depth = clampDepth(bubble.depth);
+  const radius = Number(bubble.r) || 70;
+  const hue = Number(bubble.hue) || 190;
+
   return (
     <section className="bubble-editor">
-      <h3>{bubble.label}</h3>
+      <header className="bubble-editor-header">
+        <div>
+          <p className="bubble-editor-kicker">Bulle sonore</p>
+          <h3>{bubble.label || "Bulle sans nom"}</h3>
+        </div>
+
+        <div
+          className="bubble-editor-preview"
+          style={{
+            background: `hsla(${hue}, 90%, 66%, 0.8)`,
+            boxShadow: `0 0 22px hsla(${hue}, 90%, 66%, 0.45)`,
+          }}
+        />
+      </header>
 
       <label>
-        Nom
+        <span>Nom</span>
         <input
-          value={bubble.label}
+          value={bubble.label || ""}
+          placeholder="Nom de la bulle"
           onChange={(event) => onUpdate({ label: event.target.value })}
         />
       </label>
 
       <label>
-        Son
+        <span>Son</span>
         <select
-          value={bubble.sampleId}
+          value={bubble.sampleId || sampleLibrary[0]?.id || ""}
           onChange={(event) => onUpdate({ sampleId: event.target.value })}
         >
           {sampleLibrary.map((sample) => (
@@ -36,40 +67,55 @@ export default function BubbleEditor({ bubble, onUpdate, onDelete }) {
         </select>
       </label>
 
-      <label>
-        Taille
+      <div className="bubble-field">
+        <div className="bubble-field-row">
+          <span>Taille</span>
+          <strong>{radius}px</strong>
+        </div>
         <input
           type="range"
           min="36"
           max="150"
-          value={bubble.r}
+          value={radius}
           onChange={(event) => onUpdate({ r: Number(event.target.value) })}
         />
-      </label>
+      </div>
 
-      <label>
-        Profondeur
-        <input
-          type="range"
-          min="1"
-          max="3"
-          value={bubble.depth}
-          onChange={(event) => onUpdate({ depth: Number(event.target.value) })}
-        />
-      </label>
+      <div className="bubble-field">
+        <div className="bubble-field-row">
+          <span>Profondeur</span>
+          <strong>{getDepthLabel(depth)}</strong>
+        </div>
 
-      <label>
-        Couleur
+        <div className="depth-buttons">
+          {[1, 2, 3].map((value) => (
+            <button
+              key={value}
+              type="button"
+              className={depth === value ? "active" : ""}
+              onClick={() => onUpdate({ depth: value })}
+            >
+              P{value}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="bubble-field">
+        <div className="bubble-field-row">
+          <span>Couleur</span>
+          <strong>{hue}°</strong>
+        </div>
         <input
           type="range"
           min="0"
           max="360"
-          value={bubble.hue}
+          value={hue}
           onChange={(event) => onUpdate({ hue: Number(event.target.value) })}
         />
-      </label>
+      </div>
 
-      <button className="danger-btn" onClick={onDelete}>
+      <button className="danger-btn" type="button" onClick={onDelete}>
         Supprimer la bulle
       </button>
     </section>

@@ -25,24 +25,12 @@ export function useSoonPointer({
   onAddBubble,
   onAddPathPoint,
   onSetFishDepth,
-  onCycleBubbleDepth,
   onOpenBubbleEditor,
   onDepthToast,
 }) {
   const MOVE_CANCEL = 12;
-  const DOUBLE_TAP_MS = 360;
-  const DOUBLE_TAP_DIST = 48;
-
-  function clearLongPress() {
-    if (pointerRef.current.longPressTimer) {
-      clearTimeout(pointerRef.current.longPressTimer);
-    }
-
-    pointerRef.current.longPressTimer = null;
-    pointerRef.current.longPressStartPoint = null;
-    pointerRef.current.longPressTargetType = null;
-    pointerRef.current.longPressTargetId = null;
-  }
+  const DOUBLE_TAP_MS = 420;
+  const DOUBLE_TAP_DIST = 72;
 
   function getWorldFromEvent(event) {
     const canvas = canvasRef.current;
@@ -61,61 +49,6 @@ export function useSoonPointer({
     return clampToCircle(point, arenaRef.current.radius - 70);
   }
 
-  function findBubbleAt(point) {
-    const state = stateRef.current;
-    const fishDepth = normalizeDepth(state?.fish?.depth);
-    const bubbles = [...(state?.bubbles || [])].reverse();
-
-    const inHitArea = (bubble) =>
-      distance(bubble, point) <= getBubbleHitRadius(bubble);
-
-    const sortByNearest = (a, b) =>
-      distance(a, point) - distance(b, point);
-
-    const sameDepth = bubbles
-      .filter((bubble) => normalizeDepth(bubble?.depth) === fishDepth)
-      .filter(inHitArea)
-      .sort(sortByNearest);
-
-    if (sameDepth.length) return sameDepth[0];
-
-    return bubbles.filter(inHitArea).sort(sortByNearest)[0] || null;
-  }
-
-  function findBeaconAt(point) {
-    return [...(stateRef.current.traceCircuit || [])]
-      .reverse()
-      .find((beacon) => distance(beacon, point) <= 26);
-  }
-
-  function isDoubleTap(point, targetId = null) {
-    const now = Date.now();
-    const last = pointerRef.current.lastTapPos;
-    const lastTargetId = pointerRef.current.lastTapTargetId || null;
-
-    return (
-      now - pointerRef.current.lastTapAt < DOUBLE_TAP_MS &&
-      last &&
-      Math.hypot(last.x - point.x, last.y - point.y) < DOUBLE_TAP_DIST &&
-      lastTargetId === targetId
-    );
-  }
-
-  function rememberTap(point, targetId = null) {
-    pointerRef.current.lastTapAt = Date.now();
-    pointerRef.current.lastTapPos = point;
-    pointerRef.current.lastTapTargetId = targetId;
-  }
-
-  function cycleFishDepth() {
-    const current = stateRef.current;
-    const currentDepth = normalizeDepth(current.fish?.depth);
-    const nextDepth = currentDepth >= 3 ? 1 : currentDepth + 1;
-
-    onSetFishDepth?.(nextDepth);
-    onDepthToast?.(nextDepth);
-  }
-
   function registerPointer(event) {
     pointerRef.current.activePointers =
       pointerRef.current.activePointers || new Map();
@@ -124,6 +57,119 @@ export function useSoonPointer({
       x: event.clientX,
       y: event.clientY,
     });
+  }
+
+  function findBubbleAt(point) {
+    const bubbles = [...(stateRef.current?.bubbles || [])].reverse();
+
+    return (
+      bubbles
+        .filter((bubble) => distance(bubble, point) <= getBubbleHitRadius(bubble))
+        .sort((a, b) => distance(a, point) - distance(b, point))[0] || null
+    );
+  }
+
+  function findBeaconAt(point) {
+    return [...(stateRef.current.traceCircuit || [])]
+      .reverse()
+      .find((beacon) => distance(beacon, point) <= 26);
+  }
+
+  function isDoubleTapScreen(event, key = "global") {
+    const now = Date.now();
+    const last = pointerRef.current.lastTapScreenPos;
+    const lastKey = pointerRef.current.lastTapKey || "global";
+
+    return (
+      now - (pointerRef.current.lastTapAt || 0) < DOUBLE_TAP_MS &&
+      last &&
+      lastKey === key &&
+      Math.hypot(last.x - event.clientX, last.y - event.clientY) < DOUBLE_TAP_DIST
+    );
+  }
+
+  function rememberTapScreen(event, key = "global") {
+    pointerRef.current.lastTapAt = Date.now();
+    pointerRef.current.lastTapKey = key;
+    pointerRef.current.lastTapScreenPos = {
+      x: event.clientX,
+      y: event.clientY,
+    };
+  }
+
+  function cycleFishDepth() {
+    const currentDepth = normalizeDepth(stateRef.current.fish?.depth);
+    const nextDepth = currentDepth >= 3 ? 1 : currentDepth + 1;
+
+    onSetFishDepth?.(nextDepth);
+    onDepthToast?.(nextDepth);
+  }
+
+  function handleSwimPointerDown(event, point, current) {
+    const doubleTap = isDoubleTapScreen(event, "swim");
+
+    onSelectBubble?.(null);
+
+    if (doubleTap) {
+      cycleFishDepth();
+
+      // reset pour éviter triple tap parasite
+      pointerRef.current.lastTapAt = 0;
+      pointerRef.current.lastTapScreenPos = null;
+      pointerRef.current.lastTapKey = null;
+
+      return;
+    }
+
+    rememberTapScreen(event, "swim");
+
+    if (!current.circuitAutopilot) {
+      onFishTarget?.(point.x, point.y);
+    }
+
+    if (current.mode === "reso") {
+      onAddPathPoint?.(point);
+    }
+  }
+
+  function handleEditPointerDown(event, point, current) {
+    const hit = findBubbleAt(point);
+    const beaconHit = current.mode === "reso" ? findBeaconAt(point) : null;
+
+    if (beaconHit) {
+      onSelectBeacon?.(beaconHit.id);
+      pointerRef.current.dragBeaconId = beaconHit.id;
+      rememberTapScreen(event, `beacon:${beaconHit.id}`);
+      return;
+    }
+
+    if (hit) {
+      onSelectBubble?.(hit.id);
+      onOpenBubbleEditor?.(hit.id);
+
+      pointerRef.current.pendingBubbleId = hit.id;
+      rememberTapScreen(event, `bubble:${hit.id}`);
+      return;
+    }
+
+    const doubleTapEmpty = isDoubleTapScreen(event, "edit-empty");
+
+    onSelectBubble?.(null);
+
+    pointerRef.current.panEnabled = true;
+    pointerRef.current.panStart = point;
+
+    if (doubleTapEmpty) {
+      onAddBubble?.(point.x, point.y);
+
+      pointerRef.current.lastTapAt = 0;
+      pointerRef.current.lastTapScreenPos = null;
+      pointerRef.current.lastTapKey = null;
+
+      return;
+    }
+
+    rememberTapScreen(event, "edit-empty");
   }
 
   function handlePointerDown(event) {
@@ -145,69 +191,14 @@ export function useSoonPointer({
     pointerRef.current.panEnabled = false;
     pointerRef.current.panStart = null;
     pointerRef.current.pinchDistance = null;
-    pointerRef.current.longPressStartPoint = point;
+    pointerRef.current.startPoint = point;
 
-    clearLongPress();
-
-    if (!isEditMode) {
-      const doubleTap = isDoubleTap(point, null);
-
-      onSelectBubble?.(null);
-
-      if (doubleTap) {
-        cycleFishDepth();
-        rememberTap(point, null);
-        return;
-      }
-
-      if (!current.circuitAutopilot) {
-        onFishTarget?.(point.x, point.y);
-      }
-
-      if (current.mode === "reso") {
-        onAddPathPoint?.(point);
-      }
-
-      rememberTap(point, null);
+    if (isEditMode) {
+      handleEditPointerDown(event, point, current);
       return;
     }
 
-    const hit = findBubbleAt(point);
-    const beaconHit =
-      current.mode === "reso" ? findBeaconAt(point) : null;
-
-    if (beaconHit) {
-      onSelectBeacon?.(beaconHit.id);
-      pointerRef.current.dragBeaconId = beaconHit.id;
-      rememberTap(point, beaconHit.id);
-      return;
-    }
-
-    if (hit) {
-      const doubleTap = isDoubleTap(point, hit.id);
-
-      onSelectBubble?.(hit.id);
-      pointerRef.current.pendingBubbleId = hit.id;
-
-      if (doubleTap) {
-        onOpenBubbleEditor?.(hit.id);
-      }
-
-      rememberTap(point, hit.id);
-      return;
-    }
-
-    const doubleTapEmpty = isDoubleTap(point, null);
-
-    onSelectBubble?.(null);
-    pointerRef.current.panEnabled = true;
-    pointerRef.current.panStart = point;
-
-    if (doubleTapEmpty) {
-      onAddBubble?.(point.x, point.y);
-    }
-
-    rememberTap(point, null);
+    handleSwimPointerDown(event, point, current);
   }
 
   function handlePointerMove(event) {
@@ -256,13 +247,12 @@ export function useSoonPointer({
 
       pointerRef.current.pinchDistance = dist;
       pointerRef.current.panEnabled = false;
-      clearLongPress();
       return;
     }
 
     pointerRef.current.pinchDistance = null;
 
-    const start = pointerRef.current.longPressStartPoint;
+    const start = pointerRef.current.startPoint;
     const moved =
       start && Math.hypot(start.x - point.x, start.y - point.y) > MOVE_CANCEL;
 
@@ -307,8 +297,6 @@ export function useSoonPointer({
   }
 
   function handlePointerUp(event) {
-    clearLongPress();
-
     pointerRef.current.activePointers?.delete(event.pointerId);
 
     const stillActive = (pointerRef.current.activePointers?.size || 0) > 0;
@@ -322,7 +310,7 @@ export function useSoonPointer({
       pointerRef.current.panEnabled = false;
       pointerRef.current.panStart = null;
       pointerRef.current.pinchDistance = null;
-      pointerRef.current.longPressStartPoint = null;
+      pointerRef.current.startPoint = null;
     }
 
     try {
@@ -331,7 +319,6 @@ export function useSoonPointer({
   }
 
   function cleanupPointer() {
-    clearLongPress();
     pointerRef.current.activePointers?.clear();
   }
 

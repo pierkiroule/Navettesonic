@@ -63,8 +63,8 @@ export default function SidePanel({
           {mode === "compo" && selectedBubble && (
             <BubbleEditor
               bubble={selectedBubble}
-              onUpdate={onUpdateBubble}
-              onDelete={onDeleteBubble}
+              onUpdate={(patch) => onUpdateBubble(selectedBubble.id, patch)}
+              onDelete={() => onDeleteBubble(selectedBubble.id)}
             />
           )}
 
