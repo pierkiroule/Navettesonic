@@ -84,9 +84,10 @@ export function useSoonPointer({
 
     const point = getSafeWorldFromEvent(event);
     const current = stateRef.current;
+    const isEditMode = current.interactionMode === "edit";
 
-    const hit = findBubbleAt(point);
-    const beaconHit = current.mode === "reso" ? findBeaconAt(point) : null;
+    const hit = isEditMode ? findBubbleAt(point) : null;
+    const beaconHit = isEditMode && current.mode === "reso" ? findBeaconAt(point) : null;
 
     pointerRef.current.down = true;
     pointerRef.current.pointerId = event.pointerId;
@@ -103,7 +104,11 @@ export function useSoonPointer({
       if (!pointerRef.current.down) return;
       if (pointerRef.current.dragBubbleId || pointerRef.current.dragBeaconId) return;
 
-      if (pointerRef.current.longPressTargetType === "bubble" && pointerRef.current.longPressTargetId) {
+      if (
+        isEditMode &&
+        pointerRef.current.longPressTargetType === "bubble" &&
+        pointerRef.current.longPressTargetId
+      ) {
         onCycleBubbleDepth(pointerRef.current.longPressTargetId);
       } else {
         const nextDepth = ((Math.round(nowState.fish?.depth || 1) % 3) || 0) + 1;
@@ -113,13 +118,13 @@ export function useSoonPointer({
       clearLongPress();
     }, LONG_PRESS_MS);
 
-    if (beaconHit) {
+    if (isEditMode && beaconHit) {
       onSelectBeacon(beaconHit.id);
       pointerRef.current.dragBeaconId = beaconHit.id;
       return;
     }
 
-    if (hit) {
+    if (isEditMode && hit) {
       onSelectBubble(hit.id);
       playBubbleSound(hit, current.fish);
 
@@ -130,13 +135,15 @@ export function useSoonPointer({
       return;
     }
 
-    onSelectBubble(null);
+    if (isEditMode) {
+      onSelectBubble(null);
+    }
 
     if (!current.circuitAutopilot) {
       onFishTarget(point.x, point.y);
     }
 
-    if (current.mode === "reso") {
+    if (isEditMode && current.mode === "reso") {
       onAddPathPoint(point);
     }
 
@@ -148,7 +155,7 @@ export function useSoonPointer({
       last &&
       Math.hypot(last.x - point.x, last.y - point.y) < 48;
 
-    if (isDoubleTap && current.mode === "compo") {
+    if (isDoubleTap && current.mode === "compo" && isEditMode) {
       onAddBubble(point.x, point.y);
     }
 
@@ -162,13 +169,15 @@ export function useSoonPointer({
     const point = getSafeWorldFromEvent(event);
     const current = stateRef.current;
 
-    if (pointerRef.current.dragBeaconId) {
+    const isEditMode = current.interactionMode === "edit";
+
+    if (isEditMode && pointerRef.current.dragBeaconId) {
       clearLongPress();
       onMoveBeacon(pointerRef.current.dragBeaconId, point.x, point.y);
       return;
     }
 
-    if (pointerRef.current.pendingBubbleId) {
+    if (isEditMode && pointerRef.current.pendingBubbleId) {
       const start = pointerRef.current.longPressStartPoint;
       if (start && Math.hypot(start.x - point.x, start.y - point.y) > LONG_PRESS_CANCEL_DISTANCE) {
         pointerRef.current.dragBubbleId = pointerRef.current.pendingBubbleId;
@@ -177,7 +186,7 @@ export function useSoonPointer({
       }
     }
 
-    if (pointerRef.current.dragBubbleId) {
+    if (isEditMode && pointerRef.current.dragBubbleId) {
       clearLongPress();
       onMoveBubble(pointerRef.current.dragBubbleId, {
         x: point.x,
@@ -192,7 +201,7 @@ export function useSoonPointer({
 
     onFishTarget(point.x, point.y);
 
-    if (current.mode === "reso") {
+    if (isEditMode && current.mode === "reso") {
       onAddPathPoint(point);
     }
   }

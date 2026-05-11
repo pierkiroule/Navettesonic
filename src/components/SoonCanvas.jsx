@@ -4,6 +4,7 @@ import { useSoonPointer } from "./soon/useSoonPointer.js";
 
 export default function SoonCanvas({
   mode,
+  interactionMode = "swim",
   bubbles,
   fish,
   selectedBubbleId,
@@ -57,6 +58,7 @@ export default function SoonCanvas({
 
   const stateRef = useRef({
     mode,
+    interactionMode,
     bubbles,
     fish,
     selectedBubbleId,
@@ -73,6 +75,7 @@ export default function SoonCanvas({
   useEffect(() => {
     stateRef.current = {
       mode,
+      interactionMode,
       bubbles,
       fish,
       selectedBubbleId,
@@ -87,6 +90,7 @@ export default function SoonCanvas({
     };
   }, [
     mode,
+    interactionMode,
     bubbles,
     fish,
     selectedBubbleId,

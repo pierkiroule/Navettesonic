@@ -6,6 +6,7 @@ import { useSoonStore } from "../store/useSoonStore.js";
 
 export default function SoonApp({ onBack }) {
   const [page, setPage] = useState("arena");
+  const [interactionMode, setInteractionMode] = useState("swim");
   const [viewZoom, setViewZoom] = useState(1);
   const [swimSpeed, setSwimSpeed] = useState(1);
   const [depth, setDepth] = useState(1);
@@ -62,6 +63,14 @@ export default function SoonApp({ onBack }) {
       Perso
     </button>
 
+    <button
+      onClick={() => setInteractionMode((prev) => (prev === "swim" ? "edit" : "swim"))}
+      className={interactionMode === "edit" ? "active" : ""}
+      title={interactionMode === "edit" ? "Mode Éditer" : "Mode Nager"}
+    >
+      {interactionMode === "edit" ? "Éditer" : "Nager"}
+    </button>
+
   </div>
 </header>
 
@@ -70,6 +79,7 @@ export default function SoonApp({ onBack }) {
       {/* CANVAS */}
       <SoonCanvas
         mode={mode}
+        interactionMode={interactionMode}
         bubbles={bubbles}
         fish={fish}
         selectedBubbleId={selectedBubbleId}
