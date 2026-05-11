@@ -1,7 +1,12 @@
 import { create } from "zustand";
 import { defaultPack } from "../data/defaultPack.js";
 import { clearState, loadState, saveState } from "../core/storage.js";
-import { clampToCircle, getBubblePhysicsRadius, makeId } from "../core/geometry.js";
+import {
+  clampToCircle,
+  getBubblePhysicsRadius,
+  makeId,
+  normalizeDepth,
+} from "../core/geometry.js";
 import {
   createDefaultTraceCircuit,
   createSlalomCircuitFromBubbles,
@@ -14,7 +19,7 @@ const saved = loadState();
 const DEFAULT_ARENA_RADIUS = 1200;
 
 function clampDepth(depth) {
-  return Math.max(1, Math.min(3, Math.round(depth || 1)));
+  return normalizeDepth(depth);
 }
 
 export function pushBubblesFromFish(bubbles = [], fish = {}, fishDepth = 1) {

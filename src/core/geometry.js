@@ -40,8 +40,16 @@ export function makeId(prefix = "id") {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+export function normalizeDepth(depth) {
+  return Math.max(1, Math.min(3, Math.round(depth || 1)));
+}
+
+export function sameDepth(a, b) {
+  return normalizeDepth(a?.depth) === normalizeDepth(b?.depth);
+}
+
 export function getBubbleVisualRadius(bubble) {
-  const depth = Math.max(1, Math.min(3, Math.round(bubble?.depth || 1)));
+  const depth = normalizeDepth(bubble?.depth);
   const depthScale = 0.82 + depth * 0.12;
   return (bubble?.r || 70) * depthScale;
 }

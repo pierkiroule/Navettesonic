@@ -2,6 +2,7 @@ import {
   clampToCircle,
   distance,
   getBubbleHitRadius,
+  normalizeDepth,
   screenToWorld,
 } from "../../core/geometry.js";
 import { playBubbleSound } from "../../core/audioEngine.js";
@@ -52,9 +53,21 @@ export function useSoonPointer({
   }
 
   function findBubbleAt(point) {
-    return [...(stateRef.current.bubbles || [])]
-      .reverse()
-      .find((bubble) => distance(bubble, point) <= getBubbleHitRadius(bubble));
+    const state = stateRef.current;
+    const fishDepth = normalizeDepth(state?.fish?.depth);
+    const bubbles = [...(state?.bubbles || [])].reverse();
+    const sortByNearest = (a, b) => distance(a, point) - distance(b, point);
+    const inHitArea = (bubble) => distance(bubble, point) <= getBubbleHitRadius(bubble);
+
+    const sameDepthCandidates = bubbles
+      .filter((bubble) => normalizeDepth(bubble?.depth) === fishDepth)
+      .filter(inHitArea)
+      .sort(sortByNearest);
+
+    if (sameDepthCandidates.length > 0) return sameDepthCandidates[0];
+
+    const fallbackCandidates = bubbles.filter(inHitArea).sort(sortByNearest);
+    return fallbackCandidates[0] || null;
   }
 
   function findBeaconAt(point) {
