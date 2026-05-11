@@ -5,7 +5,6 @@ import {
   normalizeDepth,
   screenToWorld,
 } from "../../core/geometry.js";
-import { playBubbleSound } from "../../core/audioEngine.js";
 import {
   clampEditCamera,
   panEditCamera,
@@ -139,9 +138,7 @@ export function useSoonPointer({
     if (isEditMode && hit) {
       onSelectBubble(hit.id);
 
-      if (current.mode === "compo") {
-        pointerRef.current.pendingBubbleId = hit.id;
-      }
+      pointerRef.current.pendingBubbleId = hit.id;
 
       return;
     }
@@ -169,8 +166,7 @@ export function useSoonPointer({
     if (isDoubleTap && isEditMode) {
       if (hit) {
         onSelectBubble(hit.id);
-        onCycleBubbleDepth(hit.id);
-      } else if (current.mode === "compo") {
+      } else {
         onAddBubble(point.x, point.y);
       }
     }
@@ -180,7 +176,7 @@ export function useSoonPointer({
   }
 
   function handlePointerMove(event) {
-    if (!pointerRef.current.down) return;
+    if (!pointerRef.current.down && !(pointerRef.current.activePointers?.size > 0)) return;
 
     pointerRef.current.activePointers = pointerRef.current.activePointers || new Map();
     pointerRef.current.activePointers.set(event.pointerId, {
@@ -273,15 +269,17 @@ export function useSoonPointer({
 
   function handlePointerUp(event) {
     clearLongPress();
-    pointerRef.current.down = false;
-    pointerRef.current.pointerId = null;
-    pointerRef.current.dragBubbleId = null;
-    pointerRef.current.pendingBubbleId = null;
-    pointerRef.current.dragBeaconId = null;
-    pointerRef.current.panEnabled = false;
-    pointerRef.current.panStart = null;
-    pointerRef.current.pinchDistance = null;
     pointerRef.current.activePointers?.delete(event.pointerId);
+    pointerRef.current.down = (pointerRef.current.activePointers?.size || 0) > 0;
+    if (!pointerRef.current.down) {
+      pointerRef.current.pointerId = null;
+      pointerRef.current.dragBubbleId = null;
+      pointerRef.current.pendingBubbleId = null;
+      pointerRef.current.dragBeaconId = null;
+      pointerRef.current.panEnabled = false;
+      pointerRef.current.panStart = null;
+      pointerRef.current.pinchDistance = null;
+    }
 
     try {
       canvasRef.current?.releasePointerCapture(event.pointerId);
