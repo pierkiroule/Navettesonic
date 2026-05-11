@@ -23,6 +23,8 @@ export default function SoonCanvas({
   onMoveBubble,
   onAddBubble,
   onAddPathPoint,
+  onSetFishDepth,
+  onCycleBubbleDepth,
 }) {
   const canvasRef = useRef(null);
 
@@ -40,9 +42,15 @@ export default function SoonCanvas({
     down: false,
     pointerId: null,
     dragBubbleId: null,
+    pendingBubbleId: null,
     dragBeaconId: null,
     lastTapAt: 0,
     lastTapPos: null,
+    longPressTimer: null,
+    longPressStartPoint: null,
+    longPressTargetType: null,
+    longPressTargetId: null,
+    fishDepthHudUntil: 0,
   });
 
   const activeBubbleAudioRef = useRef(new Set());
@@ -105,6 +113,7 @@ export default function SoonCanvas({
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
+    cleanupPointer,
   } = useSoonPointer({
     canvasRef,
     cameraRef,
@@ -118,7 +127,11 @@ export default function SoonCanvas({
     onMoveBubble,
     onAddBubble,
     onAddPathPoint,
+    onSetFishDepth,
+    onCycleBubbleDepth,
   });
+
+  useEffect(() => cleanupPointer, [cleanupPointer]);
 
   return (
     <canvas
