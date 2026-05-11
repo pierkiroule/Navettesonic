@@ -3,10 +3,7 @@ import {
   stopBubbleSound,
   updateAmbientMix,
 } from "./audioEngine.js";
-
-function sameDepth(fish, bubble) {
-  return Math.round(fish?.depth || 1) === Math.round(bubble?.depth || 1);
-}
+import { getBubbleAudioRadius, sameDepth } from "./geometry.js";
 
 export function updateBubbleAudioTriggers(current, activeBubbleAudioRef) {
   const fish = current.fish;
@@ -23,7 +20,7 @@ export function updateBubbleAudioTriggers(current, activeBubbleAudioRef) {
     const dy = (bubble.y || 0) - (fish.y || 0);
     const d = Math.hypot(dx, dy);
 
-    const triggerRadius = (bubble.r || 70) + 85;
+    const triggerRadius = getBubbleAudioRadius(bubble);
     const isNear = d <= triggerRadius;
 
     if (!isNear) return;

@@ -39,11 +39,17 @@ export function useSoonCanvasLoop({
       updateArena(arenaRef, rect);
       followFishCamera(cameraRef, arenaRef, current.fish, rect);
 
-      onTickFish();
+      const isEditMode = current.interactionMode === "edit";
+
+      if (!isEditMode) {
+        onTickFish();
+      }
 
       const next = stateRef.current;
 
-      updateAmbientMix(next.bubbles, next.fish);
+      if (!isEditMode) {
+        updateAmbientMix(next.bubbles, next.fish);
+      }
 
       updateFireflyGame({
         fish: next.fish,
@@ -57,7 +63,9 @@ export function useSoonCanvasLoop({
         mode: next.mode,
       });
 
-      updateBubbleAudioTriggers(next, activeBubbleAudioRef);
+      if (!isEditMode) {
+        updateBubbleAudioTriggers(next, activeBubbleAudioRef);
+      }
 
       drawScene(ctx, rect, performance.now(), {
         stateRef,
