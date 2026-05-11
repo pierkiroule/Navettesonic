@@ -1,8 +1,10 @@
 import { useEffect } from "react";
 import {
+  clampEditCamera,
   enterWorld,
   exitWorld,
   followFishCamera,
+  resetEditCamera,
   resizeCanvas,
   updateArena,
 } from "../../core/soonCamera.js";
@@ -22,6 +24,7 @@ export function useSoonCanvasLoop({
 }) {
   useEffect(() => {
     let frame = 0;
+    let wasEditMode = false;
 
     function loop() {
       const canvas = canvasRef.current;
@@ -35,11 +38,18 @@ export function useSoonCanvasLoop({
       const rect = resizeCanvas(canvas, ctx);
 
       const current = stateRef.current;
+      const isEditMode = current.interactionMode === "edit";
 
       updateArena(arenaRef, rect);
-      followFishCamera(cameraRef, arenaRef, current.fish, rect);
-
-      const isEditMode = current.interactionMode === "edit";
+      if (isEditMode) {
+        if (!wasEditMode) {
+          resetEditCamera(cameraRef, rect, arenaRef.current.radius);
+        }
+        clampEditCamera(cameraRef, rect, arenaRef.current.radius);
+      } else {
+        followFishCamera(cameraRef, arenaRef, current.fish, rect);
+      }
+      wasEditMode = isEditMode;
 
       if (!isEditMode) {
         onTickFish();

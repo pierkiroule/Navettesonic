@@ -26,6 +26,7 @@ export default function SoonCanvas({
   onAddPathPoint,
   onSetFishDepth,
   onCycleBubbleDepth,
+  onOpenBubbleEditor,
 }) {
   const canvasRef = useRef(null);
 
@@ -52,6 +53,10 @@ export default function SoonCanvas({
     longPressTargetType: null,
     longPressTargetId: null,
     fishDepthHudUntil: 0,
+    activePointers: new Map(),
+    panEnabled: false,
+    panStart: null,
+    pinchDistance: null,
   });
 
   const activeBubbleAudioRef = useRef(new Set());
@@ -133,6 +138,7 @@ export default function SoonCanvas({
     onAddPathPoint,
     onSetFishDepth,
     onCycleBubbleDepth,
+    onOpenBubbleEditor,
   });
 
   useEffect(() => cleanupPointer, [cleanupPointer]);

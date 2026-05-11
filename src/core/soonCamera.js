@@ -62,6 +62,55 @@ export function followFishCamera(cameraRef, arenaRef, fish, rect) {
   camera.zoom += (targetZoom - camera.zoom) * zoomEase;
 }
 
+export function getEditFitZoom(rect, arenaRadius) {
+  if (!rect?.width || !rect?.height || !arenaRadius) return 1;
+  const pad = 0.92;
+  const diameter = arenaRadius * 2;
+  const zoomX = rect.width / diameter;
+  const zoomY = rect.height / diameter;
+  return Math.max(0.2, Math.min(2.2, Math.min(zoomX, zoomY) * pad));
+}
+
+export function resetEditCamera(cameraRef, rect, arenaRadius) {
+  const camera = cameraRef.current;
+  camera.x = 0;
+  camera.y = 0;
+  camera.zoom = getEditFitZoom(rect, arenaRadius);
+}
+
+export function clampEditCamera(cameraRef, rect, arenaRadius) {
+  const camera = cameraRef.current;
+  const minZoom = getEditFitZoom(rect, arenaRadius);
+  const maxZoom = 2.2;
+  camera.zoom = Math.max(minZoom, Math.min(maxZoom, camera.zoom));
+
+  const marginX = rect.width * 0.5 / camera.zoom;
+  const marginY = rect.height * 0.5 / camera.zoom;
+  const maxX = Math.max(0, arenaRadius - marginX);
+  const maxY = Math.max(0, arenaRadius - marginY);
+  camera.x = Math.max(-maxX, Math.min(maxX, camera.x));
+  camera.y = Math.max(-maxY, Math.min(maxY, camera.y));
+}
+
+export function panEditCamera(cameraRef, dx, dy) {
+  const camera = cameraRef.current;
+  camera.x -= dx;
+  camera.y -= dy;
+}
+
+export function zoomEditCameraAt(cameraRef, factor, centerWorld, rect, arenaRadius) {
+  const camera = cameraRef.current;
+  const prevZoom = camera.zoom;
+  camera.zoom *= factor;
+  clampEditCamera(cameraRef, rect, arenaRadius);
+  const nextZoom = camera.zoom;
+  if (prevZoom <= 0 || nextZoom <= 0) return;
+
+  camera.x = centerWorld.x - ((centerWorld.x - camera.x) * prevZoom) / nextZoom;
+  camera.y = centerWorld.y - ((centerWorld.y - camera.y) * prevZoom) / nextZoom;
+  clampEditCamera(cameraRef, rect, arenaRadius);
+}
+
 export function enterWorld(ctx, rect, cameraRef, stateRef) {
   const camera = cameraRef.current;
   const fish = stateRef.current.fish || {};
