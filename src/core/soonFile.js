@@ -14,7 +14,6 @@ export function exportSoonFile(state) {
         angle: state.fish?.angle || -Math.PI / 2,
       },
       traceCircuit: state.traceCircuit,
-      path: state.path,
       },
   };
 

@@ -5,7 +5,6 @@ export function saveState(state) {
     mode: state.mode,
     bubbles: state.bubbles,
     fish: state.fish,
-    path: state.path,
   };
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));

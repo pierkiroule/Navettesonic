@@ -23,7 +23,6 @@ export function useSoonPointer({
   onMoveBeacon,
   onMoveBubble,
   onAddBubble,
-  onAddPathPoint,
   onSetFishDepth,
   onOpenBubbleEditor,
   onDepthToast,
@@ -127,9 +126,6 @@ export function useSoonPointer({
       onFishTarget?.(point.x, point.y);
     }
 
-    if (current.mode === "reso") {
-      onAddPathPoint?.(point);
-    }
   }
 
   function handleEditPointerDown(event, point, current) {

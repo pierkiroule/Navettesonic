@@ -119,7 +119,6 @@ const initialState = {
   circuitAutopilot: false,
   circuitSegmentIndex: 0,
   circuitSegmentT: 0,
-  path: saved?.path || [],
   eyesClosed: false,
 };
 
@@ -463,13 +462,6 @@ export const useSoonStore = create((set, get) => ({
     saveState(get());
   },
 
-  addPathPoint: () => {},
-
-  clearPath: () => {
-    set({ path: [] });
-    saveState(get());
-  },
-
   importSoonData: (data) => {
     if (!data || !Array.isArray(data.bubbles)) return;
 
@@ -488,7 +480,6 @@ export const useSoonStore = create((set, get) => ({
         : state.traceCircuit,
       selectedBubbleId: null,
       selectedBeaconId: null,
-      path: Array.isArray(data.path) ? data.path : [],
       eyesClosed: Boolean(data.eyesClosed),
     }));
 
@@ -508,7 +499,6 @@ export const useSoonStore = create((set, get) => ({
       circuitAutopilot: false,
       circuitSegmentIndex: 0,
       circuitSegmentT: 0,
-      path: [],
       eyesClosed: false,
     });
   },

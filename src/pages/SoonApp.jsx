@@ -20,7 +20,6 @@ export default function SoonApp({ onBack }) {
     traceCircuit,
     selectedBeaconId,
     circuitAutopilot,
-    path,
     eyesClosed,
     setMode,
     setFishTarget,
@@ -34,7 +33,6 @@ export default function SoonApp({ onBack }) {
     stopCircuitAutopilot,
     autoGenerateTraceCircuit,
     addBubble,
-    addPathPoint,
     updateBubble,
     deleteBubble,
   } = useSoonStore();
@@ -123,7 +121,6 @@ export default function SoonApp({ onBack }) {
         traceCircuit={traceCircuit}
         selectedBeaconId={selectedBeaconId}
         circuitAutopilot={circuitAutopilot}
-        path={path}
         eyesClosed={eyesClosed}
         viewZoom={viewZoom}
         onFishTarget={setFishTarget}
@@ -137,7 +134,6 @@ export default function SoonApp({ onBack }) {
         onMoveBeacon={moveBeacon}
         onMoveBubble={(id, pos) => updateBubble(id, pos)}
         onAddBubble={addBubble}
-        onAddPathPoint={addPathPoint}
         onOpenBubbleEditor={openBubbleEditor}
         onCycleBubbleDepth={cycleBubbleDepth}
       />
