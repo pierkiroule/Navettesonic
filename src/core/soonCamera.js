@@ -72,6 +72,11 @@ export function getEditFitZoom(rect, arenaRadius) {
   return Math.max(0.05, Math.min(2.2, Math.min(zoomX, zoomY) * pad));
 }
 
+export function getEditMinZoom(rect, arenaRadius) {
+  const fitZoom = getEditFitZoom(rect, arenaRadius);
+  return Math.max(0.03, fitZoom * 0.7);
+}
+
 export function resetEditCamera(cameraRef, rect, arenaRadius) {
   const camera = cameraRef.current;
   camera.x = 0;
@@ -81,7 +86,7 @@ export function resetEditCamera(cameraRef, rect, arenaRadius) {
 
 export function clampEditCamera(cameraRef, rect, arenaRadius) {
   const camera = cameraRef.current;
-  const minZoom = getEditFitZoom(rect, arenaRadius);
+  const minZoom = getEditMinZoom(rect, arenaRadius);
   const maxZoom = 2.2;
   camera.zoom = Math.max(minZoom, Math.min(maxZoom, camera.zoom));
 
