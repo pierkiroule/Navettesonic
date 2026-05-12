@@ -1,4 +1,5 @@
 import { FIREFLY_VOICES } from "../data/fireflyVoices.js";
+import { playOneShotFile } from "./audioEngine.js";
 
 const MAX_FIREFLIES = 18;
 const MAX_TRAIL_POINTS = 42;
@@ -26,6 +27,32 @@ const resonanceBubbles = [];
 
 let spawnClock = 1;
 let completeTriangleSince = 0;
+
+
+const FIREFLY_VOICE_BASE_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/sooncut";
+const FIREFLY_VOICE_RANGE_BY_TYPE = {
+  morphose: [1, 20],
+  semiose: [21, 40],
+  ontose: [41, 53],
+};
+
+function pickFireflySampleUrl(typeId) {
+  const [start, end] = FIREFLY_VOICE_RANGE_BY_TYPE[typeId] || FIREFLY_VOICE_RANGE_BY_TYPE.morphose;
+  const sampleIndex = Math.floor(rand(start, end + 1));
+  return `${FIREFLY_VOICE_BASE_URL}/${sampleIndex}.mp3`;
+}
+
+function playFireflyCollectVoice(firefly) {
+  const url = pickFireflySampleUrl(firefly?.typeId);
+  const pan = Math.max(-0.85, Math.min(0.85, safe(firefly?.x) / 420));
+
+  playOneShotFile(url, {
+    volume: 0.18,
+    pan,
+  }).catch((error) => {
+    console.warn("[Soon] sample vocal luciole introuvable", { url, error });
+  });
+}
 
 const FIREFLY_TYPES = [
   {
@@ -254,6 +281,7 @@ function attachSingleFireflyToTail(fish, firefly, now) {
   firefly.vy *= 0.25;
 
   normalizeAttachedOrders();
+  playFireflyCollectVoice(firefly);
 
   return true;
 }
