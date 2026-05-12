@@ -36,21 +36,43 @@ const FIREFLY_VOICE_RANGE_BY_TYPE = {
   ontose: [41, 53],
 };
 
-function pickFireflySampleUrl(typeId) {
+function pickFireflySampleIndex(typeId) {
   const [start, end] = FIREFLY_VOICE_RANGE_BY_TYPE[typeId] || FIREFLY_VOICE_RANGE_BY_TYPE.morphose;
-  const sampleIndex = Math.floor(rand(start, end + 1));
-  return `${FIREFLY_VOICE_BASE_URL}/${sampleIndex}.mp3`;
+  return Math.floor(rand(start, end + 1));
 }
 
-function playFireflyCollectVoice(firefly) {
-  const url = pickFireflySampleUrl(firefly?.typeId);
-  const pan = Math.max(-0.85, Math.min(0.85, safe(firefly?.x) / 420));
+function getSampleUrlCandidates(sampleIndex) {
+  const n = String(sampleIndex);
+  const n2 = String(sampleIndex).padStart(2, "0");
+  const n3 = String(sampleIndex).padStart(3, "0");
 
-  playOneShotFile(url, {
-    volume: 0.18,
-    pan,
-  }).catch((error) => {
-    console.warn("[Soon] sample vocal luciole introuvable", { url, error });
+  return [
+    `${FIREFLY_VOICE_BASE_URL}/${n}.mp3`,
+    `${FIREFLY_VOICE_BASE_URL}/${n2}.mp3`,
+    `${FIREFLY_VOICE_BASE_URL}/${n3}.mp3`,
+  ];
+}
+
+async function playFireflyCollectVoice(firefly) {
+  const sampleIndex = pickFireflySampleIndex(firefly?.typeId);
+  const pan = Math.max(-0.85, Math.min(0.85, safe(firefly?.x) / 420));
+  const candidates = getSampleUrlCandidates(sampleIndex);
+
+  for (const url of candidates) {
+    try {
+      await playOneShotFile(url, {
+        volume: 0.42,
+        pan,
+      });
+      return;
+    } catch (error) {
+      // continue
+    }
+  }
+
+  console.warn("[Soon] sample vocal luciole introuvable", {
+    sampleIndex,
+    candidates,
   });
 }
 
@@ -281,7 +303,7 @@ function attachSingleFireflyToTail(fish, firefly, now) {
   firefly.vy *= 0.25;
 
   normalizeAttachedOrders();
-  playFireflyCollectVoice(firefly);
+  void playFireflyCollectVoice(firefly);
 
   return true;
 }
