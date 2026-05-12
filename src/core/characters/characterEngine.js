@@ -2,6 +2,7 @@ import {
   createStarTornado,
   drawStarTornado,
   updateStarTornado,
+  getStarTornadoWaveRadius,
 } from "./starTornado.js";
 import {
   drawPinkWallFish,
@@ -27,6 +28,7 @@ const characters = {
   pinkFish: [],
   lucioleSeeds: [],
   externalSeedStock: null,
+  lastWaveBurstAt: 0,
 };
 
 export function initCharacters(arenaRadius = 1200) {
@@ -38,7 +40,7 @@ export function initCharacters(arenaRadius = 1200) {
   characters.tornado = createStarTornado({
     x: arenaRadius * 0.22,
     y: -arenaRadius * 0.16,
-    r: 54,
+    r: 38,
   });
 
   characters.pinkFish = [];
@@ -60,6 +62,30 @@ export function updateCharacters({ fish, arenaRadius = 1200 } = {}) {
     characters.externalSeedStock,
     dt
   );
+
+  const waveRadius = getStarTornadoWaveRadius(characters.tornado, now);
+  if (
+    waveRadius !== null &&
+    characters.tornado.waveStartedAt !== characters.lastWaveBurstAt
+  ) {
+    characters.lastWaveBurstAt = characters.tornado.waveStartedAt;
+
+    characters.lucioleSeeds.length = 0;
+
+    characters.pinkFish.forEach((pink) => {
+      const dx = pink.x - characters.tornado.x;
+      const dy = pink.y - characters.tornado.y;
+      const d = Math.hypot(dx, dy) || 1;
+      const nx = dx / d;
+      const ny = dy / d;
+
+      pink.state = "exiting";
+      pink.targetX = nx * (arenaRadius + 420);
+      pink.targetY = ny * (arenaRadius + 420);
+      pink.vx = nx * 2.4;
+      pink.vy = ny * 2.4;
+    });
+  }
 
   updatePinkWallFish({
     fishes: characters.pinkFish,
@@ -108,4 +134,5 @@ export function resetCharacters() {
   characters.lucioleSeeds = [];
   characters.externalSeedStock = null;
   characters.lastPinkSpawnAt = 0;
+  characters.lastWaveBurstAt = 0;
 }

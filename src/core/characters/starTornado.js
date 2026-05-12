@@ -4,12 +4,13 @@ import { triggerDarkWaveEffect } from "./worldEffects.js";
 const SPIN_DURATION = 5000;
 const WAVE_DURATION = 4200;
 const WAVE_MAX_RADIUS = 1800;
+const PERIPHERY_RATIO = 0.62;
 
 export function createStarTornado({
   id = "star-tornado-1",
   x = 260,
   y = -180,
-  r = 54,
+  r = 38,
 } = {}) {
   return {
     id,
@@ -33,14 +34,28 @@ export function createStarTornado({
 
 function updateTornadoMotion(tornado, arenaRadius, dt) {
   const t = performance.now() * 0.001;
+  const d = Math.hypot(tornado.x, tornado.y) || 1;
+  const nx = tornado.x / d;
+  const ny = tornado.y / d;
+  const tx = -ny;
+  const ty = nx;
 
-  const driftX = Math.cos(t * 0.42 + tornado.driftPhase) * 0.004 * dt;
-  const driftY = Math.sin(t * 0.36 + tornado.driftPhase) * 0.004 * dt;
+  const margin = tornado.r * 2.2;
+  const outerLimit = arenaRadius - margin;
+  const innerLimit = Math.max(arenaRadius * PERIPHERY_RATIO, tornado.r * 6);
 
-  tornado.vx += driftX;
-  tornado.vy += driftY;
+  const ringCenter = (innerLimit + outerLimit) * 0.5;
+  const radialOffset = ringCenter - d;
 
-  const maxSpeed = tornado.state === "spinning" ? 1.15 : 0.62;
+  const tangentialForce = (tornado.state === "spinning" ? 0.013 : 0.008) * dt;
+  const radialForce = (radialOffset / arenaRadius) * 0.02 * dt;
+
+  const swirl = Math.sin(t * 0.58 + tornado.driftPhase) * 0.003 * dt;
+
+  tornado.vx += tx * tangentialForce + nx * radialForce + nx * swirl;
+  tornado.vy += ty * tangentialForce + ny * radialForce + ny * swirl;
+
+  const maxSpeed = tornado.state === "spinning" ? 1.0 : 0.58;
   const speed = Math.hypot(tornado.vx, tornado.vy) || 1;
 
   if (speed > maxSpeed) {
@@ -51,23 +66,16 @@ function updateTornadoMotion(tornado, arenaRadius, dt) {
   tornado.x += tornado.vx * dt * 0.06;
   tornado.y += tornado.vy * dt * 0.06;
 
-  const margin = tornado.r * 2.2;
-  const d = Math.hypot(tornado.x, tornado.y) || 1;
-  const limit = arenaRadius - margin;
+  const newD = Math.hypot(tornado.x, tornado.y) || 1;
+  const outNx = tornado.x / newD;
+  const outNy = tornado.y / newD;
 
-  if (d > limit) {
-    const nx = tornado.x / d;
-    const ny = tornado.y / d;
-
-    tornado.x = nx * limit;
-    tornado.y = ny * limit;
-
-    const dot = tornado.vx * nx + tornado.vy * ny;
-    tornado.vx -= 2 * dot * nx;
-    tornado.vy -= 2 * dot * ny;
-
-    tornado.vx *= 0.86;
-    tornado.vy *= 0.86;
+  if (newD > outerLimit) {
+    tornado.x = outNx * outerLimit;
+    tornado.y = outNy * outerLimit;
+  } else if (newD < innerLimit) {
+    tornado.x = outNx * innerLimit;
+    tornado.y = outNy * innerLimit;
   }
 }
 
@@ -240,4 +248,12 @@ export function drawStarTornado(ctx, tornado, time = performance.now()) {
 
     ctx.restore();
   }
+}
+
+
+export function getStarTornadoWaveRadius(tornado, time = performance.now()) {
+  if (!tornado || tornado.state !== "wave") return null;
+  const waveAge = time - tornado.waveStartedAt;
+  const k = Math.min(1, waveAge / WAVE_DURATION);
+  return tornado.r + k * WAVE_MAX_RADIUS;
 }
