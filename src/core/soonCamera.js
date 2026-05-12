@@ -68,7 +68,7 @@ export function getEditFitZoom(rect, arenaRadius) {
   const diameter = arenaRadius * 2;
   const zoomX = rect.width / diameter;
   const zoomY = rect.height / diameter;
-  return Math.max(0.2, Math.min(2.2, Math.min(zoomX, zoomY) * pad));
+  return Math.max(0.08, Math.min(2.2, Math.min(zoomX, zoomY) * pad));
 }
 
 export function resetEditCamera(cameraRef, rect, arenaRadius) {
