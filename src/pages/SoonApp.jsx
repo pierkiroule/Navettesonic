@@ -179,7 +179,7 @@ export default function SoonApp({ onBack }) {
         onCycleBubbleDepth={cycleBubbleDepth}
       />
 
-      <div className="cockpit">
+      <div className={`cockpit ${isOdysseo ? "odysseo-cockpit" : ""}`}>
         <div className="cockpit-buttons">
           {isOdysseo ? (
             <>
@@ -278,17 +278,17 @@ export default function SoonApp({ onBack }) {
           </div>
 
           {isOdysseoTravel && (
-            <div className="global-slider">
+            <div className="global-slider odysseo-speed-slider">
               <span>⚡</span>
               <input
                 type="range"
-                min="0.3"
-                max="2.5"
-                step="0.1"
+                min="0"
+                max="2"
+                step="0.05"
                 value={swimSpeed}
                 onChange={(event) => setSwimSpeed(Number(event.target.value))}
               />
-              <span>{swimSpeed.toFixed(1)}×</span>
+              <span>{swimSpeed <= 0 ? "Arrêt" : `${swimSpeed.toFixed(2)}×`}</span>
             </div>
           )}
         </div>

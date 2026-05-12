@@ -216,7 +216,7 @@ export const useSoonStore = create((set, get) => ({
         path: state.odysseoPath || [],
         index: state.odysseoPathIndex || 0,
         direction: state.odysseoDirection || 1,
-        speed: Math.max(0.12, swimSpeed * 0.55),
+        speed: Math.max(0, swimSpeed * 0.22),
       });
 
       if (!result.point) return state;
