@@ -18,6 +18,8 @@ const PLUME_ATTRACT_FORCE = 0.018;
 const TRIANGLE_HEAD_PUSH_RADIUS = 76;
 const TRIANGLE_HEAD_PUSH_FORCE = 0.42;
 const TRIANGLE_FRICTION = 0.94;
+const TRIANGLE_ROTATION_FRICTION = 0.95;
+const TRIANGLE_ROTATION_PUSH_FACTOR = 0.0018;
 
 const fireflies = [];
 const plumeTrail = [];
@@ -544,6 +546,11 @@ function pushPlacedTrianglesWithHead(fish) {
 
     triangle.vx += (fish.vx || 0) * 0.025 * strength;
     triangle.vy += (fish.vy || 0) * 0.025 * strength;
+    triangle.rotationSpeed =
+      (triangle.rotationSpeed || 0) +
+      (nx * (fish.vy || 0) - ny * (fish.vx || 0)) *
+        TRIANGLE_ROTATION_PUSH_FACTOR *
+        Math.max(0.2, strength);
 
     triangle.pushedAt = performance.now();
     triangle.pushAmount = Math.min(1, strength + fishSpeed * 0.04);
@@ -557,9 +564,15 @@ function updatePlacedTrianglesPhysics() {
 
     triangle.x += triangle.vx;
     triangle.y += triangle.vy;
+    triangle.rotation = (triangle.rotation || 0) + (triangle.rotationSpeed || 0);
+    triangle.rotationSpeed =
+      (triangle.rotationSpeed || 0) * TRIANGLE_ROTATION_FRICTION;
 
     if (Math.abs(triangle.vx) < 0.002) triangle.vx = 0;
     if (Math.abs(triangle.vy) < 0.002) triangle.vy = 0;
+    if (Math.abs(triangle.rotationSpeed || 0) < 0.0003) {
+      triangle.rotationSpeed = 0;
+    }
 
     triangle.pushAmount = (triangle.pushAmount || 0) * 0.92;
   });
@@ -882,8 +895,14 @@ export function drawPlacedTriangles(ctx, time) {
     const push = triangle.pushAmount || 0;
 
     const points = triangle.fireflies.map((item) => ({
-      x: triangle.x + item.dx,
-      y: triangle.y + item.dy,
+      x:
+        triangle.x +
+        item.dx * Math.cos(triangle.rotation || 0) -
+        item.dy * Math.sin(triangle.rotation || 0),
+      y:
+        triangle.y +
+        item.dx * Math.sin(triangle.rotation || 0) +
+        item.dy * Math.cos(triangle.rotation || 0),
       item,
     }));
 
