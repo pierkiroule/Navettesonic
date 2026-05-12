@@ -2089,3 +2089,12 @@ button {
 .global-slider input {
   width: 100%;
 }
+
+.odysseo-speed-slider {
+  border-color: rgba(244, 114, 182, 0.38);
+  background: linear-gradient(120deg, rgba(30, 41, 59, 0.78), rgba(76, 29, 149, 0.35));
+}
+
+.odysseo-speed-slider input {
+  accent-color: #f472b6;
+}
