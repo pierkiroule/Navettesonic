@@ -47,9 +47,12 @@ function getSampleUrlCandidates(sampleIndex) {
   const n3 = String(sampleIndex).padStart(3, "0");
 
   return [
-    `${FIREFLY_VOICE_BASE_URL}/${n}.mp3`,
-    `${FIREFLY_VOICE_BASE_URL}/${n2}.mp3`,
+    `${FIREFLY_VOICE_BASE_URL}/extrait_${n3}.mp3`,
+    `${FIREFLY_VOICE_BASE_URL}/extrait_${n2}.mp3`,
+    `${FIREFLY_VOICE_BASE_URL}/extrait_${n}.mp3`,
     `${FIREFLY_VOICE_BASE_URL}/${n3}.mp3`,
+    `${FIREFLY_VOICE_BASE_URL}/${n2}.mp3`,
+    `${FIREFLY_VOICE_BASE_URL}/${n}.mp3`,
   ];
 }
 
