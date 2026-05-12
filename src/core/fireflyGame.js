@@ -1,4 +1,5 @@
 import { FIREFLY_VOICES } from "../data/fireflyVoices.js";
+import { playOneShotFile } from "./audioEngine.js";
 
 const MAX_FIREFLIES = 18;
 const MAX_TRAIL_POINTS = 42;
@@ -28,6 +29,57 @@ const resonanceBubbles = [];
 
 let spawnClock = 1;
 let completeTriangleSince = 0;
+
+
+const FIREFLY_VOICE_BASE_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/sooncut";
+const FIREFLY_VOICE_RANGE_BY_TYPE = {
+  morphose: [1, 20],
+  semiose: [21, 40],
+  ontose: [41, 53],
+};
+
+function pickFireflySampleIndex(typeId) {
+  const [start, end] = FIREFLY_VOICE_RANGE_BY_TYPE[typeId] || FIREFLY_VOICE_RANGE_BY_TYPE.morphose;
+  return Math.floor(rand(start, end + 1));
+}
+
+function getSampleUrlCandidates(sampleIndex) {
+  const n = String(sampleIndex);
+  const n2 = String(sampleIndex).padStart(2, "0");
+  const n3 = String(sampleIndex).padStart(3, "0");
+
+  return [
+    `${FIREFLY_VOICE_BASE_URL}/extrait_${n3}.mp3`,
+    `${FIREFLY_VOICE_BASE_URL}/extrait_${n2}.mp3`,
+    `${FIREFLY_VOICE_BASE_URL}/extrait_${n}.mp3`,
+    `${FIREFLY_VOICE_BASE_URL}/${n3}.mp3`,
+    `${FIREFLY_VOICE_BASE_URL}/${n2}.mp3`,
+    `${FIREFLY_VOICE_BASE_URL}/${n}.mp3`,
+  ];
+}
+
+async function playFireflyCollectVoice(firefly) {
+  const sampleIndex = pickFireflySampleIndex(firefly?.typeId);
+  const pan = Math.max(-0.85, Math.min(0.85, safe(firefly?.x) / 420));
+  const candidates = getSampleUrlCandidates(sampleIndex);
+
+  for (const url of candidates) {
+    try {
+      await playOneShotFile(url, {
+        volume: 0.42,
+        pan,
+      });
+      return;
+    } catch (error) {
+      // continue
+    }
+  }
+
+  console.warn("[Soon] sample vocal luciole introuvable", {
+    sampleIndex,
+    candidates,
+  });
+}
 
 const FIREFLY_TYPES = [
   {
@@ -256,6 +308,7 @@ function attachSingleFireflyToTail(fish, firefly, now) {
   firefly.vy *= 0.25;
 
   normalizeAttachedOrders();
+  void playFireflyCollectVoice(firefly);
 
   return true;
 }
