@@ -122,12 +122,21 @@ export function enterWorld(ctx, rect, cameraRef, stateRef) {
   const driftX = Math.sin(t * 0.33) * 4 * (0.25 + speedNorm);
   const driftY = Math.cos(t * 0.27) * 4 * (0.25 + speedNorm);
 
-  const viewZoom = stateRef.current.viewZoom || 1;
+  const viewZoom = Number.isFinite(stateRef.current.viewZoom)
+    ? stateRef.current.viewZoom
+    : 0;
+  const arenaRadius = stateRef.current?.arenaRadius || 1200;
+  const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 1.9);
+  const finalZoom = fitZoom * (1.0 + viewZoom * 3.8);
 
   ctx.save();
   ctx.translate(rect.width / 2, rect.height / 2);
-  ctx.scale(camera.zoom * viewZoom, camera.zoom * viewZoom);
-  ctx.translate(-camera.x + driftX, -camera.y + driftY);
+  ctx.scale(finalZoom, finalZoom);
+  const followBlend = Math.min(1, Math.max(0, viewZoom));
+  const camX = camera.x * followBlend;
+  const camY = camera.y * followBlend;
+
+  ctx.translate(-camX + driftX * followBlend, -camY + driftY * followBlend);
 }
 
 export function exitWorld(ctx) {

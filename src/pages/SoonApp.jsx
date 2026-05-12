@@ -8,7 +8,7 @@ export default function SoonApp({ onBack }) {
   const [page, setPage] = useState("arena");
   const [interactionMode, setInteractionMode] = useState("swim");
   const [odysseoMode, setOdysseoMode] = useState("trace");
-  const [viewZoom, setViewZoom] = useState(0.3);
+  const [viewZoom, setViewZoom] = useState(0);
   const [swimSpeed, setSwimSpeed] = useState(0.3);
   const [editorOpenKey, setEditorOpenKey] = useState(0);
   const [selectedDepth, setSelectedDepth] = useState(1);
@@ -268,13 +268,13 @@ export default function SoonApp({ onBack }) {
             <span>🔍</span>
             <input
               type="range"
-              min="0.3"
-              max="3"
-              step="0.1"
+              min="0"
+              max="2"
+              step="0.05"
               value={viewZoom}
               onChange={(event) => setViewZoom(Number(event.target.value))}
             />
-            <span>{viewZoom.toFixed(1)}×</span>
+            <span>{viewZoom.toFixed(1)}</span>
           </div>
 
           {isOdysseoTravel && (
@@ -282,7 +282,7 @@ export default function SoonApp({ onBack }) {
               <span>⚡</span>
               <input
                 type="range"
-                min="0"
+                min="0.3"
                 max="2"
                 step="0.05"
                 value={swimSpeed}
