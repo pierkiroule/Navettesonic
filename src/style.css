@@ -2042,3 +2042,50 @@ button {
 .odysseo-cockpit .mode-toggle.active {
   box-shadow: 0 0 18px rgba(125, 211, 252, 0.7);
 }
+
+.odysseo-live-slider {
+  display: grid;
+  grid-template-columns: auto minmax(150px, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  width: min(88vw, 380px);
+  margin: 8px auto 0;
+  padding: 8px 11px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.68);
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  color: rgba(226, 232, 240, 0.94);
+  font-size: 0.8rem;
+  font-weight: 800;
+  backdrop-filter: blur(12px);
+}
+
+.odysseo-live-slider input {
+  width: 100%;
+}
+
+.global-sliders {
+  display: grid;
+  gap: 7px;
+  width: min(90vw, 390px);
+  margin: 8px auto 0;
+}
+
+.global-slider {
+  display: grid;
+  grid-template-columns: auto minmax(150px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.66);
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  color: rgba(226, 232, 240, 0.94);
+  font-size: 0.78rem;
+  font-weight: 800;
+  backdrop-filter: blur(12px);
+}
+
+.global-slider input {
+  width: 100%;
+}

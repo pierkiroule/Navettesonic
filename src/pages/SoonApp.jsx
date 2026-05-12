@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import SidePanel from "../components/SidePanel.jsx";
 import SoonCanvas from "../components/SoonCanvas.jsx";
 import Profile from "./Profile.jsx";
@@ -7,23 +7,31 @@ import { useSoonStore } from "../store/useSoonStore.js";
 export default function SoonApp({ onBack }) {
   const [page, setPage] = useState("arena");
   const [interactionMode, setInteractionMode] = useState("swim");
-  const [odysseoMode, setOdysseoMode] = useState("compose");
-  const [viewZoom, setViewZoom] = useState(1);
-  const [swimSpeed, setSwimSpeed] = useState(1);
+  const [odysseoMode, setOdysseoMode] = useState("trace");
+  const [viewZoom, setViewZoom] = useState(0.3);
+  const [swimSpeed, setSwimSpeed] = useState(0.3);
   const [editorOpenKey, setEditorOpenKey] = useState(0);
-  const [activeSlider, setActiveSlider] = useState(null);
+  const [selectedDepth, setSelectedDepth] = useState(1);
 
   const {
     mode,
     bubbles,
     fish,
-    fishTrail,
     selectedBubbleId,
     traceCircuit,
     selectedBeaconId,
     circuitAutopilot,
-    path,
     eyesClosed,
+
+    odysseoPath,
+    odysseoDepthMarkers,
+    odysseoTool,
+    setOdysseoTool,
+    addOdysseoPathPoint,
+    addOdysseoDepthMarker,
+    clearOdysseoPath,
+    tickOdysseoPath,
+
     setMode,
     setFishTarget,
     tickFish,
@@ -48,13 +56,16 @@ export default function SoonApp({ onBack }) {
     traceCircuit.find((beacon) => beacon.id === selectedBeaconId) || null;
 
   const isOdysseo = mode === "reso";
-  const isOdysseoCompose = isOdysseo && odysseoMode === "compose";
+  const isOdysseoTrace = isOdysseo && odysseoMode === "trace";
   const isOdysseoTravel = isOdysseo && odysseoMode === "travel";
-  const isEditMode = interactionMode === "edit" || isOdysseoCompose;
+  const isEditMode = interactionMode === "edit";
 
-  const toggleSlider = (key) => {
-    setActiveSlider((current) => (current === key ? null : key));
-  };
+  useEffect(() => {
+    setMode("compo");
+    stopCircuitAutopilot();
+    setOdysseoMode("trace");
+    setInteractionMode("swim");
+  }, []);
 
   const toggleInteractionMode = () => {
     setInteractionMode((current) => {
@@ -64,7 +75,6 @@ export default function SoonApp({ onBack }) {
         selectBubble(null);
       }
 
-      setActiveSlider(null);
       return next;
     });
   };
@@ -99,7 +109,11 @@ export default function SoonApp({ onBack }) {
 
           <button
             type="button"
-            onClick={() => setMode("compo")}
+            onClick={() => {
+              setMode("compo");
+              stopCircuitAutopilot();
+              setInteractionMode("swim");
+            }}
             className={mode === "compo" ? "active" : ""}
           >
             Compo
@@ -107,7 +121,12 @@ export default function SoonApp({ onBack }) {
 
           <button
             type="button"
-            onClick={() => setMode("reso")}
+            onClick={() => {
+              setMode("reso");
+              stopCircuitAutopilot();
+              setOdysseoMode("trace");
+              setInteractionMode("swim");
+            }}
             className={mode === "reso" ? "active" : ""}
           >
             Odysséo
@@ -121,21 +140,28 @@ export default function SoonApp({ onBack }) {
 
       <SoonCanvas
         mode={mode}
-        interactionMode={isOdysseoCompose ? "circuit" : interactionMode}
+        interactionMode={isOdysseoTrace ? "circuit" : interactionMode}
         odysseoMode={odysseoMode}
         bubbles={bubbles}
         fish={fish}
-        fishTrail={fishTrail}
         selectedBubbleId={selectedBubbleId}
         traceCircuit={traceCircuit}
+        odysseoPath={odysseoPath}
+        odysseoDepthMarkers={odysseoDepthMarkers}
+        odysseoTool={odysseoTool}
         selectedBeaconId={selectedBeaconId}
         circuitAutopilot={circuitAutopilot}
-        path={path}
         eyesClosed={eyesClosed}
         viewZoom={viewZoom}
         onFishTarget={setFishTarget}
         onTickFish={() => {
-          if (isEditMode) return;
+          if (isOdysseoTravel) {
+            tickOdysseoPath({ swimSpeed });
+            return;
+          }
+
+          if (isEditMode || isOdysseoTrace) return;
+
           tickFish({ swimSpeed });
         }}
         onSetFishDepth={setFishDepth}
@@ -145,91 +171,86 @@ export default function SoonApp({ onBack }) {
         onMoveBubble={(id, pos) => updateBubble(id, pos)}
         onAddBubble={addBubble}
         onAddPathPoint={addPathPoint}
+        onAddOdysseoPathPoint={addOdysseoPathPoint}
+        onAddOdysseoDepthMarker={(x, y) => {
+          addOdysseoDepthMarker(x, y, selectedDepth);
+        }}
         onOpenBubbleEditor={openBubbleEditor}
         onCycleBubbleDepth={cycleBubbleDepth}
       />
 
-      {isOdysseo ? (
-        <div className="cockpit odysseo-cockpit">
-          <div className="cockpit-buttons">
-            <button
-              type="button"
-              className={`bubble-btn mode-toggle ${isOdysseoCompose ? "active" : ""}`}
-              onClick={() => {
-                setOdysseoMode("compose");
-                stopCircuitAutopilot();
-                setActiveSlider(null);
-              }}
-              title="Composer le parcours"
-            >
-              🧭 Composer
-            </button>
+      <div className="cockpit">
+        <div className="cockpit-buttons">
+          {isOdysseo ? (
+            <>
+              <button
+                type="button"
+                className={`bubble-btn mode-toggle ${isOdysseoTrace ? "active" : ""}`}
+                onClick={() => {
+                  setOdysseoMode("trace");
+                  stopCircuitAutopilot();
+                }}
+                title="Tracer le parcours"
+              >
+                ✏️ Tracer
+              </button>
 
-            <button
-              type="button"
-              className={`bubble-btn mode-toggle ${isOdysseoTravel ? "active" : ""}`}
-              onClick={() => {
-                setOdysseoMode("travel");
-                startCircuitAutopilot();
-                setActiveSlider(null);
-              }}
-              title="Écouter la traversée"
-            >
-              ▶ Écouter
-            </button>
+              <button
+                type="button"
+                className={`bubble-btn mode-toggle ${isOdysseoTravel ? "active" : ""}`}
+                onClick={() => {
+                  setOdysseoMode("travel");
+                  stopCircuitAutopilot();
+                }}
+                title="Traverser le parcours"
+              >
+                ▶ Traverser
+              </button>
 
-            <button
-              type="button"
-              className={`bubble-btn zoom ${activeSlider === "zoom" ? "active" : ""}`}
-              onClick={() => toggleSlider("zoom")}
-              title="Zoom"
-            >
-              🔍
-            </button>
+              {isOdysseoTrace && (
+                <>
+                  <button
+                    type="button"
+                    className={`bubble-btn ${odysseoTool === "draw" ? "active" : ""}`}
+                    onClick={() => setOdysseoTool("draw")}
+                    title="Tracer"
+                  >
+                    ✏️
+                  </button>
 
-            <button
-              type="button"
-              className={`bubble-btn speed ${activeSlider === "speed" ? "active" : ""}`}
-              onClick={() => toggleSlider("speed")}
-              title="Vitesse"
-            >
-              ⚡
-            </button>
-          </div>
+                  <button
+                    type="button"
+                    className={`bubble-btn ${odysseoTool === "depth" ? "active" : ""}`}
+                    onClick={() => setOdysseoTool("depth")}
+                    title="Ancrer profondeur"
+                  >
+                    ⚓
+                  </button>
 
-          <div className={`slider-panel ${activeSlider ? "open" : ""}`}>
-            {activeSlider === "zoom" && (
-              <div className="slider zoom">
-                <input
-                  type="range"
-                  min="0.3"
-                  max="3"
-                  step="0.1"
-                  value={viewZoom}
-                  onChange={(event) => setViewZoom(Number(event.target.value))}
-                />
-                <span>Zoom {viewZoom.toFixed(1)}×</span>
-              </div>
-            )}
+                  {odysseoTool === "depth" && [1, 2, 3].map((depth) => (
+                    <button
+                      key={depth}
+                      type="button"
+                      className={`bubble-btn depth-choice ${selectedDepth === depth ? "active" : ""}`}
+                      onClick={() => setSelectedDepth(depth)}
+                      title={`Profondeur ${depth}`}
+                    >
+                      {depth}
+                    </button>
+                  ))}
 
-            {activeSlider === "speed" && (
-              <div className="slider speed">
-                <input
-                  type="range"
-                  min="0.3"
-                  max="2.5"
-                  step="0.1"
-                  value={swimSpeed}
-                  onChange={(event) => setSwimSpeed(Number(event.target.value))}
-                />
-                <span>Traversée {swimSpeed.toFixed(1)}×</span>
-              </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="cockpit">
-          <div className="cockpit-buttons">
+                  <button
+                    type="button"
+                    className="bubble-btn danger"
+                    onClick={clearOdysseoPath}
+                    title="Effacer"
+                  >
+                    🧽
+                  </button>
+                </>
+              )}
+            </>
+          ) : (
             <button
               type="button"
               className={`bubble-btn mode-toggle ${isEditMode ? "active" : ""}`}
@@ -239,63 +260,39 @@ export default function SoonApp({ onBack }) {
             >
               {isEditMode ? "✏️" : "🐟"}
             </button>
+          )}
+        </div>
 
-            {!isEditMode && (
-              <>
-                <button
-                  type="button"
-                  className={`bubble-btn zoom ${activeSlider === "zoom" ? "active" : ""}`}
-                  onClick={() => toggleSlider("zoom")}
-                  title="Zoom"
-                >
-                  🔍
-                </button>
-
-                <button
-                  type="button"
-                  className={`bubble-btn speed ${activeSlider === "speed" ? "active" : ""}`}
-                  onClick={() => toggleSlider("speed")}
-                  title="Vitesse"
-                >
-                  ⚡
-                </button>
-              </>
-            )}
+        <div className="global-sliders">
+          <div className="global-slider">
+            <span>🔍</span>
+            <input
+              type="range"
+              min="0.3"
+              max="3"
+              step="0.1"
+              value={viewZoom}
+              onChange={(event) => setViewZoom(Number(event.target.value))}
+            />
+            <span>{viewZoom.toFixed(1)}×</span>
           </div>
 
-          {!isEditMode && (
-            <div className={`slider-panel ${activeSlider ? "open" : ""}`}>
-              {activeSlider === "zoom" && (
-                <div className="slider zoom">
-                  <input
-                    type="range"
-                    min="0.3"
-                    max="3"
-                    step="0.1"
-                    value={viewZoom}
-                    onChange={(event) => setViewZoom(Number(event.target.value))}
-                  />
-                  <span>Zoom {viewZoom.toFixed(1)}×</span>
-                </div>
-              )}
-
-              {activeSlider === "speed" && (
-                <div className="slider speed">
-                  <input
-                    type="range"
-                    min="0.3"
-                    max="2.5"
-                    step="0.1"
-                    value={swimSpeed}
-                    onChange={(event) => setSwimSpeed(Number(event.target.value))}
-                  />
-                  <span>Vitesse {swimSpeed.toFixed(1)}×</span>
-                </div>
-              )}
+          {isOdysseoTravel && (
+            <div className="global-slider">
+              <span>⚡</span>
+              <input
+                type="range"
+                min="0.3"
+                max="2.5"
+                step="0.1"
+                value={swimSpeed}
+                onChange={(event) => setSwimSpeed(Number(event.target.value))}
+              />
+              <span>{swimSpeed.toFixed(1)}×</span>
             </div>
           )}
         </div>
-      )}
+      </div>
 
       <SidePanel
         mode={mode}

@@ -24,6 +24,8 @@ export function useSoonPointer({
   onMoveBubble,
   onAddBubble,
   onAddPathPoint,
+  onAddOdysseoPathPoint,
+  onAddOdysseoDepthMarker,
   onSetFishDepth,
   onOpenBubbleEditor,
   onDepthToast,
@@ -36,11 +38,17 @@ export function useSoonPointer({
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
 
+    const viewZoom = stateRef.current?.viewZoom || 1;
+    const camera = {
+      ...cameraRef.current,
+      zoom: cameraRef.current.zoom * viewZoom,
+    };
+
     return screenToWorld({
       clientX: event.clientX,
       clientY: event.clientY,
       rect,
-      camera: cameraRef.current,
+      camera,
     });
   }
 
@@ -69,11 +77,6 @@ export function useSoonPointer({
     );
   }
 
-  function findBeaconAt(point) {
-    return [...(stateRef.current.traceCircuit || [])]
-      .reverse()
-      .find((beacon) => distance(beacon, point) <= 46);
-  }
 
   function isDoubleTapScreen(event, key = "global") {
     const now = Date.now();
@@ -134,15 +137,6 @@ export function useSoonPointer({
 
   function handleEditPointerDown(event, point, current) {
     const hit = findBubbleAt(point);
-    const beaconHit = current.mode === "reso" ? findBeaconAt(point) : null;
-
-    if (beaconHit) {
-      onSelectBeacon?.(beaconHit.id);
-      pointerRef.current.dragBeaconId = beaconHit.id;
-      rememberTapScreen(event, `beacon:${beaconHit.id}`);
-      return;
-    }
-
     if (hit) {
       onSelectBubble?.(hit.id);
       onOpenBubbleEditor?.(hit.id);
@@ -172,21 +166,18 @@ export function useSoonPointer({
     rememberTapScreen(event, "edit-empty");
   }
 
-  function handleCircuitPointerDown(event, point) {
-    const beaconHit = findBeaconAt(point);
-
+  function handleCircuitPointerDown(event, point, current) {
     onSelectBubble?.(null);
+    onSelectBeacon?.(null);
 
-    if (beaconHit) {
-      onSelectBeacon?.(beaconHit.id);
-      pointerRef.current.dragBeaconId = beaconHit.id;
-      pointerRef.current.panEnabled = false;
+    if (current.odysseoTool === "depth") {
+      onAddOdysseoDepthMarker?.(point.x, point.y);
       return;
     }
 
-    onSelectBeacon?.(null);
-    pointerRef.current.panEnabled = true;
-    pointerRef.current.panStart = point;
+    if (current.odysseoTool === "draw") {
+      onAddOdysseoPathPoint?.(point.x, point.y);
+    }
   }
 
   function handlePointerDown(event) {
@@ -303,7 +294,7 @@ export function useSoonPointer({
       return;
     }
 
-    if ((isEditMode || isCircuitMode) && pointerRef.current.panEnabled) {
+    if (isEditMode && pointerRef.current.panEnabled) {
       const panStart = pointerRef.current.panStart;
 
       if (panStart) {
@@ -320,7 +311,14 @@ export function useSoonPointer({
       return;
     }
 
-    if (!isEditMode && !isCircuitMode) {
+    if (isCircuitMode) {
+      if (current.odysseoTool === "draw") {
+        onAddOdysseoPathPoint?.(point.x, point.y);
+      }
+      return;
+    }
+
+    if (!isEditMode) {
       onFishTarget?.(point.x, point.y);
 
       if (current.mode === "reso") {

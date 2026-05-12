@@ -1,5 +1,12 @@
 import { updateSnakeFishToTarget, createInitialSpine } from "../core/fishSnakeMotion.js";
 import { create } from "zustand";
+import {
+  addDepthMarker,
+  addOdysseoPathPoint,
+  clearOdysseoPath,
+  getDepthAtPathIndex,
+  stepOdysseoTraversal,
+} from "../core/odysseoPath.js";
 import { defaultPack } from "../data/defaultPack.js";
 import { clearState, loadState, saveState } from "../core/storage.js";
 import {
@@ -116,6 +123,11 @@ const initialState = {
   },
   fishTrail: saved?.fishTrail || [],
   selectedBubbleId: null,
+  odysseoPath: [],
+  odysseoDepthMarkers: [],
+  odysseoPathIndex: 0,
+  odysseoDirection: 1,
+  odysseoTool: "draw",
   fishTrail: [],
   traceCircuit: saved?.traceCircuit || createSlalomCircuitFromBubbles(saved?.bubbles || defaultPack.bubbles),
   selectedBeaconId: null,
@@ -143,6 +155,11 @@ export const useSoonStore = create((set, get) => ({
       mode,
       eyesClosed: false,
       selectedBubbleId: null,
+  odysseoPath: [],
+  odysseoDepthMarkers: [],
+  odysseoPathIndex: 0,
+  odysseoDirection: 1,
+  odysseoTool: "draw",
       selectedBeaconId: null,
       circuitAutopilot: get().circuitAutopilot,
     });
@@ -160,6 +177,72 @@ export const useSoonStore = create((set, get) => ({
     set((state) => ({
       fishTrail: addFishTrailPoint(state.fishTrail || [], x, y),
     }));
+  },
+
+  setOdysseoTool: (tool) => {
+    set({ odysseoTool: tool });
+  },
+
+  addOdysseoPathPoint: (x, y) => {
+    set((state) => ({
+      odysseoPath: addOdysseoPathPoint(state.odysseoPath || [], x, y),
+    }));
+  },
+
+  clearOdysseoPath: () => {
+    set({
+      odysseoPath: clearOdysseoPath(),
+      odysseoDepthMarkers: [],
+      odysseoPathIndex: 0,
+      odysseoDirection: 1,
+    });
+  },
+
+  addOdysseoDepthMarker: (x, y, depth = 1) => {
+    set((state) => ({
+      odysseoDepthMarkers: addDepthMarker(
+        state.odysseoDepthMarkers || [],
+        state.odysseoPath || [],
+        x,
+        y,
+        depth
+      ),
+    }));
+  },
+
+  tickOdysseoPath: ({ swimSpeed = 1 } = {}) => {
+    set((state) => {
+      const result = stepOdysseoTraversal({
+        path: state.odysseoPath || [],
+        index: state.odysseoPathIndex || 0,
+        direction: state.odysseoDirection || 1,
+        speed: Math.max(0.12, swimSpeed * 0.55),
+      });
+
+      if (!result.point) return state;
+
+      const depth = getDepthAtPathIndex(
+        state.odysseoDepthMarkers || [],
+        Math.round(result.index)
+      );
+
+      return {
+        odysseoPathIndex: result.index,
+        odysseoDirection: result.direction,
+        circuitAutopilot: false,
+        fish: {
+          ...state.fish,
+          x: result.point.x,
+          y: result.point.y,
+          targetX: result.point.x,
+          targetY: result.point.y,
+          depth,
+          angle: result.angle,
+          vx: Math.cos(result.angle) * swimSpeed,
+          vy: Math.sin(result.angle) * swimSpeed,
+        },
+      };
+    });
   },
 
   setFishTarget: (x, y) => {
@@ -524,6 +607,11 @@ export const useSoonStore = create((set, get) => ({
         ? data.traceCircuit
         : state.traceCircuit,
       selectedBubbleId: null,
+  odysseoPath: [],
+  odysseoDepthMarkers: [],
+  odysseoPathIndex: 0,
+  odysseoDirection: 1,
+  odysseoTool: "draw",
       selectedBeaconId: null,
       path: Array.isArray(data.path) ? data.path : [],
       eyesClosed: Boolean(data.eyesClosed),
@@ -540,6 +628,11 @@ export const useSoonStore = create((set, get) => ({
       bubbles: defaultPack.bubbles,
       fish: { ...defaultFish },
       selectedBubbleId: null,
+  odysseoPath: [],
+  odysseoDepthMarkers: [],
+  odysseoPathIndex: 0,
+  odysseoDirection: 1,
+  odysseoTool: "draw",
       traceCircuit: createDefaultTraceCircuit(),
       selectedBeaconId: null,
       circuitAutopilot: false,

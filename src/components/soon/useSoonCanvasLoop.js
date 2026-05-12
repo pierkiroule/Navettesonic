@@ -50,7 +50,11 @@ export function useSoonCanvasLoop({
 
       updateArena(arenaRef, rect);
 
-      if (isEditMode) {
+      if (current.mode === "reso" || current.mode === "compo") {
+        cameraRef.current.x = 0;
+        cameraRef.current.y = 0;
+        cameraRef.current.zoom = 1;
+      } else if (isEditMode) {
         if (!wasEditMode) {
           resetEditCamera(cameraRef, rect, arenaRef.current.radius);
         }

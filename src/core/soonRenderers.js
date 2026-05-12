@@ -1,7 +1,7 @@
 import { distance, getBubbleVisualRadius } from "./geometry.js";
-import { sampleSmoothCircuit } from "./traceCircuit.js";
 import { drawPoissonPlume } from "./poissonPlumeRenderer.js";
 import { drawCharacters } from "./characters/characterEngine.js";
+import { drawOdysseoPath } from "./odysseoPath.js";
 import {
   drawFireflies,
   drawPlacedTriangles,
@@ -25,11 +25,20 @@ export function drawScene(ctx, rect, time, refs) {
   drawArenaBoundary(ctx, arenaRef, time);
   drawEcosystemWorld(ctx, current, time);
   drawWorldParticles(ctx, arenaRef, time);
+
+  if (current.mode === "reso") {
+    drawOdysseoPath(
+      ctx,
+      current.odysseoPath || [],
+      current.odysseoDepthMarkers || [],
+      time
+    );
+  }
   // drawFishTrail(ctx, current.fishTrail || [], time);
 
   if (!current.eyesClosed) {
     if (current.mode === "reso") {
-      drawTraceCircuit(ctx, current.traceCircuit, current.selectedBeaconId, time);
+      // Ancien circuit à balises désactivé : Odysséo utilise odysseoPath.
     }
 
     drawBubbles(
@@ -157,69 +166,6 @@ export function drawWorldParticles(ctx, arenaRef, time) {
   ctx.restore();
 }
 
-export function drawTraceCircuit(ctx, circuit, selectedBeaconId, time) {
-  if (!circuit || circuit.length < 2) return;
-
-  const sampled = sampleSmoothCircuit(circuit, 20);
-
-  ctx.save();
-
-  ctx.beginPath();
-
-  sampled.forEach((point, index) => {
-    if (index === 0) ctx.moveTo(point.x, point.y);
-    else ctx.lineTo(point.x, point.y);
-  });
-
-  ctx.closePath();
-  ctx.strokeStyle = "rgba(186, 230, 253, 0.38)";
-  ctx.lineWidth = 4;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.stroke();
-
-  circuit.forEach((beacon, index) => {
-    const selected = beacon.id === selectedBeaconId;
-    const pulse = Math.sin(time * 0.004 + index) * 3;
-    const hue = beacon.depth === 1 ? 190 : beacon.depth === 2 ? 250 : 145;
-    const radius = selected ? 19 + pulse : 15 + pulse * 0.4;
-    const depthLabel = beacon.depth === 1 ? "surface" : beacon.depth === 2 ? "milieu" : "fond";
-
-    ctx.beginPath();
-    ctx.arc(beacon.x, beacon.y, radius + 9, 0, Math.PI * 2);
-    ctx.fillStyle = `hsla(${hue}, 95%, 68%, ${selected ? 0.24 : 0.14})`;
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(beacon.x, beacon.y, radius, 0, Math.PI * 2);
-    ctx.fillStyle = `hsla(${hue}, 95%, 68%, ${selected ? 0.82 : 0.62})`;
-    ctx.fill();
-
-    ctx.strokeStyle = selected
-      ? "rgba(255,255,255,0.95)"
-      : "rgba(255,255,255,0.32)";
-    ctx.lineWidth = selected ? 3 : 1.5;
-    ctx.stroke();
-
-    ctx.fillStyle = "rgba(2, 6, 23, 0.82)";
-    ctx.font = "800 12px system-ui";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(String(beacon.depth), beacon.x, beacon.y);
-
-    ctx.fillStyle = "rgba(226, 232, 240, 0.78)";
-    ctx.font = "700 10px system-ui";
-    ctx.fillText(`v${beacon.speed}`, beacon.x, beacon.y + 28);
-
-    if (selected) {
-      ctx.fillStyle = "rgba(226, 232, 240, 0.72)";
-      ctx.font = "700 10px system-ui";
-      ctx.fillText(depthLabel, beacon.x, beacon.y - 30);
-    }
-  });
-
-  ctx.restore();
-}
 
 export function drawBubbles(ctx, bubbles = [], selectedBubbleId, mode, time, interactionMode) {
   ctx.save();

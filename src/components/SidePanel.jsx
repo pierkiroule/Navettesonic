@@ -41,7 +41,7 @@ export default function SidePanel({
         </button>
       )}
 
-      {selectedBeacon && !open && mode === "reso" && (
+      {false && selectedBeacon && !open && mode === "reso" && (
         <button className="bubble-pill" onClick={() => setOpen(true)}>
           ⟡ Balise P{selectedBeacon.depth} · V{selectedBeacon.speed}
         </button>
@@ -78,18 +78,18 @@ export default function SidePanel({
             </section>
           )}
 
-          {mode === "reso" && (
+          {false && mode === "reso" && (
             <>
               <section className="help-card compact-help">
                 <p>
                   Trace un circuit de résonance. Déplace les balises, règle leur
-                  profondeur, leur vitesse, puis lance le voyage.
+                  ancrages de profondeur puis lance le voyage.
                 </p>
 
                 {selectedBeacon && (
                   <div className="beacon-editor">
                     <label>
-                      Profondeur
+                      Ancrages
                       <select
                         value={selectedBeacon.depth}
                         onChange={(event) =>
@@ -98,7 +98,7 @@ export default function SidePanel({
                       >
                         <option value={1}>1 · surface</option>
                         <option value={2}>2 · milieu</option>
-                        <option value={3}>3 · profondeur</option>
+                        <option value={3}>3 · profond</option>
                       </select>
                     </label>
 
