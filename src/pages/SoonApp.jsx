@@ -3,6 +3,7 @@ import SidePanel from "../components/SidePanel.jsx";
 import SoonCanvas from "../components/SoonCanvas.jsx";
 import Profile from "./Profile.jsx";
 import { useSoonStore } from "../store/useSoonStore.js";
+import { renderImmersiveJourney } from "../core/immersiveExporter.js";
 
 export default function SoonApp({ onBack }) {
   const [page, setPage] = useState("arena");
@@ -12,6 +13,8 @@ export default function SoonApp({ onBack }) {
   const [swimSpeed, setSwimSpeed] = useState(0.3);
   const [editorOpenKey, setEditorOpenKey] = useState(0);
   const [selectedDepth, setSelectedDepth] = useState(1);
+  const [exportStatus, setExportStatus] = useState("");
+  const [exportUrl, setExportUrl] = useState(null);
 
   const {
     mode,
@@ -82,6 +85,26 @@ export default function SoonApp({ onBack }) {
   const openBubbleEditor = (id) => {
     selectBubble(id);
     setEditorOpenKey((value) => value + 1);
+  };
+
+  const handleExportImmersion = async () => {
+    try {
+      setExportStatus("Calcul de l’immersion...");
+      setExportUrl(null);
+
+      const blob = await renderImmersiveJourney({
+        path: odysseoPath,
+        markers: odysseoDepthMarkers,
+        bubbles,
+        duration: 75,
+      });
+
+      const url = URL.createObjectURL(blob);
+      setExportUrl(url);
+      setExportStatus("Immersion prête");
+    } catch (error) {
+      setExportStatus(error?.message || "Export impossible");
+    }
   };
 
   const cycleBubbleDepth = (id) => {
@@ -182,74 +205,96 @@ export default function SoonApp({ onBack }) {
       <div className={`cockpit ${isOdysseo ? "odysseo-cockpit" : ""}`}>
         <div className="cockpit-buttons">
           {isOdysseo ? (
-            <>
-              <button
-                type="button"
-                className={`bubble-btn mode-toggle ${isOdysseoTrace ? "active" : ""}`}
-                onClick={() => {
-                  setOdysseoMode("trace");
-                  stopCircuitAutopilot();
-                }}
-                title="Tracer le parcours"
-              >
-                ✏️ Tracer
-              </button>
+            <div className="odysseo-tools">
+              <div className="tool-row primary-tools">
+                <button
+                  type="button"
+                  className={`bubble-btn mode-toggle ${isOdysseoTrace ? "active" : ""}`}
+                  onClick={() => {
+                    setOdysseoMode("trace");
+                    stopCircuitAutopilot();
+                  }}
+                  title="Tracer le parcours"
+                >
+                  ✏️ Tracer
+                </button>
 
-              <button
-                type="button"
-                className={`bubble-btn mode-toggle ${isOdysseoTravel ? "active" : ""}`}
-                onClick={() => {
-                  setOdysseoMode("travel");
-                  stopCircuitAutopilot();
-                }}
-                title="Traverser le parcours"
-              >
-                ▶ Traverser
-              </button>
+                <button
+                  type="button"
+                  className={`bubble-btn mode-toggle ${isOdysseoTravel ? "active" : ""}`}
+                  onClick={() => {
+                    setOdysseoMode("travel");
+                    stopCircuitAutopilot();
+                  }}
+                  title="Traverser le parcours"
+                >
+                  ▶ Traverser
+                </button>
+
+                <button
+                  type="button"
+                  className="bubble-btn mode-toggle"
+                  onClick={handleExportImmersion}
+                  disabled={!odysseoPath || odysseoPath.length < 8}
+                  title={
+                    odysseoPath && odysseoPath.length >= 8
+                      ? "Générer l’immersion sonore"
+                      : "Trace un parcours d’abord"
+                  }
+                >
+                  🎧 Générer
+                </button>
+              </div>
 
               {isOdysseoTrace && (
-                <>
+                <div className="tool-row trace-tools">
                   <button
                     type="button"
-                    className={`bubble-btn ${odysseoTool === "draw" ? "active" : ""}`}
+                    className={`bubble-btn tool-chip ${odysseoTool === "draw" ? "active" : ""}`}
                     onClick={() => setOdysseoTool("draw")}
-                    title="Tracer"
+                    title="Dessiner le trajet"
                   >
-                    ✏️
+                    ✏️ Dessin
                   </button>
 
                   <button
                     type="button"
-                    className={`bubble-btn ${odysseoTool === "depth" ? "active" : ""}`}
+                    className={`bubble-btn tool-chip ${odysseoTool === "depth" ? "active" : ""}`}
                     onClick={() => setOdysseoTool("depth")}
-                    title="Ancrer profondeur"
+                    title="Poser une ancre d’ambiance"
                   >
-                    ⚓
+                    ⚓ Ancre
                   </button>
 
-                  {odysseoTool === "depth" && [1, 2, 3].map((depth) => (
+                  <button
+                    type="button"
+                    className="bubble-btn tool-chip danger"
+                    onClick={clearOdysseoPath}
+                    title="Effacer le tracé"
+                  >
+                    🧽 Effacer
+                  </button>
+                </div>
+              )}
+
+              {isOdysseoTrace && odysseoTool === "depth" && (
+                <div className="tool-row depth-tools">
+                  {[1, 2, 3].map((depth) => (
                     <button
                       key={depth}
                       type="button"
-                      className={`bubble-btn depth-choice ${selectedDepth === depth ? "active" : ""}`}
+                      className={`bubble-btn depth-choice depth-choice-${depth} ${
+                        selectedDepth === depth ? "active" : ""
+                      }`}
                       onClick={() => setSelectedDepth(depth)}
                       title={`Profondeur ${depth}`}
                     >
-                      {depth}
+                      P{depth}
                     </button>
                   ))}
-
-                  <button
-                    type="button"
-                    className="bubble-btn danger"
-                    onClick={clearOdysseoPath}
-                    title="Effacer"
-                  >
-                    🧽
-                  </button>
-                </>
+                </div>
               )}
-            </>
+            </div>
           ) : (
             <button
               type="button"
@@ -293,6 +338,17 @@ export default function SoonApp({ onBack }) {
           )}
         </div>
       </div>
+
+      {isOdysseo && (exportStatus || exportUrl) && (
+        <div className="export-status">
+          <span>{exportStatus}</span>
+          {exportUrl && (
+            <a href={exportUrl} download="soon-immersion.wav">
+              Télécharger WAV
+            </a>
+          )}
+        </div>
+      )}
 
       <SidePanel
         mode={mode}
