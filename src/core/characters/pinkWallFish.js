@@ -30,7 +30,7 @@ export function spawnPinkWallFish(arenaRadius = 1200, stock = null) {
     vx: 0,
     vy: 0,
 
-    size: rand(0.42, 0.58),
+    size: rand(0.78, 1.08),
     phase: rand(0, Math.PI * 2),
 
     state: "entering", // entering | depositing | following | exiting
@@ -208,32 +208,42 @@ function drawTinyFish(ctx, fish, time) {
 
   const alpha = fish.state === "following" ? 0.94 : 0.76;
 
-  const body = ctx.createLinearGradient(-14, 0, 15, 0);
-  body.addColorStop(0, `rgba(251, 207, 232, ${0.16 * alpha})`);
-  body.addColorStop(0.5, `rgba(244, 114, 182, ${0.82 * alpha})`);
-  body.addColorStop(1, `rgba(255, 228, 230, ${0.72 * alpha})`);
+  const body = ctx.createLinearGradient(-18, 0, 18, 0);
+  body.addColorStop(0, `rgba(251, 207, 232, ${0.2 * alpha})`);
+  body.addColorStop(0.45, `rgba(244, 114, 182, ${0.86 * alpha})`);
+  body.addColorStop(1, `rgba(255, 228, 230, ${0.74 * alpha})`);
 
   ctx.fillStyle = body;
   ctx.beginPath();
-  ctx.ellipse(0, 0, 14, 5.2, 0, 0, Math.PI * 2);
+  ctx.moveTo(-15, 0);
+  ctx.quadraticCurveTo(-7, -6.8, 7, -5.4);
+  ctx.quadraticCurveTo(16, -1.8, 13.5, 1.2);
+  ctx.quadraticCurveTo(8.2, 6.8, -6, 5.8);
+  ctx.quadraticCurveTo(-14, 4.2, -15, 0);
+  ctx.closePath();
   ctx.fill();
 
   ctx.save();
-  ctx.translate(-13, 0);
-  ctx.rotate(wiggle);
+  ctx.translate(-14.4, 0);
+  ctx.rotate(wiggle * 1.2);
   ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(-10, -6);
-  ctx.lineTo(-7, 0);
-  ctx.lineTo(-10, 6);
+  ctx.moveTo(-1, 0);
+  ctx.quadraticCurveTo(-9, -8, -15.5, -4.4);
+  ctx.quadraticCurveTo(-11.5, 0, -15.5, 4.4);
+  ctx.quadraticCurveTo(-9, 8, -1, 0);
   ctx.closePath();
-  ctx.fillStyle = `rgba(251, 113, 133, ${0.38 * alpha})`;
+  ctx.fillStyle = `rgba(251, 113, 133, ${0.42 * alpha})`;
   ctx.fill();
   ctx.restore();
 
+  ctx.fillStyle = `rgba(255, 228, 230, ${0.35 * alpha})`;
+  ctx.beginPath();
+  ctx.ellipse(2.5, -2.6, 5.8, 1.3, -0.15, 0, Math.PI * 2);
+  ctx.fill();
+
   ctx.fillStyle = `rgba(20, 10, 20, ${0.55 * alpha})`;
   ctx.beginPath();
-  ctx.arc(8, -1.6, 1.1, 0, Math.PI * 2);
+  ctx.arc(10.2, -1.4, 1.2, 0, Math.PI * 2);
   ctx.fill();
 
   drawCarriedSeed(ctx, fish, time);
