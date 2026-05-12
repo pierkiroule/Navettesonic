@@ -64,11 +64,12 @@ export function followFishCamera(cameraRef, arenaRef, fish, rect) {
 
 export function getEditFitZoom(rect, arenaRadius) {
   if (!rect?.width || !rect?.height || !arenaRadius) return 1;
-  const pad = 0.92;
-  const diameter = arenaRadius * 2;
+  const pad = 0.9;
+  const boundaryBleed = 16;
+  const diameter = (arenaRadius + boundaryBleed) * 2;
   const zoomX = rect.width / diameter;
   const zoomY = rect.height / diameter;
-  return Math.max(0.08, Math.min(2.2, Math.min(zoomX, zoomY) * pad));
+  return Math.max(0.05, Math.min(2.2, Math.min(zoomX, zoomY) * pad));
 }
 
 export function resetEditCamera(cameraRef, rect, arenaRadius) {
