@@ -284,6 +284,31 @@ function spawnFirefly() {
   });
 }
 
+export function spawnFireflyFromSeed(x = 0, y = 0) {
+  const type = pickFireflyType();
+
+  fireflies.push({
+    id: makeId("luciole"),
+    typeId: type.id,
+    symbol: type.symbol,
+    voiceKind: type.voiceKind,
+    voiceText: pickVoiceFragment(type),
+    x,
+    y,
+    vx: rand(-0.35, 0.35),
+    vy: rand(-0.35, 0.35),
+    phase: rand(0, Math.PI * 2),
+    r: rand(11, 16),
+    alpha: 1,
+    attached: false,
+    attachedOrder: 0,
+    linkedCooldownUntil: 0,
+    mouthPushCooldownUntil: 0,
+    pushedAt: 0,
+    bornAt: performance.now(),
+  });
+}
+
 function updatePlumeTrail(fish) {
   const tail = getTail(fish);
   const speed = Math.hypot(fish.vx || 0, fish.vy || 0);
@@ -1081,6 +1106,10 @@ export function drawPlacedTriangles(ctx, time) {
 
 export function getCollectedFireflyCount() {
   return fireflies.filter((item) => item.attached).length;
+}
+
+export function getUncollectedFireflyCount() {
+  return fireflies.filter((item) => !item.attached).length;
 }
 
 export function getFireflyDebugStats() {

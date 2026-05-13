@@ -15,6 +15,10 @@ import {
   updateLucioleSeeds,
 } from "../lucioles/lucioleSeeds.js";
 import {
+  getUncollectedFireflyCount,
+  spawnFireflyFromSeed,
+} from "../fireflyGame.js";
+import {
   getTornadoEffectState,
   getWorldBlur,
   getWorldDarkness,
@@ -29,6 +33,7 @@ const characters = {
   lucioleSeeds: [],
   externalSeedStock: null,
   lastWaveBurstAt: 0,
+  pendingSeedDeliveries: 0,
 };
 
 export function initCharacters(arenaRadius = 1200) {
@@ -46,6 +51,7 @@ export function initCharacters(arenaRadius = 1200) {
   characters.pinkFish = [];
   characters.lucioleSeeds = [];
   characters.externalSeedStock = createExternalSeedStock(120);
+  characters.pendingSeedDeliveries = 0;
 }
 
 export function updateCharacters({ fish, arenaRadius = 1200 } = {}) {
@@ -60,7 +66,10 @@ export function updateCharacters({ fish, arenaRadius = 1200 } = {}) {
   updateLucioleSeeds(
     characters.lucioleSeeds,
     characters.externalSeedStock,
-    dt
+    dt,
+    (seed) => {
+      spawnFireflyFromSeed(seed.x, seed.y);
+    }
   );
 
   const waveRadius = getStarTornadoWaveRadius(characters.tornado, now);
@@ -98,14 +107,25 @@ export function updateCharacters({ fish, arenaRadius = 1200 } = {}) {
 
   const stock = characters.externalSeedStock;
   const canSpawn = stock && stock.remaining > 0;
+  const freeFireflies = getUncollectedFireflyCount();
+  const shouldRestock = freeFireflies >= 1 && freeFireflies <= 2;
+
+  if (!shouldRestock) {
+    characters.pendingSeedDeliveries = 0;
+  } else if (characters.pendingSeedDeliveries <= 0 && canSpawn) {
+    const seedBatch = 1 + Math.floor(Math.random() * 3);
+    characters.pendingSeedDeliveries = Math.min(seedBatch, stock.remaining);
+  }
 
   if (
     canSpawn &&
+    characters.pendingSeedDeliveries > 0 &&
     now - characters.lastPinkSpawnAt > 1900 &&
     characters.pinkFish.length < 16
   ) {
     characters.lastPinkSpawnAt = now;
     characters.pinkFish.push(spawnPinkWallFish(arenaRadius, stock));
+    characters.pendingSeedDeliveries -= 1;
   }
 }
 
@@ -135,4 +155,5 @@ export function resetCharacters() {
   characters.externalSeedStock = null;
   characters.lastPinkSpawnAt = 0;
   characters.lastWaveBurstAt = 0;
+  characters.pendingSeedDeliveries = 0;
 }
