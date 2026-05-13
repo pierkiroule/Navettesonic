@@ -223,6 +223,14 @@ function drawTinyFish(ctx, fish, time) {
   ctx.closePath();
   ctx.fill();
 
+  ctx.beginPath();
+  ctx.moveTo(13.2, -1.2);
+  ctx.lineTo(18.8, 0);
+  ctx.lineTo(13.2, 1.2);
+  ctx.closePath();
+  ctx.fillStyle = `rgba(255, 241, 245, ${0.86 * alpha})`;
+  ctx.fill();
+
   ctx.save();
   ctx.translate(-14.4, 0);
   ctx.rotate(wiggle * 1.2);
