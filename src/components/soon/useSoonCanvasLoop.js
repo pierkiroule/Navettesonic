@@ -129,6 +129,25 @@ export function useSoonCanvasLoop({
         ctx.restore();
       }
 
+
+      if (worldFx.tornado?.active) {
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.globalCompositeOperation = "source-over";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#ffffff";
+        ctx.font = `600 ${Math.max(24, Math.floor(canvas.height * 0.04))}px "Inter", "Segoe UI", sans-serif`;
+        ctx.shadowColor = "rgba(0,0,0,0.42)";
+        ctx.shadowBlur = 10;
+        ctx.fillText(
+          "Le silence des yeux ouvre tes écoutilles !",
+          canvas.width * 0.5,
+          canvas.height * 0.5
+        );
+        ctx.restore();
+      }
+
       frame = requestAnimationFrame(loop);
     }
 
