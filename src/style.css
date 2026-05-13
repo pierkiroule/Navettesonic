@@ -182,6 +182,43 @@ button {
   user-select: none;
 }
 
+.soon-canvas-shell {
+  position: absolute;
+  inset: 0;
+}
+
+.semiose-video-bubble {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(52vw, 520px);
+  aspect-ratio: 1 / 1;
+  border-radius: 999px;
+  overflow: hidden;
+  opacity: 0;
+  z-index: 18;
+  pointer-events: none;
+  background: rgba(2, 6, 23, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 24px 80px rgba(2, 6, 23, 0.55);
+  animation: semioseVideoBubble 6s ease forwards;
+}
+
+.semiose-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.5;
+}
+
+@keyframes semioseVideoBubble {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+  15% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.06); }
+}
+
 .mode-dock {
   position: fixed;
   z-index: 20;
