@@ -147,7 +147,7 @@ export default function SoonApp({ onBack }) {
           <button
             type="button"
             onClick={() => {
-              setMode("reso");
+              if (mode !== "reso") setMode("reso");
               stopCircuitAutopilot();
               setOdysseoMode("trace");
               setInteractionMode("swim");
@@ -161,7 +161,7 @@ export default function SoonApp({ onBack }) {
           <button
             type="button"
             onClick={() => {
-              setMode("reso");
+              if (mode !== "reso") setMode("reso");
               stopCircuitAutopilot();
               setOdysseoMode("travel");
               setInteractionMode("swim");
