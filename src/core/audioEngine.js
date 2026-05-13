@@ -185,4 +185,11 @@ export async function playOneShotFile(url, { volume = 0.18, pan = 0 } = {}) {
   };
 
   source.start();
+
+  return new Promise((resolve) => {
+    source.onended = () => {
+      activeOneShots.delete(source);
+      resolve();
+    };
+  });
 }
