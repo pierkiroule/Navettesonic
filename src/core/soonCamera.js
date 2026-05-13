@@ -20,7 +20,7 @@ export function updateArena(arenaRef, rect) {
   arenaRef.current.radius = maxScreen * 1.5;
 }
 
-export function followFishCamera(cameraRef, arenaRef, fish, rect) {
+export function followFishCamera(cameraRef, arenaRef, fish, rect, viewZoom = 0) {
   if (!fish) return;
 
   const camera = cameraRef.current;
@@ -45,11 +45,15 @@ export function followFishCamera(cameraRef, arenaRef, fish, rect) {
   const speedZoom = 1 - speedNorm * 0.08;
   const targetZoom = depthZoom * speedZoom + breath;
 
-  const marginX = rect.width * 0.42 / targetZoom;
-  const marginY = rect.height * 0.42 / targetZoom;
+  const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 1.9);
+  const extraViewZoom = 1.0 + Math.max(0, viewZoom) * 3.8;
+  const effectiveZoom = Math.max(0.001, fitZoom * targetZoom * extraViewZoom);
 
-  const maxCameraX = Math.max(0, arenaRadius - marginX);
-  const maxCameraY = Math.max(0, arenaRadius - marginY);
+  const halfVisibleWidth = rect.width * 0.5 / effectiveZoom;
+  const halfVisibleHeight = rect.height * 0.5 / effectiveZoom;
+
+  const maxCameraX = Math.max(0, arenaRadius - halfVisibleWidth);
+  const maxCameraY = Math.max(0, arenaRadius - halfVisibleHeight);
 
   const targetX = Math.max(-maxCameraX, Math.min(maxCameraX, targetRawX));
   const targetY = Math.max(-maxCameraY, Math.min(maxCameraY, targetRawY));
