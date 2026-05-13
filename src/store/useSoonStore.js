@@ -157,6 +157,22 @@ function lerpAngle(current, target, amount) {
   return current + diff * amount;
 }
 
+const FISH_CONTROL_TUNING = {
+  autopilot: {
+    mouthDistance: 46,
+    pullForceBase: 0.035,
+    pullForceScale: 0.018,
+    fluidity: 0.11,
+  },
+  // Réglages "touch" : optimisés pour un drag tactile précis (suivi du doigt + inertie minimale).
+  touch: {
+    mouthDistance: 42,
+    pullForceBase: 0.028,
+    pullForceScale: 0.022,
+    fluidity: 0.17,
+  },
+};
+
 export const useSoonStore = create((set, get) => ({
   ...initialState,
 
@@ -346,8 +362,12 @@ export const useSoonStore = create((set, get) => ({
         ? state.fish.angle
         : -Math.PI / 2;
 
+      const control = circuitAutopilot
+        ? FISH_CONTROL_TUNING.autopilot
+        : FISH_CONTROL_TUNING.touch;
+      const { mouthDistance, pullForceBase, pullForceScale, fluidity } = control;
+
       // Point de bouche : le doigt tire le poisson par l'avant.
-      const mouthDistance = 46;
       const mouthX = state.fish.x + Math.cos(currentAngle) * mouthDistance;
       const mouthY = state.fish.y + Math.sin(currentAngle) * mouthDistance;
 
@@ -357,15 +377,12 @@ export const useSoonStore = create((set, get) => ({
 
       // Traction progressive : douce près du doigt, plus nette si le doigt s'éloigne.
       const pullNorm = Math.min(1, pullDistance / 320);
-      const pullForce = circuitAutopilot
-        ? 0.035 + pullNorm * 0.018
-        : 0.028 + pullNorm * 0.022;
+      const pullForce = pullForceBase + pullNorm * pullForceScale;
 
       const desiredVx = pullX * pullForce;
       const desiredVy = pullY * pullForce;
 
       // Le corps suit la bouche : interpolation fluide de la vitesse.
-      const fluidity = circuitAutopilot ? 0.11 : 0.14;
 
       const vx = state.fish.vx + (desiredVx - state.fish.vx) * fluidity;
       const vy = state.fish.vy + (desiredVy - state.fish.vy) * fluidity;
