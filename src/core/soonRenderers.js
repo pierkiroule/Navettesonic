@@ -24,8 +24,8 @@ export function drawScene(ctx, rect, time, refs) {
   enterWorld(ctx, rect, cameraRef, stateRef);
 
   drawArenaBoundary(ctx, arenaRef, time);
-  drawArenaCloudRing(ctx, arenaRef, time);
-  drawArenaCosmos(ctx, arenaRef, time);
+  drawArenaNightSky(ctx, arenaRef, time);
+  drawArenaPulseHalo(ctx, arenaRef, time);
   drawEcosystemWorld(ctx, current, time);
   drawWorldParticles(ctx, arenaRef, time);
 
@@ -474,170 +474,55 @@ export function drawHud(ctx, rect, current) {
 }
 
 
-export function drawArenaCloudRing(ctx, arenaRef, time) {
+export function drawArenaNightSky(ctx, arenaRef, time) {
   const radius = arenaRef.current?.radius || 1200;
-  const orbitBase = radius + 180;
-  const cloudCount = 14;
 
   ctx.save();
   ctx.globalCompositeOperation = "screen";
 
-  for (let i = 0; i < cloudCount; i += 1) {
-    const progress = time * 0.000035 * (0.8 + (i % 4) * 0.11);
-    const angle = (Math.PI * 2 * i) / cloudCount + progress;
-    const orbit = orbitBase + (i % 3) * 46 + Math.sin(time * 0.0007 + i) * 10;
-    const cx = Math.cos(angle) * orbit;
-    const cy = Math.sin(angle) * orbit;
+  // Ciel étoilé bleu nuit autour de l'arène.
+  for (let i = 0; i < 110; i += 1) {
+    const angle = (Math.PI * 2 * i) / 110;
+    const band = radius + 240 + (i % 7) * 70;
+    const x = Math.cos(angle + time * 0.00001) * band;
+    const y = Math.sin(angle + time * 0.00001) * band;
+    const alpha = 0.14 + (Math.sin(time * 0.0018 + i * 1.3) * 0.5 + 0.5) * 0.26;
 
-    // Petits nuages composés de 3 à 5 bulles blanches.
-    const bubbleCount = 3 + (i % 3);
-    for (let j = 0; j < bubbleCount; j += 1) {
-      const localAngle = (Math.PI * 2 * j) / bubbleCount + Math.sin(time * 0.0012 + i + j) * 0.2;
-      const offset = 12 + j * 7;
-      const bx = cx + Math.cos(localAngle) * offset;
-      const by = cy + Math.sin(localAngle) * (offset * 0.72);
-      const br = 12 + (j % 2) * 4 + (i % 2) * 2;
-
-      const glow = ctx.createRadialGradient(bx, by, br * 0.2, bx, by, br * 2.1);
-      glow.addColorStop(0, "rgba(255,255,255,0.38)");
-      glow.addColorStop(0.7, "rgba(255,255,255,0.14)");
-      glow.addColorStop(1, "rgba(255,255,255,0)");
-
-      ctx.beginPath();
-      ctx.arc(bx, by, br * 2.1, 0, Math.PI * 2);
-      ctx.fillStyle = glow;
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.arc(bx, by, br, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255,255,255,0.2)";
-      ctx.fill();
-    }
+    ctx.beginPath();
+    ctx.arc(x, y, 1 + (i % 3) * 0.8, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(170, 210, 255, ${alpha})`;
+    ctx.fill();
   }
+
+  // Voile bleu nuit diffus.
+  const veil = ctx.createRadialGradient(0, 0, radius * 0.9, 0, 0, radius * 2.1);
+  veil.addColorStop(0, "rgba(10, 24, 64, 0)");
+  veil.addColorStop(1, "rgba(16, 38, 86, 0.24)");
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * 2.1, 0, Math.PI * 2);
+  ctx.fillStyle = veil;
+  ctx.fill();
 
   ctx.restore();
 }
 
-
-
-
-const meteorImpactState = {
-  lastSpawn: 0,
-  impacts: [],
-};
-
-export function drawArenaCosmos(ctx, arenaRef, time) {
+export function drawArenaPulseHalo(ctx, arenaRef, time) {
   const radius = arenaRef.current?.radius || 1200;
+  const pulse = Math.sin(time * 0.0022) * 20;
 
   ctx.save();
   ctx.globalCompositeOperation = "screen";
 
-  // Ciel étoilé autour de l'arène.
-  for (let i = 0; i < 70; i += 1) {
-    const angle = (Math.PI * 2 * i) / 70;
-    const r = radius + 320 + (i % 6) * 64;
-    const x = Math.cos(angle + time * 0.000015) * r;
-    const y = Math.sin(angle + time * 0.000015) * r;
-    const twinkle = 0.12 + (Math.sin(time * 0.002 + i * 1.7) * 0.5 + 0.5) * 0.24;
-    ctx.beginPath();
-    ctx.arc(x, y, 1.2 + (i % 3) * 0.6, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(210,235,255,${twinkle})`;
-    ctx.fill();
-  }
+  const halo = ctx.createRadialGradient(0, 0, radius - 40, 0, 0, radius + 180 + pulse);
+  halo.addColorStop(0, "rgba(255, 214, 238, 0)");
+  halo.addColorStop(0.55, "rgba(255, 195, 120, 0.16)");
+  halo.addColorStop(0.82, "rgba(255, 145, 214, 0.24)");
+  halo.addColorStop(1, "rgba(255, 240, 160, 0)");
 
-  // Aurores boréales en rubans diffus.
-  for (let band = 0; band < 3; band += 1) {
-    const auroraR = radius + 430 + band * 80;
-    ctx.beginPath();
-    for (let k = 0; k <= 84; k += 1) {
-      const t = k / 84;
-      const angle = t * Math.PI * 2;
-      const wave = Math.sin(time * 0.0007 + t * 16 + band * 0.9) * 24;
-      const x = Math.cos(angle) * (auroraR + wave);
-      const y = Math.sin(angle) * (auroraR + Math.cos(time * 0.0009 + t * 10) * 16);
-      if (k === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.strokeStyle = band === 0
-      ? "rgba(125,255,214,0.08)"
-      : band === 1
-      ? "rgba(158,234,255,0.08)"
-      : "rgba(194,173,255,0.07)";
-    ctx.lineWidth = 24 - band * 6;
-    ctx.stroke();
-  }
-
-  // Planètes bulles en orbite.
-  for (let i = 0; i < 6; i += 1) {
-    const angle = time * (0.00012 + i * 0.000015) + i * 1.1;
-    const orbit = radius + 260 + i * 88;
-    const x = Math.cos(angle) * orbit;
-    const y = Math.sin(angle) * orbit;
-    const pr = 18 + (i % 3) * 9;
-
-    const glow = ctx.createRadialGradient(x, y, pr * 0.2, x, y, pr * 2.5);
-    glow.addColorStop(0, "rgba(255,255,255,0.35)");
-    glow.addColorStop(0.6, "rgba(177,225,255,0.14)");
-    glow.addColorStop(1, "rgba(177,225,255,0)");
-    ctx.beginPath();
-    ctx.arc(x, y, pr * 2.5, 0, Math.PI * 2);
-    ctx.fillStyle = glow;
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(x, y, pr, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(215,241,255,0.24)";
-    ctx.fill();
-  }
-
-  // Météorites qui percutent la face externe.
-  if (time - meteorImpactState.lastSpawn > 5200) {
-    meteorImpactState.lastSpawn = time;
-    const angle = Math.random() * Math.PI * 2;
-    meteorImpactState.impacts.push({
-      angle,
-      createdAt: time,
-      life: 6800,
-    });
-    if (meteorImpactState.impacts.length > 6) meteorImpactState.impacts.shift();
-  }
-
-  meteorImpactState.impacts = meteorImpactState.impacts.filter((impact) => time - impact.createdAt < impact.life);
-
-  meteorImpactState.impacts.forEach((impact) => {
-    const age = time - impact.createdAt;
-    const px = Math.cos(impact.angle) * (radius + 16);
-    const py = Math.sin(impact.angle) * (radius + 16);
-
-    if (age < 900) {
-      const burst = age / 900;
-      for (let i = 0; i < 18; i += 1) {
-        const a = (Math.PI * 2 * i) / 18;
-        const d = burst * (36 + (i % 4) * 11);
-        const x = px + Math.cos(a) * d;
-        const y = py + Math.sin(a) * d;
-        ctx.beginPath();
-        ctx.arc(x, y, 2.5 + (1 - burst) * 3, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(201,236,255,0.55)";
-        ctx.fill();
-      }
-    }
-
-    const mound = Math.min(1, Math.max(0, (age - 380) / 1400));
-    if (mound > 0) {
-      const moundR = 18 + mound * 22;
-      ctx.beginPath();
-      ctx.arc(px, py, moundR, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(196,232,255,0.3)";
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.arc(px, py, moundR * 0.42, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255, 178, 223, 0.35)";
-      ctx.fill();
-    }
-  });
+  ctx.beginPath();
+  ctx.arc(0, 0, radius + 180 + pulse, 0, Math.PI * 2);
+  ctx.fillStyle = halo;
+  ctx.fill();
 
   ctx.restore();
 }
