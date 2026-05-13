@@ -25,6 +25,7 @@ export function drawScene(ctx, rect, time, refs) {
 
   drawArenaBoundary(ctx, arenaRef, time);
   drawArenaCloudRing(ctx, arenaRef, time);
+  drawOrbitingBubbleBird(ctx, arenaRef, time);
   drawEcosystemWorld(ctx, current, time);
   drawWorldParticles(ctx, arenaRef, time);
 
@@ -512,6 +513,67 @@ export function drawArenaCloudRing(ctx, arenaRef, time) {
       ctx.fillStyle = "rgba(255,255,255,0.2)";
       ctx.fill();
     }
+  }
+
+  ctx.restore();
+}
+
+
+export function drawOrbitingBubbleBird(ctx, arenaRef, time) {
+  const radius = arenaRef.current?.radius || 1200;
+  const orbit = radius + 260;
+  const angle = time * 0.00032;
+  const x = Math.cos(angle) * orbit;
+  const y = Math.sin(angle) * orbit;
+
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  ctx.translate(x, y);
+  ctx.rotate(angle + Math.PI * 0.5 + Math.sin(time * 0.0013) * 0.25);
+
+  const bodyGlow = ctx.createRadialGradient(0, 0, 8, 0, 0, 56);
+  bodyGlow.addColorStop(0, "rgba(255,255,255,0.4)");
+  bodyGlow.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.beginPath();
+  ctx.arc(0, 0, 56, 0, Math.PI * 2);
+  ctx.fillStyle = bodyGlow;
+  ctx.fill();
+
+  ctx.strokeStyle = "rgba(250,255,255,0.75)";
+  ctx.lineCap = "round";
+
+  // Corps oiseau-bulle taille moyenne.
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(-30, 8);
+  ctx.quadraticCurveTo(-6, -24, 26, -2);
+  ctx.quadraticCurveTo(2, 16, -22, 14);
+  ctx.stroke();
+
+  // Cou et tête.
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(6, -2);
+  ctx.quadraticCurveTo(18, -30, 30, -20);
+  ctx.stroke();
+
+  // Bec.
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(30, -20);
+  ctx.lineTo(46, -24);
+  ctx.stroke();
+
+  // Petite traîne de bulles pour l'effet virevoltant.
+  for (let i = 0; i < 5; i += 1) {
+    const t = i / 4;
+    const bx = -12 - t * 28 + Math.sin(time * 0.002 + i) * 2;
+    const by = 10 + t * 18 + Math.cos(time * 0.0024 + i) * 2;
+    const br = 3 + (4 - i) * 1.2;
+    ctx.beginPath();
+    ctx.arc(bx, by, br, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${0.16 + (4 - i) * 0.05})`;
+    ctx.fill();
   }
 
   ctx.restore();
