@@ -1777,6 +1777,7 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-top: 10px;
   padding: 6px 10px;
   background: rgba(0,0,0,0.5);
   border-radius: 999px;
@@ -1800,17 +1801,36 @@ button {
 }
 
 .flow-progress {
-  width: 38px;
+  width: 56px;
   height: 4px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #7dd3fc 50%, rgba(125, 211, 252, 0.3) 50%);
+  background: linear-gradient(
+    90deg,
+    #7dd3fc 33.33%,
+    rgba(125, 211, 252, 0.3) 33.33%,
+    rgba(125, 211, 252, 0.3) 100%
+  );
 }
 
 .flow-progress.step-1 {
-  background: linear-gradient(90deg, #7dd3fc 50%, rgba(125, 211, 252, 0.3) 50%);
+  background: linear-gradient(
+    90deg,
+    #7dd3fc 33.33%,
+    rgba(125, 211, 252, 0.3) 33.33%,
+    rgba(125, 211, 252, 0.3) 100%
+  );
 }
 
 .flow-progress.step-2 {
+  background: linear-gradient(
+    90deg,
+    #7dd3fc 66.66%,
+    rgba(125, 211, 252, 0.3) 66.66%,
+    rgba(125, 211, 252, 0.3) 100%
+  );
+}
+
+.flow-progress.step-3 {
   background: #7dd3fc;
 }
 

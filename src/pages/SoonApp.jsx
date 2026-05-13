@@ -140,7 +140,7 @@ export default function SoonApp({ onBack }) {
             }}
             className={mode === "compo" ? "active" : ""}
           >
-            Compo
+            Composer
           </button>
 
           <button
@@ -151,12 +151,30 @@ export default function SoonApp({ onBack }) {
               setOdysseoMode("trace");
               setInteractionMode("swim");
             }}
-            className={mode === "reso" ? "active" : ""}
+            className={isOdysseoTrace ? "active" : ""}
           >
-            Odysséo
+            Tracer
           </button>
 
-          <span className={`flow-progress ${mode === "reso" ? "step-2" : "step-1"}`} aria-hidden="true" />
+          <button
+            type="button"
+            onClick={() => {
+              setMode("reso");
+              stopCircuitAutopilot();
+              setOdysseoMode("travel");
+              setInteractionMode("swim");
+            }}
+            className={isOdysseoTravel ? "active" : ""}
+          >
+            Traverser
+          </button>
+
+          <span
+            className={`flow-progress ${
+              mode === "compo" ? "step-1" : isOdysseoTrace ? "step-2" : "step-3"
+            }`}
+            aria-hidden="true"
+          />
         </div>
 
         <button
