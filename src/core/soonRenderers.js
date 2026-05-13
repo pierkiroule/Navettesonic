@@ -20,6 +20,9 @@ export function drawScene(ctx, rect, time, refs) {
   drawOcean(ctx, rect, time, current);
   drawDepthVeil(ctx, rect, current.fish);
 
+
+  drawPoeticSideScene(ctx, rect, time);
+
   enterWorld(ctx, rect, cameraRef, stateRef);
 
   drawArenaBoundary(ctx, arenaRef, time);
@@ -466,6 +469,128 @@ export function drawHud(ctx, rect, current) {
   ctx.textAlign = "center";
 
   ctx.fillText("Réso•° · suis le circuit", rect.width / 2, rect.height / 2 + 98);
+
+  ctx.restore();
+}
+
+
+export function drawPoeticSideScene(ctx, rect, time) {
+  ctx.save();
+
+  const horizonY = rect.height * 0.34;
+  const drift = Math.sin(time * 0.00018) * 12;
+
+  // Nuages-bulles blancs.
+  for (let i = 0; i < 9; i += 1) {
+    const x = rect.width * (0.08 + i * 0.11) + Math.sin(time * 0.00011 + i) * 22;
+    const y = horizonY + Math.cos(time * 0.00016 + i * 2.2) * 16 + (i % 3) * 24;
+    const r = 34 + (i % 4) * 18;
+
+    const glow = ctx.createRadialGradient(x, y, r * 0.15, x, y, r * 2.2);
+    glow.addColorStop(0, 'rgba(255,255,255,0.42)');
+    glow.addColorStop(0.6, 'rgba(255,255,255,0.16)');
+    glow.addColorStop(1, 'rgba(255,255,255,0)');
+
+    ctx.beginPath();
+    ctx.arc(x, y, r * 2.2, 0, Math.PI * 2);
+    ctx.fillStyle = glow;
+    ctx.fill();
+
+    for (let j = 0; j < 5; j += 1) {
+      const bx = x + Math.cos(j * 1.17 + i) * (r * 0.85);
+      const by = y + Math.sin(j * 1.09 + i * 0.7) * (r * 0.52);
+      const br = r * (0.34 + (j % 3) * 0.11);
+      ctx.beginPath();
+      ctx.arc(bx, by, br, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.19)';
+      ctx.fill();
+    }
+  }
+
+  // Oiseau-bulle vu de profil.
+  const birdX = rect.width * 0.24 + drift;
+  const birdY = rect.height * 0.3;
+
+  ctx.strokeStyle = 'rgba(245, 252, 255, 0.72)';
+  ctx.lineWidth = 8;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(birdX - 84, birdY + 16);
+  ctx.quadraticCurveTo(birdX - 28, birdY - 30, birdX + 52, birdY + 2);
+  ctx.quadraticCurveTo(birdX + 18, birdY + 30, birdX - 44, birdY + 28);
+  ctx.stroke();
+
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(birdX - 12, birdY + 2);
+  ctx.quadraticCurveTo(birdX + 12, birdY - 56, birdX + 34, birdY - 26);
+  ctx.stroke();
+
+  // Bec long et flux de bulles.
+  const beakX = birdX + 58;
+  const beakY = birdY + 4;
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(birdX + 42, birdY + 4);
+  ctx.lineTo(beakX + 74, beakY - 8);
+  ctx.strokeStyle = 'rgba(255,255,255,0.82)';
+  ctx.stroke();
+
+  const cloudX = rect.width * 0.72;
+  const cloudY = rect.height * 0.24;
+
+  for (let i = 0; i < 26; i += 1) {
+    const t = i / 25;
+    const bx = beakX + (cloudX - beakX) * t + Math.sin(time * 0.0016 + i) * (8 + t * 12);
+    const by = beakY + (cloudY - beakY) * t + Math.cos(time * 0.0018 + i * 0.7) * (4 + t * 8);
+    const radius = 3 + t * 10;
+    const alpha = 0.12 + t * 0.24;
+
+    ctx.beginPath();
+    ctx.arc(bx, by, radius, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+    ctx.fill();
+  }
+
+  const halo = ctx.createRadialGradient(cloudX, cloudY, 20, cloudX, cloudY, 140);
+  halo.addColorStop(0, 'rgba(255, 246, 196, 0.58)');
+  halo.addColorStop(0.55, 'rgba(255, 191, 211, 0.24)');
+  halo.addColorStop(1, 'rgba(255, 191, 211, 0)');
+  ctx.beginPath();
+  ctx.arc(cloudX, cloudY, 140, 0, Math.PI * 2);
+  ctx.fillStyle = halo;
+  ctx.fill();
+
+  for (let i = 0; i < 14; i += 1) {
+    const angle = (Math.PI * 2 * i) / 14;
+    const cx = cloudX + Math.cos(angle) * (36 + (i % 3) * 12);
+    const cy = cloudY + Math.sin(angle) * (22 + (i % 4) * 10);
+    const cr = 20 + (i % 5) * 5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.36)';
+    ctx.fill();
+  }
+
+  // Naissance poétique des poissons roses.
+  for (let i = 0; i < 5; i += 1) {
+    const swim = (time * 0.0016 + i * 1.2) % (Math.PI * 2);
+    const fx = cloudX + 40 + i * 26 + Math.cos(swim) * 18;
+    const fy = cloudY + 26 + i * 16 + Math.sin(swim * 1.4) * 12;
+
+    ctx.beginPath();
+    ctx.ellipse(fx, fy, 14, 7, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 164, 206, 0.62)';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(fx - 13, fy);
+    ctx.lineTo(fx - 23, fy - 6);
+    ctx.lineTo(fx - 23, fy + 6);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(255, 183, 223, 0.52)';
+    ctx.fill();
+  }
 
   ctx.restore();
 }
