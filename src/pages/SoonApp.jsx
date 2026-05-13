@@ -249,8 +249,8 @@ export default function SoonApp({ onBack }) {
         circuitAutopilot={circuitAutopilot}
         eyesClosed={eyesClosed}
         viewZoom={viewZoom}
-        onFishTarget={setFishTarget}
-        onTickFish={() => {
+        onFishTarget={(x, y, arenaRadius) => setFishTarget(x, y, arenaRadius)}
+        onTickFish={({ arenaRadius } = {}) => {
           if (isOdysseoTravel) {
             if (isTravelPlaying) {
               tickOdysseoPath({ swimSpeed });
@@ -260,7 +260,7 @@ export default function SoonApp({ onBack }) {
 
           if (isEditMode || isOdysseoTrace) return;
 
-          tickFish({ swimSpeed });
+          tickFish({ swimSpeed, arenaRadius });
         }}
         onSetFishDepth={setFishDepth}
         onSelectBubble={selectBubble}

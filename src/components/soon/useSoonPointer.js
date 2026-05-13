@@ -136,7 +136,7 @@ export function useSoonPointer({
     rememberTapScreen(event, "swim");
 
     if (!current.circuitAutopilot) {
-      onFishTarget?.(point.x, point.y);
+      onFishTarget?.(point.x, point.y, arenaRef.current.radius);
     }
 
     if (current.mode === "reso") {
@@ -323,7 +323,7 @@ export function useSoonPointer({
     }
 
     if (!isEditMode) {
-      onFishTarget?.(point.x, point.y);
+      onFishTarget?.(point.x, point.y, arenaRef.current.radius);
 
       if (current.mode === "reso") {
         onAddPathPoint?.(point);

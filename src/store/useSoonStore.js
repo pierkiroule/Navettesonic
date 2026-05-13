@@ -21,10 +21,19 @@ import {
   getCircuitSpeedValue,
   smoothLoopPoint,
 } from "../core/traceCircuit.js";
+import { getFishNavigableRadius } from "../core/constants.js";
 
 const saved = loadState();
 
 const DEFAULT_ARENA_RADIUS = 1200;
+const DEFAULT_FISH_NAV_RADIUS = getFishNavigableRadius(DEFAULT_ARENA_RADIUS);
+
+function getRuntimeFishNavRadius(arenaRadius) {
+  if (Number.isFinite(arenaRadius) && arenaRadius > 0) {
+    return getFishNavigableRadius(arenaRadius);
+  }
+  return DEFAULT_FISH_NAV_RADIUS;
+}
 
 function clampDepth(depth) {
   return normalizeDepth(depth);
@@ -246,12 +255,12 @@ export const useSoonStore = create((set, get) => ({
     });
   },
 
-  setFishTarget: (x, y) => {
+  setFishTarget: (x, y, arenaRadius = DEFAULT_ARENA_RADIUS) => {
     const state = get();
 
     if (state.circuitAutopilot) return;
 
-    const safe = clampToCircle({ x, y }, DEFAULT_ARENA_RADIUS * 1.7);
+    const safe = clampToCircle({ x, y }, getRuntimeFishNavRadius(arenaRadius));
 
     set((state) => ({
       fish: {
@@ -275,8 +284,9 @@ export const useSoonStore = create((set, get) => ({
     saveState(get());
   },
 
-  tickFish: ({ swimSpeed = 1 } = {}) => {
+  tickFish: ({ swimSpeed = 1, arenaRadius = DEFAULT_ARENA_RADIUS } = {}) => {
     set((state) => {
+      const fishNavRadius = getRuntimeFishNavRadius(arenaRadius);
       if (state.fishTrail?.length) {
         const result = updateSnakeFishToTarget({
           fish: {
@@ -286,7 +296,7 @@ export const useSoonStore = create((set, get) => ({
               createInitialSpine(state.fish.x || 0, state.fish.y || 0),
           },
           trail: state.fishTrail,
-          arenaRadius: DEFAULT_ARENA_RADIUS,
+          arenaRadius: fishNavRadius,
           swimSpeed,
         });
 
@@ -365,7 +375,7 @@ export const useSoonStore = create((set, get) => ({
           x: state.fish.x + vx,
           y: state.fish.y + vy,
         },
-        DEFAULT_ARENA_RADIUS * 1.7
+        fishNavRadius
       );
 
       const speed = Math.hypot(vx, vy);
