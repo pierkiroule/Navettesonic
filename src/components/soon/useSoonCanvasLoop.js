@@ -14,6 +14,7 @@ import { updateEcosystemFx } from "../../core/ecosystemFx.js";
 import { updateBubbleAudioTriggers } from "../../core/soonAudioTriggers.js";
 import { drawScene } from "../../core/soonRenderers.js";
 import {
+  getCharacterSnapshot,
   getCharacterWorldEffects,
   updateCharacters,
 } from "../../core/characters/characterEngine.js";
@@ -26,10 +27,14 @@ export function useSoonCanvasLoop({
   activeBubbleAudioRef,
   onTickFish,
   onSemioseVideoTrigger,
+  onTornadoWaveStart,
+  onTornadoWaveProgress,
 }) {
   useEffect(() => {
     let frame = 0;
     let wasEditMode = false;
+    let trackedWaveStart = 0;
+    let lastWaveRadius = 0;
 
     function loop() {
       const canvas = canvasRef.current;
@@ -84,6 +89,25 @@ export function useSoonCanvasLoop({
       });
 
       const worldFx = getCharacterWorldEffects();
+      const snapshot = getCharacterSnapshot();
+      const tornado = snapshot.tornado;
+
+      if (tornado?.state === "wave" && tornado.waveStartedAt) {
+        if (tornado.waveStartedAt !== trackedWaveStart) {
+          trackedWaveStart = tornado.waveStartedAt;
+          lastWaveRadius = tornado.r || 0;
+          onTornadoWaveStart?.(tornado.waveStartedAt);
+        }
+
+        onTornadoWaveProgress?.({
+          tornado,
+          previousRadius: lastWaveRadius,
+          currentRadius: tornado.waveRadius ?? lastWaveRadius,
+        });
+        lastWaveRadius = tornado.waveRadius ?? lastWaveRadius;
+      } else {
+        lastWaveRadius = tornado?.r || 0;
+      }
 
       if (!isEditMode) {
         onTickFish?.({ arenaRadius: arenaRef.current.radius });

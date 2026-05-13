@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useSoonCanvasLoop } from "./soon/useSoonCanvasLoop.js";
 import { useSoonPointer } from "./soon/useSoonPointer.js";
+import { playBubbleSound, stopBubbleSound } from "../core/audioEngine.js";
+import { getBubbleHitRadius } from "../core/geometry.js";
 
 export default function SoonCanvas({
   mode,
@@ -36,6 +38,9 @@ export default function SoonCanvas({
 }) {
   const canvasRef = useRef(null);
   const [semioseVideo, setSemioseVideo] = useState(null);
+  const [resonanceButtonState, setResonanceButtonState] = useState(null);
+  const waveTouchedIdsRef = useRef([]);
+  const waveTouchedSetRef = useRef(new Set());
 
   const cameraRef = useRef({
     x: 0,
@@ -135,7 +140,59 @@ export default function SoonCanvas({
     activeBubbleAudioRef,
     onTickFish,
     onSemioseVideoTrigger: setSemioseVideo,
+    onTornadoWaveStart: () => {
+      waveTouchedIdsRef.current = [];
+      waveTouchedSetRef.current = new Set();
+      setResonanceButtonState({
+        waveId: Date.now(),
+        expiresAt: Date.now() + 10000,
+        consumed: false,
+        isPlaying: false,
+      });
+    },
+    onTornadoWaveProgress: ({ tornado, previousRadius, currentRadius }) => {
+      const bubbleList = stateRef.current?.bubbles || [];
+      bubbleList.forEach((bubble) => {
+        if (waveTouchedSetRef.current.has(bubble.id)) return;
+        const d = Math.hypot((bubble.x || 0) - tornado.x, (bubble.y || 0) - tornado.y);
+        const hitRadius = getBubbleHitRadius(bubble);
+        if (previousRadius <= d + hitRadius && currentRadius >= d - hitRadius) {
+          waveTouchedSetRef.current.add(bubble.id);
+          waveTouchedIdsRef.current.push(bubble.id);
+        }
+      });
+    },
   });
+
+  useEffect(() => {
+    if (!resonanceButtonState || resonanceButtonState.consumed) return;
+    const timeoutId = setTimeout(() => {
+      setResonanceButtonState((current) => {
+        if (!current) return null;
+        if (current.expiresAt <= Date.now() && !current.isPlaying) return null;
+        return current;
+      });
+    }, 200);
+    return () => clearTimeout(timeoutId);
+  }, [resonanceButtonState]);
+
+  async function playResonanceOnce() {
+    if (!resonanceButtonState || resonanceButtonState.consumed || resonanceButtonState.isPlaying) return;
+    setResonanceButtonState((current) => (current ? { ...current, consumed: true, isPlaying: true } : current));
+    const ordered = waveTouchedIdsRef.current
+      .map((id) => (stateRef.current?.bubbles || []).find((bubble) => bubble.id === id))
+      .filter(Boolean);
+
+    for (const bubble of ordered) {
+      // eslint-disable-next-line no-await-in-loop
+      await playBubbleSound(bubble);
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      stopBubbleSound(bubble.id);
+    }
+
+    setResonanceButtonState(null);
+  }
 
   const {
     handlePointerDown,
@@ -189,6 +246,13 @@ export default function SoonCanvas({
             loop
             playsInline
           />
+        </div>
+      ) : null}
+      {resonanceButtonState && !resonanceButtonState.consumed && Date.now() < resonanceButtonState.expiresAt ? (
+        <div className="resonance-overlay">
+          <button type="button" className="resonance-cta" onClick={playResonanceOnce}>
+            Écouter la Résonance
+          </button>
         </div>
       ) : null}
     </div>

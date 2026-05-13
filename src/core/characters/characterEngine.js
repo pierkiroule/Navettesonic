@@ -147,6 +147,22 @@ export function getCharacterWorldEffects(time = performance.now()) {
   };
 }
 
+export function getCharacterSnapshot(time = performance.now()) {
+  const tornado = characters.tornado;
+  return {
+    tornado: tornado
+      ? {
+          x: tornado.x,
+          y: tornado.y,
+          r: tornado.r,
+          state: tornado.state,
+          waveStartedAt: tornado.waveStartedAt || 0,
+          waveRadius: getStarTornadoWaveRadius(tornado, time),
+        }
+      : null,
+  };
+}
+
 export function resetCharacters() {
   characters.initialized = false;
   characters.tornado = null;
