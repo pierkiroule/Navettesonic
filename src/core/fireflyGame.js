@@ -31,6 +31,7 @@ const placedTriangles = [];
 const resonanceBubbles = [];
 
 let spawnClock = 1;
+let progressiveSpawnLock = false;
 let completeTriangleSince = 0;
 let fireflyVoiceQueue = Promise.resolve();
 
@@ -271,6 +272,31 @@ function spawnFirefly() {
     y: Math.sin(angle) * radius,
     vx: Math.cos(angle + Math.PI + rand(-0.7, 0.7)) * rand(0.35, 0.85),
     vy: Math.sin(angle + Math.PI + rand(-0.7, 0.7)) * rand(0.35, 0.85),
+    phase: rand(0, Math.PI * 2),
+    r: rand(11, 16),
+    alpha: 1,
+    attached: false,
+    attachedOrder: 0,
+    linkedCooldownUntil: 0,
+    mouthPushCooldownUntil: 0,
+    pushedAt: 0,
+    bornAt: performance.now(),
+  });
+}
+
+export function spawnFireflyFromSeed(x = 0, y = 0) {
+  const type = pickFireflyType();
+
+  fireflies.push({
+    id: makeId("luciole"),
+    typeId: type.id,
+    symbol: type.symbol,
+    voiceKind: type.voiceKind,
+    voiceText: pickVoiceFragment(type),
+    x,
+    y,
+    vx: rand(-0.35, 0.35),
+    vy: rand(-0.35, 0.35),
     phase: rand(0, Math.PI * 2),
     r: rand(11, 16),
     alpha: 1,
@@ -694,15 +720,33 @@ export function updateFireflyGame({ fish, mode }) {
   triggerPlacedTriangleVoicesInOdysseo(fish, now, mode);
 
   if (mode === "compo") {
+    if (fireflies.length === 0) {
+      spawnFirefly(arenaRadius);
+      progressiveSpawnLock = false;
+    }
+
     spawnClock += 0.08;
 
     while (spawnClock >= 1) {
       spawnClock -= 1;
 
       const freeCount = fireflies.filter((item) => !item.attached).length;
+      const canProgressivelySpawn = freeCount >= 1 && freeCount <= 2;
 
-      if (fireflies.length < MAX_FIREFLIES && freeCount < 12) {
-        spawnFirefly(arenaRadius);
+      if (!canProgressivelySpawn) {
+        progressiveSpawnLock = false;
+        continue;
+      }
+
+      if (!progressiveSpawnLock) {
+        progressiveSpawnLock = true;
+        const batchSize = Math.floor(rand(1, 4));
+        const room = Math.max(0, MAX_FIREFLIES - fireflies.length);
+        const spawnCount = Math.min(batchSize, room);
+
+        for (let i = 0; i < spawnCount; i += 1) {
+          spawnFirefly(arenaRadius);
+        }
       }
     }
   }
@@ -1069,6 +1113,10 @@ export function getCollectedFireflyCount() {
   return fireflies.filter((item) => item.attached).length;
 }
 
+export function getUncollectedFireflyCount() {
+  return fireflies.filter((item) => !item.attached).length;
+}
+
 export function getFireflyDebugStats() {
   return {
     total: fireflies.length,
@@ -1085,4 +1133,6 @@ export function resetFireflyGame() {
   placedTriangles.length = 0;
   resonanceBubbles.length = 0;
   spawnClock = 1;
+  progressiveSpawnLock = false;
+  spawnFirefly();
 }

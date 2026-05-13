@@ -90,7 +90,7 @@ function updateSeedMotes(seed, time, dt) {
   }
 }
 
-export function updateLucioleSeeds(seeds, stock, dt = 16) {
+export function updateLucioleSeeds(seeds, stock, dt = 16, onMature = null) {
   const time = performance.now();
 
   for (let i = seeds.length - 1; i >= 0; i -= 1) {
@@ -114,6 +114,11 @@ export function updateLucioleSeeds(seeds, stock, dt = 16) {
     ) {
       seed.state = "luciole";
       stock.germinated += 1;
+      if (typeof onMature === "function") {
+        onMature(seed);
+      }
+      seeds.splice(i, 1);
+      continue;
     }
 
     updateSeedMotes(seed, time, dt);
