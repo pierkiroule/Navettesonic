@@ -475,38 +475,41 @@ export function drawHud(ctx, rect, current) {
 
 export function drawArenaCloudRing(ctx, arenaRef, time) {
   const radius = arenaRef.current?.radius || 1200;
+  const orbitBase = radius + 180;
+  const cloudCount = 14;
 
   ctx.save();
   ctx.globalCompositeOperation = "screen";
 
-  for (let i = 0; i < 30; i += 1) {
-    const baseAngle = (Math.PI * 2 * i) / 30;
-    const drift = Math.sin(time * 0.0003 + i * 1.7) * 0.06;
-    const angle = baseAngle + drift;
-    const r = radius + 180 + (i % 5) * 36 + Math.sin(time * 0.0007 + i) * 14;
+  for (let i = 0; i < cloudCount; i += 1) {
+    const progress = time * 0.000035 * (0.8 + (i % 4) * 0.11);
+    const angle = (Math.PI * 2 * i) / cloudCount + progress;
+    const orbit = orbitBase + (i % 3) * 46 + Math.sin(time * 0.0007 + i) * 10;
+    const cx = Math.cos(angle) * orbit;
+    const cy = Math.sin(angle) * orbit;
 
-    const x = Math.cos(angle) * r;
-    const y = Math.sin(angle) * r;
+    // Petits nuages composés de 3 à 5 bulles blanches.
+    const bubbleCount = 3 + (i % 3);
+    for (let j = 0; j < bubbleCount; j += 1) {
+      const localAngle = (Math.PI * 2 * j) / bubbleCount + Math.sin(time * 0.0012 + i + j) * 0.2;
+      const offset = 12 + j * 7;
+      const bx = cx + Math.cos(localAngle) * offset;
+      const by = cy + Math.sin(localAngle) * (offset * 0.72);
+      const br = 12 + (j % 2) * 4 + (i % 2) * 2;
 
-    const bubbleRadius = 42 + (i % 4) * 14;
-    const glow = ctx.createRadialGradient(x, y, bubbleRadius * 0.2, x, y, bubbleRadius * 2.4);
-    glow.addColorStop(0, "rgba(255,255,255,0.22)");
-    glow.addColorStop(0.7, "rgba(255,255,255,0.08)");
-    glow.addColorStop(1, "rgba(255,255,255,0)");
+      const glow = ctx.createRadialGradient(bx, by, br * 0.2, bx, by, br * 2.1);
+      glow.addColorStop(0, "rgba(255,255,255,0.38)");
+      glow.addColorStop(0.7, "rgba(255,255,255,0.14)");
+      glow.addColorStop(1, "rgba(255,255,255,0)");
 
-    ctx.beginPath();
-    ctx.arc(x, y, bubbleRadius * 2.4, 0, Math.PI * 2);
-    ctx.fillStyle = glow;
-    ctx.fill();
-
-    for (let j = 0; j < 4; j += 1) {
-      const miniAngle = angle + (Math.PI * 2 * j) / 4;
-      const mx = x + Math.cos(miniAngle) * bubbleRadius * 0.8;
-      const my = y + Math.sin(miniAngle) * bubbleRadius * 0.6;
-      const mr = bubbleRadius * (0.3 + j * 0.08);
       ctx.beginPath();
-      ctx.arc(mx, my, mr, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255,255,255,0.14)";
+      ctx.arc(bx, by, br * 2.1, 0, Math.PI * 2);
+      ctx.fillStyle = glow;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(bx, by, br, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255,255,255,0.2)";
       ctx.fill();
     }
   }
