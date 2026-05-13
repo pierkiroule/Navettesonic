@@ -24,19 +24,15 @@ export function followFishCamera(cameraRef, arenaRef, fish, rect, viewZoom = 0) 
   if (!fish) return;
 
   const camera = cameraRef.current;
-  const arenaRadius = arenaRef.current.radius;
+  void arenaRef;
+  void rect;
+  void viewZoom;
 
   const speed = Math.hypot(fish.vx || 0, fish.vy || 0);
   const speedNorm = Math.min(1, speed / 18);
   const depth = Math.max(1, Math.min(3, Math.round(fish.depth || 1)));
-
-  const lookAhead = 90 + speedNorm * 180;
-  const angle = Number.isFinite(fish.angle)
-    ? fish.angle
-    : Math.atan2(fish.vy || 0, fish.vx || 1);
-
-  const targetRawX = fish.x + Math.cos(angle) * lookAhead * speedNorm;
-  const targetRawY = fish.y + Math.sin(angle) * lookAhead * speedNorm;
+  const targetX = Number.isFinite(fish.x) ? fish.x : 0;
+  const targetY = Number.isFinite(fish.y) ? fish.y : 0;
 
   const t = performance.now() * 0.001;
   const breath = Math.sin(t * 0.42) * 0.018;
@@ -44,19 +40,6 @@ export function followFishCamera(cameraRef, arenaRef, fish, rect, viewZoom = 0) 
   const depthZoom = depth === 1 ? 1 : depth === 2 ? 0.94 : 0.88;
   const speedZoom = 1 - speedNorm * 0.08;
   const targetZoom = depthZoom * speedZoom + breath;
-
-  const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 1.9);
-  const extraViewZoom = 1.0 + Math.max(0, viewZoom) * 3.8;
-  const effectiveZoom = Math.max(0.001, fitZoom * targetZoom * extraViewZoom);
-
-  const halfVisibleWidth = rect.width * 0.5 / effectiveZoom;
-  const halfVisibleHeight = rect.height * 0.5 / effectiveZoom;
-
-  const maxCameraX = Math.max(0, arenaRadius - halfVisibleWidth);
-  const maxCameraY = Math.max(0, arenaRadius - halfVisibleHeight);
-
-  const targetX = Math.max(-maxCameraX, Math.min(maxCameraX, targetRawX));
-  const targetY = Math.max(-maxCameraY, Math.min(maxCameraY, targetRawY));
 
   const positionEase = 0.035 + speedNorm * 0.045;
   const zoomEase = 0.025 + speedNorm * 0.025;
