@@ -11,6 +11,7 @@ export default function SoonApp({ onBack }) {
   const [odysseoMode, setOdysseoMode] = useState("trace");
   const [viewZoom, setViewZoom] = useState(0);
   const [swimSpeed, setSwimSpeed] = useState(0.3);
+  const [isTravelPlaying, setIsTravelPlaying] = useState(false);
   const [editorOpenKey, setEditorOpenKey] = useState(0);
   const [selectedDepth, setSelectedDepth] = useState(1);
   const [exportStatus, setExportStatus] = useState("");
@@ -146,10 +147,11 @@ export default function SoonApp({ onBack }) {
           <button
             type="button"
             onClick={() => {
-              setMode("reso");
+              if (mode !== "reso") setMode("reso");
               stopCircuitAutopilot();
               setOdysseoMode("trace");
               setInteractionMode("swim");
+              setIsTravelPlaying(false);
             }}
             className={isOdysseoTrace ? "active" : ""}
           >
@@ -159,10 +161,11 @@ export default function SoonApp({ onBack }) {
           <button
             type="button"
             onClick={() => {
-              setMode("reso");
+              if (mode !== "reso") setMode("reso");
               stopCircuitAutopilot();
               setOdysseoMode("travel");
               setInteractionMode("swim");
+              setIsTravelPlaying(false);
             }}
             className={isOdysseoTravel ? "active" : ""}
           >
@@ -205,7 +208,9 @@ export default function SoonApp({ onBack }) {
         onFishTarget={setFishTarget}
         onTickFish={() => {
           if (isOdysseoTravel) {
-            tickOdysseoPath({ swimSpeed });
+            if (isTravelPlaying) {
+              tickOdysseoPath({ swimSpeed });
+            }
             return;
           }
 
@@ -232,45 +237,39 @@ export default function SoonApp({ onBack }) {
         <div className="cockpit-buttons">
           {isOdysseo ? (
             <div className="odysseo-tools">
-              <div className="tool-row primary-tools">
-                <button
-                  type="button"
-                  className={`bubble-btn mode-toggle ${isOdysseoTrace ? "active" : ""}`}
-                  onClick={() => {
-                    setOdysseoMode("trace");
-                    stopCircuitAutopilot();
-                  }}
-                  title="Tracer le parcours"
-                >
-                  ✏️ Tracer
-                </button>
+              {isOdysseoTravel && (
+                <div className="tool-row primary-tools">
+                  <button
+                    type="button"
+                    className={`bubble-btn mode-toggle ${isTravelPlaying ? "active" : ""}`}
+                    onClick={() => setIsTravelPlaying((current) => !current)}
+                    disabled={!odysseoPath || odysseoPath.length < 2}
+                    title={
+                      odysseoPath && odysseoPath.length >= 2
+                        ? isTravelPlaying
+                          ? "Mettre la traversée en pause"
+                          : "Lancer la traversée"
+                        : "Trace un parcours d’abord"
+                    }
+                  >
+                    {isTravelPlaying ? "⏸ Pause" : "▶ Play"}
+                  </button>
 
-                <button
-                  type="button"
-                  className={`bubble-btn mode-toggle ${isOdysseoTravel ? "active" : ""}`}
-                  onClick={() => {
-                    setOdysseoMode("travel");
-                    stopCircuitAutopilot();
-                  }}
-                  title="Traverser le parcours"
-                >
-                  ▶ Traverser
-                </button>
-
-                <button
-                  type="button"
-                  className="bubble-btn mode-toggle"
-                  onClick={handleExportImmersion}
-                  disabled={!odysseoPath || odysseoPath.length < 8}
-                  title={
-                    odysseoPath && odysseoPath.length >= 8
-                      ? "Générer l’immersion sonore"
-                      : "Trace un parcours d’abord"
-                  }
-                >
-                  🎧 Générer
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    className="bubble-btn mode-toggle"
+                    onClick={handleExportImmersion}
+                    disabled={!odysseoPath || odysseoPath.length < 8}
+                    title={
+                      odysseoPath && odysseoPath.length >= 8
+                        ? "Générer l’immersion sonore"
+                        : "Trace un parcours d’abord"
+                    }
+                  >
+                    🎧 Générer
+                  </button>
+                </div>
+              )}
 
               {isOdysseoTrace && (
                 <div className="tool-row trace-tools">
