@@ -50,6 +50,10 @@ export function useSoonCanvasLoop({
       const isEditMode = current.interactionMode === "edit";
 
       updateArena(arenaRef, rect);
+      stateRef.current = {
+        ...(stateRef.current || {}),
+        arenaRadius: arenaRef.current.radius,
+      };
 
       if (current.mode === "reso" || current.mode === "compo") {
         cameraRef.current.zoom = 1;
@@ -82,7 +86,7 @@ export function useSoonCanvasLoop({
       const worldFx = getCharacterWorldEffects();
 
       if (!isEditMode) {
-        onTickFish?.();
+        onTickFish?.({ arenaRadius: arenaRef.current.radius });
       }
 
       const next = stateRef.current || {};
