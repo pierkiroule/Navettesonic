@@ -5,6 +5,7 @@ import {
   normalizeDepth,
   screenToWorld,
 } from "../../core/geometry.js";
+import { getFishNavigableRadius } from "../../core/constants.js";
 import {
   clampEditCamera,
   panEditCamera,
@@ -61,7 +62,8 @@ export function useSoonPointer({
 
   function getSafeWorldFromEvent(event) {
     const point = getWorldFromEvent(event);
-    return clampToCircle(point, arenaRef.current.radius - 70);
+    const navigableRadius = getFishNavigableRadius(arenaRef.current.radius);
+    return clampToCircle(point, navigableRadius);
   }
 
   function registerPointer(event) {

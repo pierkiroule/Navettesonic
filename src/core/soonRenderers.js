@@ -2,6 +2,7 @@ import { distance, getBubbleVisualRadius } from "./geometry.js";
 import { drawPoissonPlume } from "./poissonPlumeRenderer.js";
 import { drawCharacters } from "./characters/characterEngine.js";
 import { drawOdysseoPath } from "./odysseoPath.js";
+import { ARENA_INNER_BOUNDARY_INSET } from "./constants.js";
 import {
   drawFireflies,
   drawPlacedTriangles,
@@ -119,7 +120,7 @@ export function drawArenaBoundary(ctx, arenaRef, time) {
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.arc(0, 0, radius - 32 + pulse * 0.4, 0, Math.PI * 2);
+  ctx.arc(0, 0, radius - ARENA_INNER_BOUNDARY_INSET + pulse * 0.4, 0, Math.PI * 2);
   ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
   ctx.lineWidth = 2;
   ctx.stroke();
