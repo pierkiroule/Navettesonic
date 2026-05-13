@@ -60,9 +60,33 @@ export function useSoonPointer({
     });
   }
 
-  function getSafeWorldFromEvent(event) {
+  function getSafeWorldFromEvent(event, options = {}) {
     const point = getWorldFromEvent(event);
     const navigableRadius = getFishNavigableRadius(arenaRef.current.radius);
+    const viewZoom = Number.isFinite(stateRef.current?.viewZoom)
+      ? stateRef.current.viewZoom
+      : 0;
+
+    // Zoom-out max: si le doigt est proche du bord écran, on autorise un
+    // target directement au bord navigable pour atteindre toute l'arène.
+    if (options.swimEdgeBoost && viewZoom <= 0.02) {
+      const canvas = canvasRef.current;
+      const rect = canvas.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dxScreen = event.clientX - cx;
+      const dyScreen = event.clientY - cy;
+      const screenDist = Math.hypot(dxScreen, dyScreen);
+      const screenLimit = Math.min(rect.width, rect.height) * 0.5 * 0.96;
+
+      if (screenDist >= screenLimit * 0.9 && screenDist > 0.0001) {
+        return {
+          x: (dxScreen / screenDist) * navigableRadius,
+          y: (dyScreen / screenDist) * navigableRadius,
+        };
+      }
+    }
+
     return clampToCircle(point, navigableRadius);
   }
 
@@ -196,7 +220,7 @@ export function useSoonPointer({
     canvas.setPointerCapture(event.pointerId);
     registerPointer(event);
 
-    const point = getSafeWorldFromEvent(event);
+    const point = getSafeWorldFromEvent(event, { swimEdgeBoost: true });
     const current = stateRef.current;
     const isEditMode = current.interactionMode === "edit";
     const isCircuitMode = current.interactionMode === "circuit";
@@ -230,7 +254,7 @@ export function useSoonPointer({
     const current = stateRef.current;
     const isEditMode = current.interactionMode === "edit";
     const isCircuitMode = current.interactionMode === "circuit";
-    const point = getSafeWorldFromEvent(event);
+    const point = getSafeWorldFromEvent(event, { swimEdgeBoost: true });
 
     if (!pointerRef.current.down && !(pointerRef.current.activePointers?.size > 0)) {
       return;

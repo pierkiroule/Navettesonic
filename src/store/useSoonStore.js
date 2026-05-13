@@ -165,9 +165,9 @@ const FISH_CONTROL_TUNING = {
   },
   // Réglages tactiles: "fil" simple, fluide et robuste.
   touch: {
-    mouthOffset: 40,
-    spring: 0.03,
-    damping: 0.82,
+    mouthOffset: 28,
+    spring: 0.034,
+    damping: 0.8,
   },
 };
 
