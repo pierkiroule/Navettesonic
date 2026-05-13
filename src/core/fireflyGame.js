@@ -720,6 +720,11 @@ export function updateFireflyGame({ fish, mode }) {
   triggerPlacedTriangleVoicesInOdysseo(fish, now, mode);
 
   if (mode === "compo") {
+    if (fireflies.length === 0) {
+      spawnFirefly(arenaRadius);
+      progressiveSpawnLock = false;
+    }
+
     spawnClock += 0.08;
 
     while (spawnClock >= 1) {
