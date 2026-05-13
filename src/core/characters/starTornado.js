@@ -141,7 +141,7 @@ export function updateStarTornado(tornado, fish, dt = 16, arenaRadius = 1200) {
 
     if (waveHasCrossedFish) {
       tornado.waveHitFish = true;
-      triggerDarkWaveEffect(3600);
+      triggerDarkWaveEffect(6200);
     }
   }
 }

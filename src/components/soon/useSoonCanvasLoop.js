@@ -137,13 +137,26 @@ export function useSoonCanvasLoop({
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillStyle = "#ffffff";
-        ctx.font = `600 ${Math.max(24, Math.floor(canvas.height * 0.04))}px "Inter", "Segoe UI", sans-serif`;
+
+        const maxTextWidth = canvas.width * 0.86;
+        const fontSize = Math.max(18, Math.floor(canvas.height * 0.032));
+        const lineHeight = Math.floor(fontSize * 1.28);
+
+        ctx.font = `600 ${fontSize}px "Inter", "Segoe UI", sans-serif`;
         ctx.shadowColor = "rgba(0,0,0,0.42)";
         ctx.shadowBlur = 10;
+
         ctx.fillText(
-          "Le silence des yeux ouvre tes écoutilles !",
+          "Le silence des yeux",
           canvas.width * 0.5,
-          canvas.height * 0.5
+          canvas.height * 0.5 - lineHeight * 0.5,
+          maxTextWidth
+        );
+        ctx.fillText(
+          "ouvre tes écoutilles !",
+          canvas.width * 0.5,
+          canvas.height * 0.5 + lineHeight * 0.5,
+          maxTextWidth
         );
         ctx.restore();
       }
