@@ -31,6 +31,7 @@ const placedTriangles = [];
 const resonanceBubbles = [];
 
 let spawnClock = 1;
+let progressiveSpawnLock = false;
 let completeTriangleSince = 0;
 let fireflyVoiceQueue = Promise.resolve();
 
@@ -700,9 +701,22 @@ export function updateFireflyGame({ fish, mode }) {
       spawnClock -= 1;
 
       const freeCount = fireflies.filter((item) => !item.attached).length;
+      const canProgressivelySpawn = freeCount >= 1 && freeCount <= 2;
 
-      if (fireflies.length < MAX_FIREFLIES && freeCount < 12) {
-        spawnFirefly(arenaRadius);
+      if (!canProgressivelySpawn) {
+        progressiveSpawnLock = false;
+        continue;
+      }
+
+      if (!progressiveSpawnLock) {
+        progressiveSpawnLock = true;
+        const batchSize = Math.floor(rand(1, 4));
+        const room = Math.max(0, MAX_FIREFLIES - fireflies.length);
+        const spawnCount = Math.min(batchSize, room);
+
+        for (let i = 0; i < spawnCount; i += 1) {
+          spawnFirefly(arenaRadius);
+        }
       }
     }
   }
@@ -1085,4 +1099,6 @@ export function resetFireflyGame() {
   placedTriangles.length = 0;
   resonanceBubbles.length = 0;
   spawnClock = 1;
+  progressiveSpawnLock = false;
+  spawnFirefly();
 }
