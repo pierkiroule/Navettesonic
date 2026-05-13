@@ -21,6 +21,9 @@ const TRIANGLE_HEAD_PUSH_FORCE = 0.42;
 const TRIANGLE_FRICTION = 0.94;
 const TRIANGLE_ROTATION_FRICTION = 0.95;
 const TRIANGLE_ROTATION_PUSH_FACTOR = 0.0018;
+const TRIANGLE_AUDIO_TRIGGER_RADIUS = 94;
+const TRIANGLE_AUDIO_RETRIGGER_COOLDOWN_MS = 14000;
+const FIREFLY_VOICE_CHAIN_DELAY_MS = 3000;
 
 const fireflies = [];
 const plumeTrail = [];
@@ -29,6 +32,7 @@ const resonanceBubbles = [];
 
 let spawnClock = 1;
 let completeTriangleSince = 0;
+let fireflyVoiceQueue = Promise.resolve();
 
 
 const FIREFLY_VOICE_BASE_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/sooncut";
@@ -56,6 +60,25 @@ function getSampleUrlCandidates(sampleIndex) {
     `${FIREFLY_VOICE_BASE_URL}/${n2}.mp3`,
     `${FIREFLY_VOICE_BASE_URL}/${n}.mp3`,
   ];
+}
+
+function delay(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function queueFireflyVoicePlayback(playback) {
+  fireflyVoiceQueue = fireflyVoiceQueue
+    .then(async () => {
+      await playback();
+      await delay(FIREFLY_VOICE_CHAIN_DELAY_MS);
+    })
+    .catch((error) => {
+      console.warn("[Soon] file d'attente vocal luciole interrompue", error);
+    });
+
+  return fireflyVoiceQueue;
 }
 
 async function playFireflyCollectVoice(firefly) {
@@ -308,7 +331,7 @@ function attachSingleFireflyToTail(fish, firefly, now) {
   firefly.vy *= 0.25;
 
   normalizeAttachedOrders();
-  void playFireflyCollectVoice(firefly);
+  void queueFireflyVoicePlayback(() => playFireflyCollectVoice(firefly));
 
   return true;
 }
@@ -610,6 +633,33 @@ function pushPlacedTrianglesWithHead(fish) {
   });
 }
 
+function triggerPlacedTriangleVoicesInOdysseo(fish, now, mode) {
+  if (mode !== "reso" || !fish || !placedTriangles.length) return;
+
+  const mouth = getMouth(fish);
+
+  placedTriangles.forEach((triangle) => {
+    const distance = Math.hypot(triangle.x - mouth.x, triangle.y - mouth.y);
+
+    if (distance > TRIANGLE_AUDIO_TRIGGER_RADIUS) return;
+    if (now < (triangle.audioCooldownUntil || 0)) return;
+
+    triangle.audioCooldownUntil = now + TRIANGLE_AUDIO_RETRIGGER_COOLDOWN_MS;
+
+    const firefliesInTriangle = Array.isArray(triangle.fireflies)
+      ? triangle.fireflies.slice(0, 3)
+      : [];
+
+    firefliesInTriangle.forEach((item) => {
+      const proxyFirefly = {
+        typeId: item.typeId,
+        x: triangle.x,
+      };
+      void queueFireflyVoicePlayback(() => playFireflyCollectVoice(proxyFirefly));
+    });
+  });
+}
+
 function updatePlacedTrianglesPhysics() {
   placedTriangles.forEach((triangle) => {
     triangle.vx = (triangle.vx || 0) * TRIANGLE_FRICTION;
@@ -641,6 +691,7 @@ export function updateFireflyGame({ fish, mode }) {
 
   pushPlacedTrianglesWithHead(fish);
   updatePlacedTrianglesPhysics();
+  triggerPlacedTriangleVoicesInOdysseo(fish, now, mode);
 
   if (mode === "compo") {
     spawnClock += 0.08;
