@@ -39,7 +39,7 @@ export default function SoonCanvas({
   const cameraRef = useRef({
     x: 0,
     y: 0,
-    zoom: 1,
+    zoom: 0.5,
   });
 
   const arenaRef = useRef({
