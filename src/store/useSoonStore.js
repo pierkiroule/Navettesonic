@@ -159,17 +159,19 @@ function lerpAngle(current, target, amount) {
 
 const FISH_CONTROL_TUNING = {
   autopilot: {
-    mouthDistance: 46,
-    pullForceBase: 0.035,
-    pullForceScale: 0.018,
-    fluidity: 0.11,
+    mouthOffset: 32,
+    maxSpeedFactor: 1.05,
+    accel: 0.16,
+    arrivalRadius: 180,
+    stopRadius: 10,
   },
-  // Réglages "touch" : optimisés pour un drag tactile précis (suivi du doigt + inertie minimale).
+  // Réglages tactiles: steering "arrive" ultra intuitif (rapide loin, précis près du doigt).
   touch: {
-    mouthDistance: 42,
-    pullForceBase: 0.028,
-    pullForceScale: 0.022,
-    fluidity: 0.17,
+    mouthOffset: 24,
+    maxSpeedFactor: 1.2,
+    accel: 0.22,
+    arrivalRadius: 220,
+    stopRadius: 8,
   },
 };
 
@@ -365,40 +367,59 @@ export const useSoonStore = create((set, get) => ({
       const control = circuitAutopilot
         ? FISH_CONTROL_TUNING.autopilot
         : FISH_CONTROL_TUNING.touch;
-      const { mouthDistance, pullForceBase, pullForceScale, fluidity } = control;
+      const {
+        mouthOffset,
+        maxSpeedFactor,
+        accel,
+        arrivalRadius,
+        stopRadius,
+      } = control;
 
       // Point de bouche : le doigt tire le poisson par l'avant.
-      const mouthX = state.fish.x + Math.cos(currentAngle) * mouthDistance;
-      const mouthY = state.fish.y + Math.sin(currentAngle) * mouthDistance;
+      const mouthX = state.fish.x + Math.cos(currentAngle) * mouthOffset;
+      const mouthY = state.fish.y + Math.sin(currentAngle) * mouthOffset;
 
       const pullX = targetX - mouthX;
       const pullY = targetY - mouthY;
       const pullDistance = Math.hypot(pullX, pullY);
 
-      // Traction progressive : douce près du doigt, plus nette si le doigt s'éloigne.
-      const pullNorm = Math.min(1, pullDistance / 320);
-      const pullForce = pullForceBase + pullNorm * pullForceScale;
+      const pullNorm = Math.min(1, pullDistance / Math.max(1, arrivalRadius));
+      const baseMaxSpeed = state.fish.maxSpeed || 3.1;
+      const speedLimit = baseMaxSpeed * maxSpeedFactor;
 
-      const desiredVx = pullX * pullForce;
-      const desiredVy = pullY * pullForce;
+      // Steering "arrive":
+      // - loin: vitesse cible max
+      // - proche: ralentit progressivement
+      // - très proche: arrêt stable (anti-jitter)
+      const desiredSpeed =
+        pullDistance <= stopRadius
+          ? 0
+          : Math.min(speedLimit, speedLimit * pullNorm);
 
-      // Le corps suit la bouche : interpolation fluide de la vitesse.
+      const dirX = pullDistance > 0.0001 ? pullX / pullDistance : 0;
+      const dirY = pullDistance > 0.0001 ? pullY / pullDistance : 0;
+      const desiredVx = dirX * desiredSpeed;
+      const desiredVy = dirY * desiredSpeed;
 
-      const vx = state.fish.vx + (desiredVx - state.fish.vx) * fluidity;
-      const vy = state.fish.vy + (desiredVy - state.fish.vy) * fluidity;
+      const vx = state.fish.vx + (desiredVx - state.fish.vx) * accel;
+      const vy = state.fish.vy + (desiredVy - state.fish.vy) * accel;
+
+      const speedRaw = Math.hypot(vx, vy);
+      const limitedVx = speedRaw > speedLimit ? (vx / speedRaw) * speedLimit : vx;
+      const limitedVy = speedRaw > speedLimit ? (vy / speedRaw) * speedLimit : vy;
 
       const safe = clampToCircle(
         {
-          x: state.fish.x + vx,
-          y: state.fish.y + vy,
+          x: state.fish.x + limitedVx,
+          y: state.fish.y + limitedVy,
         },
         fishNavRadius
       );
 
-      const speed = Math.hypot(vx, vy);
+      const speed = Math.hypot(limitedVx, limitedVy);
 
       // Orientation : le poisson suit la courbe du mouvement.
-      const moveAngle = speed > 0.035 ? Math.atan2(vy, vx) : currentAngle;
+      const moveAngle = speed > 0.035 ? Math.atan2(limitedVy, limitedVx) : currentAngle;
 
       let angleDiff = moveAngle - currentAngle;
       while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
@@ -443,8 +464,8 @@ export const useSoonStore = create((set, get) => ({
           ...state.fish,
           x: safe.x,
           y: safe.y,
-          vx,
-          vy,
+          vx: limitedVx,
+          vy: limitedVy,
           targetX,
           targetY,
           angle,
