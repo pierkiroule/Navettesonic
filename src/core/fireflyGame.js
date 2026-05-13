@@ -37,8 +37,9 @@ let fireflyVoiceQueue = Promise.resolve();
 
 
 const FIREFLY_VOICE_BASE_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/sooncut";
+const MORPHOSE_VOICE_BASE_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/morphose";
 const FIREFLY_VOICE_RANGE_BY_TYPE = {
-  morphose: [1, 20],
+  morphose: [1, 13],
   semiose: [21, 40],
   ontose: [41, 53],
 };
@@ -60,6 +61,18 @@ function getSampleUrlCandidates(sampleIndex) {
     `${FIREFLY_VOICE_BASE_URL}/${n3}.mp3`,
     `${FIREFLY_VOICE_BASE_URL}/${n2}.mp3`,
     `${FIREFLY_VOICE_BASE_URL}/${n}.mp3`,
+  ];
+}
+
+function getMorphoseSampleUrlCandidates(sampleIndex) {
+  const n = String(sampleIndex);
+  const n2 = String(sampleIndex).padStart(2, "0");
+  const n3 = String(sampleIndex).padStart(3, "0");
+
+  return [
+    `${MORPHOSE_VOICE_BASE_URL}/morphi_${n3}.mp3`,
+    `${MORPHOSE_VOICE_BASE_URL}/morphi_${n2}.mp3`,
+    `${MORPHOSE_VOICE_BASE_URL}/morphi_${n}.mp3`,
   ];
 }
 
@@ -85,7 +98,9 @@ function queueFireflyVoicePlayback(playback) {
 async function playFireflyCollectVoice(firefly) {
   const sampleIndex = pickFireflySampleIndex(firefly?.typeId);
   const pan = Math.max(-0.85, Math.min(0.85, safe(firefly?.x) / 420));
-  const candidates = getSampleUrlCandidates(sampleIndex);
+  const candidates = firefly?.typeId === "morphose"
+    ? getMorphoseSampleUrlCandidates(sampleIndex)
+    : getSampleUrlCandidates(sampleIndex);
 
   for (const url of candidates) {
     try {
