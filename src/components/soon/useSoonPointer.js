@@ -38,10 +38,17 @@ export function useSoonPointer({
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
 
-    const viewZoom = stateRef.current?.viewZoom || 1;
+    const viewZoom = Number.isFinite(stateRef.current?.viewZoom)
+      ? stateRef.current.viewZoom
+      : 0;
+    const arenaRadius = stateRef.current?.arenaRadius || arenaRef.current.radius || 1200;
+    const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 1.9);
+    const worldZoom = Math.max(0.001, fitZoom * (1 + viewZoom * 3.8));
+    const followBlend = Math.min(1, Math.max(0, viewZoom));
     const camera = {
-      ...cameraRef.current,
-      zoom: cameraRef.current.zoom * viewZoom,
+      x: cameraRef.current.x * followBlend,
+      y: cameraRef.current.y * followBlend,
+      zoom: worldZoom,
     };
 
     return screenToWorld({
@@ -201,11 +208,6 @@ export function useSoonPointer({
     pointerRef.current.panStart = null;
     pointerRef.current.pinchDistance = null;
     pointerRef.current.startPoint = point;
-
-    if (isCircuitMode) {
-      handleCircuitPointerDown(event, point, current);
-      return;
-    }
 
     if (isCircuitMode) {
       handleCircuitPointerDown(event, point, current);
