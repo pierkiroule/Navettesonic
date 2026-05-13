@@ -8,13 +8,13 @@ export const SOON_MODES = [
   {
     id: "compo",
     icon: "🫧",
-    label: "Compo•°",
+    label: "Composer•°",
     text: "Pose tes bulles sonores et récolte les lucioles.",
   },
   {
     id: "reso",
     icon: "◌",
-    label: "Odysséo•°",
-    text: "Trace le circuit et lance le voyage du poisson-plume.",
+    label: "Tracer / Traverser•°",
+    text: "Trace ton trajet puis traverse-le avec le poisson-plume.",
   },
 ];
