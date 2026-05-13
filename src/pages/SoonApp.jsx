@@ -232,45 +232,23 @@ export default function SoonApp({ onBack }) {
         <div className="cockpit-buttons">
           {isOdysseo ? (
             <div className="odysseo-tools">
-              <div className="tool-row primary-tools">
-                <button
-                  type="button"
-                  className={`bubble-btn mode-toggle ${isOdysseoTrace ? "active" : ""}`}
-                  onClick={() => {
-                    setOdysseoMode("trace");
-                    stopCircuitAutopilot();
-                  }}
-                  title="Tracer le parcours"
-                >
-                  ✏️ Tracer
-                </button>
-
-                <button
-                  type="button"
-                  className={`bubble-btn mode-toggle ${isOdysseoTravel ? "active" : ""}`}
-                  onClick={() => {
-                    setOdysseoMode("travel");
-                    stopCircuitAutopilot();
-                  }}
-                  title="Traverser le parcours"
-                >
-                  ▶ Traverser
-                </button>
-
-                <button
-                  type="button"
-                  className="bubble-btn mode-toggle"
-                  onClick={handleExportImmersion}
-                  disabled={!odysseoPath || odysseoPath.length < 8}
-                  title={
-                    odysseoPath && odysseoPath.length >= 8
-                      ? "Générer l’immersion sonore"
-                      : "Trace un parcours d’abord"
-                  }
-                >
-                  🎧 Générer
-                </button>
-              </div>
+              {isOdysseoTravel && (
+                <div className="tool-row primary-tools">
+                  <button
+                    type="button"
+                    className="bubble-btn mode-toggle"
+                    onClick={handleExportImmersion}
+                    disabled={!odysseoPath || odysseoPath.length < 8}
+                    title={
+                      odysseoPath && odysseoPath.length >= 8
+                        ? "Générer l’immersion sonore"
+                        : "Trace un parcours d’abord"
+                    }
+                  >
+                    🎧 Générer
+                  </button>
+                </div>
+              )}
 
               {isOdysseoTrace && (
                 <div className="tool-row trace-tools">
