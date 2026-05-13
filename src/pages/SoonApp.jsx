@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import SidePanel from "../components/SidePanel.jsx";
 import SoonCanvas from "../components/SoonCanvas.jsx";
 import Profile from "./Profile.jsx";
@@ -63,6 +63,42 @@ export default function SoonApp({ onBack }) {
   const isOdysseoTrace = isOdysseo && odysseoMode === "trace";
   const isOdysseoTravel = isOdysseo && odysseoMode === "travel";
   const isEditMode = interactionMode === "edit";
+
+
+  const flowStep = useMemo(() => {
+    if (mode === "compo") {
+      return {
+        key: "compo",
+        title: "Composer",
+        tip: "Choisissez vos éléments et organisez votre scène.",
+      };
+    }
+
+    if (isOdysseoTrace) {
+      return {
+        key: "trace",
+        title: "Tracer",
+        tip: "Dessinez votre trajectoire avec la plume.",
+      };
+    }
+
+    return {
+      key: "travel",
+      title: "Traverser",
+      tip: "Lancez le parcours et ajustez avec la boussole.",
+    };
+  }, [mode, isOdysseoTrace]);
+
+  const [stepTipVisible, setStepTipVisible] = useState(false);
+
+  useEffect(() => {
+    setStepTipVisible(true);
+    const timeoutId = setTimeout(() => {
+      setStepTipVisible(false);
+    }, 3000);
+
+    return () => clearTimeout(timeoutId);
+  }, [flowStep.key]);
 
   useEffect(() => {
     setMode("compo");
@@ -130,6 +166,11 @@ export default function SoonApp({ onBack }) {
           🏠
         </button>
 
+        <div className={`flow-step-tip ${stepTipVisible ? "visible" : ""}`} aria-live="polite">
+          <strong>{flowStep.title}</strong>
+          <span>{flowStep.tip}</span>
+        </div>
+
         <div className="top-nav-flow" role="group" aria-label="Flow principal">
 
           <button
@@ -140,8 +181,11 @@ export default function SoonApp({ onBack }) {
               setInteractionMode("swim");
             }}
             className={mode === "compo" ? "active" : ""}
+
+            aria-label="Composer"
+            title="Composer"
           >
-            Composer
+            🎨
           </button>
 
           <button
@@ -154,8 +198,11 @@ export default function SoonApp({ onBack }) {
               setIsTravelPlaying(false);
             }}
             className={isOdysseoTrace ? "active" : ""}
+
+            aria-label="Tracer"
+            title="Tracer"
           >
-            Tracer
+            🪶
           </button>
 
           <button
@@ -168,8 +215,11 @@ export default function SoonApp({ onBack }) {
               setIsTravelPlaying(false);
             }}
             className={isOdysseoTravel ? "active" : ""}
+
+            aria-label="Traverser"
+            title="Traverser"
           >
-            Traverser
+            🧭
           </button>
 
           <span
