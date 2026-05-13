@@ -60,7 +60,13 @@ export function useSoonCanvasLoop({
         }
         clampEditCamera(cameraRef, rect, arenaRef.current.radius);
       } else {
-        followFishCamera(cameraRef, arenaRef, current.fish, rect);
+        followFishCamera(
+          cameraRef,
+          arenaRef,
+          current.fish,
+          rect,
+          current.viewZoom
+        );
       }
 
       wasEditMode = isEditMode;

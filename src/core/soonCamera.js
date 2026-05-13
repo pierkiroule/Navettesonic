@@ -20,7 +20,7 @@ export function updateArena(arenaRef, rect) {
   arenaRef.current.radius = maxScreen * 1.5;
 }
 
-export function followFishCamera(cameraRef, arenaRef, fish, rect) {
+export function followFishCamera(cameraRef, arenaRef, fish, rect, viewZoom = 0) {
   if (!fish) return;
 
   const camera = cameraRef.current;
@@ -45,8 +45,10 @@ export function followFishCamera(cameraRef, arenaRef, fish, rect) {
   const speedZoom = 1 - speedNorm * 0.08;
   const targetZoom = depthZoom * speedZoom + breath;
 
-  const marginX = rect.width * 0.42 / targetZoom;
-  const marginY = rect.height * 0.42 / targetZoom;
+  const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 1.9);
+  const worldZoom = Math.max(0.001, fitZoom * (1 + viewZoom * 3.8));
+  const marginX = rect.width * 0.5 / worldZoom;
+  const marginY = rect.height * 0.5 / worldZoom;
 
   const maxCameraX = Math.max(0, arenaRadius - marginX);
   const maxCameraY = Math.max(0, arenaRadius - marginY);
@@ -132,11 +134,10 @@ export function enterWorld(ctx, rect, cameraRef, stateRef) {
   ctx.save();
   ctx.translate(rect.width / 2, rect.height / 2);
   ctx.scale(finalZoom, finalZoom);
-  const followBlend = Math.min(1, Math.max(0, viewZoom));
-  const camX = camera.x * followBlend;
-  const camY = camera.y * followBlend;
+  const camX = camera.x;
+  const camY = camera.y;
 
-  ctx.translate(-camX + driftX * followBlend, -camY + driftY * followBlend);
+  ctx.translate(-camX + driftX, -camY + driftY);
 }
 
 export function exitWorld(ctx) {
