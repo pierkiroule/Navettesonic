@@ -132,11 +132,10 @@ export function enterWorld(ctx, rect, cameraRef, stateRef) {
   ctx.save();
   ctx.translate(rect.width / 2, rect.height / 2);
   ctx.scale(finalZoom, finalZoom);
-  const followBlend = Math.min(1, Math.max(0, viewZoom));
-  const camX = camera.x * followBlend;
-  const camY = camera.y * followBlend;
+  const camX = camera.x;
+  const camY = camera.y;
 
-  ctx.translate(-camX + driftX * followBlend, -camY + driftY * followBlend);
+  ctx.translate(-camX + driftX, -camY + driftY);
 }
 
 export function exitWorld(ctx) {

@@ -44,10 +44,9 @@ export function useSoonPointer({
     const arenaRadius = stateRef.current?.arenaRadius || arenaRef.current.radius || 1200;
     const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 1.9);
     const worldZoom = Math.max(0.001, fitZoom * (1 + viewZoom * 3.8));
-    const followBlend = Math.min(1, Math.max(0, viewZoom));
     const camera = {
-      x: cameraRef.current.x * followBlend,
-      y: cameraRef.current.y * followBlend,
+      x: cameraRef.current.x,
+      y: cameraRef.current.y,
       zoom: worldZoom,
     };
 
