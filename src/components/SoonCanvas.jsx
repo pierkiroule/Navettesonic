@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSoonCanvasLoop } from "./soon/useSoonCanvasLoop.js";
 import { useSoonPointer } from "./soon/useSoonPointer.js";
 
@@ -35,6 +35,7 @@ export default function SoonCanvas({
   onOpenBeaconEditor,
 }) {
   const canvasRef = useRef(null);
+  const [semioseVideo, setSemioseVideo] = useState(null);
 
   const cameraRef = useRef({
     x: 0,
@@ -133,6 +134,7 @@ export default function SoonCanvas({
     stateRef,
     activeBubbleAudioRef,
     onTickFish,
+    onSemioseVideoTrigger: setSemioseVideo,
   });
 
   const {
@@ -164,13 +166,31 @@ export default function SoonCanvas({
   useEffect(() => cleanupPointer, [cleanupPointer]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="soon-canvas"
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-    />
+    <div className="soon-canvas-shell">
+      <canvas
+        ref={canvasRef}
+        className="soon-canvas"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+      />
+      {semioseVideo?.url ? (
+        <div
+          key={semioseVideo.id}
+          className="semiose-video-bubble"
+          onAnimationEnd={() => setSemioseVideo(null)}
+        >
+          <video
+            className="semiose-video"
+            src={semioseVideo.url}
+            autoPlay
+            muted
+            loop
+            playsInline
+          />
+        </div>
+      ) : null}
+    </div>
   );
 }

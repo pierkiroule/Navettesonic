@@ -127,7 +127,8 @@ export function enterWorld(ctx, rect, cameraRef, stateRef) {
     : 0;
   const arenaRadius = stateRef.current?.arenaRadius || 1200;
   const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 1.9);
-  const finalZoom = fitZoom * (1.0 + viewZoom * 3.8);
+  const userZoom = Math.max(0.2, Number.isFinite(camera.zoom) ? camera.zoom : 1);
+  const finalZoom = fitZoom * userZoom * (1.0 + viewZoom * 3.8);
 
   ctx.save();
   ctx.translate(rect.width / 2, rect.height / 2);
