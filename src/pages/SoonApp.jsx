@@ -125,10 +125,11 @@ export default function SoonApp({ onBack }) {
   return (
     <main className={`soon-app ${isEditMode ? "edit-mode" : "swim-mode"}`}>
       <header className="top-nav">
-        <div className="top-nav-inner">
-          <button type="button" onClick={onBack}>
-            Intro
-          </button>
+        <button type="button" className="top-nav-icon top-nav-home" onClick={onBack} aria-label="Accueil">
+          🏠
+        </button>
+
+        <div className="top-nav-flow" role="group" aria-label="Flow principal">
 
           <button
             type="button"
@@ -155,10 +156,17 @@ export default function SoonApp({ onBack }) {
             Odysséo
           </button>
 
-          <button type="button" onClick={() => setPage("profile")}>
-            Perso
-          </button>
+          <span className={`flow-progress ${mode === "reso" ? "step-2" : "step-1"}`} aria-hidden="true" />
         </div>
+
+        <button
+          type="button"
+          className="top-nav-icon top-nav-profile"
+          onClick={() => setPage("profile")}
+          aria-label="Profil"
+        >
+          👤
+        </button>
       </header>
 
       <SoonCanvas
