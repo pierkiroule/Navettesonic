@@ -159,15 +159,19 @@ function lerpAngle(current, target, amount) {
 
 const FISH_CONTROL_TUNING = {
   autopilot: {
-    mouthOffset: 44,
-    spring: 0.02,
-    damping: 0.86,
+    mouthOffset: 32,
+    maxSpeedFactor: 1.05,
+    accel: 0.16,
+    arrivalRadius: 180,
+    stopRadius: 10,
   },
-  // Réglages tactiles: "fil" simple, fluide et robuste.
+  // Réglages tactiles: steering "arrive" ultra intuitif (rapide loin, précis près du doigt).
   touch: {
-    mouthOffset: 28,
-    spring: 0.034,
-    damping: 0.8,
+    mouthOffset: 24,
+    maxSpeedFactor: 1.2,
+    accel: 0.22,
+    arrivalRadius: 220,
+    stopRadius: 8,
   },
 };
 
@@ -363,7 +367,13 @@ export const useSoonStore = create((set, get) => ({
       const control = circuitAutopilot
         ? FISH_CONTROL_TUNING.autopilot
         : FISH_CONTROL_TUNING.touch;
-      const { mouthOffset, spring, damping } = control;
+      const {
+        mouthOffset,
+        maxSpeedFactor,
+        accel,
+        arrivalRadius,
+        stopRadius,
+      } = control;
 
       // Point de bouche : le doigt tire le poisson par l'avant.
       const mouthX = state.fish.x + Math.cos(currentAngle) * mouthOffset;
@@ -373,13 +383,28 @@ export const useSoonStore = create((set, get) => ({
       const pullY = targetY - mouthY;
       const pullDistance = Math.hypot(pullX, pullY);
 
-      const pullNorm = Math.min(1, pullDistance / 320);
-      // Modèle ressort-amortisseur: simple et stable.
-      const vx = state.fish.vx * damping + pullX * spring;
-      const vy = state.fish.vy * damping + pullY * spring;
-      const maxSpeed = state.fish.maxSpeed || 3.1;
+      const pullNorm = Math.min(1, pullDistance / Math.max(1, arrivalRadius));
+      const baseMaxSpeed = state.fish.maxSpeed || 3.1;
+      const speedLimit = baseMaxSpeed * maxSpeedFactor;
+
+      // Steering "arrive":
+      // - loin: vitesse cible max
+      // - proche: ralentit progressivement
+      // - très proche: arrêt stable (anti-jitter)
+      const desiredSpeed =
+        pullDistance <= stopRadius
+          ? 0
+          : Math.min(speedLimit, speedLimit * pullNorm);
+
+      const dirX = pullDistance > 0.0001 ? pullX / pullDistance : 0;
+      const dirY = pullDistance > 0.0001 ? pullY / pullDistance : 0;
+      const desiredVx = dirX * desiredSpeed;
+      const desiredVy = dirY * desiredSpeed;
+
+      const vx = state.fish.vx + (desiredVx - state.fish.vx) * accel;
+      const vy = state.fish.vy + (desiredVy - state.fish.vy) * accel;
+
       const speedRaw = Math.hypot(vx, vy);
-      const speedLimit = maxSpeed * 1.18;
       const limitedVx = speedRaw > speedLimit ? (vx / speedRaw) * speedLimit : vx;
       const limitedVy = speedRaw > speedLimit ? (vy / speedRaw) * speedLimit : vy;
 
