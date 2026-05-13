@@ -159,17 +159,15 @@ function lerpAngle(current, target, amount) {
 
 const FISH_CONTROL_TUNING = {
   autopilot: {
-    mouthDistance: 46,
-    pullForceBase: 0.035,
-    pullForceScale: 0.018,
-    fluidity: 0.11,
+    mouthOffset: 44,
+    spring: 0.02,
+    damping: 0.86,
   },
-  // Réglages "touch" : optimisés pour un drag tactile précis (suivi du doigt + inertie minimale).
+  // Réglages tactiles: "fil" simple, fluide et robuste.
   touch: {
-    mouthDistance: 42,
-    pullForceBase: 0.028,
-    pullForceScale: 0.022,
-    fluidity: 0.17,
+    mouthOffset: 40,
+    spring: 0.03,
+    damping: 0.82,
   },
 };
 
@@ -365,40 +363,38 @@ export const useSoonStore = create((set, get) => ({
       const control = circuitAutopilot
         ? FISH_CONTROL_TUNING.autopilot
         : FISH_CONTROL_TUNING.touch;
-      const { mouthDistance, pullForceBase, pullForceScale, fluidity } = control;
+      const { mouthOffset, spring, damping } = control;
 
       // Point de bouche : le doigt tire le poisson par l'avant.
-      const mouthX = state.fish.x + Math.cos(currentAngle) * mouthDistance;
-      const mouthY = state.fish.y + Math.sin(currentAngle) * mouthDistance;
+      const mouthX = state.fish.x + Math.cos(currentAngle) * mouthOffset;
+      const mouthY = state.fish.y + Math.sin(currentAngle) * mouthOffset;
 
       const pullX = targetX - mouthX;
       const pullY = targetY - mouthY;
       const pullDistance = Math.hypot(pullX, pullY);
 
-      // Traction progressive : douce près du doigt, plus nette si le doigt s'éloigne.
       const pullNorm = Math.min(1, pullDistance / 320);
-      const pullForce = pullForceBase + pullNorm * pullForceScale;
-
-      const desiredVx = pullX * pullForce;
-      const desiredVy = pullY * pullForce;
-
-      // Le corps suit la bouche : interpolation fluide de la vitesse.
-
-      const vx = state.fish.vx + (desiredVx - state.fish.vx) * fluidity;
-      const vy = state.fish.vy + (desiredVy - state.fish.vy) * fluidity;
+      // Modèle ressort-amortisseur: simple et stable.
+      const vx = state.fish.vx * damping + pullX * spring;
+      const vy = state.fish.vy * damping + pullY * spring;
+      const maxSpeed = state.fish.maxSpeed || 3.1;
+      const speedRaw = Math.hypot(vx, vy);
+      const speedLimit = maxSpeed * 1.18;
+      const limitedVx = speedRaw > speedLimit ? (vx / speedRaw) * speedLimit : vx;
+      const limitedVy = speedRaw > speedLimit ? (vy / speedRaw) * speedLimit : vy;
 
       const safe = clampToCircle(
         {
-          x: state.fish.x + vx,
-          y: state.fish.y + vy,
+          x: state.fish.x + limitedVx,
+          y: state.fish.y + limitedVy,
         },
         fishNavRadius
       );
 
-      const speed = Math.hypot(vx, vy);
+      const speed = Math.hypot(limitedVx, limitedVy);
 
       // Orientation : le poisson suit la courbe du mouvement.
-      const moveAngle = speed > 0.035 ? Math.atan2(vy, vx) : currentAngle;
+      const moveAngle = speed > 0.035 ? Math.atan2(limitedVy, limitedVx) : currentAngle;
 
       let angleDiff = moveAngle - currentAngle;
       while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
@@ -443,8 +439,8 @@ export const useSoonStore = create((set, get) => ({
           ...state.fish,
           x: safe.x,
           y: safe.y,
-          vx,
-          vy,
+          vx: limitedVx,
+          vy: limitedVy,
           targetX,
           targetY,
           angle,
