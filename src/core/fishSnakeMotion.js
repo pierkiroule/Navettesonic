@@ -99,6 +99,12 @@ export function updateSnakeFishToTarget({
   const neck = spine[2] || spine[1] || safeHead;
   const angle = Math.atan2(safeHead.y - neck.y, safeHead.x - neck.x);
 
+  const velocityAngle = Math.atan2(vy || Math.sin(angle), vx || Math.cos(angle));
+  let turnDiff = velocityAngle - angle;
+  while (turnDiff > Math.PI) turnDiff -= Math.PI * 2;
+  while (turnDiff < -Math.PI) turnDiff += Math.PI * 2;
+  const turnAmount = Math.max(-1, Math.min(1, turnDiff / 1.2));
+
   return {
     ...fish,
     x: safeHead.x,
@@ -108,6 +114,8 @@ export function updateSnakeFishToTarget({
     angle,
     spine,
     mouthPull: d > 20 ? 0.62 : 0.08,
+    turnAmount,
+    turnVelocity: turnAmount,
     maxSpeed: fish.maxSpeed || 3.1,
   };
 }

@@ -112,6 +112,7 @@ const defaultFish = {
   depth: 1,
   mouthPull: 0,
   turnAmount: 0,
+  turnVelocity: 0,
 };
 
 const initialState = {
@@ -376,7 +377,7 @@ export const useSoonStore = create((set, get) => ({
       while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
       while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
-      const turnStrength = Math.min(1, Math.abs(angleDiff) / 1.2);
+      const turnStrengthSigned = Math.max(-1, Math.min(1, angleDiff / 1.15));
 
       const angle =
         speed > 0.035
@@ -391,7 +392,10 @@ export const useSoonStore = create((set, get) => ({
       const nextMouthPull = mouthPull + (pullNorm - mouthPull) * 0.12;
 
       const turnAmount = state.fish.turnAmount || 0;
-      const nextTurnAmount = turnAmount + (turnStrength - turnAmount) * 0.1;
+      const turnVelocity = state.fish.turnVelocity || 0;
+      const targetTurnVelocity = turnStrengthSigned * (0.55 + Math.min(0.45, speed * 0.08));
+      const nextTurnVelocity = turnVelocity + (targetTurnVelocity - turnVelocity) * 0.18;
+      const nextTurnAmount = turnAmount + (nextTurnVelocity - turnAmount) * 0.16;
 
       const swimPhase =
         (state.fish.swimPhase || 0) +
@@ -421,6 +425,7 @@ export const useSoonStore = create((set, get) => ({
           depth: clampDepth(fishDepth),
           mouthPull: nextMouthPull,
           turnAmount: nextTurnAmount,
+          turnVelocity: nextTurnVelocity,
           maxSpeed: state.fish.maxSpeed || 3.1,
         },
       };
