@@ -172,6 +172,7 @@ export default function SoonApp({ onBack }) {
         </div>
 
         <div className="top-nav-flow" role="group" aria-label="Flow principal">
+          <span className="flow-progress-segment" aria-hidden="true" />
 
           <button
             type="button"
@@ -221,13 +222,6 @@ export default function SoonApp({ onBack }) {
           >
             🧭
           </button>
-
-          <span
-            className={`flow-progress ${
-              mode === "compo" ? "step-1" : isOdysseoTrace ? "step-2" : "step-3"
-            }`}
-            aria-hidden="true"
-          />
         </div>
 
         <button
