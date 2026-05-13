@@ -9,7 +9,7 @@ export default function SoonApp({ onBack }) {
   const [page, setPage] = useState("arena");
   const [interactionMode, setInteractionMode] = useState("swim");
   const [odysseoMode, setOdysseoMode] = useState("trace");
-  const [viewZoom, setViewZoom] = useState(0);
+  const [viewZoom, setViewZoom] = useState(0.5);
   const [swimSpeed, setSwimSpeed] = useState(0.3);
   const [isTravelPlaying, setIsTravelPlaying] = useState(false);
   const [editorOpenKey, setEditorOpenKey] = useState(0);
