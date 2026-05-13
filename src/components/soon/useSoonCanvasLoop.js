@@ -62,7 +62,7 @@ export function useSoonCanvasLoop({
           Number.isFinite(current.viewZoom) && current.viewZoom > 0.18;
 
         if (shouldFollowFish && current.fish) {
-          followFishCamera(cameraRef, arenaRef, current.fish, rect);
+          followFishCamera(cameraRef, arenaRef, current.fish, rect, current.viewZoom);
         } else {
           cameraRef.current.x += (0 - cameraRef.current.x) * 0.08;
           cameraRef.current.y += (0 - cameraRef.current.y) * 0.08;
@@ -73,7 +73,7 @@ export function useSoonCanvasLoop({
         }
         clampEditCamera(cameraRef, rect, arenaRef.current.radius);
       } else {
-        followFishCamera(cameraRef, arenaRef, current.fish, rect);
+        followFishCamera(cameraRef, arenaRef, current.fish, rect, current.viewZoom);
       }
 
       wasEditMode = isEditMode;
