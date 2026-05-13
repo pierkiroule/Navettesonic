@@ -26,6 +26,7 @@ export function drawScene(ctx, rect, time, refs) {
   drawArenaBoundary(ctx, arenaRef, time);
   drawArenaNightSky(ctx, arenaRef, time);
   drawArenaPulseHalo(ctx, arenaRef, time);
+  drawPinkSeedTransporters(ctx, arenaRef, time);
   drawEcosystemWorld(ctx, current, time);
   drawWorldParticles(ctx, arenaRef, time);
 
@@ -523,6 +524,126 @@ export function drawArenaPulseHalo(ctx, arenaRef, time) {
   ctx.arc(0, 0, radius + 180 + pulse, 0, Math.PI * 2);
   ctx.fillStyle = halo;
   ctx.fill();
+
+  ctx.restore();
+}
+
+
+const seedTransportState = {
+  lastTime: 0,
+  fishes: [],
+  sprouts: [],
+};
+
+function initSeedTransporters(radius) {
+  if (seedTransportState.fishes.length) return;
+  for (let i = 0; i < 34; i += 1) {
+    const angle = (Math.PI * 2 * i) / 34;
+    seedTransportState.fishes.push({
+      angle,
+      orbit: radius + 190 + (i % 6) * 24,
+      speed: 0.00022 + (i % 5) * 0.00003,
+      phase: Math.random() * Math.PI * 2,
+      carry: Math.random() > 0.28,
+      diving: Math.random() > 0.55,
+    });
+  }
+}
+
+export function drawPinkSeedTransporters(ctx, arenaRef, time) {
+  const radius = arenaRef.current?.radius || 1200;
+  initSeedTransporters(radius);
+
+  const prev = seedTransportState.lastTime || time;
+  const dt = Math.max(8, Math.min(34, time - prev));
+  seedTransportState.lastTime = time;
+
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+
+  seedTransportState.fishes.forEach((fish, index) => {
+    fish.angle += fish.speed * dt;
+
+    let currentOrbit = fish.orbit + Math.sin(time * 0.001 + fish.phase) * 10;
+    if (fish.diving) {
+      currentOrbit -= 120 + Math.sin(time * 0.0018 + fish.phase) * 60;
+      if (currentOrbit < radius - 8 && fish.carry && Math.random() > 0.985) {
+        seedTransportState.sprouts.push({
+          x: Math.cos(fish.angle) * (radius - 20),
+          y: Math.sin(fish.angle) * (radius - 20),
+          bornAt: time,
+        });
+      }
+    }
+
+    const x = Math.cos(fish.angle) * currentOrbit;
+    const y = Math.sin(fish.angle) * currentOrbit;
+    const heading = fish.angle + Math.PI * 0.5;
+
+    // Poisson rose top-view (2D).
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(heading);
+
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 11, 6, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255, 141, 205, 0.62)";
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(-10, 0);
+    ctx.lineTo(-18, -5);
+    ctx.lineTo(-18, 5);
+    ctx.closePath();
+    ctx.fillStyle = "rgba(255, 176, 222, 0.52)";
+    ctx.fill();
+
+    if (fish.carry) {
+      for (let k = 0; k < 3; k += 1) {
+        const sx = 9 + k * 4;
+        const sy = Math.sin(time * 0.005 + index + k) * 2.2;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 1.8, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255,255,255,0.9)";
+        ctx.fill();
+      }
+    }
+
+    ctx.restore();
+  });
+
+  // Graines-étoiles qui éclosent en lucioles (visuel).
+  seedTransportState.sprouts = seedTransportState.sprouts.filter((sprout) => time - sprout.bornAt < 3400);
+  seedTransportState.sprouts.forEach((sprout) => {
+    const age = time - sprout.bornAt;
+    const t = Math.min(1, age / 1200);
+
+    // étoile blanche lumineuse
+    ctx.save();
+    ctx.translate(sprout.x, sprout.y);
+    ctx.rotate(age * 0.0016);
+    for (let i = 0; i < 4; i += 1) {
+      ctx.rotate(Math.PI / 2);
+      ctx.fillStyle = `rgba(255,255,255,${0.22 + (1 - t) * 0.5})`;
+      ctx.fillRect(-1.2, -8 - (1 - t) * 4, 2.4, 16 + (1 - t) * 8);
+    }
+    ctx.restore();
+
+    // eclosion luciole
+    if (age > 900) {
+      const fly = (age - 900) * 0.03;
+      ctx.beginPath();
+      ctx.arc(
+        sprout.x + Math.cos(fly * 0.07) * 10,
+        sprout.y + Math.sin(fly * 0.09) * 10,
+        2.2,
+        0,
+        Math.PI * 2
+      );
+      ctx.fillStyle = "rgba(253, 255, 188, 0.85)";
+      ctx.fill();
+    }
+  });
 
   ctx.restore();
 }
