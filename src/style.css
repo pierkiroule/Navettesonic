@@ -2240,11 +2240,12 @@ button {
   align-items: center;
   justify-items: center;
   gap: 4px;
-  width: 44px;
+  width: 50px;
   height: min(158px, 24vh);
   color: rgba(226, 232, 240, 0.74);
   font-size: 0.54rem;
   font-weight: 700;
+  opacity: 0.7;
   pointer-events: auto;
 }
 
@@ -2254,13 +2255,13 @@ button {
 
 .zoom-slider {
   left: max(6px, env(safe-area-inset-left));
-  top: 50%;
+  top: 62%;
   transform: translateY(-50%);
 }
 
 .speed-slider {
   right: max(6px, env(safe-area-inset-right));
-  top: 50%;
+  top: 62%;
   transform: translateY(-50%);
 }
 
@@ -2275,7 +2276,7 @@ button {
   appearance: none;
   writing-mode: vertical-lr;
   direction: rtl;
-  width: 8px;
+  width: 10px;
   height: min(108px, 16vh);
   margin: 0;
   background: transparent;
@@ -2283,7 +2284,7 @@ button {
 }
 
 .slim-vertical-range::-webkit-slider-runnable-track {
-  width: 3px;
+  width: 4px;
   border-radius: 999px;
   background: rgba(148, 163, 184, 0.45);
 }
@@ -2300,7 +2301,7 @@ button {
 }
 
 .slim-vertical-range::-moz-range-track {
-  width: 3px;
+  width: 4px;
   border-radius: 999px;
   background: rgba(148, 163, 184, 0.45);
 }
@@ -2369,19 +2370,19 @@ button {
   }
 
   .global-slider {
-    width: 38px;
+    width: 44px;
     height: min(142px, 20vh);
   }
 
   .zoom-slider {
     left: max(4px, env(safe-area-inset-left));
-    top: 50%;
+    top: 60%;
     transform: translateY(-50%);
   }
 
   .speed-slider {
     right: max(4px, env(safe-area-inset-right));
-    top: 50%;
+    top: 60%;
     transform: translateY(-50%);
   }
 
