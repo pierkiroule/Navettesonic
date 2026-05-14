@@ -411,8 +411,9 @@ export default function SoonApp({ onBack }) {
 
         <div className="global-sliders">
           <div className="global-slider zoom-slider">
-            <span>🔍</span>
+            <span className="slider-label">🔍 Zoom</span>
             <input
+              className="slim-vertical-range"
               type="range"
               min="0"
               max="2"
@@ -420,12 +421,13 @@ export default function SoonApp({ onBack }) {
               value={viewZoom}
               onChange={(event) => setViewZoom(Number(event.target.value))}
             />
-            <span>{viewZoom.toFixed(1)}</span>
+            <span className="slider-value">{viewZoom.toFixed(1)}</span>
           </div>
 
           <div className="global-slider odysseo-speed-slider speed-slider">
-            <span>⚡</span>
+            <span className="slider-label">⚡ Vitesse</span>
             <input
+              className="slim-vertical-range"
               type="range"
               min="0.3"
               max="2"
@@ -433,7 +435,7 @@ export default function SoonApp({ onBack }) {
               value={swimSpeed}
               onChange={(event) => setSwimSpeed(Number(event.target.value))}
             />
-            <span>{swimSpeed <= 0 ? "Arrêt" : `${swimSpeed.toFixed(2)}×`}</span>
+            <span className="slider-value">{swimSpeed <= 0 ? "Arrêt" : `${swimSpeed.toFixed(2)}×`}</span>
           </div>
         </div>
       </div>
