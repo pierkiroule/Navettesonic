@@ -2230,7 +2230,7 @@ button {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: calc(92px + env(safe-area-inset-bottom));
+  bottom: calc(74px + env(safe-area-inset-bottom));
   z-index: 12;
   pointer-events: none;
 }
@@ -2242,7 +2242,7 @@ button {
   justify-items: center;
   gap: 8px;
   width: 44px;
-  min-height: 186px;
+  height: min(186px, 34vh);
   padding: 10px 8px;
   border-radius: 18px;
   background: rgba(15, 23, 42, 0.66);
@@ -2265,7 +2265,7 @@ button {
 }
 
 .global-slider input {
-  width: 120px;
+  width: min(120px, 24vh);
   transform: rotate(-90deg);
   transform-origin: center;
 }
@@ -2321,12 +2321,17 @@ button {
   }
 
   .global-sliders {
-    bottom: calc(88px + env(safe-area-inset-bottom));
+    bottom: calc(70px + env(safe-area-inset-bottom));
   }
 
   .global-slider {
-    min-height: 170px;
+    height: min(156px, 30vh);
     width: 42px;
+    padding: 8px 6px;
+  }
+
+  .global-slider input {
+    width: min(100px, 20vh);
   }
 
   .odysseo-cockpit .mode-toggle {
