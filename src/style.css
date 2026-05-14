@@ -2227,29 +2227,47 @@ button {
 }
 
 .global-sliders {
-  display: grid;
-  gap: 7px;
-  width: min(90vw, 390px);
-  margin: 8px auto 0;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(92px + env(safe-area-inset-bottom));
+  z-index: 12;
+  pointer-events: none;
 }
 
 .global-slider {
   display: grid;
-  grid-template-columns: auto minmax(150px, 1fr) auto;
+  grid-template-rows: auto minmax(120px, 1fr) auto;
   align-items: center;
+  justify-items: center;
   gap: 8px;
-  padding: 7px 10px;
-  border-radius: 999px;
+  width: 44px;
+  min-height: 186px;
+  padding: 10px 8px;
+  border-radius: 18px;
   background: rgba(15, 23, 42, 0.66);
   border: 1px solid rgba(125, 211, 252, 0.2);
   color: rgba(226, 232, 240, 0.94);
   font-size: 0.78rem;
   font-weight: 800;
   backdrop-filter: blur(12px);
+  pointer-events: auto;
+}
+
+.zoom-slider {
+  position: absolute;
+  left: 12px;
+}
+
+.speed-slider {
+  position: absolute;
+  right: 12px;
 }
 
 .global-slider input {
-  width: 100%;
+  width: 120px;
+  transform: rotate(-90deg);
+  transform-origin: center;
 }
 
 .odysseo-speed-slider {
@@ -2303,12 +2321,12 @@ button {
   }
 
   .global-sliders {
-    width: min(96vw, 420px);
+    bottom: calc(88px + env(safe-area-inset-bottom));
   }
 
   .global-slider {
-    min-height: 42px;
-    grid-template-columns: auto minmax(120px, 1fr) auto;
+    min-height: 170px;
+    width: 42px;
   }
 
   .odysseo-cockpit .mode-toggle {

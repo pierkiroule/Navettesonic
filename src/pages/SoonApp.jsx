@@ -409,8 +409,8 @@ export default function SoonApp({ onBack }) {
           )}
         </div>
 
-        <div className="global-sliders">
-          <div className="global-slider">
+        <div className={`global-sliders ${isOdysseo ? "odysseo-layout" : ""}`}>
+          <div className="global-slider zoom-slider">
             <span>🔍</span>
             <input
               type="range"
@@ -424,7 +424,7 @@ export default function SoonApp({ onBack }) {
           </div>
 
           {isOdysseo && (
-            <div className="global-slider odysseo-speed-slider">
+            <div className="global-slider odysseo-speed-slider speed-slider">
               <span>⚡</span>
               <input
                 type="range"
