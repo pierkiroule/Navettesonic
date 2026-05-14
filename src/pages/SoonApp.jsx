@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import SidePanel from "../components/SidePanel.jsx";
 import SoonCanvas from "../components/SoonCanvas.jsx";
 import WorkflowShell from "../components/WorkflowShell.jsx";
-import NavigoView from "../components/NavigoView.jsx";
 import Profile from "./Profile.jsx";
 import { useSoonStore } from "../store/useSoonStore.js";
 import { renderImmersiveJourney } from "../core/immersiveExporter.js";
@@ -75,8 +74,6 @@ export default function SoonApp({ onBack }) {
     traceCircuit.find((beacon) => beacon.id === selectedBeaconId) || null;
 
   const isOdysseo = mode === "reso";
-  const isOdysseoTrace = isOdysseo && odysseoMode === "trace";
-  const isOdysseoTravel = isOdysseo && odysseoMode === "travel";
   const isEditMode = interactionMode === "edit";
 
 
@@ -89,20 +86,12 @@ export default function SoonApp({ onBack }) {
       };
     }
 
-    if (isOdysseoTrace) {
-      return {
-        key: "trace",
-        title: "Tracer",
-        tip: "Dessinez votre trajectoire avec la plume.",
-      };
-    }
-
     return {
-      key: "travel",
-      title: "Traverser",
-      tip: "Lancez le parcours et ajustez avec la boussole.",
+      key: "navigo",
+      title: "Navigo",
+      tip: "Trace, ancre et lance la lecture du parcours depuis un seul espace.",
     };
-  }, [mode, isOdysseoTrace]);
+  }, [mode]);
 
   const [stepTipVisible, setStepTipVisible] = useState(false);
 
@@ -241,9 +230,6 @@ export default function SoonApp({ onBack }) {
             activeRoot={mode === "compo" ? "compo" : "navigo"}
             onChangeRoot={setWorkflowRoot}
           />
-          {mode !== "compo" && (
-            <NavigoView mode={odysseoMode} onChangeMode={setOdysseoMode} />
-          )}
         </div>
 
         <button
@@ -258,7 +244,7 @@ export default function SoonApp({ onBack }) {
 
       <SoonCanvas
         mode={mode}
-        interactionMode={isOdysseoTrace ? "circuit" : interactionMode}
+        interactionMode={isOdysseo ? "circuit" : interactionMode}
         odysseoMode={odysseoMode}
         bubbles={bubbles}
         fish={fish}
@@ -273,14 +259,14 @@ export default function SoonApp({ onBack }) {
         viewZoom={viewZoom}
         onFishTarget={(x, y, arenaRadius) => setFishTarget(x, y, arenaRadius)}
         onTickFish={({ arenaRadius } = {}) => {
-          if (isOdysseoTravel) {
+          if (isOdysseo) {
             if (isTravelPlaying) {
               tickOdysseoPath({ swimSpeed });
             }
             return;
           }
 
-          if (isEditMode || isOdysseoTrace) return;
+          if (isEditMode) return;
 
           tickFish({ swimSpeed, arenaRadius });
         }}
@@ -309,72 +295,68 @@ export default function SoonApp({ onBack }) {
         <div className="cockpit-buttons">
           {isOdysseo ? (
             <div className="odysseo-tools">
-              {isOdysseoTravel && (
-                <div className="tool-row primary-tools">
-                  <button
-                    type="button"
-                    className={`bubble-btn mode-toggle ${isTravelPlaying ? "active" : ""}`}
-                    onClick={() => setIsTravelPlaying((current) => !current)}
-                    disabled={!odysseoPath || odysseoPath.length < 2}
-                    title={
-                      odysseoPath && odysseoPath.length >= 2
-                        ? isTravelPlaying
-                          ? "Mettre la traversée en pause"
-                          : "Lancer la traversée"
-                        : "Trace un parcours d’abord"
-                    }
-                  >
-                    {isTravelPlaying ? "⏸ Pause" : "▶ Play"}
-                  </button>
+              <div className="tool-row primary-tools">
+                <button
+                  type="button"
+                  className={`bubble-btn mode-toggle ${isTravelPlaying ? "active" : ""}`}
+                  onClick={() => setIsTravelPlaying((current) => !current)}
+                  disabled={!odysseoPath || odysseoPath.length < 2}
+                  title={
+                    odysseoPath && odysseoPath.length >= 2
+                      ? isTravelPlaying
+                        ? "Mettre la traversée en pause"
+                        : "Lancer la traversée"
+                      : "Trace un parcours d’abord"
+                  }
+                >
+                  {isTravelPlaying ? "⏸ Pause" : "▶ Play"}
+                </button>
 
-                  <button
-                    type="button"
-                    className="bubble-btn mode-toggle"
-                    onClick={handleExportImmersion}
-                    disabled={!odysseoPath || odysseoPath.length < 8}
-                    title={
-                      odysseoPath && odysseoPath.length >= 8
-                        ? "Générer l’immersion sonore"
-                        : "Trace un parcours d’abord"
-                    }
-                  >
-                    🎧 Générer
-                  </button>
-                </div>
-              )}
+                <button
+                  type="button"
+                  className="bubble-btn mode-toggle"
+                  onClick={handleExportImmersion}
+                  disabled={!odysseoPath || odysseoPath.length < 8}
+                  title={
+                    odysseoPath && odysseoPath.length >= 8
+                      ? "Générer l’immersion sonore"
+                      : "Trace un parcours d’abord"
+                  }
+                >
+                  🎧 Générer
+                </button>
+              </div>
 
-              {isOdysseoTrace && (
-                <div className="tool-row trace-tools">
-                  <button
-                    type="button"
-                    className={`bubble-btn tool-chip ${odysseoTool === "draw" ? "active" : ""}`}
-                    onClick={() => setOdysseoTool("draw")}
-                    title="Dessiner le trajet"
-                  >
-                    ✏️ Dessin
-                  </button>
+              <div className="tool-row trace-tools">
+                <button
+                  type="button"
+                  className={`bubble-btn tool-chip ${odysseoTool === "draw" ? "active" : ""}`}
+                  onClick={() => setOdysseoTool("draw")}
+                  title="Dessiner le trajet"
+                >
+                  ✏️ Dessin
+                </button>
 
-                  <button
-                    type="button"
-                    className={`bubble-btn tool-chip ${odysseoTool === "depth" ? "active" : ""}`}
-                    onClick={() => setOdysseoTool("depth")}
-                    title="Poser une ancre d’ambiance"
-                  >
-                    ⚓ Ancre
-                  </button>
+                <button
+                  type="button"
+                  className={`bubble-btn tool-chip ${odysseoTool === "depth" ? "active" : ""}`}
+                  onClick={() => setOdysseoTool("depth")}
+                  title="Poser une ancre d’ambiance"
+                >
+                  ⚓ Ancre
+                </button>
 
-                  <button
-                    type="button"
-                    className="bubble-btn tool-chip danger"
-                    onClick={clearOdysseoPath}
-                    title="Effacer le tracé"
-                  >
-                    🧽 Effacer
-                  </button>
-                </div>
-              )}
+                <button
+                  type="button"
+                  className="bubble-btn tool-chip danger"
+                  onClick={clearOdysseoPath}
+                  title="Effacer le tracé"
+                >
+                  🧽 Effacer
+                </button>
+              </div>
 
-              {isOdysseoTrace && odysseoTool === "depth" && (
+              {odysseoTool === "depth" && (
                 <div className="tool-row depth-tools">
                   {[1, 2, 3].map((depth) => (
                     <button
@@ -392,16 +374,38 @@ export default function SoonApp({ onBack }) {
                 </div>
               )}
             </div>
-          ) : (
-            <button
-              type="button"
-              className={`bubble-btn mode-toggle ${isEditMode ? "active" : ""}`}
-              onClick={toggleInteractionMode}
-              title={isEditMode ? "Passer en mode nager" : "Passer en mode éditer"}
-              aria-label={isEditMode ? "Mode éditer actif" : "Mode nager actif"}
-            >
-              {isEditMode ? "✏️" : "🐟"}
-            </button>
+                    ) : (
+            <div className="tool-row fish-tools">
+              <button
+                type="button"
+                className={`bubble-btn mode-toggle ${isEditMode ? "active" : ""}`}
+                onClick={toggleInteractionMode}
+                title={isEditMode ? "Passer en mode nager" : "Passer en mode éditer"}
+                aria-label={isEditMode ? "Mode éditer actif" : "Mode nager actif"}
+              >
+                {isEditMode ? "✏️" : "🐟"}
+              </button>
+              {!isEditMode && (
+                <>
+                  <button
+                    type="button"
+                    className={`bubble-btn tool-chip ${bubblesEnabled ? "active" : ""}`}
+                    onClick={() => setBubblesEnabled((value) => !value)}
+                    title="Activer / couper les bulles"
+                  >
+                    {bubblesEnabled ? "🫧 Bulles ON" : "🫧 Bulles OFF"}
+                  </button>
+                  <button
+                    type="button"
+                    className="bubble-btn tool-chip"
+                    onClick={() => setBubblesIntensity((value) => Math.min(2, value + 0.25))}
+                    title="Augmenter l’intensité des bulles"
+                  >
+                    🧪 Intensité {bubblesIntensity.toFixed(2)}
+                  </button>
+                </>
+              )}
+            </div>
           )}
         </div>
 
@@ -419,7 +423,7 @@ export default function SoonApp({ onBack }) {
             <span>{viewZoom.toFixed(1)}</span>
           </div>
 
-          {isOdysseoTravel && (
+          {isOdysseo && (
             <div className="global-slider odysseo-speed-slider">
               <span>⚡</span>
               <input
