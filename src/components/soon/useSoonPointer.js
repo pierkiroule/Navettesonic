@@ -5,7 +5,6 @@ import {
   normalizeDepth,
   screenToWorld,
 } from "../../core/geometry.js";
-import { getFishNavigableRadius } from "../../core/constants.js";
 import {
   clampEditCamera,
   panEditCamera,
@@ -37,32 +36,25 @@ export function useSoonPointer({
 
   function getWorldFromEvent(event) {
     const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+
     const rect = canvas.getBoundingClientRect();
+    const current = stateRef.current || {};
+    const viewZoom = Number.isFinite(current.viewZoom) ? current.viewZoom : 0;
+    const arenaRadius = current.arenaRadius || arenaRef.current.radius || 1200;
 
-    const viewZoom = Number.isFinite(stateRef.current?.viewZoom)
-      ? stateRef.current.viewZoom
-      : 0;
-    const arenaRadius = stateRef.current?.arenaRadius || arenaRef.current.radius || 1200;
-    const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 1.9);
-    const worldZoom = Math.max(0.001, fitZoom * (1 + viewZoom * 3.8));
-    const followBlend = Math.min(1, Math.max(0, viewZoom));
-    const camera = {
-      x: cameraRef.current.x * followBlend,
-      y: cameraRef.current.y * followBlend,
-      zoom: worldZoom,
-    };
+    const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 2.55);
+    const finalZoom = fitZoom * (1 + viewZoom * 1.55);
 
-    return screenToWorld({
-      clientX: event.clientX,
-      clientY: event.clientY,
-      rect,
-      camera,
-    });
+    const x = (event.clientX - rect.left - rect.width / 2) / finalZoom + cameraRef.current.x;
+    const y = (event.clientY - rect.top - rect.height / 2) / finalZoom + cameraRef.current.y;
+
+    return { x, y };
   }
 
   function getSafeWorldFromEvent(event, options = {}) {
     const point = getWorldFromEvent(event);
-    const navigableRadius = getFishNavigableRadius(arenaRef.current.radius);
+    const navigableRadius = Math.max(0, arenaRef.current.radius - 18);
     const viewZoom = Number.isFinite(stateRef.current?.viewZoom)
       ? stateRef.current.viewZoom
       : 0;

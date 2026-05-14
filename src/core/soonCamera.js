@@ -100,31 +100,26 @@ export function zoomEditCameraAt(cameraRef, factor, centerWorld, rect, arenaRadi
 
 export function enterWorld(ctx, rect, cameraRef, stateRef) {
   const camera = cameraRef.current;
-  const fish = stateRef.current.fish || {};
+  const current = stateRef.current || {};
+  const fish = current.fish || {};
+
+  const viewZoom = Number.isFinite(current.viewZoom) ? current.viewZoom : 0;
+  const arenaRadius = current.arenaRadius || 1200;
+
+  const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 2.55);
+  const userZoom = fitZoom * (1 + viewZoom * 1.55);
 
   const speed = Math.hypot(fish.vx || 0, fish.vy || 0);
   const speedNorm = Math.min(1, speed / 18);
   const t = performance.now() * 0.001;
 
-  const driftX = Math.sin(t * 0.33) * 4 * (0.25 + speedNorm);
-  const driftY = Math.cos(t * 0.27) * 4 * (0.25 + speedNorm);
-
-  const viewZoom = Number.isFinite(stateRef.current.viewZoom)
-    ? stateRef.current.viewZoom
-    : 0;
-  const arenaRadius = stateRef.current?.arenaRadius || 1200;
-  const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 1.9);
-  const userZoom = Math.max(0.2, Number.isFinite(camera.zoom) ? camera.zoom : 1);
-  const finalZoom = fitZoom * userZoom * (1.0 + viewZoom * 3.8);
+  const driftX = Math.sin(t * 0.33) * 3 * speedNorm;
+  const driftY = Math.cos(t * 0.27) * 3 * speedNorm;
 
   ctx.save();
   ctx.translate(rect.width / 2, rect.height / 2);
-  ctx.scale(finalZoom, finalZoom);
-  const followBlend = 1;
-  const camX = camera.x * followBlend;
-  const camY = camera.y * followBlend;
-
-  ctx.translate(-camX + driftX * followBlend, -camY + driftY * followBlend);
+  ctx.scale(userZoom, userZoom);
+  ctx.translate(-camera.x + driftX, -camera.y + driftY);
 }
 
 export function exitWorld(ctx) {
