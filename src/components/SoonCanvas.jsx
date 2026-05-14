@@ -33,6 +33,7 @@ export default function SoonCanvas({
   onCycleBubbleDepth,
   onOpenBubbleEditor,
   onOpenBeaconEditor,
+  onRecenterFish,
 }) {
   const canvasRef = useRef(null);
   const [semioseVideo, setSemioseVideo] = useState(null);
@@ -175,6 +176,15 @@ export default function SoonCanvas({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       />
+      <button
+        type="button"
+        className="arena-recenter-btn"
+        onClick={onRecenterFish}
+        aria-label="Recentrer le poisson-plume"
+        title="Recentrer"
+      >
+        ⊙
+      </button>
       {semioseVideo?.url ? (
         <div
           key={semioseVideo.id}

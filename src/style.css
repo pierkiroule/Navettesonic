@@ -187,6 +187,36 @@ button {
   inset: 0;
 }
 
+
+.arena-recenter-btn {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 12;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(186, 230, 253, 0.42);
+  background: rgba(2, 6, 23, 0.46);
+  color: rgba(240, 249, 255, 0.95);
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 26px rgba(2, 6, 23, 0.42);
+}
+
+.arena-recenter-btn:hover {
+  background: rgba(14, 116, 144, 0.34);
+}
+
+.arena-recenter-btn:focus-visible {
+  outline: 2px solid rgba(125, 211, 252, 0.9);
+  outline-offset: 2px;
+}
 .semiose-video-bubble {
   position: absolute;
   left: 50%;

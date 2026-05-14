@@ -155,6 +155,12 @@ export default function SoonApp({ onBack }) {
     setEditorOpenKey((value) => value + 1);
   };
 
+  const recenterFish = () => {
+    stopCircuitAutopilot();
+    setFishTarget(0, 0);
+  };
+
+
   if (page === "profile") {
     return <Profile onBack={() => setPage("arena")} />;
   }
@@ -274,6 +280,7 @@ export default function SoonApp({ onBack }) {
           addOdysseoDepthMarker(x, y, selectedDepth);
         }}
         onOpenBubbleEditor={openBubbleEditor}
+        onRecenterFish={recenterFish}
         onCycleBubbleDepth={cycleBubbleDepth}
       />
 
