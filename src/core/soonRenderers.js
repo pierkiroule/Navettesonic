@@ -159,7 +159,10 @@ function drawArenaPolesAndMarkers(ctx, radius, time) {
     ctx.strokeStyle = `rgba(255, 141, 205, ${alpha})`;
     ctx.lineWidth = 9;
     ctx.lineCap = "round";
+    ctx.setLineDash([5, 9]);
+    ctx.lineDashOffset = -time * 0.02;
     ctx.stroke();
+    ctx.setLineDash([]);
 
     const textRadius = radius + 46;
     const tx = Math.cos(angle) * textRadius;
@@ -169,12 +172,22 @@ function drawArenaPolesAndMarkers(ctx, radius, time) {
     ctx.shadowBlur = 18;
     ctx.shadowColor = "rgba(255, 192, 243, 0.95)";
     ctx.fillStyle = "rgba(255, 215, 248, 0.7)";
-    ctx.font = "700 24px system-ui";
+    ctx.font = "700 240px system-ui";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(label, tx, ty);
     ctx.restore();
   });
+}
+
+function fitText(ctx, text, maxWidth, baseSize, minSize, family, weight = 500) {
+  let size = baseSize;
+  while (size > minSize) {
+    ctx.font = `${weight} ${size}px ${family}`;
+    if (ctx.measureText(text).width <= maxWidth) return size;
+    size -= 1;
+  }
+  return minSize;
 }
 
 export function drawWorldParticles(ctx, arenaRef, time) {
@@ -554,25 +567,31 @@ export function drawHud(ctx, rect, current, arenaRef) {
   if (polePrompt) {
     const cx = rect.width / 2;
     const cy = rect.height / 2;
+    const panelWidth = Math.min(rect.width - 36, 980);
+    const panelHeight = Math.min(rect.height * 0.34, 260);
+    const panelX = cx - panelWidth / 2;
+    const panelY = cy - panelHeight / 2;
 
     ctx.save();
     ctx.fillStyle = "rgba(2, 6, 23, 0.5)";
     ctx.strokeStyle = "rgba(186, 230, 253, 0.42)";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.roundRect(cx - 300, cy - 78, 600, 150, 22);
+    ctx.roundRect(panelX, panelY, panelWidth, panelHeight, 22);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle = "rgba(255, 225, 248, 0.95)";
-    ctx.font = "700 34px system-ui";
+    const titleSize = fitText(ctx, polePrompt.title, panelWidth - 32, 62, 34, "system-ui", 700);
+    ctx.font = `700 ${titleSize}px system-ui`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(polePrompt.title, cx, cy - 24);
+    ctx.fillText(polePrompt.title, cx, panelY + panelHeight * 0.34);
 
     ctx.fillStyle = "rgba(226, 232, 240, 0.96)";
-    ctx.font = "500 28px Georgia";
-    ctx.fillText(polePrompt.question, cx, cy + 28);
+    const questionSize = fitText(ctx, polePrompt.question, panelWidth - 44, 42, 20, "Georgia", 500);
+    ctx.font = `500 ${questionSize}px Georgia`;
+    ctx.fillText(polePrompt.question, cx, panelY + panelHeight * 0.68);
     ctx.restore();
   }
 
