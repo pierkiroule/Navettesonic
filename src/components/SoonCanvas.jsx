@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSoonCanvasLoop } from "./soon/useSoonCanvasLoop.js";
 import { useSoonPointer } from "./soon/useSoonPointer.js";
+import RadialMenu from "./RadialMenu.jsx";
 
 export default function SoonCanvas({
   mode,
@@ -245,12 +246,23 @@ export default function SoonCanvas({
         </div>
       ) : null}
       {fishMenu && interactionMode === "swim" ? (
-        <div className="fish-radial-menu" style={{ left: fishMenu.screen.x, top: fishMenu.screen.y }}>
-          <button type="button" onClick={() => { onSetFishDepth?.(((Math.round(fish?.depth || 1) % 3) + 1)); setFishMenu(null); }}>Profondeur</button>
-          <button type="button" onClick={() => { onToggleBubbles?.(); setFishMenu(null); }}>Bulles {bubblesEnabled ? "ON" : "OFF"}</button>
-          <button type="button" onClick={() => { onSetBubblesIntensity?.(Math.min(2, (bubblesIntensity || 1) + 0.25)); setFishMenu(null); }}>Intensité bulles</button>
-          <button type="button" onClick={() => { onResetFishContext?.(); setFishMenu(null); }}>Reset</button>
-        </div>
+        <RadialMenu
+          aria-label="Menu contextuel poisson"
+          anchor={fishMenu.screen}
+          onClose={() => setFishMenu(null)}
+          items={[
+            { id: "depth", label: "Profondeur" },
+            { id: "bubbles", label: `Bulles ${bubblesEnabled ? "ON" : "OFF"}` },
+            { id: "intensity", label: "Intensité bulles" },
+            { id: "reset", label: "Reset" },
+          ]}
+          onSelect={(item) => {
+            if (item.id === "depth") onSetFishDepth?.(((Math.round(fish?.depth || 1) % 3) + 1));
+            if (item.id === "bubbles") onToggleBubbles?.();
+            if (item.id === "intensity") onSetBubblesIntensity?.(Math.min(2, (bubblesIntensity || 1) + 0.25));
+            if (item.id === "reset") onResetFishContext?.();
+          }}
+        />
       ) : null}
     </div>
   );
