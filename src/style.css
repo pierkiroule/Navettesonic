@@ -2258,14 +2258,14 @@ button {
 
 .zoom-slider {
   left: calc(50% - 74px);
-  top: 10px;
-  transform: rotate(-22deg);
+  top: 0;
+  transform: none;
 }
 
 .speed-slider {
   right: calc(50% - 74px);
-  top: 10px;
-  transform: rotate(22deg);
+  top: 0;
+  transform: none;
 }
 
 .slider-label {
@@ -2283,10 +2283,11 @@ button {
   height: min(108px, 16vh);
   margin: 0;
   background: transparent;
+  display: block;
 }
 
 .slim-vertical-range::-webkit-slider-runnable-track {
-  width: 2px;
+  width: 3px;
   border-radius: 999px;
   background: rgba(148, 163, 184, 0.45);
 }
@@ -2296,14 +2297,14 @@ button {
   appearance: none;
   width: 10px;
   height: 10px;
-  margin-top: -4px;
+  margin-top: 0;
   border-radius: 999px;
   border: 1px solid rgba(186, 230, 253, 0.55);
   background: rgba(240, 249, 255, 0.92);
 }
 
 .slim-vertical-range::-moz-range-track {
-  width: 2px;
+  width: 3px;
   border-radius: 999px;
   background: rgba(148, 163, 184, 0.45);
 }
@@ -2380,14 +2381,14 @@ button {
 
   .zoom-slider {
     left: calc(50% - 64px);
-    top: 10px;
-    transform: rotate(-24deg);
+    top: 0;
+    transform: none;
   }
 
   .speed-slider {
     right: calc(50% - 64px);
-    top: 10px;
-    transform: rotate(24deg);
+    top: 0;
+    transform: none;
   }
 
   .slim-vertical-range {
