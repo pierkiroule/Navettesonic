@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import SidePanel from "../components/SidePanel.jsx";
 import SoonCanvas from "../components/SoonCanvas.jsx";
 import Profile from "./Profile.jsx";
 import { useSoonStore } from "../store/useSoonStore.js";
 import { renderImmersiveJourney } from "../core/immersiveExporter.js";
+
+const NOMBRILO_ONE_SHOT_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/nombrilo/nombrilo.mp3";
 
 export default function SoonApp({ onBack }) {
   const [page, setPage] = useState("arena");
@@ -16,6 +18,7 @@ export default function SoonApp({ onBack }) {
   const [selectedDepth, setSelectedDepth] = useState(1);
   const [exportStatus, setExportStatus] = useState("");
   const [exportUrl, setExportUrl] = useState(null);
+  const nombriloAudioRef = useRef(null);
 
   const {
     mode,
@@ -26,6 +29,7 @@ export default function SoonApp({ onBack }) {
     selectedBeaconId,
     circuitAutopilot,
     eyesClosed,
+    toggleEyesClosed,
 
     odysseoPath,
     odysseoDepthMarkers,
@@ -38,6 +42,7 @@ export default function SoonApp({ onBack }) {
 
     setMode,
     setFishTarget,
+    recenterFish,
     tickFish,
     setFishDepth,
     selectBubble,
@@ -154,6 +159,26 @@ export default function SoonApp({ onBack }) {
     updateBubble(id, { depth: nextDepth });
     setEditorOpenKey((value) => value + 1);
   };
+
+  const handleRecenterFish = () => {
+    stopCircuitAutopilot();
+
+    if (!nombriloAudioRef.current) {
+      nombriloAudioRef.current = new Audio(NOMBRILO_ONE_SHOT_URL);
+      nombriloAudioRef.current.preload = "auto";
+    }
+
+    try {
+      nombriloAudioRef.current.currentTime = 0;
+      void nombriloAudioRef.current.play();
+    } catch {
+      // ignore audio gesture failures silently
+    }
+
+    toggleEyesClosed();
+    recenterFish();
+  };
+
 
   if (page === "profile") {
     return <Profile onBack={() => setPage("arena")} />;
@@ -274,6 +299,7 @@ export default function SoonApp({ onBack }) {
           addOdysseoDepthMarker(x, y, selectedDepth);
         }}
         onOpenBubbleEditor={openBubbleEditor}
+        onRecenterFish={handleRecenterFish}
         onCycleBubbleDepth={cycleBubbleDepth}
       />
 

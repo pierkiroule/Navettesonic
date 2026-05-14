@@ -33,9 +33,11 @@ export default function SoonCanvas({
   onCycleBubbleDepth,
   onOpenBubbleEditor,
   onOpenBeaconEditor,
+  onRecenterFish,
 }) {
   const canvasRef = useRef(null);
   const [semioseVideo, setSemioseVideo] = useState(null);
+  const [arenaCenterScreen, setArenaCenterScreen] = useState({ x: 0, y: 0 });
 
   const cameraRef = useRef({
     x: 0,
@@ -165,6 +167,34 @@ export default function SoonCanvas({
 
   useEffect(() => cleanupPointer, [cleanupPointer]);
 
+  useEffect(() => {
+    let frame = 0;
+
+    const updateArenaCenterScreen = () => {
+      const canvas = canvasRef.current;
+      const current = stateRef.current || {};
+      const camera = cameraRef.current || { x: 0, y: 0 };
+
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect();
+        const arenaRadius = current.arenaRadius || arenaRef.current.radius || 1200;
+        const viewZoom = Number.isFinite(current.viewZoom) ? current.viewZoom : 0;
+        const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 2.55);
+        const userZoom = fitZoom * (1 + viewZoom * 1.55);
+
+        setArenaCenterScreen({
+          x: rect.width * 0.5 - camera.x * userZoom,
+          y: rect.height * 0.5 - camera.y * userZoom,
+        });
+      }
+
+      frame = requestAnimationFrame(updateArenaCenterScreen);
+    };
+
+    frame = requestAnimationFrame(updateArenaCenterScreen);
+    return () => cancelAnimationFrame(frame);
+  }, [arenaRef, cameraRef, canvasRef, stateRef]);
+
   return (
     <div className="soon-canvas-shell">
       <canvas
@@ -175,6 +205,16 @@ export default function SoonCanvas({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       />
+      <button
+        type="button"
+        className="arena-recenter-btn"
+        style={{ left: `${arenaCenterScreen.x}px`, top: `${arenaCenterScreen.y}px` }}
+        onClick={onRecenterFish}
+        aria-label={eyesClosed ? "Quitter écoute à l’aveugle" : "Activer écoute à l’aveugle"}
+        title={eyesClosed ? "👁️ Mode visible" : "👂 Mode écoute à l’aveugle"}
+      >
+        {eyesClosed ? "👁️" : "👂"}
+      </button>
       {semioseVideo?.url ? (
         <div
           key={semioseVideo.id}
