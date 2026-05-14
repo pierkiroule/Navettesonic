@@ -2286,6 +2286,34 @@ button {
   text-decoration: none;
 }
 
+
+.navigo-view {
+  display: grid;
+  gap: 7px;
+}
+
+.navigo-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.navigo-view .export-status {
+  position: static;
+  transform: none;
+  left: auto;
+  bottom: auto;
+  justify-content: center;
+}
+
+.export-link {
+  text-align: center;
+  color: #7dd3fc;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
 .odysseo-tools {
   display: grid;
   gap: 7px;
