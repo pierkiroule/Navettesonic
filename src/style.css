@@ -2240,14 +2240,14 @@ button {
 .global-slider {
   position: absolute;
   display: grid;
-  grid-template-rows: auto minmax(122px, 1fr) auto;
+  grid-template-rows: auto minmax(110px, 1fr) auto;
   align-items: center;
   justify-items: center;
   gap: 4px;
-  width: 64px;
-  height: min(168px, 26vh);
+  width: 44px;
+  height: min(158px, 24vh);
   color: rgba(226, 232, 240, 0.74);
-  font-size: 0.58rem;
+  font-size: 0.54rem;
   font-weight: 700;
   pointer-events: auto;
 }
@@ -2268,79 +2268,62 @@ button {
   transform: rotate(22deg);
 }
 
-.feather-label {
-  display: grid;
-  justify-items: center;
-  gap: 1px;
-  font-size: 0.55rem;
-  letter-spacing: 0.01em;
+.slider-label {
+  white-space: nowrap;
+  font-size: 0.52rem;
+  letter-spacing: 0.02em;
 }
 
-.feather-track-wrap {
-  position: relative;
-  width: 62px;
-  height: 122px;
-}
-
-.feather-shape {
-  position: absolute;
-  inset: 0;
-  overflow: visible;
-  filter: drop-shadow(0 0 8px rgba(125, 211, 252, 0.18));
-}
-
-.feather-bg,
-.feather-fill {
-  fill: none;
-  stroke-linecap: round;
-  stroke-width: 16;
-}
-
-.feather-bg {
-  stroke: rgba(148, 163, 184, 0.2);
-}
-
-.feather-fill {
-  stroke: rgba(125, 211, 252, 0.88);
-  stroke-dasharray: 430;
-  transition: stroke-dashoffset 0.14s ease-out;
-}
-
-.odysseo-speed-slider .feather-fill {
-  stroke: rgba(244, 114, 182, 0.88);
-}
-
-.feather-range {
-  position: absolute;
-  inset: 0;
-  width: 62px;
-  height: 122px;
-  opacity: 0;
+.slim-vertical-range {
+  -webkit-appearance: none;
+  appearance: none;
   writing-mode: vertical-lr;
   direction: rtl;
-  cursor: pointer;
+  width: 8px;
+  height: min(108px, 16vh);
+  margin: 0;
+  background: transparent;
 }
 
-.feather-thumb {
-  position: absolute;
-  left: 50%;
-  bottom: var(--feather-percent, 50%);
-  width: 12px;
-  height: 12px;
+.slim-vertical-range::-webkit-slider-runnable-track {
+  width: 2px;
   border-radius: 999px;
-  transform: translate(-50%, 50%);
-  background: rgba(240, 249, 255, 0.95);
-  box-shadow: 0 0 0 2px rgba(125, 211, 252, 0.15), 0 0 10px rgba(125, 211, 252, 0.34);
-  pointer-events: none;
+  background: rgba(148, 163, 184, 0.45);
 }
 
-.odysseo-speed-slider {
-  border-color: rgba(244, 114, 182, 0.38);
-  background: linear-gradient(120deg, rgba(30, 41, 59, 0.78), rgba(76, 29, 149, 0.35));
+.slim-vertical-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  margin-top: -4px;
+  border-radius: 999px;
+  border: 1px solid rgba(186, 230, 253, 0.55);
+  background: rgba(240, 249, 255, 0.92);
 }
 
-.odysseo-speed-slider .feather-thumb {
-  box-shadow: 0 0 0 2px rgba(244, 114, 182, 0.16), 0 0 10px rgba(244, 114, 182, 0.34);
+.slim-vertical-range::-moz-range-track {
+  width: 2px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.45);
+}
+
+.slim-vertical-range::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(186, 230, 253, 0.55);
+  background: rgba(240, 249, 255, 0.92);
+}
+
+.odysseo-speed-slider .slim-vertical-range::-webkit-slider-thumb,
+.odysseo-speed-slider .slim-vertical-range::-moz-range-thumb {
+  border-color: rgba(251, 113, 133, 0.6);
+}
+
+.slider-value {
+  font-size: 0.52rem;
+  opacity: 0.85;
 }
 
 @media (max-width: 640px) {
@@ -2391,8 +2374,8 @@ button {
   }
 
   .global-slider {
-    width: 56px;
-    height: min(154px, 22vh);
+    width: 38px;
+    height: min(142px, 20vh);
   }
 
   .zoom-slider {
@@ -2407,14 +2390,8 @@ button {
     transform: rotate(24deg);
   }
 
-  .feather-track-wrap {
-    width: 54px;
-    height: 108px;
-  }
-
-  .feather-range {
-    width: 54px;
-    height: 108px;
+  .slim-vertical-range {
+    height: min(94px, 13vh);
   }
 
   .odysseo-cockpit .mode-toggle {
