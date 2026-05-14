@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import RadialMenuDemo from "../components/RadialMenuDemo.jsx";
 
 export default function Home({ onEnter }) {
   const videoRef = useRef(null);
@@ -87,11 +86,6 @@ export default function Home({ onEnter }) {
           Entrer dans Soon
         </button>
 
-        <p className="home-note">
-          Arène locale · Sons Soon · Traversée sensible
-        </p>
-
-        <RadialMenuDemo />
       </section>
     </main>
   );

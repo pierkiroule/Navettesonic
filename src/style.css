@@ -2418,28 +2418,40 @@ button {
 }
 
 .workflow-shell {
-  display: grid;
-  gap: 6px;
-}
-.workflow-stepper {
   display: flex;
-  gap: 8px;
-  justify-content: center;
-  font-size: 0.64rem;
-  color: rgba(226, 232, 240, 0.75);
-}
-.workflow-stepper .active {
-  color: #bae6fd;
 }
 .workflow-tabs {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.72);
+  border: 1px solid rgba(125, 211, 252, 0.24);
 }
 .workflow-tabs button,
 .navigo-substeps button {
-  min-width: 72px;
-  height: 34px;
+  min-width: 64px;
+  height: 30px;
   border-radius: 999px;
+  border: none;
+  padding-inline: 12px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: rgba(226, 232, 240, 0.88);
+  background: transparent;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.workflow-tabs button.active.compo-tab {
+  color: #082f49;
+  background: linear-gradient(135deg, #67e8f9, #7dd3fc);
+  box-shadow: 0 6px 16px rgba(56, 189, 248, 0.32);
+}
+
+.workflow-tabs button.active.navigo-tab {
+  color: #fdf2f8;
+  background: linear-gradient(135deg, #f472b6, #ec4899);
+  box-shadow: 0 6px 16px rgba(236, 72, 153, 0.35);
 }
 .navigo-substeps {
   display: flex;
