@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import SidePanel from "../components/SidePanel.jsx";
 import SoonCanvas from "../components/SoonCanvas.jsx";
 import WorkflowShell from "../components/WorkflowShell.jsx";
+import NavigoView from "../components/NavigoView.jsx";
 import Profile from "./Profile.jsx";
 import { useSoonStore } from "../store/useSoonStore.js";
 import { renderImmersiveJourney } from "../core/immersiveExporter.js";
@@ -239,26 +240,7 @@ export default function SoonApp({ onBack }) {
             onChangeRoot={setWorkflowRoot}
           />
           {mode !== "compo" && (
-            <div className="navigo-substeps" role="group" aria-label="Étapes Navigo">
-              <button
-                type="button"
-                onClick={() => setOdysseoMode("trace")}
-                className={isOdysseoTrace ? "active" : ""}
-                aria-label="Tracer"
-                title="Tracer"
-              >
-                🪶
-              </button>
-              <button
-                type="button"
-                onClick={() => setOdysseoMode("travel")}
-                className={isOdysseoTravel ? "active" : ""}
-                aria-label="Traverser"
-                title="Traverser"
-              >
-                🧭
-              </button>
-            </div>
+            <NavigoView mode={odysseoMode} onChangeMode={setOdysseoMode} />
           )}
         </div>
 
