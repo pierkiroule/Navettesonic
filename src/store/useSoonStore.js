@@ -389,9 +389,16 @@ export const useSoonStore = create((set, get) => ({
       const fishRadiusNow = Math.hypot(state.fish.x || 0, state.fish.y || 0);
       let autoPassage = state.fish.autoPassage || null;
 
-      if (!circuitAutopilot && !autoPassage && fishRadiusNow > navRadius + 2) {
-        const currentAngle = Math.atan2(state.fish.y || 0, state.fish.x || 0);
-        const exitIndex = getNearestPassageIndex(currentAngle);
+      const targetRadiusNow = Math.hypot(targetX || 0, targetY || 0);
+      const targetOutsideThroughPassage =
+        targetRadiusNow > navRadius + 1 && isNearPassage(Math.atan2(targetY || 0, targetX || 0));
+      const fishAtMembrane = fishRadiusNow >= navRadius - 18;
+
+      if (!circuitAutopilot && !autoPassage && (fishRadiusNow > navRadius + 2 || (targetOutsideThroughPassage && fishAtMembrane))) {
+        const sourceAngle = targetOutsideThroughPassage
+          ? Math.atan2(targetY || 0, targetX || 0)
+          : Math.atan2(state.fish.y || 0, state.fish.x || 0);
+        const exitIndex = getNearestPassageIndex(sourceAngle);
         autoPassage = {
           phase: "orbit",
           exitIndex,
