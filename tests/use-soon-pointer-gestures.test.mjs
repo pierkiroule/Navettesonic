@@ -47,3 +47,23 @@ test('long press ouvre le menu contextuel poisson', async () => {
   await new Promise((r) => setTimeout(r, 520));
   assert.equal(calls.openMenu, 1);
 });
+
+
+test('double tap ne doit pas ouvrir le menu contextuel', async () => {
+  const { api, calls } = createHarness();
+  api.handlePointerDown(event(1, 500, 500));
+  api.handlePointerUp(event(1, 500, 500));
+  api.handlePointerDown(event(2, 501, 500));
+  await new Promise((r) => setTimeout(r, 520));
+  assert.equal(calls.setDepth, 1);
+  assert.equal(calls.openMenu, 0);
+});
+
+test('long press ne doit pas déclencher de changement de profondeur', async () => {
+  const { api, calls } = createHarness();
+  api.handlePointerDown(event(1, 510, 505));
+  await new Promise((r) => setTimeout(r, 520));
+  api.handlePointerUp(event(1, 510, 505));
+  assert.equal(calls.openMenu, 1);
+  assert.equal(calls.setDepth, 0);
+});

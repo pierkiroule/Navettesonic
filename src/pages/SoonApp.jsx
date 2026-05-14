@@ -393,15 +393,37 @@ export default function SoonApp({ onBack }) {
               )}
             </div>
           ) : (
-            <button
-              type="button"
-              className={`bubble-btn mode-toggle ${isEditMode ? "active" : ""}`}
-              onClick={toggleInteractionMode}
-              title={isEditMode ? "Passer en mode nager" : "Passer en mode éditer"}
-              aria-label={isEditMode ? "Mode éditer actif" : "Mode nager actif"}
-            >
-              {isEditMode ? "✏️" : "🐟"}
-            </button>
+            <div className="tool-row fish-tools">
+              <button
+                type="button"
+                className={`bubble-btn mode-toggle ${isEditMode ? "active" : ""}`}
+                onClick={toggleInteractionMode}
+                title={isEditMode ? "Passer en mode nager" : "Passer en mode éditer"}
+                aria-label={isEditMode ? "Mode éditer actif" : "Mode nager actif"}
+              >
+                {isEditMode ? "✏️" : "🐟"}
+              </button>
+              {!isEditMode && (
+                <>
+                  <button
+                    type="button"
+                    className={`bubble-btn tool-chip ${bubblesEnabled ? "active" : ""}`}
+                    onClick={() => setBubblesEnabled((value) => !value)}
+                    title="Activer / couper les bulles"
+                  >
+                    {bubblesEnabled ? "🫧 Bulles ON" : "🫧 Bulles OFF"}
+                  </button>
+                  <button
+                    type="button"
+                    className="bubble-btn tool-chip"
+                    onClick={() => setBubblesIntensity((value) => Math.min(2, value + 0.25))}
+                    title="Augmenter l’intensité des bulles"
+                  >
+                    🧪 Intensité {bubblesIntensity.toFixed(2)}
+                  </button>
+                </>
+              )}
+            </div>
           )}
         </div>
 

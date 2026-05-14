@@ -159,6 +159,7 @@ export function useSoonPointer({
     onSelectBubble?.(null);
 
     if (doubleTap) {
+      clearLongPressTimer();
       cycleFishDepth();
 
       // reset pour éviter triple tap parasite
