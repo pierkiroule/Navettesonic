@@ -726,6 +726,8 @@ function initSeedTransporters(radius) {
       phase: Math.random() * Math.PI * 2,
       carry: Math.random() > 0.28,
       diving: Math.random() > 0.55,
+      insideMembrane: false,
+      transitPole: null,
     });
   }
 }
@@ -747,23 +749,45 @@ export function drawPinkSeedTransporters(ctx, arenaRef, time) {
     let currentOrbit = fish.orbit + Math.sin(time * 0.001 + fish.phase) * 10;
     const poleLabel = getPoleLabelFromAngle(fish.angle);
     const canCrossMembrane = Boolean(poleLabel);
-    if (fish.diving) {
-      if (canCrossMembrane) {
-        currentOrbit -= 120 + Math.sin(time * 0.0018 + fish.phase) * 60;
+
+    if (fish.diving && canCrossMembrane && !fish.insideMembrane) {
+      fish.insideMembrane = true;
+      fish.transitPole = poleLabel;
+    } else if (!fish.diving && canCrossMembrane && fish.insideMembrane) {
+      fish.insideMembrane = false;
+      fish.transitPole = poleLabel;
+    }
+
+    if (fish.insideMembrane) {
+      const crossingPole = fish.transitPole || poleLabel;
+      if (crossingPole) {
+        const targetAngle =
+          crossingPole === "N"
+            ? -Math.PI / 2
+            : crossingPole === "E"
+              ? 0
+              : crossingPole === "S"
+                ? Math.PI / 2
+                : Math.PI;
+        const delta = Math.atan2(Math.sin(targetAngle - fish.angle), Math.cos(targetAngle - fish.angle));
+        fish.angle += delta * 0.08;
       }
-      if (currentOrbit < radius - 8 && fish.carry && Math.random() > 0.985) {
-        seedTransportState.sprouts.push({
-          x: Math.cos(fish.angle) * (radius - 20),
-          y: Math.sin(fish.angle) * (radius - 20),
-          bornAt: time,
-        });
-      }
-      if (canCrossMembrane && currentOrbit < radius - 8) {
-        seedTransportState.poleGlowUntil[poleLabel] = Math.max(
-          seedTransportState.poleGlowUntil[poleLabel],
-          time + 3000
-        );
-      }
+      currentOrbit -= 120 + Math.sin(time * 0.0018 + fish.phase) * 60;
+    }
+
+    if (fish.insideMembrane && currentOrbit < radius - 8 && fish.carry && Math.random() > 0.985) {
+      seedTransportState.sprouts.push({
+        x: Math.cos(fish.angle) * (radius - 20),
+        y: Math.sin(fish.angle) * (radius - 20),
+        bornAt: time,
+      });
+    }
+
+    if (fish.insideMembrane && fish.transitPole && currentOrbit < radius - 8) {
+      seedTransportState.poleGlowUntil[fish.transitPole] = Math.max(
+        seedTransportState.poleGlowUntil[fish.transitPole],
+        time + 3000
+      );
     }
 
     const x = Math.cos(fish.angle) * currentOrbit;
