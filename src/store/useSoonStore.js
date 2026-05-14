@@ -363,22 +363,27 @@ export const useSoonStore = create((set, get) => ({
     }));
   },
   recenterFish: () => {
-    set((state) => ({
-      circuitAutopilot: false,
-      fish: {
-        ...state.fish,
-        x: 0,
-        y: 0,
-        targetX: 0,
-        targetY: 0,
-        vx: 0,
-        vy: 0,
-        autoPassage: null,
-      },
-      fishTrail: [],
-      circuitSegmentIndex: 0,
-      circuitSegmentT: 0,
-    }));
+    set((state) => {
+      const fish = state.fish || {};
+      const dx = 0 - (fish.x || 0);
+      const dy = 0 - (fish.y || 0);
+      const distance = Math.hypot(dx, dy) || 1;
+      const slowFactor = Math.min(1, distance / 280) * 0.85;
+
+      return {
+        circuitAutopilot: false,
+        fish: {
+          ...fish,
+          targetX: 0,
+          targetY: 0,
+          vx: (dx / distance) * slowFactor,
+          vy: (dy / distance) * slowFactor,
+          autoPassage: null,
+        },
+        circuitSegmentIndex: 0,
+        circuitSegmentT: 0,
+      };
+    });
   },
 
 
