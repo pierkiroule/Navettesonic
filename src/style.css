@@ -1883,10 +1883,10 @@ button {
   justify-content: center;
   gap: 26px;
   margin-top: 10px;
-  padding: 7px 14px;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  border: none;
   pointer-events: auto;
 }
 
@@ -2227,29 +2227,50 @@ button {
 }
 
 .global-sliders {
-  display: grid;
-  gap: 7px;
-  width: min(90vw, 390px);
-  margin: 8px auto 0;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 12;
+  pointer-events: none;
 }
 
 .global-slider {
   display: grid;
-  grid-template-columns: auto minmax(150px, 1fr) auto;
+  grid-template-rows: auto minmax(120px, 1fr) auto;
   align-items: center;
+  justify-items: center;
   gap: 8px;
-  padding: 7px 10px;
-  border-radius: 999px;
+  width: 44px;
+  height: min(142px, 26vh);
+  padding: 10px 8px;
+  border-radius: 18px;
   background: rgba(15, 23, 42, 0.66);
   border: 1px solid rgba(125, 211, 252, 0.2);
   color: rgba(226, 232, 240, 0.94);
   font-size: 0.78rem;
   font-weight: 800;
   backdrop-filter: blur(12px);
+  pointer-events: auto;
+}
+
+.zoom-slider {
+  position: absolute;
+  left: 12px;
+}
+
+.speed-slider {
+  position: absolute;
+  right: 12px;
 }
 
 .global-slider input {
-  width: 100%;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 16px;
+  height: min(92px, 18vh);
+  margin: 2px 0;
 }
 
 .odysseo-speed-slider {
@@ -2259,6 +2280,68 @@ button {
 
 .odysseo-speed-slider input {
   accent-color: #f472b6;
+}
+
+@media (max-width: 640px) {
+  .top-nav {
+    top: max(8px, env(safe-area-inset-top));
+    left: 8px;
+    right: 8px;
+  }
+
+  .top-nav-flow {
+    width: min(62vw, 250px);
+    gap: 18px;
+    padding: 8px 12px;
+    margin-top: 6px;
+  }
+
+  .top-nav-flow button,
+  .top-nav-icon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .flow-step-tip {
+    top: 56px;
+    max-width: min(92vw, 320px);
+  }
+
+  .cockpit {
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    padding-inline: 10px;
+  }
+
+  .cockpit-buttons {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .bubble-btn.mode-toggle {
+    min-height: 46px;
+  }
+
+  .global-sliders {
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .global-slider {
+    height: min(126px, 22vh);
+    width: 42px;
+    padding: 8px 6px;
+  }
+
+  .global-slider input {
+    height: min(82px, 16vh);
+  }
+
+  .odysseo-cockpit .mode-toggle {
+    min-width: 84px;
+    padding-inline: 10px;
+  }
 }
 
 .export-status {
@@ -2362,28 +2445,36 @@ button {
 }
 
 .workflow-shell {
-  display: grid;
-  gap: 6px;
-}
-.workflow-stepper {
   display: flex;
-  gap: 8px;
-  justify-content: center;
-  font-size: 0.64rem;
-  color: rgba(226, 232, 240, 0.75);
-}
-.workflow-stepper .active {
-  color: #bae6fd;
 }
 .workflow-tabs {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 .workflow-tabs button,
 .navigo-substeps button {
-  min-width: 72px;
-  height: 34px;
+  min-width: fit-content;
+  height: 30px;
   border-radius: 999px;
+  border: none;
+  padding-inline: 10px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: rgba(226, 232, 240, 0.88);
+  background: transparent;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.workflow-tabs button.active.compo-tab {
+  color: #082f49;
+  background: linear-gradient(135deg, #67e8f9, #7dd3fc);
+  box-shadow: 0 6px 16px rgba(56, 189, 248, 0.32);
+}
+
+.workflow-tabs button.active.navigo-tab {
+  color: #fdf2f8;
+  background: linear-gradient(135deg, #f472b6, #ec4899);
+  box-shadow: 0 6px 16px rgba(236, 72, 153, 0.35);
 }
 .navigo-substeps {
   display: flex;
