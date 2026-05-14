@@ -91,7 +91,6 @@ export default function RadialMenu({ items, anchor, onSelect, onClose, disabled 
             onMouseEnter={() => setActiveIndex(index)}
             onClick={() => triggerSelect(item, index)}
             onTouchStart={() => setActiveIndex(index)}
-            onTouchEnd={() => triggerSelect(item, index)}
           >
             {item.label}
           </button>
