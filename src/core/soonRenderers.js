@@ -21,29 +21,24 @@ export function drawScene(ctx, rect, time, refs) {
   drawOcean(ctx, rect, time, current);
   drawDepthVeil(ctx, rect, current.fish);
 
-
   enterWorld(ctx, rect, cameraRef, stateRef);
 
   drawArenaBoundary(ctx, arenaRef, time);
-  drawArenaNightSky(ctx, arenaRef, time);
-  drawArenaPulseHalo(ctx, arenaRef, time);
-  drawPinkSeedTransporters(ctx, arenaRef, time);
-  drawEcosystemWorld(ctx, current, time);
-  drawWorldParticles(ctx, arenaRef, time);
-
-  if (current.mode === "reso") {
-    drawOdysseoPath(
-      ctx,
-      current.odysseoPath || [],
-      current.odysseoDepthMarkers || [],
-      time
-    );
-  }
-  // drawFishTrail(ctx, current.fishTrail || [], time);
 
   if (!current.eyesClosed) {
+    drawArenaNightSky(ctx, arenaRef, time);
+    drawArenaPulseHalo(ctx, arenaRef, time);
+    drawPinkSeedTransporters(ctx, arenaRef, time);
+    drawEcosystemWorld(ctx, current, time);
+    drawWorldParticles(ctx, arenaRef, time);
+
     if (current.mode === "reso") {
-      // Ancien circuit à balises désactivé : Odysséo utilise odysseoPath.
+      drawOdysseoPath(
+        ctx,
+        current.odysseoPath || [],
+        current.odysseoDepthMarkers || [],
+        time
+      );
     }
 
     drawBubbles(
@@ -54,28 +49,24 @@ export function drawScene(ctx, rect, time, refs) {
       time,
       current.interactionMode
     );
-  } else {
-    drawEyesClosedEchoes(ctx, current.bubbles, current.fish, time);
+
+    drawPlacedTriangles(ctx, time);
+    drawFireflies(ctx, time);
+    drawResonanceBubbles(ctx, time);
+
+    if (current.interactionMode !== "edit") {
+      drawCharacters(ctx, time);
+    }
   }
 
-  drawPlacedTriangles(ctx, time);
-  drawFireflies(ctx, time);
-  // drawPlumeTrail(ctx);
-  drawResonanceBubbles(ctx, time);
-  if (current.interactionMode !== "edit") {
-    drawCharacters(ctx, time);
-
-drawFish(ctx, current.fish, time);
-  }
+  drawFish(ctx, current.fish, time);
 
   exitWorld(ctx);
 
-  if (current.eyesClosed) {
-    drawEyesClosedVeil(ctx, rect, time);
+  if (!current.eyesClosed) {
+    drawCameraVignette(ctx, rect, current.fish);
+    drawHud(ctx, rect, current, arenaRef);
   }
-
-  drawCameraVignette(ctx, rect, current.fish);
-  drawHud(ctx, rect, current, arenaRef);
 }
 
 export function drawOcean(ctx, rect, time, current) {
