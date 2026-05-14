@@ -476,6 +476,8 @@ export const useSoonStore = create((set, get) => ({
         stopRadius,
       } = control;
 
+      const isAutoPassageActive = Boolean(autoPassage);
+
       // Point de bouche : le doigt tire le poisson par l'avant.
       const mouthX = state.fish.x + Math.cos(currentAngle) * mouthOffset;
       const mouthY = state.fish.y + Math.sin(currentAngle) * mouthOffset;
@@ -492,8 +494,9 @@ export const useSoonStore = create((set, get) => ({
       // - loin: vitesse cible max
       // - proche: ralentit progressivement
       // - très proche: arrêt stable (anti-jitter)
-      const desiredSpeed =
-        pullDistance <= stopRadius
+      const desiredSpeed = isAutoPassageActive
+        ? Math.max(speedLimit * 0.72, Math.min(speedLimit, speedLimit * Math.max(0.75, pullNorm)))
+        : pullDistance <= stopRadius
           ? 0
           : Math.min(speedLimit, speedLimit * pullNorm);
 
@@ -502,8 +505,9 @@ export const useSoonStore = create((set, get) => ({
       const desiredVx = dirX * desiredSpeed;
       const desiredVy = dirY * desiredSpeed;
 
-      const vx = state.fish.vx + (desiredVx - state.fish.vx) * accel;
-      const vy = state.fish.vy + (desiredVy - state.fish.vy) * accel;
+      const steerAccel = isAutoPassageActive ? Math.max(accel, 0.28) : accel;
+      const vx = state.fish.vx + (desiredVx - state.fish.vx) * steerAccel;
+      const vy = state.fish.vy + (desiredVy - state.fish.vy) * steerAccel;
 
       const speedRaw = Math.hypot(vx, vy);
       const limitedVx = speedRaw > speedLimit ? (vx / speedRaw) * speedLimit : vx;
