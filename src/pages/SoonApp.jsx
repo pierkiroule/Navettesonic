@@ -38,6 +38,7 @@ export default function SoonApp({ onBack }) {
 
     setMode,
     setFishTarget,
+    recenterFish,
     tickFish,
     setFishDepth,
     selectBubble,
@@ -155,9 +156,9 @@ export default function SoonApp({ onBack }) {
     setEditorOpenKey((value) => value + 1);
   };
 
-  const recenterFish = () => {
+  const handleRecenterFish = () => {
     stopCircuitAutopilot();
-    setFishTarget(0, 0);
+    recenterFish();
   };
 
 
@@ -280,7 +281,7 @@ export default function SoonApp({ onBack }) {
           addOdysseoDepthMarker(x, y, selectedDepth);
         }}
         onOpenBubbleEditor={openBubbleEditor}
-        onRecenterFish={recenterFish}
+        onRecenterFish={handleRecenterFish}
         onCycleBubbleDepth={cycleBubbleDepth}
       />
 

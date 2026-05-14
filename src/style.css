@@ -193,24 +193,25 @@ button {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  z-index: 12;
-  width: 34px;
-  height: 34px;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
   border-radius: 999px;
-  border: 1px solid rgba(186, 230, 253, 0.42);
-  background: rgba(2, 6, 23, 0.46);
-  color: rgba(240, 249, 255, 0.95);
+  border: 1px solid rgba(186, 230, 253, 0.28);
+  background: rgba(2, 6, 23, 0.42);
+  color: rgba(240, 249, 255, 0.82);
   display: grid;
   place-items: center;
-  font-size: 1rem;
+  font-size: 0.72rem;
   line-height: 1;
   cursor: pointer;
   backdrop-filter: blur(8px);
-  box-shadow: 0 8px 26px rgba(2, 6, 23, 0.42);
+  box-shadow: 0 4px 12px rgba(2, 6, 23, 0.26);
+  opacity: 0.7;
 }
 
 .arena-recenter-btn:hover {
-  background: rgba(14, 116, 144, 0.34);
+  background: rgba(14, 116, 144, 0.24);
 }
 
 .arena-recenter-btn:focus-visible {
@@ -421,7 +422,7 @@ button {
 }
 
 .mode-pill span {
-  font-size: 1rem;
+  font-size: 0.72rem;
 }
 
 .mode-pill strong {
@@ -1126,7 +1127,7 @@ button {
 }
 
 .profile-mode-btn .mode-icon {
-  font-size: 1rem;
+  font-size: 0.72rem;
 }
 
 .profile-mode-btn .mode-label {
@@ -1936,7 +1937,7 @@ button {
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.52);
   color: #e2e8f0;
-  font-size: 1rem;
+  font-size: 0.72rem;
   display: grid;
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -2138,7 +2139,7 @@ button {
 }
 
 .bubble-field-row strong {
-  color: rgba(240, 249, 255, 0.95);
+  color: rgba(240, 249, 255, 0.82);
   font-size: 0.86rem;
 }
 
