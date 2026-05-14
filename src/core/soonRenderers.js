@@ -24,6 +24,7 @@ export function drawScene(ctx, rect, time, refs) {
   enterWorld(ctx, rect, cameraRef, stateRef);
 
   drawArenaBoundary(ctx, arenaRef, time);
+  drawOrbitingOuterBubble(ctx, arenaRef, time);
 
   if (!current.eyesClosed) {
     drawArenaNightSky(ctx, arenaRef, time);
@@ -129,6 +130,43 @@ export function drawArenaBoundary(ctx, arenaRef, time) {
   ctx.fill();
 
   drawArenaPolesAndMarkers(ctx, radius, time);
+
+  ctx.restore();
+}
+
+function drawOrbitingOuterBubble(ctx, arenaRef, time) {
+  const arenaRadius = arenaRef.current?.radius || 1200;
+  const bubbleRadius = arenaRadius / 5;
+  const orbitRadius = arenaRadius + bubbleRadius + 120;
+  const orbitAngle = -Math.PI / 2 + time * 0.00006;
+  const floatOffset = Math.sin(time * 0.0018) * 16;
+
+  const x = Math.cos(orbitAngle) * orbitRadius;
+  const y = Math.sin(orbitAngle) * orbitRadius + floatOffset;
+  const pulse = Math.sin(time * 0.0012 + 1.8) * 4;
+
+  ctx.save();
+
+  ctx.beginPath();
+  ctx.arc(x, y, bubbleRadius + pulse, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(125, 211, 252, 0.32)";
+  ctx.lineWidth = 6;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(x, y, bubbleRadius - ARENA_INNER_BOUNDARY_INSET * 0.35 + pulse * 0.4, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+  ctx.lineWidth = 1.8;
+  ctx.stroke();
+
+  const halo = ctx.createRadialGradient(x, y, bubbleRadius * 0.72, x, y, bubbleRadius);
+  halo.addColorStop(0, "rgba(0,0,0,0)");
+  halo.addColorStop(1, "rgba(14,165,233,0.12)");
+
+  ctx.beginPath();
+  ctx.arc(x, y, bubbleRadius, 0, Math.PI * 2);
+  ctx.fillStyle = halo;
+  ctx.fill();
 
   ctx.restore();
 }
