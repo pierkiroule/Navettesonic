@@ -7,6 +7,12 @@ function rand(min, max) {
   return min + Math.random() * (max - min);
 }
 
+const PASSAGE_POLES = [-Math.PI / 2, 0, Math.PI / 2, Math.PI];
+
+function pickRandomPassageAngle() {
+  return PASSAGE_POLES[Math.floor(Math.random() * PASSAGE_POLES.length)];
+}
+
 function makeId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
@@ -14,7 +20,7 @@ function makeId(prefix) {
 export function spawnPinkWallFish(arenaRadius = 1200, stock = null) {
   const angle = rand(0, Math.PI * 2);
   const startR = arenaRadius + rand(180, 520);
-  const targetAngle = angle + rand(-1.2, 1.2);
+  const passageAngle = pickRandomPassageAngle();
   const targetR = rand(arenaRadius * 0.18, arenaRadius * 0.78);
 
   const carryingSeed = takeSeedFromExternalStock(stock);
@@ -24,8 +30,8 @@ export function spawnPinkWallFish(arenaRadius = 1200, stock = null) {
     x: Math.cos(angle) * startR,
     y: Math.sin(angle) * startR,
 
-    targetX: Math.cos(targetAngle) * targetR,
-    targetY: Math.sin(targetAngle) * targetR,
+    targetX: Math.cos(passageAngle) * targetR,
+    targetY: Math.sin(passageAngle) * targetR,
 
     vx: 0,
     vy: 0,
@@ -47,7 +53,7 @@ export function spawnPinkWallFish(arenaRadius = 1200, stock = null) {
 }
 
 function chooseExitTarget(fish, arenaRadius) {
-  const angle = Math.atan2(fish.y, fish.x) + rand(-0.65, 0.65);
+  const angle = pickRandomPassageAngle();
 
   fish.targetX = Math.cos(angle) * (arenaRadius + rand(260, 520));
   fish.targetY = Math.sin(angle) * (arenaRadius + rand(260, 520));
