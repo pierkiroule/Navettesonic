@@ -168,6 +168,12 @@ function drawOrbitingOuterBubble(ctx, arenaRef, time) {
   ctx.fillStyle = halo;
   ctx.fill();
 
+  ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+  ctx.font = "600 42px system-ui";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("arène 2", x, y);
+
   ctx.restore();
 }
 

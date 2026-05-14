@@ -32,6 +32,7 @@ const PASSAGE_HALF_ARC = 0.12;
 
 const PASSAGE_ANGLES = [-Math.PI / 2, 0, Math.PI / 2, Math.PI];
 const OUTER_SWIM_OFFSET = 44;
+const ARENA2_ORBIT_MARGIN = 120;
 
 const EVASION_SAMPLE_URLS = [
   "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/evasion/evasion.mp3",
@@ -101,12 +102,12 @@ function isNearPassage(angle) {
 function getFishMovementRadius(targetX, targetY, arenaRadius) {
   const navRadius = getRuntimeFishNavRadius(arenaRadius);
   const targetRadius = Math.hypot(targetX || 0, targetY || 0);
+  const arena2Radius = Math.max(
+    navRadius,
+    arenaRadius + arenaRadius / 5 + ARENA2_ORBIT_MARGIN + 24
+  );
   if (targetRadius <= navRadius) return navRadius;
-
-  const targetAngle = Math.atan2(targetY || 0, targetX || 0);
-  if (!isNearPassage(targetAngle)) return navRadius;
-
-  return Math.max(navRadius, arenaRadius + 64);
+  return arena2Radius;
 }
 
 function getRuntimeFishNavRadius(arenaRadius) {

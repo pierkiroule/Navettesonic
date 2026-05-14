@@ -56,7 +56,9 @@ export function useSoonPointer({
 
   function getSafeWorldFromEvent(event, options = {}) {
     const point = getWorldFromEvent(event);
-    const navigableRadius = Math.max(0, arenaRef.current.radius - 18);
+    const arenaRadius = arenaRef.current.radius || 1200;
+    const navigableRadius = Math.max(0, arenaRadius - 18);
+    const arena2ReachRadius = arenaRadius + arenaRadius / 5 + 144;
     const viewZoom = Number.isFinite(stateRef.current?.viewZoom)
       ? stateRef.current.viewZoom
       : 0;
@@ -81,7 +83,7 @@ export function useSoonPointer({
       }
     }
 
-    return clampToCircle(point, navigableRadius);
+    return clampToCircle(point, arena2ReachRadius);
   }
 
   function registerPointer(event) {
