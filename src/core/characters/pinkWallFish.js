@@ -8,9 +8,54 @@ function rand(min, max) {
 }
 
 const PASSAGE_POLES = [-Math.PI / 2, 0, Math.PI / 2, Math.PI];
+const PASSAGE_LABELS = ["N", "E", "S", "O"];
 
-function pickRandomPassageAngle() {
-  return PASSAGE_POLES[Math.floor(Math.random() * PASSAGE_POLES.length)];
+function pickLeastCrowdedPassage(fishes, phase) {
+  const counts = { N: 0, E: 0, S: 0, O: 0 };
+
+  for (let i = 0; i < fishes.length; i += 1) {
+    const fish = fishes[i];
+    if (!fish || fish.passagePhase !== phase || !fish.passageLabel) continue;
+    if (counts[fish.passageLabel] !== undefined) counts[fish.passageLabel] += 1;
+  }
+
+  let bestLabel = PASSAGE_LABELS[0];
+  let bestCount = counts[bestLabel];
+  for (let i = 1; i < PASSAGE_LABELS.length; i += 1) {
+    const label = PASSAGE_LABELS[i];
+    if (counts[label] < bestCount) {
+      bestLabel = label;
+      bestCount = counts[label];
+    }
+  }
+
+  return bestLabel;
+}
+
+function getPassageAngle(label) {
+  if (label === "N") return -Math.PI / 2;
+  if (label === "E") return 0;
+  if (label === "S") return Math.PI / 2;
+  if (label === "O") return Math.PI;
+  return 0;
+}
+
+function setPassageTarget(fish, arenaRadius, label, phase) {
+  const angle = getPassageAngle(label);
+  const isEntering = phase === "entering";
+  const edgeRadius = arenaRadius + (isEntering ? 48 : -48);
+
+  fish.passageLabel = label;
+  fish.passagePhase = phase;
+  fish.targetX = Math.cos(angle) * edgeRadius;
+  fish.targetY = Math.sin(angle) * edgeRadius;
+}
+
+function setInteriorTarget(fish, arenaRadius) {
+  const angle = rand(0, Math.PI * 2);
+  const radius = rand(arenaRadius * 0.18, arenaRadius * 0.78);
+  fish.targetX = Math.cos(angle) * radius;
+  fish.targetY = Math.sin(angle) * radius;
 }
 
 function makeId(prefix) {
@@ -20,8 +65,8 @@ function makeId(prefix) {
 export function spawnPinkWallFish(arenaRadius = 1200, stock = null) {
   const angle = rand(0, Math.PI * 2);
   const startR = arenaRadius + rand(180, 520);
-  const passageAngle = pickRandomPassageAngle();
-  const targetR = rand(arenaRadius * 0.18, arenaRadius * 0.78);
+  const passageLabel = PASSAGE_LABELS[Math.floor(Math.random() * PASSAGE_LABELS.length)];
+  const passageAngle = getPassageAngle(passageLabel);
 
   const carryingSeed = takeSeedFromExternalStock(stock);
 
@@ -30,8 +75,8 @@ export function spawnPinkWallFish(arenaRadius = 1200, stock = null) {
     x: Math.cos(angle) * startR,
     y: Math.sin(angle) * startR,
 
-    targetX: Math.cos(passageAngle) * targetR,
-    targetY: Math.sin(passageAngle) * targetR,
+    targetX: Math.cos(passageAngle) * (arenaRadius + 48),
+    targetY: Math.sin(passageAngle) * (arenaRadius + 48),
 
     vx: 0,
     vy: 0,
@@ -49,14 +94,17 @@ export function spawnPinkWallFish(arenaRadius = 1200, stock = null) {
     willFollow: Math.random() < 0.32,
 
     life: 0,
+    passageLabel,
+    passagePhase: "entering",
+    enteredViaPassage: false,
+    exitReady: false,
   };
 }
 
-function chooseExitTarget(fish, arenaRadius) {
-  const angle = pickRandomPassageAngle();
-
-  fish.targetX = Math.cos(angle) * (arenaRadius + rand(260, 520));
-  fish.targetY = Math.sin(angle) * (arenaRadius + rand(260, 520));
+function chooseExitTarget(fish, fishes, arenaRadius) {
+  const label = pickLeastCrowdedPassage(fishes, "exiting");
+  setPassageTarget(fish, arenaRadius, label, "exiting");
+  fish.exitReady = true;
 }
 
 function steerToTarget(fish, tx, ty, dt, force = 0.024) {
@@ -107,7 +155,11 @@ export function updatePinkWallFish({
     if (fish.state === "entering") {
       const d = steerToTarget(fish, fish.targetX, fish.targetY, dt, 0.018);
 
-      if (d < 46 && !fish.deposited) {
+      if (d < 58 && !fish.enteredViaPassage) {
+        fish.enteredViaPassage = true;
+        fish.passagePhase = null;
+        setInteriorTarget(fish, arenaRadius);
+      } else if (d < 46 && fish.enteredViaPassage && !fish.deposited) {
         fish.state = "depositing";
         fish.depositStartedAt = now;
         fish.vx *= 0.35;
@@ -134,7 +186,7 @@ export function updatePinkWallFish({
           fish.followStartedAt = now;
         } else {
           fish.state = "exiting";
-          chooseExitTarget(fish, arenaRadius);
+          chooseExitTarget(fish, fishes, arenaRadius);
         }
       }
     }
@@ -144,14 +196,19 @@ export function updatePinkWallFish({
 
       if (now - fish.followStartedAt > fish.followDuration) {
         fish.state = "exiting";
-        chooseExitTarget(fish, arenaRadius);
+        chooseExitTarget(fish, fishes, arenaRadius);
       }
     }
 
     if (fish.state === "exiting") {
       const d = steerToTarget(fish, fish.targetX, fish.targetY, dt, 0.018);
 
-      if (d < 90 || fish.life > 32000) {
+      if (fish.exitReady && d < 52) {
+        const angle = getPassageAngle(fish.passageLabel);
+        fish.targetX = Math.cos(angle) * (arenaRadius + rand(260, 520));
+        fish.targetY = Math.sin(angle) * (arenaRadius + rand(260, 520));
+        fish.exitReady = false;
+      } else if (d < 90 || fish.life > 32000) {
         fishes.splice(i, 1);
         continue;
       }
