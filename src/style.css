@@ -2228,12 +2228,8 @@ button {
 
 .global-sliders {
   position: fixed;
-  left: 50%;
-  bottom: calc(74px + env(safe-area-inset-bottom));
-  transform: translateX(-50%);
+  inset: 0;
   z-index: 22;
-  width: min(72vw, 300px);
-  height: min(122px, 18vh);
   pointer-events: none;
 }
 
@@ -2257,15 +2253,15 @@ button {
 }
 
 .zoom-slider {
-  left: calc(50% - 74px);
-  top: 0;
-  transform: none;
+  left: max(6px, env(safe-area-inset-left));
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .speed-slider {
-  right: calc(50% - 74px);
-  top: 0;
-  transform: none;
+  right: max(6px, env(safe-area-inset-right));
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .slider-label {
@@ -2369,9 +2365,7 @@ button {
   }
 
   .global-sliders {
-    width: min(86vw, 280px);
-    bottom: calc(74px + env(safe-area-inset-bottom));
-    height: min(116px, 16vh);
+    inset: 0;
   }
 
   .global-slider {
@@ -2380,15 +2374,15 @@ button {
   }
 
   .zoom-slider {
-    left: calc(50% - 64px);
-    top: 0;
-    transform: none;
+    left: max(4px, env(safe-area-inset-left));
+    top: 50%;
+    transform: translateY(-50%);
   }
 
   .speed-slider {
-    right: calc(50% - 64px);
-    top: 0;
-    transform: none;
+    right: max(4px, env(safe-area-inset-right));
+    top: 50%;
+    transform: translateY(-50%);
   }
 
   .slim-vertical-range {
