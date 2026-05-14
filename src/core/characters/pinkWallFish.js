@@ -51,6 +51,13 @@ function setPassageTarget(fish, arenaRadius, label, phase) {
   fish.targetY = Math.sin(angle) * edgeRadius;
 }
 
+function setOuterLaneTarget(fish, arenaRadius, label) {
+  const angle = getPassageAngle(label);
+  const laneRadius = arenaRadius + 220;
+  fish.targetX = Math.cos(angle) * laneRadius;
+  fish.targetY = Math.sin(angle) * laneRadius;
+}
+
 function setInteriorTarget(fish, arenaRadius) {
   const angle = rand(0, Math.PI * 2);
   const radius = rand(arenaRadius * 0.18, arenaRadius * 0.78);
@@ -70,13 +77,13 @@ export function spawnPinkWallFish(arenaRadius = 1200, stock = null) {
 
   const carryingSeed = takeSeedFromExternalStock(stock);
 
-  return {
+  const fish = {
     id: makeId("pink-wall-fish"),
     x: Math.cos(angle) * startR,
     y: Math.sin(angle) * startR,
 
-    targetX: Math.cos(passageAngle) * (arenaRadius + 48),
-    targetY: Math.sin(passageAngle) * (arenaRadius + 48),
+    targetX: Math.cos(passageAngle) * (arenaRadius + 220),
+    targetY: Math.sin(passageAngle) * (arenaRadius + 220),
 
     vx: 0,
     vy: 0,
@@ -96,14 +103,19 @@ export function spawnPinkWallFish(arenaRadius = 1200, stock = null) {
     life: 0,
     passageLabel,
     passagePhase: "entering",
+    passageStep: "outer-lane",
     enteredViaPassage: false,
     exitReady: false,
   };
+
+  setOuterLaneTarget(fish, arenaRadius, passageLabel);
+  return fish;
 }
 
 function chooseExitTarget(fish, fishes, arenaRadius) {
   const label = pickLeastCrowdedPassage(fishes, "exiting");
   setPassageTarget(fish, arenaRadius, label, "exiting");
+  fish.passageStep = "inside-gate";
   fish.exitReady = true;
 }
 
@@ -155,9 +167,13 @@ export function updatePinkWallFish({
     if (fish.state === "entering") {
       const d = steerToTarget(fish, fish.targetX, fish.targetY, dt, 0.018);
 
-      if (d < 58 && !fish.enteredViaPassage) {
+      if (fish.passageStep === "outer-lane" && d < 64) {
+        fish.passageStep = "gate";
+        setPassageTarget(fish, arenaRadius, fish.passageLabel, "entering");
+      } else if (fish.passageStep === "gate" && d < 58 && !fish.enteredViaPassage) {
         fish.enteredViaPassage = true;
         fish.passagePhase = null;
+        fish.passageStep = "inside";
         setInteriorTarget(fish, arenaRadius);
       } else if (d < 46 && fish.enteredViaPassage && !fish.deposited) {
         fish.state = "depositing";
@@ -203,7 +219,11 @@ export function updatePinkWallFish({
     if (fish.state === "exiting") {
       const d = steerToTarget(fish, fish.targetX, fish.targetY, dt, 0.018);
 
-      if (fish.exitReady && d < 52) {
+      if (fish.exitReady && fish.passageStep === "inside-gate" && d < 52) {
+        fish.passageStep = "outside-gate";
+        setPassageTarget(fish, arenaRadius, fish.passageLabel, "entering");
+      } else if (fish.exitReady && fish.passageStep === "outside-gate" && d < 58) {
+        fish.passageStep = "outer-lane";
         const angle = getPassageAngle(fish.passageLabel);
         fish.targetX = Math.cos(angle) * (arenaRadius + rand(260, 520));
         fish.targetY = Math.sin(angle) * (arenaRadius + rand(260, 520));
