@@ -75,7 +75,7 @@ drawFish(ctx, current.fish, time);
   }
 
   drawCameraVignette(ctx, rect, current.fish);
-  drawHud(ctx, rect, current);
+  drawHud(ctx, rect, current, arenaRef);
 }
 
 export function drawOcean(ctx, rect, time, current) {
@@ -134,7 +134,65 @@ export function drawArenaBoundary(ctx, arenaRef, time) {
   ctx.fillStyle = halo;
   ctx.fill();
 
+  drawArenaPolesAndMarkers(ctx, radius, time);
+
   ctx.restore();
+}
+
+
+function drawArenaPolesAndMarkers(ctx, radius, time) {
+  const poles = [
+    { label: "N", angle: -Math.PI / 2 },
+    { label: "E", angle: 0 },
+    { label: "S", angle: Math.PI / 2 },
+    { label: "O", angle: Math.PI },
+  ];
+
+  const passageHalfArc = 0.055; // ~taille poisson rose sur la circonférence
+  const pulse = (Math.sin(time * 0.003) * 0.5 + 0.5) * 0.22;
+
+  poles.forEach(({ label, angle }) => {
+    const alpha = 0.48 + pulse;
+
+    ctx.beginPath();
+    ctx.arc(0, 0, radius + 2, angle - passageHalfArc, angle + passageHalfArc);
+    ctx.strokeStyle = `rgba(255, 141, 205, ${alpha})`;
+    ctx.lineWidth = 9;
+    ctx.lineCap = "round";
+    ctx.setLineDash([5, 9]);
+    ctx.lineDashOffset = -time * 0.02;
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const textRadius = radius + 46;
+    const tx = Math.cos(angle) * textRadius;
+    const ty = Math.sin(angle) * textRadius;
+
+    const glowRemaining = Math.max(0, (seedTransportState.poleGlowUntil[label] || 0) - time);
+    const glowBoost = Math.min(1, glowRemaining / 3000);
+
+    ctx.save();
+    ctx.shadowBlur = 18 + glowBoost * 36;
+    ctx.shadowColor = `rgba(255, 120, 220, ${0.78 + glowBoost * 0.22})`;
+    ctx.fillStyle = glowBoost > 0
+      ? `rgba(255, 120, 220, ${0.58 + glowBoost * 0.2})`
+      : "rgba(255, 215, 248, 0.5)";
+    ctx.font = "700 120px system-ui";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, tx, ty);
+    ctx.restore();
+  });
+}
+
+function fitText(ctx, text, maxWidth, baseSize, minSize, family, weight = 500) {
+  let size = baseSize;
+  while (size > minSize) {
+    ctx.font = `${weight} ${size}px ${family}`;
+    if (ctx.measureText(text).width <= maxWidth) return size;
+    size -= 1;
+  }
+  return minSize;
 }
 
 export function drawWorldParticles(ctx, arenaRef, time) {
@@ -440,7 +498,55 @@ export function drawCameraVignette(ctx, rect, fish) {
   ctx.restore();
 }
 
-export function drawHud(ctx, rect, current) {
+function getPolePrompt(fish, arenaRadius) {
+  if (!fish || !Number.isFinite(arenaRadius)) return null;
+
+  const navigableRadius = arenaRadius - ARENA_INNER_BOUNDARY_INSET;
+  const poleRadius = Math.max(0, navigableRadius - 8);
+  const detectRadius = 120;
+
+  const polePrompts = [
+    {
+      title: "NORD",
+      question: "Qui rencontres-tu dans l’Onde sonore ?",
+      x: 0,
+      y: -poleRadius,
+    },
+    {
+      title: "EST",
+      question: "Que vois-tu les yeux fermés dans l’Onde sonore ?",
+      x: poleRadius,
+      y: 0,
+    },
+    {
+      title: "SUD",
+      question: "Qu’est-ce qui vibre en toi dans l’Onde sonore ?",
+      x: 0,
+      y: poleRadius,
+    },
+    {
+      title: "OUEST",
+      question: "Comment écoutes-tu l’Onde sonore ?",
+      x: -poleRadius,
+      y: 0,
+    },
+  ];
+
+  let nearest = null;
+  let nearestDist = Infinity;
+  polePrompts.forEach((pole) => {
+    const dist = Math.hypot((fish.x || 0) - pole.x, (fish.y || 0) - pole.y);
+    if (dist < nearestDist) {
+      nearestDist = dist;
+      nearest = pole;
+    }
+  });
+
+  if (nearestDist > detectRadius) return null;
+  return nearest;
+}
+
+export function drawHud(ctx, rect, current, arenaRef) {
   const fishDepth = Math.round(current?.fish?.depth || 1);
   const showDepth = current.mode === "compo" || current.mode === "reso";
 
@@ -459,6 +565,59 @@ export function drawHud(ctx, rect, current) {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(`P${fishDepth}`, rect.width - 58, 33);
+  }
+
+  const arenaRadius = arenaRef?.current?.radius || 1200;
+  const polePrompt = getPolePrompt(current?.fish, arenaRadius);
+  if (polePrompt) {
+    const viewportScale = typeof window !== "undefined" && window.visualViewport?.scale
+      ? window.visualViewport.scale
+      : 1;
+    const zoomAdjust = 1 / Math.max(0.8, Math.min(2.2, viewportScale));
+    const cx = rect.width / 2;
+    const cy = rect.height / 2;
+    const panelWidth = Math.min(rect.width - 28, 760 * zoomAdjust);
+    const panelHeight = Math.min(rect.height * 0.28, 180 * zoomAdjust);
+    const panelX = cx - panelWidth / 2;
+    const panelY = cy - panelHeight / 2;
+
+    ctx.save();
+    ctx.fillStyle = "rgba(2, 6, 23, 0.5)";
+    ctx.strokeStyle = "rgba(186, 230, 253, 0.42)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(panelX, panelY, panelWidth, panelHeight, 22);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(255, 225, 248, 0.95)";
+    const titleSize = fitText(
+      ctx,
+      polePrompt.title,
+      panelWidth - 24,
+      34 * zoomAdjust,
+      18 * zoomAdjust,
+      "system-ui",
+      700
+    );
+    ctx.font = `700 ${titleSize}px system-ui`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(polePrompt.title, cx, panelY + panelHeight * 0.34);
+
+    ctx.fillStyle = "rgba(226, 232, 240, 0.96)";
+    const questionSize = fitText(
+      ctx,
+      polePrompt.question,
+      panelWidth - 30,
+      24 * zoomAdjust,
+      12 * zoomAdjust,
+      "Georgia",
+      500
+    );
+    ctx.font = `500 ${questionSize}px Georgia`;
+    ctx.fillText(polePrompt.question, cx, panelY + panelHeight * 0.68);
+    ctx.restore();
   }
 
   if (!current.eyesClosed) {
@@ -534,7 +693,27 @@ const seedTransportState = {
   lastTime: 0,
   fishes: [],
   sprouts: [],
+  poleGlowUntil: { N: 0, E: 0, S: 0, O: 0 },
 };
+
+function getPoleLabelFromAngle(angle, tolerance = 0.12) {
+  const normalized = Math.atan2(Math.sin(angle), Math.cos(angle));
+  const poles = [
+    { label: "N", angle: -Math.PI / 2 },
+    { label: "E", angle: 0 },
+    { label: "S", angle: Math.PI / 2 },
+    { label: "O", angle: Math.PI },
+  ];
+
+  for (const pole of poles) {
+    const delta = Math.atan2(
+      Math.sin(normalized - pole.angle),
+      Math.cos(normalized - pole.angle)
+    );
+    if (Math.abs(delta) <= tolerance) return pole.label;
+  }
+  return null;
+}
 
 function initSeedTransporters(radius) {
   if (seedTransportState.fishes.length) return;
@@ -562,18 +741,28 @@ export function drawPinkSeedTransporters(ctx, arenaRef, time) {
   ctx.save();
   ctx.globalCompositeOperation = "screen";
 
-  seedTransportState.fishes.forEach((fish, index) => {
+  seedTransportState.fishes.forEach((fish) => {
     fish.angle += fish.speed * dt;
 
     let currentOrbit = fish.orbit + Math.sin(time * 0.001 + fish.phase) * 10;
+    const poleLabel = getPoleLabelFromAngle(fish.angle);
+    const canCrossMembrane = Boolean(poleLabel);
     if (fish.diving) {
-      currentOrbit -= 120 + Math.sin(time * 0.0018 + fish.phase) * 60;
+      if (canCrossMembrane) {
+        currentOrbit -= 120 + Math.sin(time * 0.0018 + fish.phase) * 60;
+      }
       if (currentOrbit < radius - 8 && fish.carry && Math.random() > 0.985) {
         seedTransportState.sprouts.push({
           x: Math.cos(fish.angle) * (radius - 20),
           y: Math.sin(fish.angle) * (radius - 20),
           bornAt: time,
         });
+      }
+      if (canCrossMembrane && currentOrbit < radius - 8) {
+        seedTransportState.poleGlowUntil[poleLabel] = Math.max(
+          seedTransportState.poleGlowUntil[poleLabel],
+          time + 3000
+        );
       }
     }
 
@@ -598,17 +787,6 @@ export function drawPinkSeedTransporters(ctx, arenaRef, time) {
     ctx.closePath();
     ctx.fillStyle = "rgba(255, 176, 222, 0.52)";
     ctx.fill();
-
-    if (fish.carry) {
-      for (let k = 0; k < 3; k += 1) {
-        const sx = 9 + k * 4;
-        const sy = Math.sin(time * 0.005 + index + k) * 2.2;
-        ctx.beginPath();
-        ctx.arc(sx, sy, 1.8, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(255,255,255,0.9)";
-        ctx.fill();
-      }
-    }
 
     ctx.restore();
   });
