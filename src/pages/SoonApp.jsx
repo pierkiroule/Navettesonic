@@ -75,6 +75,8 @@ export default function SoonApp({ onBack }) {
 
   const isOdysseo = mode === "reso";
   const isEditMode = interactionMode === "edit";
+  const zoomPercent = ((viewZoom - 0) / 2) * 100;
+  const speedPercent = ((swimSpeed - 0.3) / 1.7) * 100;
 
 
   const flowStep = useMemo(() => {
@@ -410,30 +412,46 @@ export default function SoonApp({ onBack }) {
         </div>
 
         <div className="global-sliders">
-          <div className="global-slider zoom-slider">
-            <span>🔍</span>
-            <input
-              type="range"
-              min="0"
-              max="2"
-              step="0.05"
-              value={viewZoom}
-              onChange={(event) => setViewZoom(Number(event.target.value))}
-            />
-            <span>{viewZoom.toFixed(1)}</span>
+          <div className="global-slider zoom-slider" style={{ "--feather-percent": `${zoomPercent}%` }}>
+            <label className="feather-label">🔍 <strong>Zoom</strong></label>
+            <div className="feather-track-wrap">
+              <svg className="feather-shape" viewBox="0 0 80 260" aria-hidden="true">
+                <path className="feather-bg" d="M44 250 C18 205 18 152 38 104 C55 62 62 30 48 8 C78 58 78 145 55 205 C50 219 47 235 44 250" />
+                <path className="feather-fill" style={{ strokeDashoffset: 430 - (430 * zoomPercent) / 100 }} d="M44 250 C18 205 18 152 38 104 C55 62 62 30 48 8 C78 58 78 145 55 205 C50 219 47 235 44 250" />
+              </svg>
+              <input
+                className="feather-range"
+                type="range"
+                min="0"
+                max="2"
+                step="0.05"
+                value={viewZoom}
+                onChange={(event) => setViewZoom(Number(event.target.value))}
+              />
+              <div className="feather-thumb" />
+            </div>
+            <span className="feather-value">{viewZoom.toFixed(1)}</span>
           </div>
 
-          <div className="global-slider odysseo-speed-slider speed-slider">
-            <span>⚡</span>
-            <input
-              type="range"
-              min="0.3"
-              max="2"
-              step="0.05"
-              value={swimSpeed}
-              onChange={(event) => setSwimSpeed(Number(event.target.value))}
-            />
-            <span>{swimSpeed <= 0 ? "Arrêt" : `${swimSpeed.toFixed(2)}×`}</span>
+          <div className="global-slider odysseo-speed-slider speed-slider" style={{ "--feather-percent": `${speedPercent}%` }}>
+            <label className="feather-label">⚡ <strong>Vitesse</strong></label>
+            <div className="feather-track-wrap">
+              <svg className="feather-shape" viewBox="0 0 80 260" aria-hidden="true">
+                <path className="feather-bg" d="M44 250 C18 205 18 152 38 104 C55 62 62 30 48 8 C78 58 78 145 55 205 C50 219 47 235 44 250" />
+                <path className="feather-fill" style={{ strokeDashoffset: 430 - (430 * speedPercent) / 100 }} d="M44 250 C18 205 18 152 38 104 C55 62 62 30 48 8 C78 58 78 145 55 205 C50 219 47 235 44 250" />
+              </svg>
+              <input
+                className="feather-range"
+                type="range"
+                min="0.3"
+                max="2"
+                step="0.05"
+                value={swimSpeed}
+                onChange={(event) => setSwimSpeed(Number(event.target.value))}
+              />
+              <div className="feather-thumb" />
+            </div>
+            <span className="feather-value">{swimSpeed <= 0 ? "Arrêt" : `${swimSpeed.toFixed(2)}×`}</span>
           </div>
         </div>
       </div>
