@@ -210,10 +210,10 @@ export default function SoonCanvas({
         className="arena-recenter-btn"
         style={{ left: `${arenaCenterScreen.x}px`, top: `${arenaCenterScreen.y}px` }}
         onClick={onRecenterFish}
-        aria-label="Recentrer le poisson-plume"
-        title="Recentrer"
+        aria-label={eyesClosed ? "Quitter écoute à l’aveugle" : "Activer écoute à l’aveugle"}
+        title={eyesClosed ? "👁️ Mode visible" : "👂 Mode écoute à l’aveugle"}
       >
-        ⊙
+        {eyesClosed ? "👁️" : "👂"}
       </button>
       {semioseVideo?.url ? (
         <div

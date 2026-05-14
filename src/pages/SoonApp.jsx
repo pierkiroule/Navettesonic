@@ -26,6 +26,7 @@ export default function SoonApp({ onBack }) {
     selectedBeaconId,
     circuitAutopilot,
     eyesClosed,
+    toggleEyesClosed,
 
     odysseoPath,
     odysseoDepthMarkers,
@@ -158,6 +159,7 @@ export default function SoonApp({ onBack }) {
 
   const handleRecenterFish = () => {
     stopCircuitAutopilot();
+    toggleEyesClosed();
     recenterFish();
   };
 

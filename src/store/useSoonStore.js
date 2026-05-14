@@ -268,6 +268,11 @@ export const useSoonStore = create((set, get) => ({
     saveState(get());
   },
 
+  toggleEyesClosed: () => {
+    set((state) => ({ eyesClosed: !state.eyesClosed }));
+    saveState(get());
+  },
+
   startFishTrailAt: (x, y) => {
     set(() => ({
       fishTrail: startFishTrailAt(x, y),
