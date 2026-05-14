@@ -510,6 +510,9 @@ export const useSoonStore = create((set, get) => ({
       const limitedVy = speedRaw > speedLimit ? (vy / speedRaw) * speedLimit : vy;
 
       fishNavRadius = getFishMovementRadius(targetX, targetY, arenaRadius);
+      if (autoPassage) {
+        fishNavRadius = Math.max(fishNavRadius, arenaRadius + OUTER_SWIM_OFFSET + 8);
+      }
 
       const safe = clampToCircle(
         {
