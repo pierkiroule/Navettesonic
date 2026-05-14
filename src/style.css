@@ -2261,6 +2261,62 @@ button {
   accent-color: #f472b6;
 }
 
+@media (max-width: 640px) {
+  .top-nav {
+    top: max(8px, env(safe-area-inset-top));
+    left: 8px;
+    right: 8px;
+  }
+
+  .top-nav-flow {
+    width: min(62vw, 250px);
+    gap: 18px;
+    padding: 8px 12px;
+    margin-top: 6px;
+  }
+
+  .top-nav-flow button,
+  .top-nav-icon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .flow-step-tip {
+    top: 56px;
+    max-width: min(92vw, 320px);
+  }
+
+  .cockpit {
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    padding-inline: 10px;
+  }
+
+  .cockpit-buttons {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .bubble-btn.mode-toggle {
+    min-height: 46px;
+  }
+
+  .global-sliders {
+    width: min(96vw, 420px);
+  }
+
+  .global-slider {
+    min-height: 42px;
+    grid-template-columns: auto minmax(120px, 1fr) auto;
+  }
+
+  .odysseo-cockpit .mode-toggle {
+    min-width: 84px;
+    padding-inline: 10px;
+  }
+}
+
 .export-status {
   position: fixed;
   left: 50%;
