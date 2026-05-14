@@ -531,7 +531,7 @@ export const useSoonStore = create((set, get) => ({
         const currentBeacon =
           state.traceCircuit[circuitSegmentIndex % state.traceCircuit.length];
 
-        const speedStep = getCircuitSpeedValue(currentBeacon?.speed || 2);
+        const speedStep = getCircuitSpeedValue(currentBeacon?.speed || 2) * Math.max(0, swimSpeed);
 
         circuitSegmentT += speedStep;
 
@@ -579,7 +579,7 @@ export const useSoonStore = create((set, get) => ({
 
       const pullNorm = Math.min(1, pullDistance / Math.max(1, arrivalRadius));
       const baseMaxSpeed = state.fish.maxSpeed || 3.1;
-      const speedLimit = baseMaxSpeed * maxSpeedFactor;
+      const speedLimit = baseMaxSpeed * maxSpeedFactor * Math.max(0, swimSpeed);
 
       // Steering "arrive":
       // - loin: vitesse cible max
