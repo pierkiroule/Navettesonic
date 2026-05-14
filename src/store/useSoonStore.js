@@ -33,6 +33,20 @@ const PASSAGE_HALF_ARC = 0.12;
 const PASSAGE_ANGLES = [-Math.PI / 2, 0, Math.PI / 2, Math.PI];
 const OUTER_SWIM_OFFSET = 44;
 
+const EVASION_SAMPLE_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/evasion/evasion.mp3";
+let evasionAudio = null;
+let fishWasOutsideArena = false;
+
+function playEvasionSampleOnce() {
+  if (typeof window === "undefined") return;
+  if (!evasionAudio) {
+    evasionAudio = new Audio(EVASION_SAMPLE_URL);
+    evasionAudio.preload = "auto";
+  }
+  evasionAudio.currentTime = 0;
+  void evasionAudio.play().catch(() => {});
+}
+
 function normalizeAngle(angle) {
   let a = angle;
   while (a > Math.PI) a -= Math.PI * 2;
@@ -401,6 +415,11 @@ export const useSoonStore = create((set, get) => ({
 
       const navRadius = getRuntimeFishNavRadius(arenaRadius);
       const fishRadiusNow = Math.hypot(state.fish.x || 0, state.fish.y || 0);
+      const isOutsideArena = fishRadiusNow > navRadius + 1;
+      if (isOutsideArena && !fishWasOutsideArena) {
+        playEvasionSampleOnce();
+      }
+      fishWasOutsideArena = isOutsideArena;
       let autoPassage = state.fish.autoPassage || null;
 
       const targetRadiusNow = Math.hypot(targetX || 0, targetY || 0);
