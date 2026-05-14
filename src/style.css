@@ -2232,22 +2232,22 @@ button {
   bottom: calc(74px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   z-index: 22;
-  width: min(82vw, 360px);
-  height: min(150px, 22vh);
+  width: min(72vw, 300px);
+  height: min(122px, 18vh);
   pointer-events: none;
 }
 
 .global-slider {
   position: absolute;
   display: grid;
-  grid-template-rows: auto minmax(148px, 1fr) auto;
+  grid-template-rows: auto minmax(122px, 1fr) auto;
   align-items: center;
   justify-items: center;
-  gap: 6px;
-  width: 86px;
-  height: min(214px, 34vh);
-  color: rgba(226, 232, 240, 0.9);
-  font-size: 0.66rem;
+  gap: 4px;
+  width: 64px;
+  height: min(168px, 26vh);
+  color: rgba(226, 232, 240, 0.74);
+  font-size: 0.58rem;
   font-weight: 700;
   pointer-events: auto;
 }
@@ -2257,36 +2257,36 @@ button {
 }
 
 .zoom-slider {
-  left: calc(50% - 94px);
-  top: 14px;
-  transform: rotate(-18deg);
+  left: calc(50% - 74px);
+  top: 10px;
+  transform: rotate(-22deg);
 }
 
 .speed-slider {
-  right: calc(50% - 94px);
-  top: 14px;
-  transform: rotate(18deg);
+  right: calc(50% - 74px);
+  top: 10px;
+  transform: rotate(22deg);
 }
 
 .feather-label {
   display: grid;
   justify-items: center;
   gap: 1px;
-  font-size: 0.66rem;
+  font-size: 0.55rem;
   letter-spacing: 0.01em;
 }
 
 .feather-track-wrap {
   position: relative;
-  width: 80px;
-  height: 158px;
+  width: 62px;
+  height: 122px;
 }
 
 .feather-shape {
   position: absolute;
   inset: 0;
   overflow: visible;
-  filter: drop-shadow(0 0 12px rgba(125, 211, 252, 0.22));
+  filter: drop-shadow(0 0 8px rgba(125, 211, 252, 0.18));
 }
 
 .feather-bg,
@@ -2313,8 +2313,8 @@ button {
 .feather-range {
   position: absolute;
   inset: 0;
-  width: 80px;
-  height: 158px;
+  width: 62px;
+  height: 122px;
   opacity: 0;
   writing-mode: vertical-lr;
   direction: rtl;
@@ -2325,12 +2325,12 @@ button {
   position: absolute;
   left: 50%;
   bottom: var(--feather-percent, 50%);
-  width: 18px;
-  height: 18px;
+  width: 12px;
+  height: 12px;
   border-radius: 999px;
   transform: translate(-50%, 50%);
   background: rgba(240, 249, 255, 0.95);
-  box-shadow: 0 0 0 4px rgba(125, 211, 252, 0.18), 0 0 16px rgba(125, 211, 252, 0.46);
+  box-shadow: 0 0 0 2px rgba(125, 211, 252, 0.15), 0 0 10px rgba(125, 211, 252, 0.34);
   pointer-events: none;
 }
 
@@ -2340,7 +2340,7 @@ button {
 }
 
 .odysseo-speed-slider .feather-thumb {
-  box-shadow: 0 0 0 4px rgba(244, 114, 182, 0.2), 0 0 16px rgba(244, 114, 182, 0.48);
+  box-shadow: 0 0 0 2px rgba(244, 114, 182, 0.16), 0 0 10px rgba(244, 114, 182, 0.34);
 }
 
 @media (max-width: 640px) {
@@ -2385,36 +2385,36 @@ button {
   }
 
   .global-sliders {
-    width: min(92vw, 320px);
+    width: min(86vw, 280px);
     bottom: calc(74px + env(safe-area-inset-bottom));
-    height: min(136px, 19vh);
+    height: min(116px, 16vh);
   }
 
   .global-slider {
-    width: 72px;
-    height: min(194px, 30vh);
+    width: 56px;
+    height: min(154px, 22vh);
   }
 
   .zoom-slider {
-    left: calc(50% - 82px);
-    top: 14px;
-    transform: rotate(-30deg);
+    left: calc(50% - 64px);
+    top: 10px;
+    transform: rotate(-24deg);
   }
 
   .speed-slider {
-    right: calc(50% - 82px);
-    top: 14px;
-    transform: rotate(30deg);
+    right: calc(50% - 64px);
+    top: 10px;
+    transform: rotate(24deg);
   }
 
   .feather-track-wrap {
-    width: 66px;
-    height: 136px;
+    width: 54px;
+    height: 108px;
   }
 
   .feather-range {
-    width: 66px;
-    height: 136px;
+    width: 54px;
+    height: 108px;
   }
 
   .odysseo-cockpit .mode-toggle {

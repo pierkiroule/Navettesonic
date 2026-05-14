@@ -416,8 +416,8 @@ export default function SoonApp({ onBack }) {
             <label className="feather-label">🔍 <strong>Zoom</strong></label>
             <div className="feather-track-wrap">
               <svg className="feather-shape" viewBox="0 0 80 260" aria-hidden="true">
-                <path className="feather-bg" d="M44 250 C18 205 18 152 38 104 C55 62 62 30 48 8 C78 58 78 145 55 205 C50 219 47 235 44 250" />
-                <path className="feather-fill" style={{ strokeDashoffset: 430 - (430 * zoomPercent) / 100 }} d="M44 250 C18 205 18 152 38 104 C55 62 62 30 48 8 C78 58 78 145 55 205 C50 219 47 235 44 250" />
+                <path className="feather-bg" d="M41 248 C24 228 18 198 24 171 C30 142 49 124 59 98 C68 75 63 48 46 26 C70 46 76 78 72 112 C68 146 49 166 43 196 C39 214 39 230 41 248" />
+                <path className="feather-fill" style={{ strokeDashoffset: 430 - (430 * zoomPercent) / 100 }} d="M41 248 C24 228 18 198 24 171 C30 142 49 124 59 98 C68 75 63 48 46 26 C70 46 76 78 72 112 C68 146 49 166 43 196 C39 214 39 230 41 248" />
               </svg>
               <input
                 className="feather-range"
@@ -437,8 +437,8 @@ export default function SoonApp({ onBack }) {
             <label className="feather-label">⚡ <strong>Vitesse</strong></label>
             <div className="feather-track-wrap">
               <svg className="feather-shape" viewBox="0 0 80 260" aria-hidden="true">
-                <path className="feather-bg" d="M44 250 C18 205 18 152 38 104 C55 62 62 30 48 8 C78 58 78 145 55 205 C50 219 47 235 44 250" />
-                <path className="feather-fill" style={{ strokeDashoffset: 430 - (430 * speedPercent) / 100 }} d="M44 250 C18 205 18 152 38 104 C55 62 62 30 48 8 C78 58 78 145 55 205 C50 219 47 235 44 250" />
+                <path className="feather-bg" d="M41 248 C24 228 18 198 24 171 C30 142 49 124 59 98 C68 75 63 48 46 26 C70 46 76 78 72 112 C68 146 49 166 43 196 C39 214 39 230 41 248" />
+                <path className="feather-fill" style={{ strokeDashoffset: 430 - (430 * speedPercent) / 100 }} d="M41 248 C24 228 18 198 24 171 C30 142 49 124 59 98 C68 75 63 48 46 26 C70 46 76 78 72 112 C68 146 49 166 43 196 C39 214 39 230 41 248" />
               </svg>
               <input
                 className="feather-range"
