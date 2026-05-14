@@ -40,6 +40,20 @@ function normalizeAngle(angle) {
   return a;
 }
 
+
+function shortestAngleDelta(from, to) {
+  return normalizeAngle(to - from);
+}
+
+function lerp(start, end, t) {
+  return start + (end - start) * t;
+}
+
+function getPassagePoint(index, radius) {
+  const angle = PASSAGE_ANGLES[((index % PASSAGE_ANGLES.length) + PASSAGE_ANGLES.length) % PASSAGE_ANGLES.length];
+  return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius, angle };
+}
+
 function getNearestPassageIndex(angle) {
   let bestIndex = 0;
   let bestAbs = Infinity;
@@ -321,7 +335,7 @@ export const useSoonStore = create((set, get) => ({
   setFishTarget: (x, y, arenaRadius = DEFAULT_ARENA_RADIUS) => {
     const state = get();
 
-    if (state.circuitAutopilot) return;
+    if (state.circuitAutopilot || state.fish?.autoPassage) return;
 
     const movementRadius = getFishMovementRadius(x, y, arenaRadius);
     const safe = clampToCircle({ x, y }, movementRadius);
@@ -400,7 +414,7 @@ export const useSoonStore = create((set, get) => ({
           : Math.atan2(state.fish.y || 0, state.fish.x || 0);
         const exitIndex = getNearestPassageIndex(sourceAngle);
         autoPassage = {
-          phase: "orbit",
+          phase: "exit",
           exitIndex,
           nextIndex: (exitIndex + 1) % PASSAGE_ANGLES.length,
           orbitAngle: PASSAGE_ANGLES[exitIndex],
@@ -408,39 +422,61 @@ export const useSoonStore = create((set, get) => ({
       }
 
       if (autoPassage) {
-        const orbitRadius = arenaRadius + OUTER_SWIM_OFFSET;
-        const nextAngle = PASSAGE_ANGLES[autoPassage.nextIndex];
+        const externalRadius = arenaRadius + OUTER_SWIM_OFFSET;
+        const internalRadius = navRadius;
+        const dt = Math.max(0.008, Math.min(0.04, swimSpeed * 0.012));
+
+        if (autoPassage.phase === "exit") {
+          const from = getPassagePoint(autoPassage.exitIndex, internalRadius);
+          const to = getPassagePoint(autoPassage.exitIndex, externalRadius);
+          const t = Math.min(1, (autoPassage.progress || 0) + dt * 1.4);
+          const nx = lerp(from.x, to.x, t);
+          const ny = lerp(from.y, to.y, t);
+          const heading = getPassagePoint(autoPassage.exitIndex, externalRadius).angle;
+          const nextAuto = t >= 1 ? { ...autoPassage, phase: "orbit", progress: 0, orbitAngle: heading } : { ...autoPassage, progress: t };
+
+          return {
+            circuitAutopilot,
+            circuitSegmentIndex,
+            circuitSegmentT,
+            fish: { ...state.fish, x: nx, y: ny, targetX: nx, targetY: ny, vx: 0, vy: 0, angle: heading, autoPassage: nextAuto },
+          };
+        }
 
         if (autoPassage.phase === "orbit") {
-          const angleStep = 0.032;
-          const currentOrbitAngle = Number.isFinite(autoPassage.orbitAngle)
-            ? autoPassage.orbitAngle
-            : Math.atan2(state.fish.y || 0, state.fish.x || 0);
-          let remaining = normalizeAngle(nextAngle - currentOrbitAngle);
-          if (remaining < 0) remaining += Math.PI * 2;
-          const traveled = Math.min(angleStep, remaining);
-          const nextOrbitAngle = normalizeAngle(currentOrbitAngle + traveled);
-          const leadAngle = normalizeAngle(nextOrbitAngle + 0.08);
+          const nextPassage = getPassagePoint(autoPassage.nextIndex, externalRadius);
+          const currentAngle = Number.isFinite(autoPassage.orbitAngle) ? autoPassage.orbitAngle : Math.atan2(state.fish.y || 0, state.fish.x || 0);
+          const delta = shortestAngleDelta(currentAngle, nextPassage.angle);
+          const normalizedDelta = delta < 0 ? delta + Math.PI * 2 : delta;
+          const step = Math.min(normalizedDelta, dt);
+          const orbitAngle = normalizeAngle(currentAngle + step);
+          const nx = Math.cos(orbitAngle) * externalRadius;
+          const ny = Math.sin(orbitAngle) * externalRadius;
+          const nextAuto = normalizedDelta <= dt + 0.001
+            ? { ...autoPassage, phase: "reenter", progress: 0, orbitAngle }
+            : { ...autoPassage, orbitAngle };
 
-          targetX = Math.cos(leadAngle) * orbitRadius;
-          targetY = Math.sin(leadAngle) * orbitRadius;
-
-          autoPassage = {
-            ...autoPassage,
-            orbitAngle: nextOrbitAngle,
-            phase: remaining <= angleStep + 0.002 ? "reenter" : "orbit",
+          return {
+            circuitAutopilot,
+            circuitSegmentIndex,
+            circuitSegmentT,
+            fish: { ...state.fish, x: nx, y: ny, targetX: nx, targetY: ny, vx: 0, vy: 0, angle: orbitAngle + Math.PI * 0.5, autoPassage: nextAuto },
           };
-        } else {
-          const reenterTarget = {
-            x: Math.cos(nextAngle) * navRadius,
-            y: Math.sin(nextAngle) * navRadius,
-          };
-          targetX = reenterTarget.x;
-          targetY = reenterTarget.y;
-          if (Math.hypot((state.fish.x || 0) - reenterTarget.x, (state.fish.y || 0) - reenterTarget.y) < 32) {
-            autoPassage = null;
-          }
         }
+
+        const from = getPassagePoint(autoPassage.nextIndex, externalRadius);
+        const to = getPassagePoint(autoPassage.nextIndex, internalRadius);
+        const t = Math.min(1, (autoPassage.progress || 0) + dt * 1.5);
+        const nx = lerp(from.x, to.x, t);
+        const ny = lerp(from.y, to.y, t);
+        const nextAuto = t >= 1 ? null : { ...autoPassage, progress: t };
+
+        return {
+          circuitAutopilot,
+          circuitSegmentIndex,
+          circuitSegmentT,
+          fish: { ...state.fish, x: nx, y: ny, targetX: to.x, targetY: to.y, vx: 0, vy: 0, angle: from.angle, autoPassage: nextAuto },
+        };
       }
 
       if (circuitAutopilot && state.traceCircuit?.length > 1) {
