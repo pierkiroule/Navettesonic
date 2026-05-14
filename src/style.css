@@ -1883,10 +1883,10 @@ button {
   justify-content: center;
   gap: 26px;
   margin-top: 10px;
-  padding: 7px 14px;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  border: none;
   pointer-events: auto;
 }
 
