@@ -33,18 +33,26 @@ const PASSAGE_HALF_ARC = 0.12;
 const PASSAGE_ANGLES = [-Math.PI / 2, 0, Math.PI / 2, Math.PI];
 const OUTER_SWIM_OFFSET = 44;
 
-const EVASION_SAMPLE_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/evasion/evasion.mp3";
-let evasionAudio = null;
+const EVASION_SAMPLE_URLS = [
+  "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/evasion/evasion.mp3",
+  "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/evasion/Poisson-Plume.mp3",
+];
+const evasionAudios = new Map();
 let fishWasOutsideArena = false;
 
 function playEvasionSampleOnce() {
   if (typeof window === "undefined") return;
-  if (!evasionAudio) {
-    evasionAudio = new Audio(EVASION_SAMPLE_URL);
-    evasionAudio.preload = "auto";
+  const randomIndex = Math.floor(Math.random() * EVASION_SAMPLE_URLS.length);
+  const sampleUrl = EVASION_SAMPLE_URLS[randomIndex];
+  if (!sampleUrl) return;
+  let audio = evasionAudios.get(sampleUrl);
+  if (!audio) {
+    audio = new Audio(sampleUrl);
+    audio.preload = "auto";
+    evasionAudios.set(sampleUrl, audio);
   }
-  evasionAudio.currentTime = 0;
-  void evasionAudio.play().catch(() => {});
+  audio.currentTime = 0;
+  void audio.play().catch(() => {});
 }
 
 function normalizeAngle(angle) {
