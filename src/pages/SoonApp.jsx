@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import SidePanel from "../components/SidePanel.jsx";
 import SoonCanvas from "../components/SoonCanvas.jsx";
+import WorkflowShell from "../components/WorkflowShell.jsx";
 import Profile from "./Profile.jsx";
 import { useSoonStore } from "../store/useSoonStore.js";
 import { renderImmersiveJourney } from "../core/immersiveExporter.js";
+import {
+  parseWorkflowFromHash,
+  persistWorkflowRoot,
+  readPersistedWorkflowRoot,
+  serializeWorkflowHash,
+} from "../core/workflowShellState.js";
 
 const NOMBRILO_ONE_SHOT_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/nombrilo/nombrilo.mp3";
 
@@ -97,6 +104,42 @@ export default function SoonApp({ onBack }) {
   const [stepTipVisible, setStepTipVisible] = useState(false);
 
   useEffect(() => {
+    const fromHash = parseWorkflowFromHash(window.location.hash);
+    const persistedRoot = readPersistedWorkflowRoot();
+
+    if (fromHash?.root === "navigo") {
+      setMode("reso");
+      setOdysseoMode(fromHash.odysseoMode || "trace");
+      return;
+    }
+
+    if (persistedRoot === "navigo") {
+      setMode("reso");
+      setOdysseoMode("trace");
+    }
+  }, [setMode]);
+
+  useEffect(() => {
+    const root = mode === "compo" ? "compo" : "navigo";
+    persistWorkflowRoot(root);
+    window.history.replaceState(null, "", serializeWorkflowHash(root, odysseoMode));
+  }, [mode, odysseoMode]);
+
+  const setWorkflowRoot = (root) => {
+    stopCircuitAutopilot();
+    setInteractionMode("swim");
+    setIsTravelPlaying(false);
+
+    if (root === "navigo") {
+      setMode("reso");
+      setOdysseoMode((current) => current || "trace");
+      return;
+    }
+
+    setMode("compo");
+  };
+
+  useEffect(() => {
     setStepTipVisible(true);
     const timeoutId = setTimeout(() => {
       setStepTipVisible(false);
@@ -105,12 +148,6 @@ export default function SoonApp({ onBack }) {
     return () => clearTimeout(timeoutId);
   }, [flowStep.key]);
 
-  useEffect(() => {
-    setMode("compo");
-    stopCircuitAutopilot();
-    setOdysseoMode("trace");
-    setInteractionMode("swim");
-  }, []);
 
   const toggleInteractionMode = () => {
     setInteractionMode((current) => {
@@ -196,57 +233,33 @@ export default function SoonApp({ onBack }) {
           <span>{flowStep.tip}</span>
         </div>
 
-        <div className="top-nav-flow" role="group" aria-label="Flow principal">
-          <span className="flow-progress-segment" aria-hidden="true" />
-
-          <button
-            type="button"
-            onClick={() => {
-              setMode("compo");
-              stopCircuitAutopilot();
-              setInteractionMode("swim");
-            }}
-            className={mode === "compo" ? "active" : ""}
-
-            aria-label="Composer"
-            title="Composer"
-          >
-            🎨
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              if (mode !== "reso") setMode("reso");
-              stopCircuitAutopilot();
-              setOdysseoMode("trace");
-              setInteractionMode("swim");
-              setIsTravelPlaying(false);
-            }}
-            className={isOdysseoTrace ? "active" : ""}
-
-            aria-label="Tracer"
-            title="Tracer"
-          >
-            🪶
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              if (mode !== "reso") setMode("reso");
-              stopCircuitAutopilot();
-              setOdysseoMode("travel");
-              setInteractionMode("swim");
-              setIsTravelPlaying(false);
-            }}
-            className={isOdysseoTravel ? "active" : ""}
-
-            aria-label="Traverser"
-            title="Traverser"
-          >
-            🧭
-          </button>
+        <div className="top-nav-flow">
+          <WorkflowShell
+            activeRoot={mode === "compo" ? "compo" : "navigo"}
+            onChangeRoot={setWorkflowRoot}
+          />
+          {mode !== "compo" && (
+            <div className="navigo-substeps" role="group" aria-label="Étapes Navigo">
+              <button
+                type="button"
+                onClick={() => setOdysseoMode("trace")}
+                className={isOdysseoTrace ? "active" : ""}
+                aria-label="Tracer"
+                title="Tracer"
+              >
+                🪶
+              </button>
+              <button
+                type="button"
+                onClick={() => setOdysseoMode("travel")}
+                className={isOdysseoTravel ? "active" : ""}
+                aria-label="Traverser"
+                title="Traverser"
+              >
+                🧭
+              </button>
+            </div>
+          )}
         </div>
 
         <button
