@@ -2390,63 +2390,23 @@ button {
   gap: 8px;
 }
 
-.radial-demo {
-  margin-top: 16px;
-}
-
-.radial-menu,
-.radial-menu-fallback {
+.fish-radial-menu {
   position: fixed;
-  z-index: 60;
-}
-
-.radial-menu {
-  width: 0;
-  height: 0;
-}
-
-.radial-menu-item,
-.radial-menu-center,
-.radial-menu-fallback-item {
-  border-radius: 999px;
-  border: 1px solid rgba(125, 211, 252, 0.35);
-  background: rgba(8, 47, 73, 0.95);
-  color: #f8fafc;
-}
-
-.radial-menu-item {
-  position: absolute;
-  min-width: 84px;
-  min-height: 48px;
-  padding: 10px 14px;
-  touch-action: manipulation;
-}
-
-.radial-menu-item.is-active {
-  outline: 2px solid rgba(103, 232, 249, 0.9);
-}
-
-.radial-menu-center {
-  position: absolute;
-  width: 44px;
-  height: 44px;
-  transform: translate(-22px, -22px);
-}
-
-.radial-menu-fallback {
-  list-style: none;
-  margin: 0;
-  padding: 8px;
+  transform: translate(-50%, -50%);
   display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
   gap: 8px;
-  background: rgba(2, 6, 23, 0.95);
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  border-radius: 12px;
+  padding: 10px;
+  background: rgba(2, 6, 23, 0.86);
+  border: 1px solid rgba(125, 211, 252, 0.4);
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
+  z-index: 40;
 }
-
-.radial-menu-fallback-item {
-  width: 100%;
-  min-width: 160px;
-  padding: 10px 14px;
-  text-align: left;
+.fish-radial-menu button {
+  border: 1px solid rgba(125, 211, 252, 0.35);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.9);
+  color: #e2e8f0;
+  padding: 8px 10px;
 }

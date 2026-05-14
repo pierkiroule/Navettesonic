@@ -41,14 +41,17 @@ export function drawScene(ctx, rect, time, refs) {
       );
     }
 
-    drawBubbles(
-      ctx,
-      current.bubbles,
-      current.selectedBubbleId,
-      current.mode,
-      time,
-      current.interactionMode
-    );
+    if (current.bubblesEnabled !== false) {
+      drawBubbles(
+        ctx,
+        current.bubbles,
+        current.selectedBubbleId,
+        current.mode,
+        time,
+        current.interactionMode,
+        current.bubblesIntensity
+      );
+    }
 
     drawPlacedTriangles(ctx, time);
     drawFireflies(ctx, time);
@@ -221,7 +224,7 @@ export function drawWorldParticles(ctx, arenaRef, time) {
 }
 
 
-export function drawBubbles(ctx, bubbles = [], selectedBubbleId, mode, time, interactionMode) {
+export function drawBubbles(ctx, bubbles = [], selectedBubbleId, mode, time, interactionMode, intensity = 1) {
   ctx.save();
 
   bubbles.forEach((bubble) => {
@@ -229,7 +232,8 @@ export function drawBubbles(ctx, bubbles = [], selectedBubbleId, mode, time, int
     const pulse = Math.sin(time * 0.003 + bubble.x * 0.01) * 5;
     const depth = Math.round(bubble.depth || 1);
     const radius = getBubbleVisualRadius(bubble);
-    const alpha = depth === 1 ? 0.58 : depth === 2 ? 0.46 : 0.32;
+    const alphaBase = depth === 1 ? 0.58 : depth === 2 ? 0.46 : 0.32;
+    const alpha = alphaBase * Math.max(0.2, Math.min(2, intensity));
 
     const glow = ctx.createRadialGradient(
       bubble.x,

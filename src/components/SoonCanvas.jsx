@@ -34,10 +34,16 @@ export default function SoonCanvas({
   onOpenBubbleEditor,
   onOpenBeaconEditor,
   onRecenterFish,
+  bubblesEnabled = true,
+  bubblesIntensity = 1,
+  onToggleBubbles,
+  onSetBubblesIntensity,
+  onResetFishContext,
 }) {
   const canvasRef = useRef(null);
   const [semioseVideo, setSemioseVideo] = useState(null);
   const [arenaCenterScreen, setArenaCenterScreen] = useState({ x: 0, y: 0 });
+  const [fishMenu, setFishMenu] = useState(null);
 
   const cameraRef = useRef({
     x: 0,
@@ -89,6 +95,8 @@ export default function SoonCanvas({
     viewZoom,
     visualLight,
     depth,
+    bubblesEnabled,
+    bubblesIntensity,
   });
 
   useEffect(() => {
@@ -109,6 +117,8 @@ export default function SoonCanvas({
       viewZoom,
       visualLight,
       depth,
+      bubblesEnabled,
+      bubblesIntensity,
     };
   }, [
     mode,
@@ -127,6 +137,8 @@ export default function SoonCanvas({
     viewZoom,
     visualLight,
     depth,
+    bubblesEnabled,
+    bubblesIntensity,
   ]);
 
   useSoonCanvasLoop({
@@ -162,6 +174,7 @@ export default function SoonCanvas({
     onSetFishDepth,
     onCycleBubbleDepth,
     onOpenBubbleEditor,
+    onOpenFishContextMenu: setFishMenu,
     onOpenBeaconEditor,
   });
 
@@ -229,6 +242,14 @@ export default function SoonCanvas({
             loop
             playsInline
           />
+        </div>
+      ) : null}
+      {fishMenu && interactionMode === "swim" ? (
+        <div className="fish-radial-menu" style={{ left: fishMenu.screen.x, top: fishMenu.screen.y }}>
+          <button type="button" onClick={() => { onSetFishDepth?.(((Math.round(fish?.depth || 1) % 3) + 1)); setFishMenu(null); }}>Profondeur</button>
+          <button type="button" onClick={() => { onToggleBubbles?.(); setFishMenu(null); }}>Bulles {bubblesEnabled ? "ON" : "OFF"}</button>
+          <button type="button" onClick={() => { onSetBubblesIntensity?.(Math.min(2, (bubblesIntensity || 1) + 0.25)); setFishMenu(null); }}>Intensité bulles</button>
+          <button type="button" onClick={() => { onResetFishContext?.(); setFishMenu(null); }}>Reset</button>
         </div>
       ) : null}
     </div>
