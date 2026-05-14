@@ -2305,12 +2305,55 @@ button {
 }
 
 .global-slider input {
+  -webkit-appearance: none;
+  appearance: none;
   writing-mode: vertical-lr;
   direction: rtl;
   width: 10px;
   height: min(72px, 12vh);
   margin: 1px 0;
-  opacity: 0.72;
+  opacity: 0.86;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.global-slider input::-webkit-slider-runnable-track {
+  width: 6px;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(125, 211, 252, 0.42), rgba(125, 211, 252, 0.12));
+  border: 1px solid rgba(186, 230, 253, 0.24);
+}
+
+.global-slider input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -4px;
+  border-radius: 999px;
+  border: 1px solid rgba(186, 230, 253, 0.58);
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.95), rgba(125, 211, 252, 0.82));
+  box-shadow: 0 0 0 3px rgba(14, 116, 144, 0.18), 0 4px 10px rgba(2, 6, 23, 0.35);
+}
+
+.global-slider input::-moz-range-track {
+  width: 6px;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(125, 211, 252, 0.42), rgba(125, 211, 252, 0.12));
+  border: 1px solid rgba(186, 230, 253, 0.24);
+}
+
+.global-slider input::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(186, 230, 253, 0.58);
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.95), rgba(125, 211, 252, 0.82));
+  box-shadow: 0 0 0 3px rgba(14, 116, 144, 0.18), 0 4px 10px rgba(2, 6, 23, 0.35);
 }
 
 .odysseo-speed-slider {
@@ -2320,6 +2363,18 @@ button {
 
 .odysseo-speed-slider input {
   accent-color: #f472b6;
+}
+
+.odysseo-speed-slider input::-webkit-slider-runnable-track {
+  background: linear-gradient(180deg, rgba(244, 114, 182, 0.46), rgba(244, 114, 182, 0.13));
+  border-color: rgba(251, 113, 133, 0.3);
+}
+
+.odysseo-speed-slider input::-webkit-slider-thumb,
+.odysseo-speed-slider input::-moz-range-thumb {
+  border-color: rgba(251, 113, 133, 0.62);
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.94), rgba(244, 114, 182, 0.84));
+  box-shadow: 0 0 0 3px rgba(157, 23, 77, 0.18), 0 4px 10px rgba(2, 6, 23, 0.35);
 }
 
 @media (max-width: 640px) {
