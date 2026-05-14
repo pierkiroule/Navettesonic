@@ -28,11 +28,13 @@ export function useSoonPointer({
   onAddOdysseoDepthMarker,
   onSetFishDepth,
   onOpenBubbleEditor,
+  onOpenFishContextMenu,
   onDepthToast,
 }) {
   const MOVE_CANCEL = 12;
   const DOUBLE_TAP_MS = 420;
   const DOUBLE_TAP_DIST = 72;
+  const LONG_PRESS_MS = 480;
 
   function getWorldFromEvent(event) {
     const canvas = canvasRef.current;
@@ -133,6 +135,24 @@ export function useSoonPointer({
     onDepthToast?.(nextDepth);
   }
 
+  function clearLongPressTimer() {
+    if (pointerRef.current.longPressTimer) {
+      clearTimeout(pointerRef.current.longPressTimer);
+      pointerRef.current.longPressTimer = null;
+    }
+  }
+
+  function armLongPress(event, point, current) {
+    clearLongPressTimer();
+    pointerRef.current.longPressStartPoint = point;
+    pointerRef.current.longPressTimer = setTimeout(() => {
+      const latest = stateRef.current || current;
+      if (latest.interactionMode !== "swim") return;
+      onOpenFishContextMenu?.({ screen: { x: event.clientX, y: event.clientY }, world: point });
+      pointerRef.current.longPressTimer = null;
+    }, LONG_PRESS_MS);
+  }
+
   function handleSwimPointerDown(event, point, current) {
     const doubleTap = isDoubleTapScreen(event, "swim");
 
@@ -226,6 +246,7 @@ export function useSoonPointer({
     pointerRef.current.panStart = null;
     pointerRef.current.pinchDistance = null;
     pointerRef.current.startPoint = point;
+    armLongPress(event, point, current);
 
     if (isCircuitMode) {
       handleCircuitPointerDown(event, point, current);
@@ -295,6 +316,7 @@ export function useSoonPointer({
     const start = pointerRef.current.startPoint;
     const moved =
       start && Math.hypot(start.x - point.x, start.y - point.y) > MOVE_CANCEL;
+    if (moved) clearLongPressTimer();
 
     if ((isEditMode || isCircuitMode) && pointerRef.current.dragBeaconId) {
       onMoveBeacon?.(pointerRef.current.dragBeaconId, point.x, point.y);
@@ -348,6 +370,7 @@ export function useSoonPointer({
   }
 
   function handlePointerUp(event) {
+    clearLongPressTimer();
     pointerRef.current.activePointers?.delete(event.pointerId);
 
     const stillActive = (pointerRef.current.activePointers?.size || 0) > 0;
@@ -370,6 +393,7 @@ export function useSoonPointer({
   }
 
   function cleanupPointer() {
+    clearLongPressTimer();
     pointerRef.current.activePointers?.clear();
   }
 

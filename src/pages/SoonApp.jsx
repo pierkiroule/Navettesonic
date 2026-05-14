@@ -26,6 +26,8 @@ export default function SoonApp({ onBack }) {
   const [selectedDepth, setSelectedDepth] = useState(1);
   const [exportStatus, setExportStatus] = useState("");
   const [exportUrl, setExportUrl] = useState(null);
+  const [bubblesEnabled, setBubblesEnabled] = useState(true);
+  const [bubblesIntensity, setBubblesIntensity] = useState(1);
   const nombriloAudioRef = useRef(null);
 
   const {
@@ -296,6 +298,11 @@ export default function SoonApp({ onBack }) {
         onOpenBubbleEditor={openBubbleEditor}
         onRecenterFish={handleRecenterFish}
         onCycleBubbleDepth={cycleBubbleDepth}
+        bubblesEnabled={bubblesEnabled}
+        bubblesIntensity={bubblesIntensity}
+        onToggleBubbles={() => setBubblesEnabled((v) => !v)}
+        onSetBubblesIntensity={setBubblesIntensity}
+        onResetFishContext={() => { setBubblesEnabled(true); setBubblesIntensity(1); recenterFish(); }}
       />
 
       <div className={`cockpit ${isOdysseo ? "odysseo-cockpit" : ""}`}>

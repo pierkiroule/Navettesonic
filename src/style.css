@@ -2389,3 +2389,24 @@ button {
   display: flex;
   gap: 8px;
 }
+
+.fish-radial-menu {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 8px;
+  padding: 10px;
+  background: rgba(2, 6, 23, 0.86);
+  border: 1px solid rgba(125, 211, 252, 0.4);
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
+  z-index: 40;
+}
+.fish-radial-menu button {
+  border: 1px solid rgba(125, 211, 252, 0.35);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.9);
+  color: #e2e8f0;
+  padding: 8px 10px;
+}
