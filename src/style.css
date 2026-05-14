@@ -2229,65 +2229,88 @@ button {
 .global-sliders {
   position: fixed;
   left: 50%;
-  bottom: calc(82px + env(safe-area-inset-bottom));
+  bottom: calc(74px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   z-index: 22;
-  width: min(92vw, 420px);
-  height: min(175px, 26vh);
+  width: min(82vw, 360px);
+  height: min(150px, 22vh);
   pointer-events: none;
 }
 
 .global-slider {
   position: absolute;
   display: grid;
-  grid-template-rows: auto minmax(90px, 1fr) auto;
+  grid-template-rows: auto minmax(72px, 1fr) auto;
   align-items: center;
   justify-items: center;
-  gap: 6px;
-  width: 42px;
-  height: min(136px, 23vh);
-  padding: 8px 7px;
+  gap: 4px;
+  width: 34px;
+  height: min(116px, 19vh);
+  padding: 7px 5px;
   border-radius: 999px;
-  background: linear-gradient(160deg, rgba(15, 23, 42, 0.3), rgba(15, 23, 42, 0.08));
-  border: 1px solid rgba(125, 211, 252, 0.14);
-  color: rgba(226, 232, 240, 0.84);
-  font-size: 0.7rem;
+  background: linear-gradient(170deg, rgba(15, 23, 42, 0.26), rgba(15, 23, 42, 0.04));
+  border: 1px solid rgba(125, 211, 252, 0.11);
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 0.62rem;
   font-weight: 700;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(7px);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 10px 24px rgba(2, 6, 23, 0.2);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 8px 18px rgba(2, 6, 23, 0.18);
   pointer-events: auto;
 }
 
 .global-slider::before {
   content: "";
   position: absolute;
-  inset: 5px;
+  inset: 4px;
   border-radius: 999px;
-  border: 1px solid rgba(226, 232, 240, 0.08);
+  border: 1px solid rgba(226, 232, 240, 0.07);
+  pointer-events: none;
+}
+
+.global-slider::after {
+  content: "";
+  position: absolute;
+  top: calc(100% - 4px);
+  width: 24px;
+  height: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-top: none;
+  border-radius: 0 0 18px 18px;
+  opacity: 0.68;
   pointer-events: none;
 }
 
 .zoom-slider {
-  left: calc(50% - 122px);
-  top: 8px;
-  transform: rotate(-26deg);
+  left: calc(50% - 94px);
+  top: 14px;
+  transform: rotate(-33deg);
+}
+
+.zoom-slider::after {
+  right: 4px;
+  transform: rotate(-18deg);
 }
 
 .speed-slider {
-  right: calc(50% - 122px);
-  top: 8px;
-  transform: rotate(26deg);
+  right: calc(50% - 94px);
+  top: 14px;
+  transform: rotate(33deg);
+}
+
+.speed-slider::after {
+  left: 4px;
+  transform: rotate(18deg);
 }
 
 .global-slider input {
   writing-mode: vertical-lr;
   direction: rtl;
-  width: 12px;
-  height: min(88px, 16vh);
-  margin: 2px 0;
-  opacity: 0.78;
+  width: 10px;
+  height: min(72px, 12vh);
+  margin: 1px 0;
+  opacity: 0.72;
 }
 
 .odysseo-speed-slider {
@@ -2341,31 +2364,31 @@ button {
   }
 
   .global-sliders {
-    width: min(96vw, 360px);
-    bottom: calc(78px + env(safe-area-inset-bottom));
-    height: min(160px, 23vh);
+    width: min(92vw, 320px);
+    bottom: calc(74px + env(safe-area-inset-bottom));
+    height: min(136px, 19vh);
   }
 
   .global-slider {
-    height: min(118px, 20vh);
-    width: 38px;
-    padding: 7px 5px;
+    height: min(106px, 16.5vh);
+    width: 31px;
+    padding: 6px 4px;
   }
 
   .zoom-slider {
-    left: calc(50% - 104px);
-    top: 10px;
-    transform: rotate(-22deg);
+    left: calc(50% - 82px);
+    top: 14px;
+    transform: rotate(-30deg);
   }
 
   .speed-slider {
-    right: calc(50% - 104px);
-    top: 10px;
-    transform: rotate(22deg);
+    right: calc(50% - 82px);
+    top: 14px;
+    transform: rotate(30deg);
   }
 
   .global-slider input {
-    height: min(74px, 14vh);
+    height: min(62px, 10vh);
   }
 
   .odysseo-cockpit .mode-toggle {
