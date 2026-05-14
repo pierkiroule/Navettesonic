@@ -175,9 +175,9 @@ function drawArenaPolesAndMarkers(ctx, radius, time) {
     ctx.shadowBlur = 18 + glowBoost * 36;
     ctx.shadowColor = `rgba(255, 120, 220, ${0.78 + glowBoost * 0.22})`;
     ctx.fillStyle = glowBoost > 0
-      ? `rgba(255, 120, 220, ${0.82 + glowBoost * 0.18})`
-      : "rgba(255, 215, 248, 0.7)";
-    ctx.font = "700 240px system-ui";
+      ? `rgba(255, 120, 220, ${0.58 + glowBoost * 0.2})`
+      : "rgba(255, 215, 248, 0.5)";
+    ctx.font = "700 120px system-ui";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(label, tx, ty);
@@ -570,10 +570,14 @@ export function drawHud(ctx, rect, current, arenaRef) {
   const arenaRadius = arenaRef?.current?.radius || 1200;
   const polePrompt = getPolePrompt(current?.fish, arenaRadius);
   if (polePrompt) {
+    const viewportScale = typeof window !== "undefined" && window.visualViewport?.scale
+      ? window.visualViewport.scale
+      : 1;
+    const zoomAdjust = 1 / Math.max(0.8, Math.min(2.2, viewportScale));
     const cx = rect.width / 2;
     const cy = rect.height / 2;
-    const panelWidth = Math.min(rect.width - 36, 980);
-    const panelHeight = Math.min(rect.height * 0.34, 260);
+    const panelWidth = Math.min(rect.width - 28, 760 * zoomAdjust);
+    const panelHeight = Math.min(rect.height * 0.28, 180 * zoomAdjust);
     const panelX = cx - panelWidth / 2;
     const panelY = cy - panelHeight / 2;
 
@@ -587,14 +591,30 @@ export function drawHud(ctx, rect, current, arenaRef) {
     ctx.stroke();
 
     ctx.fillStyle = "rgba(255, 225, 248, 0.95)";
-    const titleSize = fitText(ctx, polePrompt.title, panelWidth - 32, 62, 34, "system-ui", 700);
+    const titleSize = fitText(
+      ctx,
+      polePrompt.title,
+      panelWidth - 24,
+      34 * zoomAdjust,
+      18 * zoomAdjust,
+      "system-ui",
+      700
+    );
     ctx.font = `700 ${titleSize}px system-ui`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(polePrompt.title, cx, panelY + panelHeight * 0.34);
 
     ctx.fillStyle = "rgba(226, 232, 240, 0.96)";
-    const questionSize = fitText(ctx, polePrompt.question, panelWidth - 44, 42, 20, "Georgia", 500);
+    const questionSize = fitText(
+      ctx,
+      polePrompt.question,
+      panelWidth - 30,
+      24 * zoomAdjust,
+      12 * zoomAdjust,
+      "Georgia",
+      500
+    );
     ctx.font = `500 ${questionSize}px Georgia`;
     ctx.fillText(polePrompt.question, cx, panelY + panelHeight * 0.68);
     ctx.restore();
