@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import SidePanel from "../components/SidePanel.jsx";
 import SoonCanvas from "../components/SoonCanvas.jsx";
 import Profile from "./Profile.jsx";
+import NavigoView from "../components/NavigoView.jsx";
 import { useSoonStore } from "../store/useSoonStore.js";
 import { renderImmersiveJourney } from "../core/immersiveExporter.js";
 
@@ -82,14 +83,14 @@ export default function SoonApp({ onBack }) {
     if (isOdysseoTrace) {
       return {
         key: "trace",
-        title: "Tracer",
+        title: "Navigo • Tracer",
         tip: "Dessinez votre trajectoire avec la plume.",
       };
     }
 
     return {
       key: "travel",
-      title: "Traverser",
+      title: "Navigo • Traverser",
       tip: "Lancez le parcours et ajustez avec la boussole.",
     };
   }, [mode, isOdysseoTrace]);
@@ -223,27 +224,9 @@ export default function SoonApp({ onBack }) {
               setInteractionMode("swim");
               setIsTravelPlaying(false);
             }}
-            className={isOdysseoTrace ? "active" : ""}
-
-            aria-label="Tracer"
-            title="Tracer"
-          >
-            🪶
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              if (mode !== "reso") setMode("reso");
-              stopCircuitAutopilot();
-              setOdysseoMode("travel");
-              setInteractionMode("swim");
-              setIsTravelPlaying(false);
-            }}
-            className={isOdysseoTravel ? "active" : ""}
-
-            aria-label="Traverser"
-            title="Traverser"
+            className={isOdysseo ? "active" : ""}
+            aria-label="Navigo"
+            title="Navigo"
           >
             🧭
           </button>
@@ -307,39 +290,22 @@ export default function SoonApp({ onBack }) {
         <div className="cockpit-buttons">
           {isOdysseo ? (
             <div className="odysseo-tools">
-              {isOdysseoTravel && (
-                <div className="tool-row primary-tools">
-                  <button
-                    type="button"
-                    className={`bubble-btn mode-toggle ${isTravelPlaying ? "active" : ""}`}
-                    onClick={() => setIsTravelPlaying((current) => !current)}
-                    disabled={!odysseoPath || odysseoPath.length < 2}
-                    title={
-                      odysseoPath && odysseoPath.length >= 2
-                        ? isTravelPlaying
-                          ? "Mettre la traversée en pause"
-                          : "Lancer la traversée"
-                        : "Trace un parcours d’abord"
-                    }
-                  >
-                    {isTravelPlaying ? "⏸ Pause" : "▶ Play"}
-                  </button>
+              <NavigoView
+                activeTab={odysseoMode}
+                onChangeTab={(tab) => {
+                  setOdysseoMode(tab);
+                  setInteractionMode("swim");
+                  setIsTravelPlaying(false);
+                }}
+                isTravelPlaying={isTravelPlaying}
+                onToggleTravelPlaying={() => setIsTravelPlaying((current) => !current)}
+                onExportImmersion={handleExportImmersion}
+                canPlay={Boolean(odysseoPath && odysseoPath.length >= 2)}
+                canExport={Boolean(odysseoPath && odysseoPath.length >= 8)}
+                exportStatus={exportStatus}
+                exportUrl={exportUrl}
+              />
 
-                  <button
-                    type="button"
-                    className="bubble-btn mode-toggle"
-                    onClick={handleExportImmersion}
-                    disabled={!odysseoPath || odysseoPath.length < 8}
-                    title={
-                      odysseoPath && odysseoPath.length >= 8
-                        ? "Générer l’immersion sonore"
-                        : "Trace un parcours d’abord"
-                    }
-                  >
-                    🎧 Générer
-                  </button>
-                </div>
-              )}
 
               {isOdysseoTrace && (
                 <div className="tool-row trace-tools">
@@ -434,16 +400,6 @@ export default function SoonApp({ onBack }) {
         </div>
       </div>
 
-      {isOdysseo && (exportStatus || exportUrl) && (
-        <div className="export-status">
-          <span>{exportStatus}</span>
-          {exportUrl && (
-            <a href={exportUrl} download="soon-immersion.wav">
-              Télécharger WAV
-            </a>
-          )}
-        </div>
-      )}
 
       <SidePanel
         mode={mode}
