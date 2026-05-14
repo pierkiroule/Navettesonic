@@ -168,10 +168,15 @@ function drawArenaPolesAndMarkers(ctx, radius, time) {
     const tx = Math.cos(angle) * textRadius;
     const ty = Math.sin(angle) * textRadius;
 
+    const glowRemaining = Math.max(0, (seedTransportState.poleGlowUntil[label] || 0) - time);
+    const glowBoost = Math.min(1, glowRemaining / 3000);
+
     ctx.save();
-    ctx.shadowBlur = 18;
-    ctx.shadowColor = "rgba(255, 192, 243, 0.95)";
-    ctx.fillStyle = "rgba(255, 215, 248, 0.7)";
+    ctx.shadowBlur = 18 + glowBoost * 36;
+    ctx.shadowColor = `rgba(255, 120, 220, ${0.78 + glowBoost * 0.22})`;
+    ctx.fillStyle = glowBoost > 0
+      ? `rgba(255, 120, 220, ${0.82 + glowBoost * 0.18})`
+      : "rgba(255, 215, 248, 0.7)";
     ctx.font = "700 240px system-ui";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -668,7 +673,27 @@ const seedTransportState = {
   lastTime: 0,
   fishes: [],
   sprouts: [],
+  poleGlowUntil: { N: 0, E: 0, S: 0, O: 0 },
 };
+
+function getPoleLabelFromAngle(angle, tolerance = 0.12) {
+  const normalized = Math.atan2(Math.sin(angle), Math.cos(angle));
+  const poles = [
+    { label: "N", angle: -Math.PI / 2 },
+    { label: "E", angle: 0 },
+    { label: "S", angle: Math.PI / 2 },
+    { label: "O", angle: Math.PI },
+  ];
+
+  for (const pole of poles) {
+    const delta = Math.atan2(
+      Math.sin(normalized - pole.angle),
+      Math.cos(normalized - pole.angle)
+    );
+    if (Math.abs(delta) <= tolerance) return pole.label;
+  }
+  return null;
+}
 
 function initSeedTransporters(radius) {
   if (seedTransportState.fishes.length) return;
@@ -696,18 +721,28 @@ export function drawPinkSeedTransporters(ctx, arenaRef, time) {
   ctx.save();
   ctx.globalCompositeOperation = "screen";
 
-  seedTransportState.fishes.forEach((fish, index) => {
+  seedTransportState.fishes.forEach((fish) => {
     fish.angle += fish.speed * dt;
 
     let currentOrbit = fish.orbit + Math.sin(time * 0.001 + fish.phase) * 10;
+    const poleLabel = getPoleLabelFromAngle(fish.angle);
+    const canCrossMembrane = Boolean(poleLabel);
     if (fish.diving) {
-      currentOrbit -= 120 + Math.sin(time * 0.0018 + fish.phase) * 60;
+      if (canCrossMembrane) {
+        currentOrbit -= 120 + Math.sin(time * 0.0018 + fish.phase) * 60;
+      }
       if (currentOrbit < radius - 8 && fish.carry && Math.random() > 0.985) {
         seedTransportState.sprouts.push({
           x: Math.cos(fish.angle) * (radius - 20),
           y: Math.sin(fish.angle) * (radius - 20),
           bornAt: time,
         });
+      }
+      if (canCrossMembrane && currentOrbit < radius - 8) {
+        seedTransportState.poleGlowUntil[poleLabel] = Math.max(
+          seedTransportState.poleGlowUntil[poleLabel],
+          time + 3000
+        );
       }
     }
 
@@ -732,17 +767,6 @@ export function drawPinkSeedTransporters(ctx, arenaRef, time) {
     ctx.closePath();
     ctx.fillStyle = "rgba(255, 176, 222, 0.52)";
     ctx.fill();
-
-    if (fish.carry) {
-      for (let k = 0; k < 3; k += 1) {
-        const sx = 9 + k * 4;
-        const sy = Math.sin(time * 0.005 + index + k) * 2.2;
-        ctx.beginPath();
-        ctx.arc(sx, sy, 1.8, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(255,255,255,0.9)";
-        ctx.fill();
-      }
-    }
 
     ctx.restore();
   });
