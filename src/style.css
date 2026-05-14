@@ -2230,7 +2230,8 @@ button {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: calc(12px + env(safe-area-inset-bottom));
+  top: 50%;
+  transform: translateY(-50%);
   z-index: 12;
   pointer-events: none;
 }
@@ -2321,7 +2322,8 @@ button {
   }
 
   .global-sliders {
-    bottom: calc(10px + env(safe-area-inset-bottom));
+    top: 50%;
+    transform: translateY(-50%);
   }
 
   .global-slider {
