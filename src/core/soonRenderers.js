@@ -75,7 +75,7 @@ drawFish(ctx, current.fish, time);
   }
 
   drawCameraVignette(ctx, rect, current.fish);
-  drawHud(ctx, rect, current);
+  drawHud(ctx, rect, current, arenaRef);
 }
 
 export function drawOcean(ctx, rect, time, current) {
@@ -134,7 +134,47 @@ export function drawArenaBoundary(ctx, arenaRef, time) {
   ctx.fillStyle = halo;
   ctx.fill();
 
+  drawArenaPolesAndMarkers(ctx, radius, time);
+
   ctx.restore();
+}
+
+
+function drawArenaPolesAndMarkers(ctx, radius, time) {
+  const poles = [
+    { label: "N", angle: -Math.PI / 2 },
+    { label: "E", angle: 0 },
+    { label: "S", angle: Math.PI / 2 },
+    { label: "O", angle: Math.PI },
+  ];
+
+  const passageHalfArc = 0.055; // ~taille poisson rose sur la circonférence
+  const pulse = (Math.sin(time * 0.003) * 0.5 + 0.5) * 0.22;
+
+  poles.forEach(({ label, angle }) => {
+    const alpha = 0.48 + pulse;
+
+    ctx.beginPath();
+    ctx.arc(0, 0, radius + 2, angle - passageHalfArc, angle + passageHalfArc);
+    ctx.strokeStyle = `rgba(255, 141, 205, ${alpha})`;
+    ctx.lineWidth = 9;
+    ctx.lineCap = "round";
+    ctx.stroke();
+
+    const textRadius = radius + 46;
+    const tx = Math.cos(angle) * textRadius;
+    const ty = Math.sin(angle) * textRadius;
+
+    ctx.save();
+    ctx.shadowBlur = 18;
+    ctx.shadowColor = "rgba(255, 192, 243, 0.95)";
+    ctx.fillStyle = "rgba(255, 215, 248, 0.7)";
+    ctx.font = "700 24px system-ui";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, tx, ty);
+    ctx.restore();
+  });
 }
 
 export function drawWorldParticles(ctx, arenaRef, time) {
@@ -440,7 +480,55 @@ export function drawCameraVignette(ctx, rect, fish) {
   ctx.restore();
 }
 
-export function drawHud(ctx, rect, current) {
+function getPolePrompt(fish, arenaRadius) {
+  if (!fish || !Number.isFinite(arenaRadius)) return null;
+
+  const navigableRadius = arenaRadius - ARENA_INNER_BOUNDARY_INSET;
+  const poleRadius = Math.max(0, navigableRadius - 8);
+  const detectRadius = 120;
+
+  const polePrompts = [
+    {
+      title: "NORD",
+      question: "Qui rencontres-tu dans l’Onde sonore ?",
+      x: 0,
+      y: -poleRadius,
+    },
+    {
+      title: "EST",
+      question: "Que vois-tu les yeux fermés dans l’Onde sonore ?",
+      x: poleRadius,
+      y: 0,
+    },
+    {
+      title: "SUD",
+      question: "Qu’est-ce qui vibre en toi dans l’Onde sonore ?",
+      x: 0,
+      y: poleRadius,
+    },
+    {
+      title: "OUEST",
+      question: "Comment écoutes-tu l’Onde sonore ?",
+      x: -poleRadius,
+      y: 0,
+    },
+  ];
+
+  let nearest = null;
+  let nearestDist = Infinity;
+  polePrompts.forEach((pole) => {
+    const dist = Math.hypot((fish.x || 0) - pole.x, (fish.y || 0) - pole.y);
+    if (dist < nearestDist) {
+      nearestDist = dist;
+      nearest = pole;
+    }
+  });
+
+  if (nearestDist > detectRadius) return null;
+  return nearest;
+}
+
+export function drawHud(ctx, rect, current, arenaRef) {
   const fishDepth = Math.round(current?.fish?.depth || 1);
   const showDepth = current.mode === "compo" || current.mode === "reso";
 
@@ -459,6 +547,33 @@ export function drawHud(ctx, rect, current) {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(`P${fishDepth}`, rect.width - 58, 33);
+  }
+
+  const arenaRadius = arenaRef?.current?.radius || 1200;
+  const polePrompt = getPolePrompt(current?.fish, arenaRadius);
+  if (polePrompt) {
+    const cx = rect.width / 2;
+    const cy = rect.height / 2;
+
+    ctx.save();
+    ctx.fillStyle = "rgba(2, 6, 23, 0.5)";
+    ctx.strokeStyle = "rgba(186, 230, 253, 0.42)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(cx - 300, cy - 78, 600, 150, 22);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(255, 225, 248, 0.95)";
+    ctx.font = "700 34px system-ui";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(polePrompt.title, cx, cy - 24);
+
+    ctx.fillStyle = "rgba(226, 232, 240, 0.96)";
+    ctx.font = "500 28px Georgia";
+    ctx.fillText(polePrompt.question, cx, cy + 28);
+    ctx.restore();
   }
 
   if (!current.eyesClosed) {
