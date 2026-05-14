@@ -2266,9 +2266,11 @@ button {
 }
 
 .global-slider input {
-  width: min(92px, 18vh);
-  transform: rotate(-90deg);
-  transform-origin: center;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 16px;
+  height: min(92px, 18vh);
+  margin: 2px 0;
 }
 
 .odysseo-speed-slider {
@@ -2333,7 +2335,7 @@ button {
   }
 
   .global-slider input {
-    width: min(82px, 16vh);
+    height: min(82px, 16vh);
   }
 
   .odysseo-cockpit .mode-toggle {
