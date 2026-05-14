@@ -58,14 +58,14 @@ export function useSoonCanvasLoop({
       if (current.mode === "reso" || current.mode === "compo") {
         cameraRef.current.zoom = 1;
 
-        const shouldFollowFish =
-          Number.isFinite(current.viewZoom) && current.viewZoom > 0.18;
+        const viewZoom = Number.isFinite(current.viewZoom) ? current.viewZoom : 0;
+        const shouldFollowFish = viewZoom > 0.05;
 
         if (shouldFollowFish && current.fish) {
-          followFishCamera(cameraRef, arenaRef, current.fish, rect, current.viewZoom);
+          followFishCamera(cameraRef, arenaRef, current.fish, rect);
         } else {
-          cameraRef.current.x += (0 - cameraRef.current.x) * 0.08;
-          cameraRef.current.y += (0 - cameraRef.current.y) * 0.08;
+          cameraRef.current.x += (0 - cameraRef.current.x) * 0.12;
+          cameraRef.current.y += (0 - cameraRef.current.y) * 0.12;
         }
       } else if (isEditMode) {
         if (!wasEditMode) {
