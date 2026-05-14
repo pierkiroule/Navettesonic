@@ -715,6 +715,14 @@ function getPoleLabelFromAngle(angle, tolerance = 0.12) {
   return null;
 }
 
+function getPoleAngle(label) {
+  if (label === "N") return -Math.PI / 2;
+  if (label === "E") return 0;
+  if (label === "S") return Math.PI / 2;
+  if (label === "O") return Math.PI;
+  return null;
+}
+
 function initSeedTransporters(radius) {
   if (seedTransportState.fishes.length) return;
   for (let i = 0; i < 34; i += 1) {
@@ -755,22 +763,15 @@ export function drawPinkSeedTransporters(ctx, arenaRef, time) {
       fish.transitPole = poleLabel;
     } else if (!fish.diving && canCrossMembrane && fish.insideMembrane) {
       fish.insideMembrane = false;
-      fish.transitPole = poleLabel;
+      fish.transitPole = null;
     }
 
     if (fish.insideMembrane) {
       const crossingPole = fish.transitPole || poleLabel;
-      if (crossingPole) {
-        const targetAngle =
-          crossingPole === "N"
-            ? -Math.PI / 2
-            : crossingPole === "E"
-              ? 0
-              : crossingPole === "S"
-                ? Math.PI / 2
-                : Math.PI;
-        const delta = Math.atan2(Math.sin(targetAngle - fish.angle), Math.cos(targetAngle - fish.angle));
-        fish.angle += delta * 0.08;
+      const targetAngle = getPoleAngle(crossingPole);
+      if (Number.isFinite(targetAngle)) {
+        // Verrouille le poisson sur le passage du pôle durant tout le transit.
+        fish.angle = targetAngle;
       }
       currentOrbit -= 120 + Math.sin(time * 0.0018 + fish.phase) * 60;
     }
