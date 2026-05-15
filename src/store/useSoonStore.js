@@ -460,13 +460,11 @@ export const useSoonStore = create((set, get) => ({
         targetRadiusNow > navRadius + 1 && isNearPassage(Math.atan2(targetY || 0, targetX || 0));
       const fishAtMembrane = fishRadiusNow >= navRadius - 56;
 
-      if (!circuitAutopilot && !autoPassage && targetOutsideThroughPassage && fishAtMembrane) {
-        const sourceAngle = targetOutsideThroughPassage
-          ? Math.atan2(targetY || 0, targetX || 0)
-          : Math.atan2(state.fish.y || 0, state.fish.x || 0);
+      if (!circuitAutopilot && !autoPassage && targetOutsideThroughPassage) {
+        const sourceAngle = Math.atan2(targetY || 0, targetX || 0);
         const exitIndex = getNearestPassageIndex(sourceAngle);
         autoPassage = {
-          phase: "exit",
+          phase: fishAtMembrane ? "exit" : "approach",
           exitIndex,
         };
       }
@@ -475,6 +473,35 @@ export const useSoonStore = create((set, get) => ({
         const externalRadius = arenaRadius + OUTER_SWIM_OFFSET;
         const internalRadius = navRadius;
         const dt = Math.max(0.008, Math.min(0.04, swimSpeed * 0.012));
+
+        if (autoPassage.phase === "approach") {
+          const gate = getPassagePoint(autoPassage.exitIndex, internalRadius);
+          const heading = gate.angle;
+          const dx = gate.x - (state.fish.x || 0);
+          const dy = gate.y - (state.fish.y || 0);
+          const d = Math.hypot(dx, dy) || 1;
+          const step = Math.min(d, 1.8 + dt * 42);
+          const nx = (state.fish.x || 0) + (dx / d) * step;
+          const ny = (state.fish.y || 0) + (dy / d) * step;
+          const nextAuto = d < 18 ? { ...autoPassage, phase: "exit", progress: 0 } : autoPassage;
+
+          return {
+            circuitAutopilot,
+            circuitSegmentIndex,
+            circuitSegmentT,
+            fish: {
+              ...state.fish,
+              x: nx,
+              y: ny,
+              targetX: gate.x,
+              targetY: gate.y,
+              vx: 0,
+              vy: 0,
+              angle: heading,
+              autoPassage: nextAuto,
+            },
+          };
+        }
 
         if (autoPassage.phase === "exit") {
           const from = getPassagePoint(autoPassage.exitIndex, internalRadius);
