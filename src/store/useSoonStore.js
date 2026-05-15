@@ -63,10 +63,6 @@ function normalizeAngle(angle) {
 }
 
 
-function shortestAngleDelta(from, to) {
-  return normalizeAngle(to - from);
-}
-
 function lerp(start, end, t) {
   return start + (end - start) * t;
 }
@@ -464,7 +460,7 @@ export const useSoonStore = create((set, get) => ({
         targetRadiusNow > navRadius + 1 && isNearPassage(Math.atan2(targetY || 0, targetX || 0));
       const fishAtMembrane = fishRadiusNow >= navRadius - 18;
 
-      if (!circuitAutopilot && !autoPassage && (fishRadiusNow > navRadius + 2 || (targetOutsideThroughPassage && fishAtMembrane))) {
+      if (!circuitAutopilot && !autoPassage && targetOutsideThroughPassage && fishAtMembrane) {
         const sourceAngle = targetOutsideThroughPassage
           ? Math.atan2(targetY || 0, targetX || 0)
           : Math.atan2(state.fish.y || 0, state.fish.x || 0);
@@ -472,8 +468,6 @@ export const useSoonStore = create((set, get) => ({
         autoPassage = {
           phase: "exit",
           exitIndex,
-          nextIndex: (exitIndex + 1) % PASSAGE_ANGLES.length,
-          orbitAngle: PASSAGE_ANGLES[exitIndex],
         };
       }
 
@@ -489,50 +483,29 @@ export const useSoonStore = create((set, get) => ({
           const nx = lerp(from.x, to.x, t);
           const ny = lerp(from.y, to.y, t);
           const heading = getPassagePoint(autoPassage.exitIndex, externalRadius).angle;
-          const nextAuto = t >= 1 ? { ...autoPassage, phase: "orbit", progress: 0, orbitAngle: heading } : { ...autoPassage, progress: t };
+          const freeSwimTargetRadius = externalRadius + 80;
+          const freeSwimTargetX = Math.cos(heading) * freeSwimTargetRadius;
+          const freeSwimTargetY = Math.sin(heading) * freeSwimTargetRadius;
+          const nextAuto = t >= 1 ? null : { ...autoPassage, progress: t };
 
           return {
             circuitAutopilot,
             circuitSegmentIndex,
             circuitSegmentT,
-            fish: { ...state.fish, x: nx, y: ny, targetX: nx, targetY: ny, vx: 0, vy: 0, angle: heading, autoPassage: nextAuto },
+            fish: {
+              ...state.fish,
+              x: nx,
+              y: ny,
+              targetX: t >= 1 ? freeSwimTargetX : nx,
+              targetY: t >= 1 ? freeSwimTargetY : ny,
+              vx: 0,
+              vy: 0,
+              angle: heading,
+              autoPassage: nextAuto,
+            },
           };
         }
 
-        if (autoPassage.phase === "orbit") {
-          const nextPassage = getPassagePoint(autoPassage.nextIndex, externalRadius);
-          const currentAngle = Number.isFinite(autoPassage.orbitAngle) ? autoPassage.orbitAngle : Math.atan2(state.fish.y || 0, state.fish.x || 0);
-          const delta = shortestAngleDelta(currentAngle, nextPassage.angle);
-          const normalizedDelta = delta < 0 ? delta + Math.PI * 2 : delta;
-          const step = Math.min(normalizedDelta, dt);
-          const orbitAngle = normalizeAngle(currentAngle + step);
-          const nx = Math.cos(orbitAngle) * externalRadius;
-          const ny = Math.sin(orbitAngle) * externalRadius;
-          const nextAuto = normalizedDelta <= dt + 0.001
-            ? { ...autoPassage, phase: "reenter", progress: 0, orbitAngle }
-            : { ...autoPassage, orbitAngle };
-
-          return {
-            circuitAutopilot,
-            circuitSegmentIndex,
-            circuitSegmentT,
-            fish: { ...state.fish, x: nx, y: ny, targetX: nx, targetY: ny, vx: 0, vy: 0, angle: orbitAngle + Math.PI * 0.5, autoPassage: nextAuto },
-          };
-        }
-
-        const from = getPassagePoint(autoPassage.nextIndex, externalRadius);
-        const to = getPassagePoint(autoPassage.nextIndex, internalRadius);
-        const t = Math.min(1, (autoPassage.progress || 0) + dt * 1.5);
-        const nx = lerp(from.x, to.x, t);
-        const ny = lerp(from.y, to.y, t);
-        const nextAuto = t >= 1 ? null : { ...autoPassage, progress: t };
-
-        return {
-          circuitAutopilot,
-          circuitSegmentIndex,
-          circuitSegmentT,
-          fish: { ...state.fish, x: nx, y: ny, targetX: to.x, targetY: to.y, vx: 0, vy: 0, angle: from.angle, autoPassage: nextAuto },
-        };
       }
 
       if (circuitAutopilot && state.traceCircuit?.length > 1) {
