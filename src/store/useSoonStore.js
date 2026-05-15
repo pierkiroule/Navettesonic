@@ -451,31 +451,26 @@ export const useSoonStore = create((set, get) => ({
     const portal = getPortalHit(x, y, arenaRadius);
 
     if (portal) {
-      const fish = state.fish || {};
-      const startX = Number.isFinite(fish.x) ? fish.x : 0;
-      const startY = Number.isFinite(fish.y) ? fish.y : 0;
-      const fromAngle = Math.atan2(startY, startX);
-      const alignedAngle = Number.isFinite(fromAngle)
-        ? fromAngle + angleDelta(portal.angle, fromAngle) * 0.45
-        : portal.angle;
-      const outside = getPortalPoint(portal.angle, arenaRadius + PORTAL_EXIT_RADIUS_OFFSET);
-      const now = performance.now();
+      const fishRadius = Math.hypot(state.fish?.x || 0, state.fish?.y || 0);
+      const fishIsOutside = state.fish?.outsideFreeSwim || fishRadius > arenaRadius - 20;
+
+      const destinationRadius = fishIsOutside
+        ? arenaRadius - 90
+        : arenaRadius + 220;
+
+      const destination = getPortalPoint(portal.angle, destinationRadius);
 
       set((state) => ({
         fish: {
           ...state.fish,
-          targetX: outside.x,
-          targetY: outside.y,
-          portalTransition: {
-            angle: portal.angle,
-            startX,
-            startY,
-            fromAngle: alignedAngle,
-            toX: outside.x,
-            toY: outside.y,
-            startedAt: now,
-            endsAt: now + PORTAL_TRANSITION_MS,
-          },
+          x: destination.x,
+          y: destination.y,
+          targetX: destination.x,
+          targetY: destination.y,
+          vx: 0,
+          vy: 0,
+          outsideFreeSwim: !fishIsOutside,
+          portalTransition: null,
         },
       }));
 
@@ -485,11 +480,26 @@ export const useSoonStore = create((set, get) => ({
     const fishRadius = Math.hypot(state.fish?.x || 0, state.fish?.y || 0);
     const isOutside = state.fish?.outsideFreeSwim || fishRadius > arenaRadius - 20;
 
+    let target = { x, y };
+
+    if (isOutside) {
+      const targetRadius = Math.hypot(x, y);
+      const portal = getPortalHit(x, y, arenaRadius);
+
+      if (targetRadius < arenaRadius - 35 && !portal) {
+        const angle = Math.atan2(y, x);
+        target = {
+          x: Math.cos(angle) * (arenaRadius + 80),
+          y: Math.sin(angle) * (arenaRadius + 80),
+        };
+      }
+    }
+
     const movementRadius = isOutside
       ? arenaRadius + 520
-      : getFishMovementRadius(x, y, arenaRadius);
+      : getFishMovementRadius(target.x, target.y, arenaRadius);
 
-    const safe = clampToCircle({ x, y }, movementRadius);
+    const safe = clampToCircle(target, movementRadius);
 
     set((state) => {
       const navRadius = getRuntimeFishNavRadius(arenaRadius);
@@ -589,7 +599,7 @@ export const useSoonStore = create((set, get) => ({
       );
 
       if (state.fish.outsideFreeSwim) {
-        fishNavRadius = arenaRadius + 420;
+        fishNavRadius = arenaRadius + 520;
       }
       if (state.fishTrail?.length) {
         const result = updateSnakeFishToTarget({
@@ -783,7 +793,7 @@ export const useSoonStore = create((set, get) => ({
       fishNavRadius = getFishMovementRadius(targetX, targetY, arenaRadius);
       const outsideFreeSwim = Boolean(state.fish.outsideFreeSwim) || fishRadiusNow > navRadius + 6;
       if (autoPassage || outsideFreeSwim) {
-        fishNavRadius = Math.max(fishNavRadius, arenaRadius + OUTER_SWIM_OFFSET + 140);
+        fishNavRadius = Math.max(fishNavRadius, arenaRadius + 520);
       }
 
       const safe = clampToCircle(

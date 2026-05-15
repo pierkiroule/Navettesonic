@@ -85,6 +85,18 @@ export function useSoonPointer({
       return point;
     }
 
+    if (options.swimEdgeBoost || stateRef.current?.fish?.outsideFreeSwim) {
+      return point;
+    }
+
+    if (options.swimEdgeBoost || stateRef.current?.fish?.outsideFreeSwim) {
+      return point;
+    }
+
+    if (options.swimEdgeBoost || stateRef.current?.fish?.outsideFreeSwim) {
+      return point;
+    }
+
     return clampToCircle(point, navigableRadius);
   }
 
