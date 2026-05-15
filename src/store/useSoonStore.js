@@ -483,13 +483,26 @@ export const useSoonStore = create((set, get) => ({
           const nx = lerp(from.x, to.x, t);
           const ny = lerp(from.y, to.y, t);
           const heading = getPassagePoint(autoPassage.exitIndex, externalRadius).angle;
+          const freeSwimTargetRadius = externalRadius + 80;
+          const freeSwimTargetX = Math.cos(heading) * freeSwimTargetRadius;
+          const freeSwimTargetY = Math.sin(heading) * freeSwimTargetRadius;
           const nextAuto = t >= 1 ? null : { ...autoPassage, progress: t };
 
           return {
             circuitAutopilot,
             circuitSegmentIndex,
             circuitSegmentT,
-            fish: { ...state.fish, x: nx, y: ny, targetX: nx, targetY: ny, vx: 0, vy: 0, angle: heading, autoPassage: nextAuto },
+            fish: {
+              ...state.fish,
+              x: nx,
+              y: ny,
+              targetX: t >= 1 ? freeSwimTargetX : nx,
+              targetY: t >= 1 ? freeSwimTargetY : ny,
+              vx: 0,
+              vy: 0,
+              angle: heading,
+              autoPassage: nextAuto,
+            },
           };
         }
 
