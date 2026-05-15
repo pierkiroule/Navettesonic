@@ -51,23 +51,25 @@ function resolveExternalBubbleState(arenaRadius, time, advance = false) {
     bubble.y = Math.sin(bubble.angle) * orbitRadius + bubble.bounceVY;
   });
 
-  for (let i = 0; i < externalBubbleState.bubbles.length; i += 1) {
-    for (let j = i + 1; j < externalBubbleState.bubbles.length; j += 1) {
-      const a = externalBubbleState.bubbles[i];
-      const b = externalBubbleState.bubbles[j];
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
-      const dist = Math.hypot(dx, dy) || 0.0001;
-      const minDist = a.radius + b.radius;
-      if (dist < minDist) {
-        const nx = dx / dist;
-        const ny = dy / dist;
-        const overlap = minDist - dist;
-        const impulse = overlap * 0.12;
-        a.bounceVX -= nx * impulse;
-        a.bounceVY -= ny * impulse;
-        b.bounceVX += nx * impulse;
-        b.bounceVY += ny * impulse;
+  if (advance) {
+    for (let i = 0; i < externalBubbleState.bubbles.length; i += 1) {
+      for (let j = i + 1; j < externalBubbleState.bubbles.length; j += 1) {
+        const a = externalBubbleState.bubbles[i];
+        const b = externalBubbleState.bubbles[j];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const dist = Math.hypot(dx, dy) || 0.0001;
+        const minDist = a.radius + b.radius;
+        if (dist < minDist) {
+          const nx = dx / dist;
+          const ny = dy / dist;
+          const overlap = minDist - dist;
+          const impulse = overlap * 0.12;
+          a.bounceVX -= nx * impulse;
+          a.bounceVY -= ny * impulse;
+          b.bounceVX += nx * impulse;
+          b.bounceVY += ny * impulse;
+        }
       }
     }
   }
