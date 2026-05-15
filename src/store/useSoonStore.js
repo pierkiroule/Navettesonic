@@ -367,12 +367,14 @@ export const useSoonStore = create((set, get) => ({
       const navRadius = getRuntimeFishNavRadius(arenaRadius);
       const targetRadius = Math.hypot(safe.x || 0, safe.y || 0);
       const unlockOutside = targetRadius > navRadius + 8;
+      const fishRadius = Math.hypot(state.fish?.x || 0, state.fish?.y || 0);
+      const keepOutside = Boolean(state.fish?.outsideFreeSwim) && fishRadius > navRadius - 40;
       return {
         fish: {
           ...state.fish,
           targetX: safe.x,
           targetY: safe.y,
-          outsideFreeSwim: unlockOutside ? true : false,
+          outsideFreeSwim: unlockOutside || keepOutside,
         },
       };
     });
@@ -470,7 +472,12 @@ export const useSoonStore = create((set, get) => ({
       const wantsOutwardByTarget = targetRadiusNow > navRadius + 10;
       const radialOut = (state.fish.vx || 0) * Math.cos(fishAngleNow) + (state.fish.vy || 0) * Math.sin(fishAngleNow);
       const driftingOutwardAtPassage = touchingPassage && radialOut > 0.14;
-      const shouldTriggerAutoPassage = fishAtMembrane && (wantsOutwardByTarget || (aimingPassage && driftingOutwardAtPassage));
+      const touchingPassageAndAiming = fishAtMembrane && touchingPassage && aimingPassage;
+      const shouldTriggerAutoPassage = fishAtMembrane && (
+        wantsOutwardByTarget ||
+        (aimingPassage && driftingOutwardAtPassage) ||
+        touchingPassageAndAiming
+      );
 
       if (!circuitAutopilot && !autoPassage && shouldTriggerAutoPassage) {
         const sourceAngle = aimingPassage ? targetAngleNow : fishAngleNow;
