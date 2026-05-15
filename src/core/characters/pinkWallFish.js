@@ -69,10 +69,10 @@ function makeId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-export function spawnPinkWallFish(arenaRadius = 1200, stock = null) {
+export function spawnPinkWallFish(arenaRadius = 1200, stock = null, fishes = []) {
   const angle = rand(0, Math.PI * 2);
   const startR = arenaRadius + rand(180, 520);
-  const passageLabel = PASSAGE_LABELS[Math.floor(Math.random() * PASSAGE_LABELS.length)];
+  const passageLabel = pickLeastCrowdedPassage(fishes, "entering");
   const passageAngle = getPassageAngle(passageLabel);
 
   const carryingSeed = takeSeedFromExternalStock(stock);
@@ -165,7 +165,7 @@ export function updatePinkWallFish({
     fish.life += dt;
 
     if (fish.state === "entering") {
-      const d = steerToTarget(fish, fish.targetX, fish.targetY, dt, 0.018);
+      const d = steerToTarget(fish, fish.targetX, fish.targetY, dt, 0.022);
 
       if (fish.passageStep === "outer-lane" && d < 64) {
         fish.passageStep = "gate";
@@ -217,12 +217,12 @@ export function updatePinkWallFish({
     }
 
     if (fish.state === "exiting") {
-      const d = steerToTarget(fish, fish.targetX, fish.targetY, dt, 0.018);
+      const d = steerToTarget(fish, fish.targetX, fish.targetY, dt, 0.022);
 
-      if (fish.exitReady && fish.passageStep === "inside-gate" && d < 52) {
+      if (fish.exitReady && fish.passageStep === "inside-gate" && d < 70) {
         fish.passageStep = "outside-gate";
         setPassageTarget(fish, arenaRadius, fish.passageLabel, "entering");
-      } else if (fish.exitReady && fish.passageStep === "outside-gate" && d < 58) {
+      } else if (fish.exitReady && fish.passageStep === "outside-gate" && d < 74) {
         fish.passageStep = "outer-lane";
         const angle = getPassageAngle(fish.passageLabel);
         fish.targetX = Math.cos(angle) * (arenaRadius + rand(260, 520));

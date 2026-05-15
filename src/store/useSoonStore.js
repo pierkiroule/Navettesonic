@@ -28,7 +28,7 @@ const saved = loadState();
 const DEFAULT_ARENA_RADIUS = 1200;
 const DEFAULT_FISH_NAV_RADIUS = getFishNavigableRadius(DEFAULT_ARENA_RADIUS);
 
-const PASSAGE_HALF_ARC = 0.12;
+const PASSAGE_HALF_ARC = 0.2;
 
 const PASSAGE_ANGLES = [-Math.PI / 2, 0, Math.PI / 2, Math.PI];
 const OUTER_SWIM_OFFSET = 44;
@@ -458,7 +458,7 @@ export const useSoonStore = create((set, get) => ({
       const targetRadiusNow = Math.hypot(targetX || 0, targetY || 0);
       const targetOutsideThroughPassage =
         targetRadiusNow > navRadius + 1 && isNearPassage(Math.atan2(targetY || 0, targetX || 0));
-      const fishAtMembrane = fishRadiusNow >= navRadius - 18;
+      const fishAtMembrane = fishRadiusNow >= navRadius - 56;
 
       if (!circuitAutopilot && !autoPassage && targetOutsideThroughPassage && fishAtMembrane) {
         const sourceAngle = targetOutsideThroughPassage

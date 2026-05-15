@@ -124,7 +124,7 @@ export function updateCharacters({ fish, arenaRadius = 1200 } = {}) {
     characters.pinkFish.length < 16
   ) {
     characters.lastPinkSpawnAt = now;
-    characters.pinkFish.push(spawnPinkWallFish(arenaRadius, stock));
+    characters.pinkFish.push(spawnPinkWallFish(arenaRadius, stock, characters.pinkFish));
     characters.pendingSeedDeliveries -= 1;
   }
 }
