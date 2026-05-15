@@ -363,13 +363,21 @@ export const useSoonStore = create((set, get) => ({
     const movementRadius = getFishMovementRadius(x, y, arenaRadius);
     const safe = clampToCircle({ x, y }, movementRadius);
 
-    set((state) => ({
-      fish: {
-        ...state.fish,
-        targetX: safe.x,
-        targetY: safe.y,
-      },
-    }));
+    set((state) => {
+      const navRadius = getRuntimeFishNavRadius(arenaRadius);
+      const targetRadius = Math.hypot(safe.x || 0, safe.y || 0);
+      const unlockOutside = targetRadius > navRadius + 8;
+      const fishRadius = Math.hypot(state.fish?.x || 0, state.fish?.y || 0);
+      const keepOutside = Boolean(state.fish?.outsideFreeSwim) && fishRadius > navRadius - 40;
+      return {
+        fish: {
+          ...state.fish,
+          targetX: safe.x,
+          targetY: safe.y,
+          outsideFreeSwim: unlockOutside || keepOutside,
+        },
+      };
+    });
   },
   recenterFish: () => {
     set((state) => {
@@ -456,18 +464,31 @@ export const useSoonStore = create((set, get) => ({
       let autoPassage = state.fish.autoPassage || null;
 
       const targetRadiusNow = Math.hypot(targetX || 0, targetY || 0);
-      const targetOutsideThroughPassage =
-        targetRadiusNow > navRadius + 1 && isNearPassage(Math.atan2(targetY || 0, targetX || 0));
-      const fishAtMembrane = fishRadiusNow >= navRadius - 18;
+      const fishAngleNow = Math.atan2(state.fish.y || 0, state.fish.x || 0);
+      const targetAngleNow = Math.atan2(targetY || 0, targetX || 0);
+      const fishAtMembrane = fishRadiusNow >= navRadius - 22;
+      const touchingPassage = isNearPassage(fishAngleNow);
+      const aimingPassage = isNearPassage(targetAngleNow);
+      const wantsOutwardByTarget = targetRadiusNow > navRadius + 10;
+      const radialOut = (state.fish.vx || 0) * Math.cos(fishAngleNow) + (state.fish.vy || 0) * Math.sin(fishAngleNow);
+      const driftingOutwardAtPassage = touchingPassage && radialOut > 0.14;
+      const touchingPassageAndAiming = fishAtMembrane && touchingPassage && aimingPassage;
+      const shouldTriggerAutoPassage = fishAtMembrane && (
+        wantsOutwardByTarget ||
+        (aimingPassage && driftingOutwardAtPassage) ||
+        touchingPassageAndAiming
+      );
 
-      if (!circuitAutopilot && !autoPassage && targetOutsideThroughPassage && fishAtMembrane) {
-        const sourceAngle = targetOutsideThroughPassage
-          ? Math.atan2(targetY || 0, targetX || 0)
-          : Math.atan2(state.fish.y || 0, state.fish.x || 0);
+      if (!circuitAutopilot && !autoPassage && shouldTriggerAutoPassage) {
+        const sourceAngle = aimingPassage ? targetAngleNow : fishAngleNow;
         const exitIndex = getNearestPassageIndex(sourceAngle);
         autoPassage = {
           phase: "exit",
           exitIndex,
+          progress: 0,
+          startX: state.fish.x || 0,
+          startY: state.fish.y || 0,
+          enteredAt: performance.now(),
         };
       }
 
@@ -475,13 +496,19 @@ export const useSoonStore = create((set, get) => ({
         const externalRadius = arenaRadius + OUTER_SWIM_OFFSET;
         const internalRadius = navRadius;
         const dt = Math.max(0.008, Math.min(0.04, swimSpeed * 0.012));
+        const passageTimedOut = performance.now() - (autoPassage.enteredAt || performance.now()) > 2200;
+        if (passageTimedOut) autoPassage = null;
 
-        if (autoPassage.phase === "exit") {
-          const from = getPassagePoint(autoPassage.exitIndex, internalRadius);
+        if (autoPassage?.phase === "exit") {
+          const from = {
+            x: Number.isFinite(autoPassage.startX) ? autoPassage.startX : getPassagePoint(autoPassage.exitIndex, internalRadius).x,
+            y: Number.isFinite(autoPassage.startY) ? autoPassage.startY : getPassagePoint(autoPassage.exitIndex, internalRadius).y,
+          };
           const to = getPassagePoint(autoPassage.exitIndex, externalRadius);
           const t = Math.min(1, (autoPassage.progress || 0) + dt * 1.4);
-          const nx = lerp(from.x, to.x, t);
-          const ny = lerp(from.y, to.y, t);
+          const easedT = t < 0.5 ? 2 * t * t : 1 - ((-2 * t + 2) ** 2) / 2;
+          const nx = lerp(from.x, to.x, easedT);
+          const ny = lerp(from.y, to.y, easedT);
           const heading = getPassagePoint(autoPassage.exitIndex, externalRadius).angle;
           const freeSwimTargetRadius = externalRadius + 80;
           const freeSwimTargetX = Math.cos(heading) * freeSwimTargetRadius;
@@ -501,6 +528,7 @@ export const useSoonStore = create((set, get) => ({
               vx: 0,
               vy: 0,
               angle: heading,
+              outsideFreeSwim: t >= 1 ? true : (state.fish.outsideFreeSwim || false),
               autoPassage: nextAuto,
             },
           };
@@ -586,8 +614,9 @@ export const useSoonStore = create((set, get) => ({
       const limitedVy = speedRaw > speedLimit ? (vy / speedRaw) * speedLimit : vy;
 
       fishNavRadius = getFishMovementRadius(targetX, targetY, arenaRadius);
-      if (autoPassage) {
-        fishNavRadius = Math.max(fishNavRadius, arenaRadius + OUTER_SWIM_OFFSET + 8);
+      const outsideFreeSwim = Boolean(state.fish.outsideFreeSwim) || fishRadiusNow > navRadius + 6;
+      if (autoPassage || outsideFreeSwim) {
+        fishNavRadius = Math.max(fishNavRadius, arenaRadius + OUTER_SWIM_OFFSET + 140);
       }
 
       const safe = clampToCircle(

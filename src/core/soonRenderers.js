@@ -13,6 +13,28 @@ import {
   drawEcosystemWorld,
 } from "./ecosystemFx.js";
 
+const externalBubbleState = {
+  angle: -Math.PI / 6,
+  lastTime: 0,
+};
+
+export function getExternalBubblePose(arenaRadius, time, advance = false) {
+  const bubbleRadius = arenaRadius * 0.25;
+  const orbitRadius = arenaRadius + bubbleRadius + 220;
+
+  if (advance) {
+    const dt = Math.max(8, Math.min(34, time - (externalBubbleState.lastTime || time)));
+    externalBubbleState.angle += 0.00004 * dt;
+    externalBubbleState.lastTime = time;
+  }
+
+  return {
+    x: Math.cos(externalBubbleState.angle) * orbitRadius,
+    y: Math.sin(externalBubbleState.angle) * orbitRadius,
+    radius: bubbleRadius,
+  };
+}
+
 export function drawScene(ctx, rect, time, refs) {
   const { stateRef, arenaRef, cameraRef, enterWorld, exitWorld } = refs;
   const current = stateRef.current;
@@ -129,10 +151,46 @@ export function drawArenaBoundary(ctx, arenaRef, time) {
   ctx.fill();
 
   drawArenaPolesAndMarkers(ctx, radius, time);
+  drawExternalBubble(ctx, radius, time);
 
   ctx.restore();
 }
 
+function drawExternalBubble(ctx, arenaRadius, time) {
+  const { x, y, radius: bubbleRadius } = getExternalBubblePose(arenaRadius, time, true);
+  const pulse = Math.sin(time * 0.0014) * 10;
+
+  ctx.save();
+  ctx.translate(x, y);
+
+  const glow = ctx.createRadialGradient(0, 0, bubbleRadius * 0.15, 0, 0, bubbleRadius * 1.6);
+  glow.addColorStop(0, "rgba(173, 216, 255, 0.28)");
+  glow.addColorStop(1, "rgba(173, 216, 255, 0)");
+
+  ctx.beginPath();
+  ctx.arc(0, 0, bubbleRadius * 1.25 + pulse, 0, Math.PI * 2);
+  ctx.fillStyle = glow;
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(0, 0, bubbleRadius + pulse * 0.35, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(145, 206, 255, 0.2)";
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(0, 0, bubbleRadius + pulse * 0.25, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(210, 238, 255, 0.46)";
+  ctx.lineWidth = 6;
+  ctx.stroke();
+
+  ctx.font = `600 ${Math.max(24, arenaRadius * 0.024)}px system-ui`;
+  ctx.fillStyle = "rgba(230, 247, 255, 0.82)";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("bulleext1", 0, 0);
+
+  ctx.restore();
+}
 
 function drawArenaPolesAndMarkers(ctx, radius, time) {
   const poles = [
@@ -731,6 +789,7 @@ function initSeedTransporters(radius) {
       diving: Math.random() > 0.55,
       insideMembrane: false,
       transitPole: null,
+      transitStartedAt: 0,
     });
   }
 }
@@ -756,17 +815,30 @@ export function drawPinkSeedTransporters(ctx, arenaRef, time) {
     if (fish.diving && canCrossMembrane && !fish.insideMembrane) {
       fish.insideMembrane = true;
       fish.transitPole = poleLabel;
-    } else if (!fish.diving && canCrossMembrane && fish.insideMembrane) {
+      fish.transitStartedAt = time;
+    }
+
+    const transitTooLong = fish.insideMembrane && time - (fish.transitStartedAt || time) > 1800;
+    const reachedExitWindow = fish.insideMembrane && canCrossMembrane && !fish.diving;
+    if ((transitTooLong || reachedExitWindow) && fish.insideMembrane) {
       fish.insideMembrane = false;
       fish.transitPole = null;
+      fish.transitStartedAt = 0;
     }
 
     if (fish.insideMembrane) {
       const crossingPole = fish.transitPole || poleLabel;
       const targetAngle = getPoleAngle(crossingPole);
       if (Number.isFinite(targetAngle)) {
-        // Verrouille le poisson sur le passage du pôle durant tout le transit.
-        fish.angle = targetAngle;
+        // Garde le poisson aligné avec le passage sans le figer complètement.
+        const delta = Math.atan2(
+          Math.sin(targetAngle - fish.angle),
+          Math.cos(targetAngle - fish.angle)
+        );
+        const alignmentGain = 0.22;
+        const maxTurn = 0.018;
+        const turn = Math.max(-maxTurn, Math.min(maxTurn, delta * alignmentGain));
+        fish.angle += turn;
       }
       currentOrbit -= 120 + Math.sin(time * 0.0018 + fish.phase) * 60;
     }
