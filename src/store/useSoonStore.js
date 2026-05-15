@@ -147,6 +147,8 @@ const PASSAGE_PORTALS = [
   { id: "S", angle: Math.PI / 2 },
   { id: "O", angle: Math.PI },
 ];
+const PORTAL_TRANSITION_MS = 520;
+const PORTAL_EXIT_RADIUS_OFFSET = 240;
 
 function angleDelta(a, b) {
   return Math.atan2(Math.sin(a - b), Math.cos(a - b));
@@ -445,19 +447,31 @@ export const useSoonStore = create((set, get) => ({
     const portal = getPortalHit(x, y, arenaRadius);
 
     if (portal) {
-      const outside = getPortalPoint(portal.angle, arenaRadius + 220);
+      const fish = state.fish || {};
+      const startX = Number.isFinite(fish.x) ? fish.x : 0;
+      const startY = Number.isFinite(fish.y) ? fish.y : 0;
+      const fromAngle = Math.atan2(startY, startX);
+      const alignedAngle = Number.isFinite(fromAngle)
+        ? fromAngle + angleDelta(portal.angle, fromAngle) * 0.45
+        : portal.angle;
+      const outside = getPortalPoint(portal.angle, arenaRadius + PORTAL_EXIT_RADIUS_OFFSET);
+      const now = performance.now();
 
       set((state) => ({
         fish: {
           ...state.fish,
-          x: outside.x,
-          y: outside.y,
           targetX: outside.x,
           targetY: outside.y,
-          vx: 0,
-          vy: 0,
-          outsideFreeSwim: true,
-          portalTransition: null,
+          portalTransition: {
+            angle: portal.angle,
+            startX,
+            startY,
+            fromAngle: alignedAngle,
+            toX: outside.x,
+            toY: outside.y,
+            startedAt: now,
+            endsAt: now + PORTAL_TRANSITION_MS,
+          },
         },
       }));
 
@@ -531,6 +545,38 @@ export const useSoonStore = create((set, get) => ({
 
   tickFish: ({ swimSpeed = 1, arenaRadius = DEFAULT_ARENA_RADIUS } = {}) => {
     set((state) => {
+      const transition = state.fish?.portalTransition;
+      if (transition) {
+        const now = performance.now();
+        const duration = Math.max(1, (transition.endsAt || now) - (transition.startedAt || now));
+        const rawT = Math.max(0, Math.min(1, (now - (transition.startedAt || now)) / duration));
+        const easedT = rawT < 0.5 ? 4 * rawT * rawT * rawT : 1 - ((-2 * rawT + 2) ** 3) / 2;
+        const arcStrength = Math.sin(rawT * Math.PI) * Math.max(36, arenaRadius * 0.05);
+        const nx = lerp(transition.startX || 0, transition.toX || 0, easedT);
+        const ny = lerp(transition.startY || 0, transition.toY || 0, easedT);
+        const tangentX = Math.cos((transition.fromAngle ?? transition.angle) + Math.PI / 2);
+        const tangentY = Math.sin((transition.fromAngle ?? transition.angle) + Math.PI / 2);
+        const x = nx + tangentX * arcStrength * 0.18;
+        const y = ny + tangentY * arcStrength * 0.18;
+        const heading = Math.atan2((transition.toY || 0) - y, (transition.toX || 0) - x);
+        const done = rawT >= 1;
+
+        return {
+          fish: {
+            ...state.fish,
+            x,
+            y,
+            targetX: done ? transition.toX : x,
+            targetY: done ? transition.toY : y,
+            vx: 0,
+            vy: 0,
+            angle: heading,
+            outsideFreeSwim: done ? true : Boolean(state.fish.outsideFreeSwim),
+            portalTransition: done ? null : transition,
+          },
+        };
+      }
+
       const fish = state.fish;
       let fishNavRadius = getFishMovementRadius(
         state.fish.targetX,
