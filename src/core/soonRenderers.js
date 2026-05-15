@@ -765,8 +765,15 @@ export function drawPinkSeedTransporters(ctx, arenaRef, time) {
       const crossingPole = fish.transitPole || poleLabel;
       const targetAngle = getPoleAngle(crossingPole);
       if (Number.isFinite(targetAngle)) {
-        // Verrouille le poisson sur le passage du pôle durant tout le transit.
-        fish.angle = targetAngle;
+        // Garde le poisson aligné avec le passage sans le figer complètement.
+        const delta = Math.atan2(
+          Math.sin(targetAngle - fish.angle),
+          Math.cos(targetAngle - fish.angle)
+        );
+        const alignmentGain = 0.22;
+        const maxTurn = 0.018;
+        const turn = Math.max(-maxTurn, Math.min(maxTurn, delta * alignmentGain));
+        fish.angle += turn;
       }
       currentOrbit -= 120 + Math.sin(time * 0.0018 + fish.phase) * 60;
     }
