@@ -363,13 +363,19 @@ export const useSoonStore = create((set, get) => ({
     const movementRadius = getFishMovementRadius(x, y, arenaRadius);
     const safe = clampToCircle({ x, y }, movementRadius);
 
-    set((state) => ({
-      fish: {
-        ...state.fish,
-        targetX: safe.x,
-        targetY: safe.y,
-      },
-    }));
+    set((state) => {
+      const navRadius = getRuntimeFishNavRadius(arenaRadius);
+      const targetRadius = Math.hypot(safe.x || 0, safe.y || 0);
+      const unlockOutside = targetRadius > navRadius + 8;
+      return {
+        fish: {
+          ...state.fish,
+          targetX: safe.x,
+          targetY: safe.y,
+          outsideFreeSwim: unlockOutside ? true : false,
+        },
+      };
+    });
   },
   recenterFish: () => {
     set((state) => {
@@ -515,6 +521,7 @@ export const useSoonStore = create((set, get) => ({
               vx: 0,
               vy: 0,
               angle: heading,
+              outsideFreeSwim: t >= 1 ? true : (state.fish.outsideFreeSwim || false),
               autoPassage: nextAuto,
             },
           };
@@ -600,8 +607,9 @@ export const useSoonStore = create((set, get) => ({
       const limitedVy = speedRaw > speedLimit ? (vy / speedRaw) * speedLimit : vy;
 
       fishNavRadius = getFishMovementRadius(targetX, targetY, arenaRadius);
-      if (autoPassage) {
-        fishNavRadius = Math.max(fishNavRadius, arenaRadius + OUTER_SWIM_OFFSET + 8);
+      const outsideFreeSwim = Boolean(state.fish.outsideFreeSwim) || fishRadiusNow > navRadius + 6;
+      if (autoPassage || outsideFreeSwim) {
+        fishNavRadius = Math.max(fishNavRadius, arenaRadius + OUTER_SWIM_OFFSET + 140);
       }
 
       const safe = clampToCircle(
