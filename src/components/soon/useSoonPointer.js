@@ -81,19 +81,7 @@ export function useSoonPointer({
       }
     }
 
-    if (options.swimEdgeBoost) {
-      return point;
-    }
-
-    if (options.swimEdgeBoost || stateRef.current?.fish?.outsideFreeSwim) {
-      return point;
-    }
-
-    if (options.swimEdgeBoost || stateRef.current?.fish?.outsideFreeSwim) {
-      return point;
-    }
-
-    if (options.swimEdgeBoost || stateRef.current?.fish?.outsideFreeSwim) {
+    if (stateRef.current?.fish?.outsideFreeSwim) {
       return point;
     }
 
@@ -294,7 +282,7 @@ export function useSoonPointer({
     const current = stateRef.current;
     const isEditMode = current.interactionMode === "edit";
     const isCircuitMode = current.interactionMode === "circuit";
-    const point = getSafeWorldFromEvent(event, { swimEdgeBoost: true });
+    const point = getSafeWorldFromEvent(event, { swimEdgeBoost: false });
 
     if (!pointerRef.current.down && !(pointerRef.current.activePointers?.size > 0)) {
       return;
