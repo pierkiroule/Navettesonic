@@ -460,7 +460,7 @@ export const useSoonStore = create((set, get) => ({
         targetRadiusNow > navRadius + 1 && isNearPassage(Math.atan2(targetY || 0, targetX || 0));
       const fishAtMembrane = fishRadiusNow >= navRadius - 18;
 
-      if (!circuitAutopilot && !autoPassage && (fishRadiusNow > navRadius + 2 || (targetOutsideThroughPassage && fishAtMembrane))) {
+      if (!circuitAutopilot && !autoPassage && targetOutsideThroughPassage && fishAtMembrane) {
         const sourceAngle = targetOutsideThroughPassage
           ? Math.atan2(targetY || 0, targetX || 0)
           : Math.atan2(state.fish.y || 0, state.fish.x || 0);
