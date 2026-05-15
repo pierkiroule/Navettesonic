@@ -458,12 +458,15 @@ export const useSoonStore = create((set, get) => ({
       const targetRadiusNow = Math.hypot(targetX || 0, targetY || 0);
       const fishAngleNow = Math.atan2(state.fish.y || 0, state.fish.x || 0);
       const targetAngleNow = Math.atan2(targetY || 0, targetX || 0);
-      const fishAtMembrane = fishRadiusNow >= navRadius - 26;
+      const fishAtMembrane = fishRadiusNow >= navRadius - 22;
       const touchingPassage = isNearPassage(fishAngleNow);
       const aimingPassage = isNearPassage(targetAngleNow);
-      const wantsOutward = targetRadiusNow >= navRadius - 6;
+      const wantsOutwardByTarget = targetRadiusNow > navRadius + 10;
+      const radialOut = (state.fish.vx || 0) * Math.cos(fishAngleNow) + (state.fish.vy || 0) * Math.sin(fishAngleNow);
+      const driftingOutwardAtPassage = touchingPassage && radialOut > 0.14;
+      const shouldTriggerAutoPassage = fishAtMembrane && (wantsOutwardByTarget || (aimingPassage && driftingOutwardAtPassage));
 
-      if (!circuitAutopilot && !autoPassage && fishAtMembrane && wantsOutward && (touchingPassage || aimingPassage)) {
+      if (!circuitAutopilot && !autoPassage && shouldTriggerAutoPassage) {
         const sourceAngle = aimingPassage ? targetAngleNow : fishAngleNow;
         const exitIndex = getNearestPassageIndex(sourceAngle);
         autoPassage = {
@@ -472,6 +475,7 @@ export const useSoonStore = create((set, get) => ({
           progress: 0,
           startX: state.fish.x || 0,
           startY: state.fish.y || 0,
+          enteredAt: performance.now(),
         };
       }
 
@@ -479,8 +483,10 @@ export const useSoonStore = create((set, get) => ({
         const externalRadius = arenaRadius + OUTER_SWIM_OFFSET;
         const internalRadius = navRadius;
         const dt = Math.max(0.008, Math.min(0.04, swimSpeed * 0.012));
+        const passageTimedOut = performance.now() - (autoPassage.enteredAt || performance.now()) > 2200;
+        if (passageTimedOut) autoPassage = null;
 
-        if (autoPassage.phase === "exit") {
+        if (autoPassage?.phase === "exit") {
           const from = {
             x: Number.isFinite(autoPassage.startX) ? autoPassage.startX : getPassagePoint(autoPassage.exitIndex, internalRadius).x,
             y: Number.isFinite(autoPassage.startY) ? autoPassage.startY : getPassagePoint(autoPassage.exitIndex, internalRadius).y,
