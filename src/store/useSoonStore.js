@@ -456,18 +456,22 @@ export const useSoonStore = create((set, get) => ({
       let autoPassage = state.fish.autoPassage || null;
 
       const targetRadiusNow = Math.hypot(targetX || 0, targetY || 0);
-      const targetOutsideThroughPassage =
-        targetRadiusNow > navRadius + 1 && isNearPassage(Math.atan2(targetY || 0, targetX || 0));
-      const fishAtMembrane = fishRadiusNow >= navRadius - 18;
+      const fishAngleNow = Math.atan2(state.fish.y || 0, state.fish.x || 0);
+      const targetAngleNow = Math.atan2(targetY || 0, targetX || 0);
+      const fishAtMembrane = fishRadiusNow >= navRadius - 26;
+      const touchingPassage = isNearPassage(fishAngleNow);
+      const aimingPassage = isNearPassage(targetAngleNow);
+      const wantsOutward = targetRadiusNow >= navRadius - 6;
 
-      if (!circuitAutopilot && !autoPassage && targetOutsideThroughPassage && fishAtMembrane) {
-        const sourceAngle = targetOutsideThroughPassage
-          ? Math.atan2(targetY || 0, targetX || 0)
-          : Math.atan2(state.fish.y || 0, state.fish.x || 0);
+      if (!circuitAutopilot && !autoPassage && fishAtMembrane && wantsOutward && (touchingPassage || aimingPassage)) {
+        const sourceAngle = aimingPassage ? targetAngleNow : fishAngleNow;
         const exitIndex = getNearestPassageIndex(sourceAngle);
         autoPassage = {
           phase: "exit",
           exitIndex,
+          progress: 0,
+          startX: state.fish.x || 0,
+          startY: state.fish.y || 0,
         };
       }
 
@@ -477,11 +481,15 @@ export const useSoonStore = create((set, get) => ({
         const dt = Math.max(0.008, Math.min(0.04, swimSpeed * 0.012));
 
         if (autoPassage.phase === "exit") {
-          const from = getPassagePoint(autoPassage.exitIndex, internalRadius);
+          const from = {
+            x: Number.isFinite(autoPassage.startX) ? autoPassage.startX : getPassagePoint(autoPassage.exitIndex, internalRadius).x,
+            y: Number.isFinite(autoPassage.startY) ? autoPassage.startY : getPassagePoint(autoPassage.exitIndex, internalRadius).y,
+          };
           const to = getPassagePoint(autoPassage.exitIndex, externalRadius);
           const t = Math.min(1, (autoPassage.progress || 0) + dt * 1.4);
-          const nx = lerp(from.x, to.x, t);
-          const ny = lerp(from.y, to.y, t);
+          const easedT = t < 0.5 ? 2 * t * t : 1 - ((-2 * t + 2) ** 2) / 2;
+          const nx = lerp(from.x, to.x, easedT);
+          const ny = lerp(from.y, to.y, easedT);
           const heading = getPassagePoint(autoPassage.exitIndex, externalRadius).angle;
           const freeSwimTargetRadius = externalRadius + 80;
           const freeSwimTargetX = Math.cos(heading) * freeSwimTargetRadius;
