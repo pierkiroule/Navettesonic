@@ -13,26 +13,71 @@ import {
   drawEcosystemWorld,
 } from "./ecosystemFx.js";
 
+const EXTERNAL_BUBBLE_CONFIGS = [
+  { label: "bulleext1", size: 0.22, baseSpeed: 0.000032, wobble: 0.000011, phase: 0.2 },
+  { label: "bulleext2", size: 0.13, baseSpeed: -0.000041, wobble: 0.000014, phase: 1.1 },
+  { label: "bulleext3", size: 0.18, baseSpeed: 0.000029, wobble: 0.000016, phase: 2.4 },
+  { label: "bulleext4", size: 0.095, baseSpeed: -0.000052, wobble: 0.000009, phase: 3.2 },
+  { label: "bulleext5", size: 0.155, baseSpeed: 0.000038, wobble: 0.000013, phase: 4.4 },
+];
+
 const externalBubbleState = {
-  angle: -Math.PI / 6,
   lastTime: 0,
+  bubbles: EXTERNAL_BUBBLE_CONFIGS.map((config, index) => ({
+    ...config,
+    angle: -Math.PI / 6 + index * ((Math.PI * 2) / EXTERNAL_BUBBLE_CONFIGS.length),
+    bounceVX: 0,
+    bounceVY: 0,
+    x: 0,
+    y: 0,
+    radius: 0,
+  })),
 };
 
-export function getExternalBubblePose(arenaRadius, time, advance = false) {
-  const bubbleRadius = arenaRadius * 0.25;
-  const orbitRadius = arenaRadius + bubbleRadius + 220;
+function resolveExternalBubbleState(arenaRadius, time, advance = false) {
+  const dt = advance ? Math.max(8, Math.min(34, time - (externalBubbleState.lastTime || time))) : 0;
+  if (advance) externalBubbleState.lastTime = time;
 
-  if (advance) {
-    const dt = Math.max(8, Math.min(34, time - (externalBubbleState.lastTime || time)));
-    externalBubbleState.angle += 0.00004 * dt;
-    externalBubbleState.lastTime = time;
+  externalBubbleState.bubbles.forEach((bubble, index) => {
+    const orbitRadius = arenaRadius + arenaRadius * bubble.size + 180 + index * 26;
+    if (advance) {
+      const drift = bubble.baseSpeed + Math.sin(time * 0.0002 + bubble.phase) * bubble.wobble;
+      bubble.angle += drift * dt;
+      bubble.bounceVX *= 0.96;
+      bubble.bounceVY *= 0.96;
+    }
+    bubble.radius = arenaRadius * bubble.size;
+    bubble.x = Math.cos(bubble.angle) * orbitRadius + bubble.bounceVX;
+    bubble.y = Math.sin(bubble.angle) * orbitRadius + bubble.bounceVY;
+  });
+
+  for (let i = 0; i < externalBubbleState.bubbles.length; i += 1) {
+    for (let j = i + 1; j < externalBubbleState.bubbles.length; j += 1) {
+      const a = externalBubbleState.bubbles[i];
+      const b = externalBubbleState.bubbles[j];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const dist = Math.hypot(dx, dy) || 0.0001;
+      const minDist = a.radius + b.radius;
+      if (dist < minDist) {
+        const nx = dx / dist;
+        const ny = dy / dist;
+        const overlap = minDist - dist;
+        const impulse = overlap * 0.12;
+        a.bounceVX -= nx * impulse;
+        a.bounceVY -= ny * impulse;
+        b.bounceVX += nx * impulse;
+        b.bounceVY += ny * impulse;
+      }
+    }
   }
 
-  return {
-    x: Math.cos(externalBubbleState.angle) * orbitRadius,
-    y: Math.sin(externalBubbleState.angle) * orbitRadius,
-    radius: bubbleRadius,
-  };
+  return externalBubbleState.bubbles;
+}
+
+export function getExternalBubblePose(arenaRadius, time, advance = false) {
+  const [primary] = resolveExternalBubbleState(arenaRadius, time, advance);
+  return { x: primary.x, y: primary.y, radius: primary.radius };
 }
 
 export function drawScene(ctx, rect, time, refs) {
@@ -157,39 +202,39 @@ export function drawArenaBoundary(ctx, arenaRef, time) {
 }
 
 function drawExternalBubble(ctx, arenaRadius, time) {
-  const { x, y, radius: bubbleRadius } = getExternalBubblePose(arenaRadius, time, true);
-  const pulse = Math.sin(time * 0.0014) * 10;
+  const bubbles = resolveExternalBubbleState(arenaRadius, time, true);
+  bubbles.forEach((bubble, index) => {
+    const pulse = Math.sin(time * 0.0014 + index * 0.9) * Math.max(3, bubble.radius * 0.045);
+    ctx.save();
+    ctx.translate(bubble.x, bubble.y);
 
-  ctx.save();
-  ctx.translate(x, y);
+    const glow = ctx.createRadialGradient(0, 0, bubble.radius * 0.15, 0, 0, bubble.radius * 1.6);
+    glow.addColorStop(0, "rgba(173, 216, 255, 0.28)");
+    glow.addColorStop(1, "rgba(173, 216, 255, 0)");
 
-  const glow = ctx.createRadialGradient(0, 0, bubbleRadius * 0.15, 0, 0, bubbleRadius * 1.6);
-  glow.addColorStop(0, "rgba(173, 216, 255, 0.28)");
-  glow.addColorStop(1, "rgba(173, 216, 255, 0)");
+    ctx.beginPath();
+    ctx.arc(0, 0, bubble.radius * 1.25 + pulse, 0, Math.PI * 2);
+    ctx.fillStyle = glow;
+    ctx.fill();
 
-  ctx.beginPath();
-  ctx.arc(0, 0, bubbleRadius * 1.25 + pulse, 0, Math.PI * 2);
-  ctx.fillStyle = glow;
-  ctx.fill();
+    ctx.beginPath();
+    ctx.arc(0, 0, bubble.radius + pulse * 0.35, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(145, 206, 255, 0.2)";
+    ctx.fill();
 
-  ctx.beginPath();
-  ctx.arc(0, 0, bubbleRadius + pulse * 0.35, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(145, 206, 255, 0.2)";
-  ctx.fill();
+    ctx.beginPath();
+    ctx.arc(0, 0, bubble.radius + pulse * 0.25, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(210, 238, 255, 0.46)";
+    ctx.lineWidth = Math.max(2, bubble.radius * 0.03);
+    ctx.stroke();
 
-  ctx.beginPath();
-  ctx.arc(0, 0, bubbleRadius + pulse * 0.25, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(210, 238, 255, 0.46)";
-  ctx.lineWidth = 6;
-  ctx.stroke();
-
-  ctx.font = `600 ${Math.max(24, arenaRadius * 0.024)}px system-ui`;
-  ctx.fillStyle = "rgba(230, 247, 255, 0.82)";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("bulleext1", 0, 0);
-
-  ctx.restore();
+    ctx.font = `600 ${Math.max(14, bubble.radius * 0.18)}px system-ui`;
+    ctx.fillStyle = "rgba(230, 247, 255, 0.82)";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(bubble.label, 0, 0);
+    ctx.restore();
+  });
 }
 
 function drawArenaPolesAndMarkers(ctx, radius, time) {
