@@ -33,6 +33,8 @@ const PASSAGE_HALF_ARC = 0.12;
 const PASSAGE_ANGLES = [-Math.PI / 2, 0, Math.PI / 2, Math.PI];
 const OUTER_SWIM_OFFSET = 44;
 const ARENA2_ORBIT_MARGIN = 120;
+const ARENA2_WAVE_COOLDOWN_MS = 1800;
+const ARENA2_RETURN_MS = 1400;
 
 const EVASION_SAMPLE_URLS = [
   "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/evasion/evasion.mp3",
@@ -108,6 +110,18 @@ function getFishMovementRadius(targetX, targetY, arenaRadius) {
   );
   if (targetRadius <= navRadius) return navRadius;
   return arena2Radius;
+}
+
+function getArena2OrbitState(arenaRadius, now = performance.now()) {
+  const bubbleRadius = arenaRadius / 5;
+  const orbitRadius = arenaRadius + bubbleRadius + ARENA2_ORBIT_MARGIN;
+  const orbitAngle = -Math.PI / 2 + now * 0.00006;
+  const floatOffset = Math.sin(now * 0.0018) * 16;
+  return {
+    x: Math.cos(orbitAngle) * orbitRadius,
+    y: Math.sin(orbitAngle) * orbitRadius + floatOffset,
+    r: bubbleRadius,
+  };
 }
 
 function getRuntimeFishNavRadius(arenaRadius) {
@@ -416,6 +430,7 @@ export const useSoonStore = create((set, get) => ({
 
   tickFish: ({ swimSpeed = 1, arenaRadius = DEFAULT_ARENA_RADIUS } = {}) => {
     set((state) => {
+      const now = performance.now();
       let fishNavRadius = getFishMovementRadius(
         state.fish.targetX,
         state.fish.targetY,
@@ -458,82 +473,11 @@ export const useSoonStore = create((set, get) => ({
         playEvasionSampleOnce();
       }
       fishWasOutsideArena = isOutsideArena;
-      let autoPassage = state.fish.autoPassage || null;
-
-      const targetRadiusNow = Math.hypot(targetX || 0, targetY || 0);
-      const targetOutsideThroughPassage =
-        targetRadiusNow > navRadius + 1 && isNearPassage(Math.atan2(targetY || 0, targetX || 0));
-      const fishAtMembrane = fishRadiusNow >= navRadius - 18;
-
-      if (!circuitAutopilot && !autoPassage && (fishRadiusNow > navRadius + 2 || (targetOutsideThroughPassage && fishAtMembrane))) {
-        const sourceAngle = targetOutsideThroughPassage
-          ? Math.atan2(targetY || 0, targetX || 0)
-          : Math.atan2(state.fish.y || 0, state.fish.x || 0);
-        const exitIndex = getNearestPassageIndex(sourceAngle);
-        autoPassage = {
-          phase: "exit",
-          exitIndex,
-          nextIndex: (exitIndex + 1) % PASSAGE_ANGLES.length,
-          orbitAngle: PASSAGE_ANGLES[exitIndex],
-        };
-      }
-
-      if (autoPassage) {
-        const externalRadius = arenaRadius + OUTER_SWIM_OFFSET;
-        const internalRadius = navRadius;
-        const dt = Math.max(0.008, Math.min(0.04, swimSpeed * 0.012));
-
-        if (autoPassage.phase === "exit") {
-          const from = getPassagePoint(autoPassage.exitIndex, internalRadius);
-          const to = getPassagePoint(autoPassage.exitIndex, externalRadius);
-          const t = Math.min(1, (autoPassage.progress || 0) + dt * 1.4);
-          const nx = lerp(from.x, to.x, t);
-          const ny = lerp(from.y, to.y, t);
-          const heading = getPassagePoint(autoPassage.exitIndex, externalRadius).angle;
-          const nextAuto = t >= 1 ? { ...autoPassage, phase: "orbit", progress: 0, orbitAngle: heading } : { ...autoPassage, progress: t };
-
-          return {
-            circuitAutopilot,
-            circuitSegmentIndex,
-            circuitSegmentT,
-            fish: { ...state.fish, x: nx, y: ny, targetX: nx, targetY: ny, vx: 0, vy: 0, angle: heading, autoPassage: nextAuto },
-          };
-        }
-
-        if (autoPassage.phase === "orbit") {
-          const nextPassage = getPassagePoint(autoPassage.nextIndex, externalRadius);
-          const currentAngle = Number.isFinite(autoPassage.orbitAngle) ? autoPassage.orbitAngle : Math.atan2(state.fish.y || 0, state.fish.x || 0);
-          const delta = shortestAngleDelta(currentAngle, nextPassage.angle);
-          const normalizedDelta = delta < 0 ? delta + Math.PI * 2 : delta;
-          const step = Math.min(normalizedDelta, dt);
-          const orbitAngle = normalizeAngle(currentAngle + step);
-          const nx = Math.cos(orbitAngle) * externalRadius;
-          const ny = Math.sin(orbitAngle) * externalRadius;
-          const nextAuto = normalizedDelta <= dt + 0.001
-            ? { ...autoPassage, phase: "reenter", progress: 0, orbitAngle }
-            : { ...autoPassage, orbitAngle };
-
-          return {
-            circuitAutopilot,
-            circuitSegmentIndex,
-            circuitSegmentT,
-            fish: { ...state.fish, x: nx, y: ny, targetX: nx, targetY: ny, vx: 0, vy: 0, angle: orbitAngle + Math.PI * 0.5, autoPassage: nextAuto },
-          };
-        }
-
-        const from = getPassagePoint(autoPassage.nextIndex, externalRadius);
-        const to = getPassagePoint(autoPassage.nextIndex, internalRadius);
-        const t = Math.min(1, (autoPassage.progress || 0) + dt * 1.5);
-        const nx = lerp(from.x, to.x, t);
-        const ny = lerp(from.y, to.y, t);
-        const nextAuto = t >= 1 ? null : { ...autoPassage, progress: t };
-
-        return {
-          circuitAutopilot,
-          circuitSegmentIndex,
-          circuitSegmentT,
-          fish: { ...state.fish, x: nx, y: ny, targetX: to.x, targetY: to.y, vx: 0, vy: 0, angle: from.angle, autoPassage: nextAuto },
-        };
+      let autoPassage = null;
+      const fishReturnUntil = Number(state.fish.returnToPassageUntil || 0);
+      if (fishReturnUntil > now && state.fish.returnToPassageTarget) {
+        targetX = state.fish.returnToPassageTarget.x;
+        targetY = state.fish.returnToPassageTarget.y;
       }
 
       if (circuitAutopilot && state.traceCircuit?.length > 1) {
@@ -576,7 +520,7 @@ export const useSoonStore = create((set, get) => ({
         stopRadius,
       } = control;
 
-      const isAutoPassageActive = Boolean(autoPassage);
+      const isAutoPassageActive = false;
 
       // Point de bouche : le doigt tire le poisson par l'avant.
       const mouthX = state.fish.x + Math.cos(currentAngle) * mouthOffset;
@@ -614,9 +558,7 @@ export const useSoonStore = create((set, get) => ({
       const limitedVy = speedRaw > speedLimit ? (vy / speedRaw) * speedLimit : vy;
 
       fishNavRadius = getFishMovementRadius(targetX, targetY, arenaRadius);
-      if (autoPassage) {
-        fishNavRadius = Math.max(fishNavRadius, arenaRadius + OUTER_SWIM_OFFSET + 8);
-      }
+      fishNavRadius = Math.max(fishNavRadius, arenaRadius + OUTER_SWIM_OFFSET + 8);
 
       const safe = clampToCircle(
         {
@@ -665,7 +607,24 @@ export const useSoonStore = create((set, get) => ({
         pushBubblesFromFish(state.bubbles, safe, fishDepth)
       );
 
+      let waveStartedAt = state.arena2WaveStartedAt || 0;
+      let returnToPassageUntil = state.fish.returnToPassageUntil || 0;
+      let returnToPassageTarget = state.fish.returnToPassageTarget || null;
+      const arena2 = getArena2OrbitState(arenaRadius, now);
+      const distArena2 = Math.hypot((safe.x || 0) - arena2.x, (safe.y || 0) - arena2.y);
+      const canTriggerWave = !waveStartedAt || now - waveStartedAt > ARENA2_WAVE_COOLDOWN_MS;
+      if (distArena2 <= arena2.r + 12 && canTriggerWave) {
+        waveStartedAt = now;
+        const nearestPassage = getPassagePoint(
+          getNearestPassageIndex(Math.atan2(safe.y || 0, safe.x || 0)),
+          navRadius
+        );
+        returnToPassageUntil = now + ARENA2_RETURN_MS;
+        returnToPassageTarget = { x: nearestPassage.x, y: nearestPassage.y };
+      }
+
       return {
+        arena2WaveStartedAt: waveStartedAt,
         circuitAutopilot,
         circuitSegmentIndex,
         circuitSegmentT,
@@ -686,6 +645,8 @@ export const useSoonStore = create((set, get) => ({
           turnVelocity: nextTurnVelocity,
           maxSpeed: state.fish.maxSpeed || 3.1,
           autoPassage,
+          returnToPassageUntil,
+          returnToPassageTarget,
         },
       };
     });

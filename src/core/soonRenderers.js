@@ -24,7 +24,7 @@ export function drawScene(ctx, rect, time, refs) {
   enterWorld(ctx, rect, cameraRef, stateRef);
 
   drawArenaBoundary(ctx, arenaRef, time);
-  drawOrbitingOuterBubble(ctx, arenaRef, time);
+  drawOrbitingOuterBubble(ctx, arenaRef, time, current.arena2WaveStartedAt);
 
   if (!current.eyesClosed) {
     drawArenaNightSky(ctx, arenaRef, time);
@@ -134,7 +134,7 @@ export function drawArenaBoundary(ctx, arenaRef, time) {
   ctx.restore();
 }
 
-function drawOrbitingOuterBubble(ctx, arenaRef, time) {
+function drawOrbitingOuterBubble(ctx, arenaRef, time, waveStartedAt = 0) {
   const arenaRadius = arenaRef.current?.radius || 1200;
   const bubbleRadius = arenaRadius / 5;
   const orbitRadius = arenaRadius + bubbleRadius + 120;
@@ -173,6 +173,20 @@ function drawOrbitingOuterBubble(ctx, arenaRef, time) {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText("arène 2", x, y);
+
+  if (waveStartedAt > 0) {
+    const age = time - waveStartedAt;
+    if (age >= 0 && age <= 1400) {
+      const t = age / 1400;
+      const waveR = bubbleRadius + t * (arenaRef.current?.radius || 1200) * 0.9;
+      const alpha = (1 - t) * 0.6;
+      ctx.beginPath();
+      ctx.arc(x, y, waveR, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(125, 211, 252, ${alpha})`;
+      ctx.lineWidth = 10 * (1 - t * 0.6);
+      ctx.stroke();
+    }
+  }
 
   ctx.restore();
 }
