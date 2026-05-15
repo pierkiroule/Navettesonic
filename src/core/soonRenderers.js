@@ -789,6 +789,7 @@ function initSeedTransporters(radius) {
       diving: Math.random() > 0.55,
       insideMembrane: false,
       transitPole: null,
+      transitStartedAt: 0,
     });
   }
 }
@@ -811,12 +812,19 @@ export function drawPinkSeedTransporters(ctx, arenaRef, time) {
     const poleLabel = getPoleLabelFromAngle(fish.angle);
     const canCrossMembrane = Boolean(poleLabel);
 
+    if (Math.random() > 0.996) fish.diving = !fish.diving;
+
     if (fish.diving && canCrossMembrane && !fish.insideMembrane) {
       fish.insideMembrane = true;
       fish.transitPole = poleLabel;
-    } else if (!fish.diving && canCrossMembrane && fish.insideMembrane) {
+      fish.transitStartedAt = time;
+    }
+
+    const transitTooLong = fish.insideMembrane && time - (fish.transitStartedAt || time) > 2200;
+    if ((transitTooLong || (!fish.diving && canCrossMembrane)) && fish.insideMembrane) {
       fish.insideMembrane = false;
       fish.transitPole = null;
+      fish.transitStartedAt = 0;
     }
 
     if (fish.insideMembrane) {

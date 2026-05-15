@@ -169,7 +169,7 @@ export function updatePinkWallFish({
 
       if (fish.passageStep === "outer-lane" && d < 64) {
         fish.passageStep = "gate";
-        setPassageTarget(fish, arenaRadius, fish.passageLabel, "entering");
+        setPassageTarget(fish, arenaRadius, fish.passageLabel, "exiting");
       } else if (fish.passageStep === "gate" && d < 58 && !fish.enteredViaPassage) {
         fish.enteredViaPassage = true;
         fish.passagePhase = null;
@@ -221,7 +221,7 @@ export function updatePinkWallFish({
 
       if (fish.exitReady && fish.passageStep === "inside-gate" && d < 52) {
         fish.passageStep = "outside-gate";
-        setPassageTarget(fish, arenaRadius, fish.passageLabel, "entering");
+        setPassageTarget(fish, arenaRadius, fish.passageLabel, "exiting");
       } else if (fish.exitReady && fish.passageStep === "outside-gate" && d < 58) {
         fish.passageStep = "outer-lane";
         const angle = getPassageAngle(fish.passageLabel);
