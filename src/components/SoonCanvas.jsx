@@ -44,12 +44,16 @@ export default function SoonCanvas({
   const ARENA2_IMAGES = [
     "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/arena2/1.png",
   ];
+  const BULLEEXT1_IMAGE =
+    "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/dessins/1.png";
   const canvasRef = useRef(null);
   const [semioseVideo, setSemioseVideo] = useState(null);
   const [arenaCenterScreen, setArenaCenterScreen] = useState({ x: 0, y: 0 });
   const [fishMenu, setFishMenu] = useState(null);
   const [arena2ImageEvent, setArena2ImageEvent] = useState(null);
+  const [bulleext1ImageEvent, setBulleext1ImageEvent] = useState(null);
   const arena2ImageTimeoutRef = useRef(null);
+  const bulleext1TimeoutRef = useRef(null);
 
   const cameraRef = useRef({
     x: 0,
@@ -162,8 +166,20 @@ export default function SoonCanvas({
       if (arena2ImageTimeoutRef.current) {
         clearTimeout(arena2ImageTimeoutRef.current);
       }
+      if (bulleext1TimeoutRef.current) {
+        clearTimeout(bulleext1TimeoutRef.current);
+      }
       arena2ImageTimeoutRef.current = setTimeout(() => {
         setArena2ImageEvent(null);
+      }, 5000);
+    },
+    onExternalBubbleTouch: () => {
+      setBulleext1ImageEvent({ id: `${Date.now()}-${Math.random()}`, url: BULLEEXT1_IMAGE });
+      if (bulleext1TimeoutRef.current) {
+        clearTimeout(bulleext1TimeoutRef.current);
+      }
+      bulleext1TimeoutRef.current = setTimeout(() => {
+        setBulleext1ImageEvent(null);
       }, 5000);
     },
   });
@@ -201,6 +217,9 @@ export default function SoonCanvas({
     () => () => {
       if (arena2ImageTimeoutRef.current) {
         clearTimeout(arena2ImageTimeoutRef.current);
+      }
+      if (bulleext1TimeoutRef.current) {
+        clearTimeout(bulleext1TimeoutRef.current);
       }
     },
     []
@@ -268,6 +287,11 @@ export default function SoonCanvas({
             loop
             playsInline
           />
+        </div>
+      ) : null}
+      {bulleext1ImageEvent?.url ? (
+        <div className="arena2-image-overlay" key={bulleext1ImageEvent.id}>
+          <img src={bulleext1ImageEvent.url} alt="bulleext1 event" className="arena2-image-overlay__image" />
         </div>
       ) : null}
       {arena2ImageEvent?.url ? (

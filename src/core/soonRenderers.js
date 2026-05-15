@@ -15,7 +15,25 @@ import {
 
 const externalBubbleState = {
   angle: -Math.PI / 6,
+  lastTime: 0,
 };
+
+export function getExternalBubblePose(arenaRadius, time, advance = false) {
+  const bubbleRadius = arenaRadius * 0.25;
+  const orbitRadius = arenaRadius + bubbleRadius + 220;
+
+  if (advance) {
+    const dt = Math.max(8, Math.min(34, time - (externalBubbleState.lastTime || time)));
+    externalBubbleState.angle += 0.00004 * dt;
+    externalBubbleState.lastTime = time;
+  }
+
+  return {
+    x: Math.cos(externalBubbleState.angle) * orbitRadius,
+    y: Math.sin(externalBubbleState.angle) * orbitRadius,
+    radius: bubbleRadius,
+  };
+}
 
 export function drawScene(ctx, rect, time, refs) {
   const { stateRef, arenaRef, cameraRef, enterWorld, exitWorld } = refs;
@@ -139,14 +157,7 @@ export function drawArenaBoundary(ctx, arenaRef, time) {
 }
 
 function drawExternalBubble(ctx, arenaRadius, time) {
-  const bubbleRadius = arenaRadius * 0.25;
-  const orbitRadius = arenaRadius + bubbleRadius + 220;
-
-  externalBubbleState.angle += 0.00004 * Math.max(8, Math.min(34, time - (externalBubbleState.lastTime || time)));
-  externalBubbleState.lastTime = time;
-
-  const x = Math.cos(externalBubbleState.angle) * orbitRadius;
-  const y = Math.sin(externalBubbleState.angle) * orbitRadius;
+  const { x, y, radius: bubbleRadius } = getExternalBubblePose(arenaRadius, time, true);
   const pulse = Math.sin(time * 0.0014) * 10;
 
   ctx.save();
