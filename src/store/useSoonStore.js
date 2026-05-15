@@ -147,6 +147,7 @@ const PASSAGE_PORTALS = [
   { id: "S", angle: Math.PI / 2 },
   { id: "O", angle: Math.PI },
 ];
+const PORTAL_ANGLE_TOLERANCE = 0.32;
 const PORTAL_TRANSITION_MS = 520;
 const PORTAL_EXIT_RADIUS_OFFSET = 240;
 
@@ -174,8 +175,11 @@ function getPortalHit(x, y, arenaRadius) {
   const dist = Math.hypot(x, y);
 
   if (dist < arenaRadius - 140) return null;
-
-  return getNearestPortalAngle(x, y);
+  const portal = getNearestPortalAngle(x, y);
+  const angle = Math.atan2(y, x);
+  const isNearPortal = Math.abs(angleDelta(angle, portal.angle)) <= PORTAL_ANGLE_TOLERANCE;
+  if (!isNearPortal) return null;
+  return portal;
 }
 
 function getPortalPoint(angle, radius) {
