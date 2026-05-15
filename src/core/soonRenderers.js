@@ -13,6 +13,10 @@ import {
   drawEcosystemWorld,
 } from "./ecosystemFx.js";
 
+const externalBubbleState = {
+  angle: -Math.PI / 6,
+};
+
 export function drawScene(ctx, rect, time, refs) {
   const { stateRef, arenaRef, cameraRef, enterWorld, exitWorld } = refs;
   const current = stateRef.current;
@@ -129,10 +133,53 @@ export function drawArenaBoundary(ctx, arenaRef, time) {
   ctx.fill();
 
   drawArenaPolesAndMarkers(ctx, radius, time);
+  drawExternalBubble(ctx, radius, time);
 
   ctx.restore();
 }
 
+function drawExternalBubble(ctx, arenaRadius, time) {
+  const bubbleRadius = arenaRadius * 0.25;
+  const orbitRadius = arenaRadius + bubbleRadius + 220;
+
+  externalBubbleState.angle += 0.00004 * Math.max(8, Math.min(34, time - (externalBubbleState.lastTime || time)));
+  externalBubbleState.lastTime = time;
+
+  const x = Math.cos(externalBubbleState.angle) * orbitRadius;
+  const y = Math.sin(externalBubbleState.angle) * orbitRadius;
+  const pulse = Math.sin(time * 0.0014) * 10;
+
+  ctx.save();
+  ctx.translate(x, y);
+
+  const glow = ctx.createRadialGradient(0, 0, bubbleRadius * 0.15, 0, 0, bubbleRadius * 1.6);
+  glow.addColorStop(0, "rgba(173, 216, 255, 0.28)");
+  glow.addColorStop(1, "rgba(173, 216, 255, 0)");
+
+  ctx.beginPath();
+  ctx.arc(0, 0, bubbleRadius * 1.25 + pulse, 0, Math.PI * 2);
+  ctx.fillStyle = glow;
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(0, 0, bubbleRadius + pulse * 0.35, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(145, 206, 255, 0.2)";
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(0, 0, bubbleRadius + pulse * 0.25, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(210, 238, 255, 0.46)";
+  ctx.lineWidth = 6;
+  ctx.stroke();
+
+  ctx.font = `600 ${Math.max(24, arenaRadius * 0.024)}px system-ui`;
+  ctx.fillStyle = "rgba(230, 247, 255, 0.82)";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("bulleext1", 0, 0);
+
+  ctx.restore();
+}
 
 function drawArenaPolesAndMarkers(ctx, radius, time) {
   const poles = [
