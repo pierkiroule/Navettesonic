@@ -169,7 +169,7 @@ export function updatePinkWallFish({
 
       if (fish.passageStep === "outer-lane" && d < 64) {
         fish.passageStep = "gate";
-        setPassageTarget(fish, arenaRadius, fish.passageLabel, "exiting");
+        setPassageTarget(fish, arenaRadius, fish.passageLabel, "entering");
       } else if (fish.passageStep === "gate" && d < 58 && !fish.enteredViaPassage) {
         fish.enteredViaPassage = true;
         fish.passagePhase = null;
