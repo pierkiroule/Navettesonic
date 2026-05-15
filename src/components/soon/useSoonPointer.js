@@ -81,6 +81,10 @@ export function useSoonPointer({
       }
     }
 
+    if (options.swimEdgeBoost) {
+      return point;
+    }
+
     return clampToCircle(point, navigableRadius);
   }
 
@@ -235,6 +239,16 @@ export function useSoonPointer({
 
     const point = getSafeWorldFromEvent(event, { swimEdgeBoost: true });
     const current = stateRef.current;
+
+    if (current.mode === "compo" || current.mode === "reso") {
+      const r = arenaRef.current.radius || 1200;
+      const d = Math.hypot(point.x, point.y);
+
+      if (d >= r - 120) {
+        onFishTarget?.(point.x, point.y, r);
+        return;
+      }
+    }
     const isEditMode = current.interactionMode === "edit";
     const isCircuitMode = current.interactionMode === "circuit";
 

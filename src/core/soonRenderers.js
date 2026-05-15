@@ -560,26 +560,26 @@ function getPolePrompt(fish, arenaRadius) {
 
   const polePrompts = [
     {
-      title: "NORD",
-      question: "Qui rencontres-tu dans l’Onde sonore ?",
+      title: "",
+      question: "",
       x: 0,
       y: -poleRadius,
     },
     {
-      title: "EST",
-      question: "Que vois-tu les yeux fermés dans l’Onde sonore ?",
+      title: "",
+      question: "",
       x: poleRadius,
       y: 0,
     },
     {
-      title: "SUD",
-      question: "Qu’est-ce qui vibre en toi dans l’Onde sonore ?",
+      title: "",
+      question: "",
       x: 0,
       y: poleRadius,
     },
     {
-      title: "OUEST",
-      question: "Comment écoutes-tu l’Onde sonore ?",
+      title: "",
+      question: "",
       x: -poleRadius,
       y: 0,
     },
@@ -622,56 +622,6 @@ export function drawHud(ctx, rect, current, arenaRef) {
 
   const arenaRadius = arenaRef?.current?.radius || 1200;
   const polePrompt = getPolePrompt(current?.fish, arenaRadius);
-  if (polePrompt) {
-    const viewportScale = typeof window !== "undefined" && window.visualViewport?.scale
-      ? window.visualViewport.scale
-      : 1;
-    const zoomAdjust = 1 / Math.max(0.8, Math.min(2.2, viewportScale));
-    const cx = rect.width / 2;
-    const cy = rect.height / 2;
-    const panelWidth = Math.min(rect.width - 28, 760 * zoomAdjust);
-    const panelHeight = Math.min(rect.height * 0.28, 180 * zoomAdjust);
-    const panelX = cx - panelWidth / 2;
-    const panelY = cy - panelHeight / 2;
-
-    ctx.save();
-    ctx.fillStyle = "rgba(2, 6, 23, 0.5)";
-    ctx.strokeStyle = "rgba(186, 230, 253, 0.42)";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.roundRect(panelX, panelY, panelWidth, panelHeight, 22);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = "rgba(255, 225, 248, 0.95)";
-    const titleSize = fitText(
-      ctx,
-      polePrompt.title,
-      panelWidth - 24,
-      34 * zoomAdjust,
-      18 * zoomAdjust,
-      "system-ui",
-      700
-    );
-    ctx.font = `700 ${titleSize}px system-ui`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(polePrompt.title, cx, panelY + panelHeight * 0.34);
-
-    ctx.fillStyle = "rgba(226, 232, 240, 0.96)";
-    const questionSize = fitText(
-      ctx,
-      polePrompt.question,
-      panelWidth - 30,
-      24 * zoomAdjust,
-      12 * zoomAdjust,
-      "Georgia",
-      500
-    );
-    ctx.font = `500 ${questionSize}px Georgia`;
-    ctx.fillText(polePrompt.question, cx, panelY + panelHeight * 0.68);
-    ctx.restore();
-  }
 
   if (!current.eyesClosed) {
     ctx.restore();
@@ -682,7 +632,7 @@ export function drawHud(ctx, rect, current, arenaRef) {
   ctx.font = "500 18px Georgia";
   ctx.textAlign = "center";
 
-  ctx.fillText("Réso•° · suis le circuit", rect.width / 2, rect.height / 2 + 98);
+  // ctx.fillText("Réso•° · suis le circuit", rect.width / 2, rect.height / 2 + 98);
 
   ctx.restore();
 }
@@ -809,39 +759,10 @@ export function drawPinkSeedTransporters(ctx, arenaRef, time) {
     fish.angle += fish.speed * dt;
 
     let currentOrbit = fish.orbit + Math.sin(time * 0.001 + fish.phase) * 10;
-    const poleLabel = getPoleLabelFromAngle(fish.angle);
-    const canCrossMembrane = Boolean(poleLabel);
-
-    if (fish.diving && canCrossMembrane && !fish.insideMembrane) {
-      fish.insideMembrane = true;
-      fish.transitPole = poleLabel;
-      fish.transitStartedAt = time;
-    }
-
-    const transitTooLong = fish.insideMembrane && time - (fish.transitStartedAt || time) > 1800;
-    const reachedExitWindow = fish.insideMembrane && canCrossMembrane && !fish.diving;
-    if ((transitTooLong || reachedExitWindow) && fish.insideMembrane) {
-      fish.insideMembrane = false;
-      fish.transitPole = null;
-      fish.transitStartedAt = 0;
-    }
-
-    if (fish.insideMembrane) {
-      const crossingPole = fish.transitPole || poleLabel;
-      const targetAngle = getPoleAngle(crossingPole);
-      if (Number.isFinite(targetAngle)) {
-        // Garde le poisson aligné avec le passage sans le figer complètement.
-        const delta = Math.atan2(
-          Math.sin(targetAngle - fish.angle),
-          Math.cos(targetAngle - fish.angle)
-        );
-        const alignmentGain = 0.22;
-        const maxTurn = 0.018;
-        const turn = Math.max(-maxTurn, Math.min(maxTurn, delta * alignmentGain));
-        fish.angle += turn;
-      }
-      currentOrbit -= 120 + Math.sin(time * 0.0018 + fish.phase) * 60;
-    }
+    // Passage membrane désactivé : les transporteurs restent orbitaux et ne stagnent plus devant NESO.
+    fish.insideMembrane = false;
+    fish.transitPole = null;
+    fish.transitStartedAt = 0;
 
     if (fish.insideMembrane && currentOrbit < radius - 8 && fish.carry && Math.random() > 0.985) {
       seedTransportState.sprouts.push({

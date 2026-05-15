@@ -105,8 +105,8 @@ export function useSoonCanvasLoop({
           const fishDistanceFromCenter = Math.hypot(fish.x || 0, fish.y || 0);
           const arena2Radius = getFishNavigableRadius(arenaRef.current.radius);
           const touchingArena2 = fishDistanceFromCenter >= arena2Radius - 1.5;
-          if (touchingArena2 && !wasTouchingArena2) {
-            onArena2Touch?.();
+          if (false && touchingArena2 && !wasTouchingArena2) {
+            // onArena2Touch?.(); // event passage/arena désactivé
           }
           wasTouchingArena2 = touchingArena2;
 
