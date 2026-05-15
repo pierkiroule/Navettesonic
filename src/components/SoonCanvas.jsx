@@ -41,10 +41,15 @@ export default function SoonCanvas({
   onSetBubblesIntensity,
   onResetFishContext,
 }) {
+  const ARENA2_IMAGES = [
+    "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/arena2/1.png",
+  ];
   const canvasRef = useRef(null);
   const [semioseVideo, setSemioseVideo] = useState(null);
   const [arenaCenterScreen, setArenaCenterScreen] = useState({ x: 0, y: 0 });
   const [fishMenu, setFishMenu] = useState(null);
+  const [arena2ImageEvent, setArena2ImageEvent] = useState(null);
+  const arena2ImageTimeoutRef = useRef(null);
 
   const cameraRef = useRef({
     x: 0,
@@ -150,6 +155,17 @@ export default function SoonCanvas({
     activeBubbleAudioRef,
     onTickFish,
     onSemioseVideoTrigger: setSemioseVideo,
+    onArena2Touch: () => {
+      const randomImage =
+        ARENA2_IMAGES[Math.floor(Math.random() * ARENA2_IMAGES.length)];
+      setArena2ImageEvent({ id: `${Date.now()}-${Math.random()}`, url: randomImage });
+      if (arena2ImageTimeoutRef.current) {
+        clearTimeout(arena2ImageTimeoutRef.current);
+      }
+      arena2ImageTimeoutRef.current = setTimeout(() => {
+        setArena2ImageEvent(null);
+      }, 5000);
+    },
   });
 
   const {
@@ -180,6 +196,15 @@ export default function SoonCanvas({
   });
 
   useEffect(() => cleanupPointer, [cleanupPointer]);
+
+  useEffect(
+    () => () => {
+      if (arena2ImageTimeoutRef.current) {
+        clearTimeout(arena2ImageTimeoutRef.current);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     let frame = 0;
@@ -243,6 +268,11 @@ export default function SoonCanvas({
             loop
             playsInline
           />
+        </div>
+      ) : null}
+      {arena2ImageEvent?.url ? (
+        <div className="arena2-image-overlay" key={arena2ImageEvent.id}>
+          <img src={arena2ImageEvent.url} alt="Arena 2 event" className="arena2-image-overlay__image" />
         </div>
       ) : null}
       {fishMenu && interactionMode === "swim" ? (
