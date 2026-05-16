@@ -571,10 +571,13 @@ export const useSoonStore = create((set, get) => ({
           Math.cos(fishAngle - breachAngle)
         );
         const nearMembrane = Math.hypot(nextFishX, nextFishY) >= fishNavRadius - 42;
-        const pushDot = (Math.cos(breachAngle) * dirX) + (Math.sin(breachAngle) * dirY);
-        const pushingTowardBreach = pushDot > 0.45;
+        const radialX = Math.cos(breachAngle);
+        const radialY = Math.sin(breachAngle);
+        const speedForDot = Math.hypot(nextVx, nextVy) || 0.0001;
+        const velocityDot = ((radialX * nextVx) + (radialY * nextVy)) / speedForDot;
+        const pushingTowardBreach = velocityDot > 0.22;
 
-        const pushingInward = pushDot < -0.45;
+        const pushingInward = velocityDot < -0.22;
         if (nearMembrane && Math.abs(delta) <= 0.35 && pushingTowardBreach && arenaLevel < 2) {
           arenaLevel += 1;
           currentArenaId = `arene_${String(arenaLevel).padStart(4, "0")}`;
