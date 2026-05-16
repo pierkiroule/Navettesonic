@@ -1,26 +1,32 @@
-export const WORKFLOW_ROOT_STORAGE_KEY = "soon.workflow.root";
+import {
+  ODYSSEO_MODE_TRACE,
+  ODYSSEO_MODE_TRAVEL,
+  WORKFLOW_ROOT_COMPO,
+  WORKFLOW_ROOT_NAVIGO,
+  normalizeWorkflowRoot,
+} from "./uiState.js";
 
-export function normalizeWorkflowRoot(value) {
-  return value === "navigo" ? "navigo" : "compo";
-}
+export { normalizeWorkflowRoot } from "./uiState.js";
+
+export const WORKFLOW_ROOT_STORAGE_KEY = "soon.workflow.root";
 
 export function parseWorkflowFromHash(hash) {
   const raw = String(hash || "").replace(/^#/, "").replace(/^\//, "").toLowerCase();
 
-  if (raw === "navigo") return { root: "navigo", odysseoMode: "trace" };
-  if (raw === "compo") return { root: "compo", odysseoMode: null };
+  if (raw === WORKFLOW_ROOT_NAVIGO) return { root: WORKFLOW_ROOT_NAVIGO, odysseoMode: ODYSSEO_MODE_TRACE };
+  if (raw === WORKFLOW_ROOT_COMPO) return { root: WORKFLOW_ROOT_COMPO, odysseoMode: null };
 
   // backward compatibility for legacy deep links
-  if (raw === "trace") return { root: "navigo", odysseoMode: "trace" };
-  if (raw === "travel") return { root: "navigo", odysseoMode: "travel" };
+  if (raw === ODYSSEO_MODE_TRACE) return { root: WORKFLOW_ROOT_NAVIGO, odysseoMode: ODYSSEO_MODE_TRACE };
+  if (raw === ODYSSEO_MODE_TRAVEL) return { root: WORKFLOW_ROOT_NAVIGO, odysseoMode: ODYSSEO_MODE_TRAVEL };
 
   return null;
 }
 
-export function serializeWorkflowHash(root, odysseoMode = "trace") {
-  if (root === "navigo") {
+export function serializeWorkflowHash(root, odysseoMode = ODYSSEO_MODE_TRACE) {
+  if (root === WORKFLOW_ROOT_NAVIGO) {
     // keep old hash values so legacy routes still work
-    return odysseoMode === "travel" ? "#travel" : "#trace";
+    return odysseoMode === ODYSSEO_MODE_TRAVEL ? "#travel" : "#trace";
   }
 
   return "#compo";
@@ -30,7 +36,7 @@ export function readPersistedWorkflowRoot(storage = globalThis?.localStorage) {
   try {
     return normalizeWorkflowRoot(storage?.getItem?.(WORKFLOW_ROOT_STORAGE_KEY));
   } catch {
-    return "compo";
+    return WORKFLOW_ROOT_COMPO;
   }
 }
 

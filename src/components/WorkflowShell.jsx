@@ -1,5 +1,7 @@
-export default function WorkflowShell({ activeRoot = "compo", onChangeRoot }) {
-  const isCompo = activeRoot === "compo";
+import { WORKFLOW_ROOT_COMPO, WORKFLOW_ROOT_NAVIGO } from "../core/uiState.js";
+
+export default function WorkflowShell({ activeRoot = WORKFLOW_ROOT_COMPO, onChangeRoot }) {
+  const isCompo = activeRoot === WORKFLOW_ROOT_COMPO;
 
   return (
     <div className="workflow-shell" role="group" aria-label="Workflow principal">
@@ -9,7 +11,7 @@ export default function WorkflowShell({ activeRoot = "compo", onChangeRoot }) {
           role="tab"
           aria-selected={isCompo}
           className={isCompo ? "active compo-tab" : "compo-tab"}
-          onClick={() => onChangeRoot?.("compo")}
+          onClick={() => onChangeRoot?.(WORKFLOW_ROOT_COMPO)}
         >
           Compo
         </button>
@@ -18,7 +20,7 @@ export default function WorkflowShell({ activeRoot = "compo", onChangeRoot }) {
           role="tab"
           aria-selected={!isCompo}
           className={!isCompo ? "active navigo-tab" : "navigo-tab"}
-          onClick={() => onChangeRoot?.("navigo")}
+          onClick={() => onChangeRoot?.(WORKFLOW_ROOT_NAVIGO)}
         >
           Navigo
         </button>

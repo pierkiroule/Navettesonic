@@ -1,3 +1,4 @@
+import { SOON_MODE_COMPO, SOON_MODE_INTRO, SOON_MODE_RESO } from "../core/uiState.js";
 import { useEffect, useState } from "react";
 import { SOON_MODES } from "../core/soonModes.js";
 import BubbleEditor from "./BubbleEditor.jsx";
@@ -23,7 +24,7 @@ export default function SidePanel({
     setOpen(true);
   }, [forceOpenKey]);
 
-  if (mode === "intro") return null;
+  if (mode === SOON_MODE_INTRO) return null;
 
   return (
     <>
@@ -35,13 +36,13 @@ export default function SidePanel({
         <span>{currentMode?.icon}</span>
       </button>
 
-      {selectedBubble && !open && mode === "compo" && (
+      {selectedBubble && !open && mode === SOON_MODE_COMPO && (
         <button className="bubble-pill" onClick={() => setOpen(true)}>
           🫧 {selectedBubble.label}
         </button>
       )}
 
-      {false && selectedBeacon && !open && mode === "reso" && (
+      {false && selectedBeacon && !open && mode === SOON_MODE_RESO && (
         <button className="bubble-pill" onClick={() => setOpen(true)}>
           ⟡ Balise P{selectedBeacon.depth} · V{selectedBeacon.speed}
         </button>
@@ -60,7 +61,7 @@ export default function SidePanel({
             </button>
           </header>
 
-          {mode === "compo" && selectedBubble && (
+          {mode === SOON_MODE_COMPO && selectedBubble && (
             <BubbleEditor
               bubble={selectedBubble}
               onUpdate={(patch) => onUpdateBubble(selectedBubble.id, patch)}
@@ -68,7 +69,7 @@ export default function SidePanel({
             />
           )}
 
-          {mode === "compo" && !selectedBubble && (
+          {mode === SOON_MODE_COMPO && !selectedBubble && (
             <section className="help-card compact-help">
               <p>
                 Double-tape dans l’arène pour créer une bulle sonore.
@@ -78,7 +79,7 @@ export default function SidePanel({
             </section>
           )}
 
-          {false && mode === "reso" && (
+          {false && mode === SOON_MODE_RESO && (
             <>
               <section className="help-card compact-help">
                 <p>
