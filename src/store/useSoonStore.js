@@ -22,7 +22,7 @@ import {
   smoothLoopPoint,
 } from "../core/traceCircuit.js";
 import { getFishNavigableRadius } from "../core/constants.js";
-import { buildWorldDebugSnapshot, generateLabybulle, validateWorldGraph } from "../core/labybulleWorld.js";
+import { buildWorldDebugSnapshot, generateLabybulle, getPortalArrivalPosition, validateWorldGraph } from "../core/labybulleWorld.js";
 
 const saved = loadState();
 const labybulleWorld = generateLabybulle(saved?.labybulleSeed ?? 1);
@@ -228,13 +228,29 @@ export const useSoonStore = create((set, get) => ({
     saveState(get());
   },
 
-  travelToArena: (nextArenaId) => {
+  travelToArena: ({ nextArenaId, fromArenaId, arenaRadius = DEFAULT_ARENA_RADIUS } = {}) => {
     set((state) => {
       const world = state.worldGraph;
       if (!world?.nodes?.some((node) => node.id === nextArenaId)) return {};
+
+      const arrival = getPortalArrivalPosition({
+        world,
+        fromArenaId: fromArenaId || state.currentArenaId,
+        toArenaId: nextArenaId,
+        radius: arenaRadius,
+      });
+
       return {
         currentArenaId: nextArenaId,
-        fish: { ...state.fish, x: 0, y: 0, targetX: 0, targetY: -120 },
+        fish: {
+          ...state.fish,
+          x: arrival.x,
+          y: arrival.y,
+          targetX: arrival.x,
+          targetY: arrival.y,
+          vx: 0,
+          vy: 0,
+        },
       };
     });
     saveState(get());

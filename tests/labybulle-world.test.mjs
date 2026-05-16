@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { generateLabybulle, validateWorldGraph, resolvePortalAtPosition } from '../src/core/labybulleWorld.js';
+import { generateLabybulle, validateWorldGraph, resolvePortalAtPosition, getPortalArrivalPosition } from '../src/core/labybulleWorld.js';
 
 test('structure labybulle correcte: 1 GIGA, 3 MEGA, 9 ARENA', () => {
   const world = generateLabybulle(42);
@@ -51,4 +51,18 @@ test('détection de portail: proche du trou => transition possible', () => {
   assert.ok(portal);
   assert.equal(portal.fromArenaId, 'arena-1-1');
   assert.equal(portal.toArenaId, 'mega-1');
+});
+
+
+test("arrivée portail: transition ARENA -> MEGA n'arrive pas au centre", () => {
+  const world = generateLabybulle(1);
+  const arrival = getPortalArrivalPosition({
+    world,
+    fromArenaId: 'arena-1-1',
+    toArenaId: 'mega-1',
+    radius: 1200,
+  });
+
+  assert.notDeepEqual(arrival, { x: 0, y: 0 });
+  assert.ok(Math.hypot(arrival.x, arrival.y) > 200);
 });

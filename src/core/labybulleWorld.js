@@ -191,4 +191,29 @@ export function resolvePortalAtPosition({ world, arenaId, x = 0, y = 0, radius =
   return null;
 }
 
+
+
+export function getPortalArrivalPosition({ world, fromArenaId, toArenaId, radius = 1200, inwardOffset = 150 }) {
+  if (!world || !fromArenaId || !toArenaId) return { x: 0, y: 0 };
+  const destinationPortals = (world.portals || []).filter(
+    (portal) => portal.fromArenaId === toArenaId && portal.toArenaId === fromArenaId
+  );
+  const reversePortal = destinationPortals[0];
+  if (!reversePortal) return { x: 0, y: 0 };
+
+  const outgoingFromDestination = (world.portals || []).filter((portal) => portal.fromArenaId === toArenaId);
+  const index = outgoingFromDestination.findIndex((portal) => portal.id === reversePortal.id);
+  const anchor = getPortalAnchor({
+    positionHint: reversePortal.positionHint,
+    radius,
+    index: Math.max(0, index),
+    total: Math.max(1, outgoingFromDestination.length),
+  });
+
+  return {
+    x: anchor.x - Math.cos(anchor.angle) * inwardOffset,
+    y: anchor.y - Math.sin(anchor.angle) * inwardOffset,
+  };
+}
+
 export { ARENA_TYPES, PORTAL_POSITIONS };

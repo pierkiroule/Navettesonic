@@ -287,7 +287,11 @@ export default function SoonApp({ onBack }) {
           });
           if (!portal) return;
 
-          travelToArena(portal.toArenaId);
+          travelToArena({
+            nextArenaId: portal.toArenaId,
+            fromArenaId: portal.fromArenaId,
+            arenaRadius,
+          });
           portalCooldownRef.current = now + 900;
         }}
         onSetFishDepth={setFishDepth}
