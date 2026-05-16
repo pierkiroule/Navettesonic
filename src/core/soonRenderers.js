@@ -140,46 +140,24 @@ export function drawQuill(ctx, fish = {}, time = 0) {
 
 export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
   const radius = arenaRef.current.radius;
-  const level = Number.isFinite(current?.fish?.arenaLevel) ? current.fish.arenaLevel : 0;
-  const wallHitCount = Math.max(0, Math.min(3, current?.fish?.wallHitCount || 0));
-  const breachOpen = Boolean(current?.fish?.breachOpen);
-  const breachAngle = Number.isFinite(current?.fish?.breachAngle) ? current.fish.breachAngle : null;
-  // Trou visuel réduit: largeur ~ 2x largeur poisson à rayon d’arène standard.
-  const breachSpan = breachOpen && breachAngle !== null ? BREACH_GAP_SPAN : 0;
-  const pulse = Math.sin(time * 0.001) * 2;
-
-  const strokeRing = (r, strokeStyle, lineWidth) => {
-    ctx.beginPath();
-    if (breachSpan > 0) {
-      ctx.arc(0, 0, r, breachAngle + breachSpan, breachAngle - breachSpan + Math.PI * 2);
-    } else {
-      ctx.arc(0, 0, r, 0, Math.PI * 2);
-    }
-    ctx.strokeStyle = strokeStyle;
-    ctx.lineWidth = lineWidth;
-    ctx.stroke();
-  };
+  void time;
+  void current;
 
   ctx.save();
 
-  for (let i = 0; i <= level; i += 1) {
-    const r = radius * (MEMBRANE_LEVEL_MULTIPLIERS[i] ?? MEMBRANE_LEVEL_MULTIPLIERS[0]);
-    const isCurrent = i === level;
-    strokeRing(
-      r + (isCurrent ? pulse : 0),
-      isCurrent ? "rgba(180, 220, 255, 0.85)" : "rgba(148, 163, 184, 0.28)",
-      isCurrent ? 6 : 2
-    );
-  }
+  const rings = [
+    radius * (MEMBRANE_LEVEL_MULTIPLIERS[0] ?? 1),
+    radius * (MEMBRANE_LEVEL_MULTIPLIERS[1] ?? 1),
+    radius * (MEMBRANE_LEVEL_MULTIPLIERS[2] ?? 1),
+  ];
 
-  strokeRing(radius - ARENA_INNER_BOUNDARY_INSET, "rgba(148, 163, 184, 0.3)", 1.5);
-
-  if (wallHitCount > 0) {
-    ctx.fillStyle = "rgba(224, 242, 254, 0.8)";
-    ctx.font = '600 20px "Inter", sans-serif';
-    ctx.textAlign = "center";
-    ctx.fillText(`${wallHitCount}/3`, 0, -(radius - 70));
-  }
+  rings.forEach((r) => {
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.92)";
+    ctx.lineWidth = 8;
+    ctx.stroke();
+  });
 
   ctx.restore();
 }
