@@ -34,7 +34,7 @@ if (worldErrors.length) {
 
 const DEFAULT_ARENA_RADIUS = 1200;
 const DEFAULT_FISH_NAV_RADIUS = getFishNavigableRadius(DEFAULT_ARENA_RADIUS);
-const OUTSIDE_NAV_MAX_MULTIPLIER = 12;
+const OUTSIDE_NAV_MAX_MULTIPLIER = Number.POSITIVE_INFINITY;
 
 
 function getFishMovementRadius(arenaRadius) {
