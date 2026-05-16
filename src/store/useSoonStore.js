@@ -372,11 +372,12 @@ export const useSoonStore = create((set, get) => ({
 
     if (state.circuitAutopilot) return;
 
+    const navRadius = getRuntimeFishNavRadius(arenaRadius);
     const portal = getPortalHit(x, y, arenaRadius);
 
     if (portal) {
       const fishRadius = Math.hypot(state.fish?.x || 0, state.fish?.y || 0);
-      const fishIsOutside = state.fish?.outsideFreeSwim || fishRadius > arenaRadius - 20;
+      const fishIsOutside = Boolean(state.fish?.outsideFreeSwim) || fishRadius > navRadius + 6;
 
       const destinationRadius = fishIsOutside
         ? arenaRadius - 90
@@ -393,16 +394,18 @@ export const useSoonStore = create((set, get) => ({
           targetY: destination.y,
           vx: 0,
           vy: 0,
+          spine: createInitialSpine(destination.x, destination.y),
           outsideFreeSwim: !fishIsOutside,
           portalTransition: null,
         },
+        fishTrail: [],
       }));
 
       return;
     }
 
     const fishRadius = Math.hypot(state.fish?.x || 0, state.fish?.y || 0);
-    const isOutside = state.fish?.outsideFreeSwim || fishRadius > arenaRadius - 20;
+    const isOutside = Boolean(state.fish?.outsideFreeSwim) || fishRadius > navRadius + 6;
 
     let target = { x, y };
 
@@ -410,7 +413,7 @@ export const useSoonStore = create((set, get) => ({
       const targetRadius = Math.hypot(x, y);
       const portal = getPortalHit(x, y, arenaRadius);
 
-      if (targetRadius < arenaRadius - 35 && !portal) {
+      if (targetRadius < navRadius - 12 && !portal) {
         const angle = Math.atan2(y, x);
         target = {
           x: Math.cos(angle) * (arenaRadius + 80),
@@ -641,7 +644,8 @@ export const useSoonStore = create((set, get) => ({
       const limitedVy = speedRaw > speedLimit ? (vy / speedRaw) * speedLimit : vy;
 
       fishNavRadius = getFishMovementRadius(targetX, targetY, arenaRadius);
-      const outsideFreeSwim = Boolean(state.fish.outsideFreeSwim) || fishRadiusNow > navRadius + 6;
+      const computedOutside = Boolean(state.fish.outsideFreeSwim) || fishRadiusNow > navRadius + 6;
+      const outsideFreeSwim = computedOutside && fishRadiusNow > navRadius - 14;
       if (outsideFreeSwim) {
         fishNavRadius = Math.max(fishNavRadius, arenaRadius + 520);
       }
@@ -714,6 +718,7 @@ export const useSoonStore = create((set, get) => ({
           turnVelocity: nextTurnVelocity,
           maxSpeed: state.fish.maxSpeed || 3.1,
           autoPassage: null,
+          outsideFreeSwim,
         },
       };
     });
