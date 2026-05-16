@@ -292,6 +292,35 @@ export const useSoonStore = create((set, get) => ({
     saveState(get());
   },
 
+  toggleMembraneSide: () => {
+    set((state) => {
+      const membraneSide = state.fish?.membraneSide === "outside" ? "outside" : "inside";
+      const nextMembraneSide = membraneSide === "inside" ? "outside" : "inside";
+      const arenaLevel = Number.isFinite(state.fish?.arenaLevel) ? state.fish.arenaLevel : 0;
+      const nextArenaLevel = nextMembraneSide === "outside"
+        ? Math.min(2, arenaLevel + 1)
+        : Math.max(0, arenaLevel - 1);
+
+      return {
+        currentArenaId: `arene_${String(nextArenaLevel).padStart(4, "0")}`,
+        fish: {
+          ...state.fish,
+          membraneSide: nextMembraneSide,
+          arenaLevel: nextArenaLevel,
+          wallHitCount: 0,
+          breachOpen: false,
+          breachState: "closed",
+          breachAngle: null,
+          breachOpenedAt: null,
+          breachExpiresAt: null,
+          vx: 0,
+          vy: 0,
+        },
+      };
+    });
+    saveState(get());
+  },
+
   startFishTrailAt: (x, y) => {
     set(() => ({
       fishTrail: startFishTrailAt(x, y),
