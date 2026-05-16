@@ -243,32 +243,6 @@ button {
   opacity: 0.72;
 }
 
-.arena2-image-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 19;
-  pointer-events: none;
-  display: grid;
-  place-items: center;
-  animation: arena2ImageFade 5s ease forwards;
-}
-
-.arena2-image-overlay__image {
-  width: min(70vw, 680px);
-  max-height: 70vh;
-  object-fit: contain;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.34);
-  box-shadow: 0 24px 90px rgba(2, 6, 23, 0.62);
-}
-
-@keyframes arena2ImageFade {
-  0% { opacity: 0; }
-  8% { opacity: 1; }
-  88% { opacity: 1; }
-  100% { opacity: 0; }
-}
-
 @keyframes semioseVideoBubble {
   0% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
   12% { opacity: 1; transform: translate(-50%, -50%) scale(1); }

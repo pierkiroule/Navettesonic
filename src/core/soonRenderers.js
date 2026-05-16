@@ -13,73 +13,8 @@ import {
   drawEcosystemWorld,
 } from "./ecosystemFx.js";
 
-const EXTERNAL_BUBBLE_CONFIGS = [
-  { label: "bulleext1", size: 0.22, baseSpeed: 0.000032, wobble: 0.000011, phase: 0.2 },
-  { label: "bulleext2", size: 0.13, baseSpeed: -0.000041, wobble: 0.000014, phase: 1.1 },
-  { label: "bulleext3", size: 0.18, baseSpeed: 0.000029, wobble: 0.000016, phase: 2.4 },
-  { label: "bulleext4", size: 0.095, baseSpeed: -0.000052, wobble: 0.000009, phase: 3.2 },
-  { label: "bulleext5", size: 0.155, baseSpeed: 0.000038, wobble: 0.000013, phase: 4.4 },
-];
-
-const externalBubbleState = {
-  lastTime: 0,
-  bubbles: EXTERNAL_BUBBLE_CONFIGS.map((config, index) => ({
-    ...config,
-    angle: -Math.PI / 6 + index * ((Math.PI * 2) / EXTERNAL_BUBBLE_CONFIGS.length),
-    bounceVX: 0,
-    bounceVY: 0,
-    x: 0,
-    y: 0,
-    radius: 0,
-  })),
-};
-
-function resolveExternalBubbleState(arenaRadius, time, advance = false) {
-  const dt = advance ? Math.max(8, Math.min(34, time - (externalBubbleState.lastTime || time))) : 0;
-  if (advance) externalBubbleState.lastTime = time;
-
-  externalBubbleState.bubbles.forEach((bubble, index) => {
-    const orbitRadius = arenaRadius + arenaRadius * bubble.size + 180 + index * 26;
-    if (advance) {
-      const drift = bubble.baseSpeed + Math.sin(time * 0.0002 + bubble.phase) * bubble.wobble;
-      bubble.angle += drift * dt;
-      bubble.bounceVX *= 0.96;
-      bubble.bounceVY *= 0.96;
-    }
-    bubble.radius = arenaRadius * bubble.size;
-    bubble.x = Math.cos(bubble.angle) * orbitRadius + bubble.bounceVX;
-    bubble.y = Math.sin(bubble.angle) * orbitRadius + bubble.bounceVY;
-  });
-
-  if (advance) {
-    for (let i = 0; i < externalBubbleState.bubbles.length; i += 1) {
-      for (let j = i + 1; j < externalBubbleState.bubbles.length; j += 1) {
-        const a = externalBubbleState.bubbles[i];
-        const b = externalBubbleState.bubbles[j];
-        const dx = b.x - a.x;
-        const dy = b.y - a.y;
-        const dist = Math.hypot(dx, dy) || 0.0001;
-        const minDist = a.radius + b.radius;
-        if (dist < minDist) {
-          const nx = dx / dist;
-          const ny = dy / dist;
-          const overlap = minDist - dist;
-          const impulse = overlap * 0.12;
-          a.bounceVX -= nx * impulse;
-          a.bounceVY -= ny * impulse;
-          b.bounceVX += nx * impulse;
-          b.bounceVY += ny * impulse;
-        }
-      }
-    }
-  }
-
-  return externalBubbleState.bubbles;
-}
-
-export function getExternalBubblePose(arenaRadius, time, advance = false) {
-  const [primary] = resolveExternalBubbleState(arenaRadius, time, advance);
-  return { x: primary.x, y: primary.y, radius: primary.radius };
+export function getExternalBubblePose() {
+  return { x: 0, y: 0, radius: 0 };
 }
 
 export function drawScene(ctx, rect, time, refs) {
@@ -96,8 +31,6 @@ export function drawScene(ctx, rect, time, refs) {
 
   if (!current.eyesClosed) {
     drawArenaNightSky(ctx, arenaRef, time);
-    drawArenaPulseHalo(ctx, arenaRef, time);
-    drawPinkSeedTransporters(ctx, arenaRef, time);
     drawEcosystemWorld(ctx, current, time);
     drawWorldParticles(ctx, arenaRef, time);
 
@@ -172,116 +105,23 @@ export function drawDepthVeil() {
 
 export function drawArenaBoundary(ctx, arenaRef, time) {
   const radius = arenaRef.current.radius;
-  const pulse = Math.sin(time * 0.0012) * 8;
+  const pulse = Math.sin(time * 0.001) * 2;
 
   ctx.save();
 
   ctx.beginPath();
   ctx.arc(0, 0, radius + pulse, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(125, 211, 252, 0.32)";
-  ctx.lineWidth = 8;
+  ctx.strokeStyle = "rgba(148, 163, 184, 0.45)";
+  ctx.lineWidth = 6;
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.arc(0, 0, radius - ARENA_INNER_BOUNDARY_INSET + pulse * 0.4, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
-  ctx.lineWidth = 2;
+  ctx.arc(0, 0, radius - ARENA_INNER_BOUNDARY_INSET, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(148, 163, 184, 0.3)";
+  ctx.lineWidth = 1.5;
   ctx.stroke();
-
-  const halo = ctx.createRadialGradient(0, 0, radius * 0.72, 0, 0, radius);
-  halo.addColorStop(0, "rgba(0,0,0,0)");
-  halo.addColorStop(1, "rgba(14,165,233,0.12)");
-
-  ctx.beginPath();
-  ctx.arc(0, 0, radius, 0, Math.PI * 2);
-  ctx.fillStyle = halo;
-  ctx.fill();
-
-  drawArenaPolesAndMarkers(ctx, radius, time);
-  drawExternalBubble(ctx, radius, time);
 
   ctx.restore();
-}
-
-function drawExternalBubble(ctx, arenaRadius, time) {
-  const bubbles = resolveExternalBubbleState(arenaRadius, time, true);
-  bubbles.forEach((bubble, index) => {
-    const pulse = Math.sin(time * 0.0014 + index * 0.9) * Math.max(3, bubble.radius * 0.045);
-    ctx.save();
-    ctx.translate(bubble.x, bubble.y);
-
-    const glow = ctx.createRadialGradient(0, 0, bubble.radius * 0.15, 0, 0, bubble.radius * 1.6);
-    glow.addColorStop(0, "rgba(173, 216, 255, 0.28)");
-    glow.addColorStop(1, "rgba(173, 216, 255, 0)");
-
-    ctx.beginPath();
-    ctx.arc(0, 0, bubble.radius * 1.25 + pulse, 0, Math.PI * 2);
-    ctx.fillStyle = glow;
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(0, 0, bubble.radius + pulse * 0.35, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(145, 206, 255, 0.2)";
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(0, 0, bubble.radius + pulse * 0.25, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(210, 238, 255, 0.46)";
-    ctx.lineWidth = Math.max(2, bubble.radius * 0.03);
-    ctx.stroke();
-
-    ctx.font = `600 ${Math.max(14, bubble.radius * 0.18)}px system-ui`;
-    ctx.fillStyle = "rgba(230, 247, 255, 0.82)";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(bubble.label, 0, 0);
-    ctx.restore();
-  });
-}
-
-function drawArenaPolesAndMarkers(ctx, radius, time) {
-  const poles = [
-    { label: "N", angle: -Math.PI / 2 },
-    { label: "E", angle: 0 },
-    { label: "S", angle: Math.PI / 2 },
-    { label: "O", angle: Math.PI },
-  ];
-
-  const passageHalfArc = 0.055; // ~taille poisson rose sur la circonférence
-  const pulse = (Math.sin(time * 0.003) * 0.5 + 0.5) * 0.22;
-
-  poles.forEach(({ label, angle }) => {
-    const alpha = 0.48 + pulse;
-
-    ctx.beginPath();
-    ctx.arc(0, 0, radius + 2, angle - passageHalfArc, angle + passageHalfArc);
-    ctx.strokeStyle = `rgba(255, 141, 205, ${alpha})`;
-    ctx.lineWidth = 9;
-    ctx.lineCap = "round";
-    ctx.setLineDash([5, 9]);
-    ctx.lineDashOffset = -time * 0.02;
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    const textRadius = radius + 46;
-    const tx = Math.cos(angle) * textRadius;
-    const ty = Math.sin(angle) * textRadius;
-
-    const glowRemaining = Math.max(0, (seedTransportState.poleGlowUntil[label] || 0) - time);
-    const glowBoost = Math.min(1, glowRemaining / 3000);
-
-    ctx.save();
-    ctx.shadowBlur = 18 + glowBoost * 36;
-    ctx.shadowColor = `rgba(255, 120, 220, ${0.78 + glowBoost * 0.22})`;
-    ctx.fillStyle = glowBoost > 0
-      ? `rgba(255, 120, 220, ${0.58 + glowBoost * 0.2})`
-      : "rgba(255, 215, 248, 0.5)";
-    ctx.font = "700 120px system-ui";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(label, tx, ty);
-    ctx.restore();
-  });
 }
 
 function fitText(ctx, text, maxWidth, baseSize, minSize, family, weight = 500) {
@@ -598,54 +438,6 @@ export function drawCameraVignette(ctx, rect, fish) {
   ctx.restore();
 }
 
-function getPolePrompt(fish, arenaRadius) {
-  if (!fish || !Number.isFinite(arenaRadius)) return null;
-
-  const navigableRadius = arenaRadius - ARENA_INNER_BOUNDARY_INSET;
-  const poleRadius = Math.max(0, navigableRadius - 8);
-  const detectRadius = 120;
-
-  const polePrompts = [
-    {
-      title: "",
-      question: "",
-      x: 0,
-      y: -poleRadius,
-    },
-    {
-      title: "",
-      question: "",
-      x: poleRadius,
-      y: 0,
-    },
-    {
-      title: "",
-      question: "",
-      x: 0,
-      y: poleRadius,
-    },
-    {
-      title: "",
-      question: "",
-      x: -poleRadius,
-      y: 0,
-    },
-  ];
-
-  let nearest = null;
-  let nearestDist = Infinity;
-  polePrompts.forEach((pole) => {
-    const dist = Math.hypot((fish.x || 0) - pole.x, (fish.y || 0) - pole.y);
-    if (dist < nearestDist) {
-      nearestDist = dist;
-      nearest = pole;
-    }
-  });
-
-  if (nearestDist > detectRadius) return null;
-  return nearest;
-}
-
 export function drawHud(ctx, rect, current, arenaRef) {
   const fishDepth = Math.round(current?.fish?.depth || 1);
   const showDepth = current.mode === "compo" || current.mode === "reso";
@@ -666,9 +458,6 @@ export function drawHud(ctx, rect, current, arenaRef) {
     ctx.textBaseline = "middle";
     ctx.fillText(`P${fishDepth}`, rect.width - 58, 33);
   }
-
-  const arenaRadius = arenaRef?.current?.radius || 1200;
-  const polePrompt = getPolePrompt(current?.fish, arenaRadius);
 
   if (!current.eyesClosed) {
     ctx.restore();
@@ -789,100 +578,4 @@ function initSeedTransporters(radius) {
       transitStartedAt: 0,
     });
   }
-}
-
-export function drawPinkSeedTransporters(ctx, arenaRef, time) {
-  const radius = arenaRef.current?.radius || 1200;
-  initSeedTransporters(radius);
-
-  const prev = seedTransportState.lastTime || time;
-  const dt = Math.max(8, Math.min(34, time - prev));
-  seedTransportState.lastTime = time;
-
-  ctx.save();
-  ctx.globalCompositeOperation = "screen";
-
-  seedTransportState.fishes.forEach((fish) => {
-    fish.angle += fish.speed * dt;
-
-    let currentOrbit = fish.orbit + Math.sin(time * 0.001 + fish.phase) * 10;
-    // Passage membrane désactivé : les transporteurs restent orbitaux et ne stagnent plus devant NESO.
-    fish.insideMembrane = false;
-    fish.transitPole = null;
-    fish.transitStartedAt = 0;
-
-    if (fish.insideMembrane && currentOrbit < radius - 8 && fish.carry && Math.random() > 0.985) {
-      seedTransportState.sprouts.push({
-        x: Math.cos(fish.angle) * (radius - 20),
-        y: Math.sin(fish.angle) * (radius - 20),
-        bornAt: time,
-      });
-    }
-
-    if (fish.insideMembrane && fish.transitPole && currentOrbit < radius - 8) {
-      seedTransportState.poleGlowUntil[fish.transitPole] = Math.max(
-        seedTransportState.poleGlowUntil[fish.transitPole],
-        time + 3000
-      );
-    }
-
-    const x = Math.cos(fish.angle) * currentOrbit;
-    const y = Math.sin(fish.angle) * currentOrbit;
-    const heading = fish.angle + Math.PI * 0.5;
-
-    // Poisson rose top-view (2D).
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(heading);
-
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 11, 6, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255, 141, 205, 0.62)";
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.moveTo(-10, 0);
-    ctx.lineTo(-18, -5);
-    ctx.lineTo(-18, 5);
-    ctx.closePath();
-    ctx.fillStyle = "rgba(255, 176, 222, 0.52)";
-    ctx.fill();
-
-    ctx.restore();
-  });
-
-  // Graines-étoiles qui éclosent en lucioles (visuel).
-  seedTransportState.sprouts = seedTransportState.sprouts.filter((sprout) => time - sprout.bornAt < 3400);
-  seedTransportState.sprouts.forEach((sprout) => {
-    const age = time - sprout.bornAt;
-    const t = Math.min(1, age / 1200);
-
-    // étoile blanche lumineuse
-    ctx.save();
-    ctx.translate(sprout.x, sprout.y);
-    ctx.rotate(age * 0.0016);
-    for (let i = 0; i < 4; i += 1) {
-      ctx.rotate(Math.PI / 2);
-      ctx.fillStyle = `rgba(255,255,255,${0.22 + (1 - t) * 0.5})`;
-      ctx.fillRect(-1.2, -8 - (1 - t) * 4, 2.4, 16 + (1 - t) * 8);
-    }
-    ctx.restore();
-
-    // eclosion luciole
-    if (age > 900) {
-      const fly = (age - 900) * 0.03;
-      ctx.beginPath();
-      ctx.arc(
-        sprout.x + Math.cos(fly * 0.07) * 10,
-        sprout.y + Math.sin(fly * 0.09) * 10,
-        2.2,
-        0,
-        Math.PI * 2
-      );
-      ctx.fillStyle = "rgba(253, 255, 188, 0.85)";
-      ctx.fill();
-    }
-  });
-
-  ctx.restore();
 }

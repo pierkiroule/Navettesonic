@@ -29,64 +29,8 @@ const DEFAULT_ARENA_RADIUS = 1200;
 const DEFAULT_FISH_NAV_RADIUS = getFishNavigableRadius(DEFAULT_ARENA_RADIUS);
 
 
-function lerp(start, end, t) {
-  return start + (end - start) * t;
-}
-
-const PASSAGE_PORTALS = [
-  { id: "N", angle: -Math.PI / 2 },
-  { id: "E", angle: 0 },
-  { id: "S", angle: Math.PI / 2 },
-  { id: "O", angle: Math.PI },
-];
-const PORTAL_ANGLE_TOLERANCE = 0.32;
-const OUTSIDE_MARGIN = 6;
-const OUTSIDE_RELEASE_MARGIN = 14;
-const INSIDE_DESTINATION_OFFSET = 90;
-const OUTSIDE_DESTINATION_OFFSET = 220;
-const OUTSIDE_FREE_SWIM_RADIUS = 520;
-
-function angleDelta(a, b) {
-  return Math.atan2(Math.sin(a - b), Math.cos(a - b));
-}
-
-function getNearestPortalAngle(x, y) {
-  const angle = Math.atan2(y, x);
-  let best = PASSAGE_PORTALS[0];
-  let bestDelta = Infinity;
-
-  for (const portal of PASSAGE_PORTALS) {
-    const delta = Math.abs(angleDelta(angle, portal.angle));
-    if (delta < bestDelta) {
-      best = portal;
-      bestDelta = delta;
-    }
-  }
-
-  return best;
-}
-
-function getPortalHit(x, y, arenaRadius) {
-  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(arenaRadius) || arenaRadius <= 0) return null;
-  const dist = Math.hypot(x, y);
-
-  if (dist < arenaRadius - 140) return null;
-  const portal = getNearestPortalAngle(x, y);
-  const angle = Math.atan2(y, x);
-  const isNearPortal = Math.abs(angleDelta(angle, portal.angle)) <= PORTAL_ANGLE_TOLERANCE;
-  if (!isNearPortal) return null;
-  return portal;
-}
-
-function getPortalPoint(angle, radius) {
-  return {
-    x: Math.cos(angle) * radius,
-    y: Math.sin(angle) * radius,
-  };
-}
-
 function getFishMovementRadius(arenaRadius) {
-  return Math.max(0, arenaRadius - 18);
+  return getRuntimeFishNavRadius(arenaRadius);
 }
 
 function getRuntimeFishNavRadius(arenaRadius) {
@@ -96,34 +40,6 @@ function getRuntimeFishNavRadius(arenaRadius) {
   return DEFAULT_FISH_NAV_RADIUS;
 }
 
-
-function isFishOutside(fish = {}, navRadius = DEFAULT_FISH_NAV_RADIUS) {
-  const radius = Math.hypot(fish.x || 0, fish.y || 0);
-  return Boolean(fish.outsideFreeSwim) || radius > navRadius + OUTSIDE_MARGIN;
-}
-
-function projectOutsideTarget(x, y, arenaRadius) {
-  const angle = Math.atan2(y, x);
-  return {
-    x: Math.cos(angle) * (arenaRadius + 80),
-    y: Math.sin(angle) * (arenaRadius + 80),
-  };
-}
-
-function resetFishAfterPortal(baseFish, destination, nextOutside) {
-  return {
-    ...baseFish,
-    x: destination.x,
-    y: destination.y,
-    targetX: destination.x,
-    targetY: destination.y,
-    vx: 0,
-    vy: 0,
-    spine: createInitialSpine(destination.x, destination.y),
-    outsideFreeSwim: nextOutside,
-    portalTransition: null,
-  };
-}
 
 function clampDepth(depth) {
   return normalizeDepth(depth);
@@ -373,59 +289,14 @@ export const useSoonStore = create((set, get) => ({
 
     if (state.circuitAutopilot) return;
 
-    const navRadius = getRuntimeFishNavRadius(arenaRadius);
-    const portal = getPortalHit(x, y, arenaRadius);
-
-    if (portal) {
-      const fishIsOutside = isFishOutside(state.fish, navRadius);
-
-      const destinationRadius = fishIsOutside
-        ? arenaRadius - INSIDE_DESTINATION_OFFSET
-        : arenaRadius + OUTSIDE_DESTINATION_OFFSET;
-
-      const destination = getPortalPoint(portal.angle, destinationRadius);
-
-      set((state) => ({
-        fish: resetFishAfterPortal(state.fish, destination, !fishIsOutside),
-        fishTrail: [],
-      }));
-
-      return;
-    }
-
-    const isOutside = isFishOutside(state.fish, navRadius);
-
-    let target = { x, y };
-
-    if (isOutside) {
-      const targetRadius = Math.hypot(x, y);
-      const portal = getPortalHit(x, y, arenaRadius);
-
-      if (targetRadius < navRadius - 12 && !portal) {
-        target = projectOutsideTarget(y === 0 && x === 0 ? state.fish?.x || 1 : x, y === 0 && x === 0 ? state.fish?.y || 0 : y, arenaRadius);
-      }
-    }
-
-    const movementRadius = isOutside
-      ? arenaRadius + OUTSIDE_FREE_SWIM_RADIUS
-      : getFishMovementRadius(arenaRadius);
-
-    const safe = clampToCircle(target, movementRadius);
+    const safe = clampToCircle({ x, y }, getFishMovementRadius(arenaRadius));
 
     set((state) => {
-      const navRadius = getRuntimeFishNavRadius(arenaRadius);
-      const targetRadius = Math.hypot(safe.x || 0, safe.y || 0);
-      const fishRadius = Math.hypot(state.fish?.x || 0, state.fish?.y || 0);
-      const keepOutside =
-        Boolean(state.fish?.outsideFreeSwim) && fishRadius > navRadius - 40;
-
       return {
         fish: {
           ...state.fish,
           targetX: safe.x,
           targetY: safe.y,
-          outsideFreeSwim: targetRadius > navRadius + 8 || keepOutside,
-          portalTransition: null,
         },
       };
     });
@@ -446,7 +317,6 @@ export const useSoonStore = create((set, get) => ({
           targetY: 0,
           vx: (dx / distance) * slowFactor,
           vy: (dy / distance) * slowFactor,
-          disabledAutoPassage: null,
         },
         circuitSegmentIndex: 0,
         circuitSegmentT: 0,
@@ -470,44 +340,9 @@ export const useSoonStore = create((set, get) => ({
 
   tickFish: ({ swimSpeed = 1, arenaRadius = DEFAULT_ARENA_RADIUS } = {}) => {
     set((state) => {
-      const transition = state.fish?.portalTransition;
-      if (transition) {
-        const now = performance.now();
-        const duration = Math.max(1, (transition.endsAt || now) - (transition.startedAt || now));
-        const rawT = Math.max(0, Math.min(1, (now - (transition.startedAt || now)) / duration));
-        const easedT = rawT < 0.5 ? 4 * rawT * rawT * rawT : 1 - ((-2 * rawT + 2) ** 3) / 2;
-        const arcStrength = Math.sin(rawT * Math.PI) * Math.max(36, arenaRadius * 0.05);
-        const nx = lerp(transition.startX || 0, transition.toX || 0, easedT);
-        const ny = lerp(transition.startY || 0, transition.toY || 0, easedT);
-        const tangentX = Math.cos((transition.fromAngle ?? transition.angle) + Math.PI / 2);
-        const tangentY = Math.sin((transition.fromAngle ?? transition.angle) + Math.PI / 2);
-        const x = nx + tangentX * arcStrength * 0.18;
-        const y = ny + tangentY * arcStrength * 0.18;
-        const heading = Math.atan2((transition.toY || 0) - y, (transition.toX || 0) - x);
-        const done = rawT >= 1;
-
-        return {
-          fish: {
-            ...state.fish,
-            x,
-            y,
-            targetX: done ? transition.toX : x,
-            targetY: done ? transition.toY : y,
-            vx: 0,
-            vy: 0,
-            angle: heading,
-            outsideFreeSwim: done ? true : Boolean(state.fish.outsideFreeSwim),
-            portalTransition: done ? null : transition,
-          },
-        };
-      }
-
       const fish = state.fish;
       let fishNavRadius = getFishMovementRadius(arenaRadius);
 
-      if (state.fish.outsideFreeSwim) {
-        fishNavRadius = arenaRadius + OUTSIDE_FREE_SWIM_RADIUS;
-      }
       if (state.fishTrail?.length) {
         const result = updateSnakeFishToTarget({
           fish: {
@@ -538,9 +373,7 @@ export const useSoonStore = create((set, get) => ({
       let circuitSegmentT = state.circuitSegmentT || 0;
       const circuitAutopilot = Boolean(state.circuitAutopilot);
 
-      const navRadius = getRuntimeFishNavRadius(arenaRadius);
-      const fishRadiusNow = Math.hypot(state.fish.x || 0, state.fish.y || 0);
-            if (circuitAutopilot && state.traceCircuit?.length > 1) {
+      if (circuitAutopilot && state.traceCircuit?.length > 1) {
         const currentBeacon =
           state.traceCircuit[circuitSegmentIndex % state.traceCircuit.length];
 
@@ -618,11 +451,6 @@ export const useSoonStore = create((set, get) => ({
       const limitedVy = speedRaw > speedLimit ? (vy / speedRaw) * speedLimit : vy;
 
       fishNavRadius = getFishMovementRadius(arenaRadius);
-      const computedOutside = isFishOutside(state.fish, navRadius);
-      const outsideFreeSwim = computedOutside && fishRadiusNow > navRadius - OUTSIDE_RELEASE_MARGIN;
-      if (outsideFreeSwim) {
-        fishNavRadius = Math.max(fishNavRadius, arenaRadius + OUTSIDE_FREE_SWIM_RADIUS);
-      }
 
       const safe = clampToCircle(
         {
@@ -691,8 +519,6 @@ export const useSoonStore = create((set, get) => ({
           turnAmount: nextTurnAmount,
           turnVelocity: nextTurnVelocity,
           maxSpeed: state.fish.maxSpeed || 3.1,
-          autoPassage: null,
-          outsideFreeSwim,
         },
       };
     });
