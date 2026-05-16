@@ -81,6 +81,10 @@ export function useSoonPointer({
       }
     }
 
+    if (stateRef.current?.interactionMode === "swim") {
+      return point;
+    }
+
     if (stateRef.current?.fish?.outsideFreeSwim) {
       return point;
     }

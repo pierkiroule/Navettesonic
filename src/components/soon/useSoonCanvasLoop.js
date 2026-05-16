@@ -3,7 +3,6 @@ import {
   clampEditCamera,
   enterWorld,
   exitWorld,
-  followFishCamera,
   resetEditCamera,
   resizeCanvas,
   updateArena,
@@ -61,15 +60,9 @@ export function useSoonCanvasLoop({
 
       if (current.mode === "reso" || current.mode === "compo") {
         cameraRef.current.zoom = 1;
-
-        const viewZoom = Number.isFinite(current.viewZoom) ? current.viewZoom : 0;
-        const shouldFollowFish = viewZoom > 0.05;
-
-        if (shouldFollowFish && current.fish) {
-          followFishCamera(cameraRef, arenaRef, current.fish, rect);
-        } else {
-          cameraRef.current.x += (0 - cameraRef.current.x) * 0.12;
-          cameraRef.current.y += (0 - cameraRef.current.y) * 0.12;
+        if (current.fish) {
+          cameraRef.current.x = Number.isFinite(current.fish.x) ? current.fish.x : 0;
+          cameraRef.current.y = Number.isFinite(current.fish.y) ? current.fish.y : 0;
         }
       } else if (isEditMode) {
         if (!wasEditMode) {
@@ -77,7 +70,11 @@ export function useSoonCanvasLoop({
         }
         clampEditCamera(cameraRef, rect, arenaRef.current.radius);
       } else {
-        followFishCamera(cameraRef, arenaRef, current.fish, rect, current.viewZoom);
+        cameraRef.current.zoom = 1;
+        if (current.fish) {
+          cameraRef.current.x = Number.isFinite(current.fish.x) ? current.fish.x : 0;
+          cameraRef.current.y = Number.isFinite(current.fish.y) ? current.fish.y : 0;
+        }
       }
 
       wasEditMode = isEditMode;
