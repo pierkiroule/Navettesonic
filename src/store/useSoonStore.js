@@ -654,6 +654,18 @@ export const useSoonStore = create((set, get) => ({
         breachState = "crossing";
       }
 
+      // Depuis l'extérieur, l'entrée est autorisée uniquement via le fragment retiré.
+      if (isActuallyOutside && !openCorridor) {
+        const safeDistance = Math.hypot(nextFishX, nextFishY);
+        if (safeDistance < fishNavRadius) {
+          const lockDistance = fishNavRadius + 0.5;
+          const nx = safeDistance > 0.0001 ? nextFishX / safeDistance : 1;
+          const ny = safeDistance > 0.0001 ? nextFishY / safeDistance : 0;
+          nextFishX = nx * lockDistance;
+          nextFishY = ny * lockDistance;
+        }
+      }
+
       if (breachOpen && breachAngle !== null) {
         const fishAngle = Math.atan2(nextFishY, nextFishX);
         const delta = Math.atan2(
