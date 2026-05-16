@@ -35,6 +35,7 @@ if (worldErrors.length) {
 const DEFAULT_ARENA_RADIUS = 1200;
 const DEFAULT_FISH_NAV_RADIUS = getFishNavigableRadius(DEFAULT_ARENA_RADIUS);
 const OUTSIDE_NAV_MAX_MULTIPLIER = Number.POSITIVE_INFINITY;
+const FISH_MEMBRANE_BLOCK_RADIUS = 42;
 
 
 function getFishMovementRadius(arenaRadius) {
@@ -658,7 +659,7 @@ export const useSoonStore = create((set, get) => ({
       if (isActuallyOutside && !openCorridor) {
         const safeDistance = Math.hypot(nextFishX, nextFishY);
         if (safeDistance < fishNavRadius) {
-          const lockDistance = fishNavRadius + 0.5;
+          const lockDistance = fishNavRadius + FISH_MEMBRANE_BLOCK_RADIUS;
           const nx = safeDistance > 0.0001 ? nextFishX / safeDistance : 1;
           const ny = safeDistance > 0.0001 ? nextFishY / safeDistance : 0;
           nextFishX = nx * lockDistance;
