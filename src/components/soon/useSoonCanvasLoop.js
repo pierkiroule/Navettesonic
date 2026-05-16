@@ -50,9 +50,9 @@ export function useSoonCanvasLoop({
       const isEditMode = current.interactionMode === "edit";
 
       updateArena(arenaRef, rect);
-      const baseRadius = arenaRef.current.radius;
-      const arenaLevel = Number.isFinite(current?.fish?.arenaLevel) ? current.fish.arenaLevel : 0;
-      const runtimeRadius = baseRadius * Math.pow(3, Math.max(0, Math.min(2, arenaLevel)));
+      const runtimeRadius = arenaRef.current.radius;
+      // Important: pas de changement d'échelle caméra/monde entre niveaux.
+      // On garde un rayon runtime constant pour éviter tout effet de dezoom.
       arenaRef.current.radius = runtimeRadius;
       stateRef.current = {
         ...(stateRef.current || {}),
