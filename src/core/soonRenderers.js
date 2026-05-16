@@ -1,5 +1,4 @@
 import { distance, getBubbleVisualRadius } from "./geometry.js";
-import { getPortalAnchor } from "./labybulleWorld.js";
 import { drawPoissonPlume } from "./poissonPlumeRenderer.js";
 import { drawCharacters } from "./characters/characterEngine.js";
 import { drawOdysseoPath } from "./odysseoPath.js";
@@ -28,9 +27,8 @@ export function drawScene(ctx, rect, time, refs) {
 
   enterWorld(ctx, rect, cameraRef, stateRef);
 
-  drawArenaBoundary(ctx, arenaRef, time);
+  drawArenaBoundary(ctx, arenaRef, time, current);
   drawMazeWalls(ctx, current);
-  drawArenaPortals(ctx, arenaRef, current);
 
   if (!current.eyesClosed) {
     drawArenaNightSky(ctx, arenaRef, time);
@@ -106,23 +104,50 @@ export function drawDepthVeil() {
   return;
 }
 
-export function drawArenaBoundary(ctx, arenaRef, time) {
+export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
   const radius = arenaRef.current.radius;
+  const level = Number.isFinite(current?.fish?.arenaLevel) ? current.fish.arenaLevel : 0;
+  const wallHitCount = Math.max(0, Math.min(3, current?.fish?.wallHitCount || 0));
+  const breachOpen = Boolean(current?.fish?.breachOpen);
+  const breachAngle = Number.isFinite(current?.fish?.breachAngle) ? current.fish.breachAngle : null;
   const pulse = Math.sin(time * 0.001) * 2;
 
   ctx.save();
 
-  ctx.beginPath();
-  ctx.arc(0, 0, radius + pulse, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(148, 163, 184, 0.45)";
-  ctx.lineWidth = 6;
-  ctx.stroke();
+  for (let i = 0; i <= level; i += 1) {
+    const r = radius / Math.pow(3, level - i);
+    const isCurrent = i === level;
+    ctx.beginPath();
+    ctx.arc(0, 0, r + (isCurrent ? pulse : 0), 0, Math.PI * 2);
+    ctx.strokeStyle = isCurrent ? "rgba(180, 220, 255, 0.85)" : "rgba(148, 163, 184, 0.28)";
+    ctx.lineWidth = isCurrent ? 6 : 2;
+    ctx.stroke();
+  }
 
   ctx.beginPath();
   ctx.arc(0, 0, radius - ARENA_INNER_BOUNDARY_INSET, 0, Math.PI * 2);
   ctx.strokeStyle = "rgba(148, 163, 184, 0.3)";
   ctx.lineWidth = 1.5;
   ctx.stroke();
+
+  if (breachOpen && breachAngle !== null) {
+    const span = 0.26;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius + pulse, breachAngle - span, breachAngle + span);
+    ctx.strokeStyle = "rgba(125, 255, 240, 0.95)";
+    ctx.lineWidth = 8;
+    ctx.shadowColor = "rgba(125, 255, 240, 0.75)";
+    ctx.shadowBlur = 14;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  if (wallHitCount > 0) {
+    ctx.fillStyle = "rgba(224, 242, 254, 0.8)";
+    ctx.font = '600 20px "Inter", sans-serif';
+    ctx.textAlign = "center";
+    ctx.fillText(`${wallHitCount}/3`, 0, -(radius - 70));
+  }
 
   ctx.restore();
 }
@@ -582,40 +607,6 @@ function initSeedTransporters(radius) {
     });
   }
 }
-
-
-export function drawArenaPortals(ctx, arenaRef, current = {}) {
-  const radius = arenaRef.current?.radius || 1200;
-  const world = current.worldGraph;
-  const currentArenaId = current.currentArenaId;
-  if (!world || !currentArenaId) return;
-
-  const portals = (world.portals || []).filter((portal) => portal.fromArenaId === currentArenaId);
-  if (!portals.length) return;
-
-  ctx.save();
-  portals.forEach((portal, index) => {
-    const anchor = getPortalAnchor({
-      positionHint: portal.positionHint,
-      radius,
-      index,
-      total: portals.length,
-    });
-    const x = anchor.x;
-    const y = anchor.y;
-    const baseAngle = anchor.angle;
-
-    ctx.beginPath();
-    ctx.ellipse(x, y, 36, 18, baseAngle, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
-    ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = "rgba(56, 189, 248, 0.8)";
-    ctx.stroke();
-  });
-  ctx.restore();
-}
-
 
 export function drawMazeWalls(ctx, current = {}) {
   const maze = current?.mazeByArena?.[current?.currentArenaId];

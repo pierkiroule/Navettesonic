@@ -135,6 +135,12 @@ const defaultFish = {
   mouthPull: 0,
   turnAmount: 0,
   turnVelocity: 0,
+  arenaLevel: 0,
+  wallHitCount: 0,
+  lastWallHitAt: 0,
+  breachOpen: false,
+  breachAngle: null,
+  breachOpenedAt: null,
 };
 
 const initialState = {
@@ -514,13 +520,64 @@ export const useSoonStore = create((set, get) => ({
 
       fishNavRadius = getFishMovementRadius(arenaRadius);
 
-      const safe = clampToCircle(
-        {
-          x: state.fish.x + limitedVx,
-          y: state.fish.y + limitedVy,
-        },
-        fishNavRadius
-      );
+      const now = performance.now();
+      const nextX = state.fish.x + limitedVx;
+      const nextY = state.fish.y + limitedVy;
+      const nextDistance = Math.hypot(nextX, nextY);
+      const safe = clampToCircle({ x: nextX, y: nextY }, fishNavRadius);
+      const hitWall = nextDistance > fishNavRadius + 0.0001;
+      const hitDelayPassed = now - (state.fish.lastWallHitAt || 0) > 450;
+
+      let wallHitCount = state.fish.wallHitCount || 0;
+      let lastWallHitAt = state.fish.lastWallHitAt || 0;
+      let breachOpen = Boolean(state.fish.breachOpen);
+      let breachAngle = Number.isFinite(state.fish.breachAngle) ? state.fish.breachAngle : null;
+      let breachOpenedAt = state.fish.breachOpenedAt ?? null;
+      let arenaLevel = Number.isFinite(state.fish.arenaLevel) ? state.fish.arenaLevel : 0;
+      let currentArenaId = state.currentArenaId;
+      let nextFishX = safe.x;
+      let nextFishY = safe.y;
+      let nextTargetX = targetX;
+      let nextTargetY = targetY;
+      let nextVx = limitedVx;
+      let nextVy = limitedVy;
+
+      if (hitWall && hitDelayPassed) {
+        wallHitCount += 1;
+        lastWallHitAt = now;
+        breachAngle = Math.atan2(nextY, nextX);
+        if (wallHitCount >= 3 && arenaLevel < 2) {
+          breachOpen = true;
+          breachOpenedAt = now;
+        }
+      }
+
+      if (breachOpen && breachAngle !== null) {
+        const fishAngle = Math.atan2(nextFishY, nextFishX);
+        const delta = Math.atan2(
+          Math.sin(fishAngle - breachAngle),
+          Math.cos(fishAngle - breachAngle)
+        );
+        const nearMembrane = Math.hypot(nextFishX, nextFishY) >= fishNavRadius - 42;
+        const pushDot = (Math.cos(breachAngle) * dirX) + (Math.sin(breachAngle) * dirY);
+        const pushingTowardBreach = pushDot > 0.45;
+
+        if (nearMembrane && Math.abs(delta) <= 0.35 && pushingTowardBreach && arenaLevel < 2) {
+          arenaLevel += 1;
+          currentArenaId = `arene_${String(arenaLevel).padStart(4, "0")}`;
+          nextFishX = 0;
+          nextFishY = 0;
+          nextTargetX = 0;
+          nextTargetY = -120;
+          nextVx = 0;
+          nextVy = 0;
+          wallHitCount = 0;
+          breachOpen = false;
+          breachAngle = null;
+          breachOpenedAt = null;
+          lastWallHitAt = now;
+        }
+      }
 
       const speed = Math.hypot(limitedVx, limitedVy);
 
@@ -566,14 +623,15 @@ export const useSoonStore = create((set, get) => ({
         circuitSegmentIndex,
         circuitSegmentT,
         bubbles: pushedBubbles,
+        currentArenaId,
         fish: {
           ...state.fish,
-          x: safe.x,
-          y: safe.y,
-          vx: limitedVx,
-          vy: limitedVy,
-          targetX,
-          targetY,
+          x: nextFishX,
+          y: nextFishY,
+          vx: nextVx,
+          vy: nextVy,
+          targetX: nextTargetX,
+          targetY: nextTargetY,
           angle,
           swimPhase,
           depth: clampDepth(fishDepth),
@@ -581,6 +639,12 @@ export const useSoonStore = create((set, get) => ({
           turnAmount: nextTurnAmount,
           turnVelocity: nextTurnVelocity,
           maxSpeed: state.fish.maxSpeed || 3.1,
+          arenaLevel,
+          wallHitCount,
+          lastWallHitAt,
+          breachOpen,
+          breachAngle,
+          breachOpenedAt,
         },
       };
     });
