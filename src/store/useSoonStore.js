@@ -557,7 +557,7 @@ export const useSoonStore = create((set, get) => ({
         : clampToCircle({ x: nextX, y: nextY }, fishNavRadius);
       const hitWall = membraneSide === "inside"
         ? nextDistance > fishNavRadius + 0.0001
-        : nextDistance < fishNavRadius + 24;
+        : false;
       const nearWall = nextDistance >= fishNavRadius - 90;
       const hitDelayPassed = now - (state.fish.lastWallHitAt || 0) > 450;
 
