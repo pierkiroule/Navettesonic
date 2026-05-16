@@ -1,4 +1,5 @@
 import { distance, getBubbleVisualRadius } from "./geometry.js";
+import { getPortalAnchor } from "./labybulleWorld.js";
 import { drawPoissonPlume } from "./poissonPlumeRenderer.js";
 import { drawCharacters } from "./characters/characterEngine.js";
 import { drawOdysseoPath } from "./odysseoPath.js";
@@ -591,13 +592,17 @@ export function drawArenaPortals(ctx, arenaRef, current = {}) {
   const portals = (world.portals || []).filter((portal) => portal.fromArenaId === currentArenaId);
   if (!portals.length) return;
 
-  const hintToAngle = { TOP: -Math.PI / 2, BOTTOM: Math.PI / 2, LEFT: Math.PI, RIGHT: 0 };
-
   ctx.save();
   portals.forEach((portal, index) => {
-    const baseAngle = hintToAngle[portal.positionHint] ?? ((index / portals.length) * Math.PI * 2);
-    const x = Math.cos(baseAngle) * (radius - 30);
-    const y = Math.sin(baseAngle) * (radius - 30);
+    const anchor = getPortalAnchor({
+      positionHint: portal.positionHint,
+      radius,
+      index,
+      total: portals.length,
+    });
+    const x = anchor.x;
+    const y = anchor.y;
+    const baseAngle = anchor.angle;
 
     ctx.beginPath();
     ctx.ellipse(x, y, 36, 18, baseAngle, 0, Math.PI * 2);

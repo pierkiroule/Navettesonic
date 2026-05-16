@@ -170,4 +170,25 @@ export function buildWorldDebugSnapshot(world) {
   };
 }
 
+
+
+export function getPortalAnchor({ positionHint, radius = 1200, index = 0, total = 1 }) {
+  const hintToAngle = { TOP: -Math.PI / 2, BOTTOM: Math.PI / 2, LEFT: Math.PI, RIGHT: 0 };
+  const angle = hintToAngle[positionHint] ?? ((index / Math.max(1, total)) * Math.PI * 2);
+  return { x: Math.cos(angle) * (radius - 30), y: Math.sin(angle) * (radius - 30), angle };
+}
+
+export function resolvePortalAtPosition({ world, arenaId, x = 0, y = 0, radius = 1200, activationDistance = 78 }) {
+  if (!world || !arenaId) return null;
+  const portals = (world.portals || []).filter((portal) => portal.fromArenaId === arenaId);
+  for (let i = 0; i < portals.length; i += 1) {
+    const portal = portals[i];
+    const anchor = getPortalAnchor({ positionHint: portal.positionHint, radius, index: i, total: portals.length });
+    if (Math.hypot((x || 0) - anchor.x, (y || 0) - anchor.y) <= activationDistance) {
+      return portal;
+    }
+  }
+  return null;
+}
+
 export { ARENA_TYPES, PORTAL_POSITIONS };

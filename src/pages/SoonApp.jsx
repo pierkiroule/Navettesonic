@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { resolvePortalAtPosition } from "../core/labybulleWorld.js";
 import SidePanel from "../components/SidePanel.jsx";
 import SoonCanvas from "../components/SoonCanvas.jsx";
 import WorkflowShell from "../components/WorkflowShell.jsx";
@@ -28,6 +29,7 @@ export default function SoonApp({ onBack }) {
   const [bubblesEnabled, setBubblesEnabled] = useState(true);
   const [bubblesIntensity, setBubblesIntensity] = useState(1);
   const nombriloAudioRef = useRef(null);
+  const portalCooldownRef = useRef(0);
 
   const {
     mode,
@@ -67,6 +69,7 @@ export default function SoonApp({ onBack }) {
     deleteBubble,
     worldGraph,
     currentArenaId,
+    travelToArena,
   } = useSoonStore();
 
   const selectedBubble =
@@ -271,6 +274,21 @@ export default function SoonApp({ onBack }) {
           if (isEditMode) return;
 
           tickFish({ swimSpeed, arenaRadius });
+
+          const now = performance.now();
+          if (now < portalCooldownRef.current) return;
+
+          const portal = resolvePortalAtPosition({
+            world: worldGraph,
+            arenaId: currentArenaId,
+            x: fish?.x,
+            y: fish?.y,
+            radius: arenaRadius,
+          });
+          if (!portal) return;
+
+          travelToArena(portal.toArenaId);
+          portalCooldownRef.current = now + 900;
         }}
         onSetFishDepth={setFishDepth}
         onSelectBubble={selectBubble}
