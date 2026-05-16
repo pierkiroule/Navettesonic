@@ -11,13 +11,23 @@ import {
   readPersistedWorkflowRoot,
   serializeWorkflowHash,
 } from "../core/workflowShellState.js";
+import {
+  ODYSSEO_MODE_TRACE,
+  SOON_MODE_COMPO,
+  SOON_MODE_RESO,
+  WORKFLOW_ROOT_NAVIGO,
+  modeToWorkflowRoot,
+  normalizeOdysseoMode,
+  workflowRootToMode,
+} from "../core/uiState.js";
+
 
 const NOMBRILO_ONE_SHOT_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/nombrilo/nombrilo.mp3";
 
 export default function SoonApp({ onBack }) {
   const [page, setPage] = useState("arena");
   const [interactionMode, setInteractionMode] = useState("swim");
-  const [odysseoMode, setOdysseoMode] = useState("trace");
+  const [odysseoMode, setOdysseoMode] = useState(ODYSSEO_MODE_TRACE);
   const [viewZoom, setViewZoom] = useState(0.5);
   const [swimSpeed, setSwimSpeed] = useState(0.3);
   const [isTravelPlaying, setIsTravelPlaying] = useState(false);
@@ -77,21 +87,21 @@ export default function SoonApp({ onBack }) {
   const selectedBeacon =
     traceCircuit.find((beacon) => beacon.id === selectedBeaconId) || null;
 
-  const isOdysseo = mode === "reso";
+  const isOdysseo = mode === SOON_MODE_RESO;
   const isEditMode = interactionMode === "edit";
 
 
   const flowStep = useMemo(() => {
-    if (mode === "compo") {
+    if (mode === SOON_MODE_COMPO) {
       return {
-        key: "compo",
+        key: SOON_MODE_COMPO,
         title: "Composer",
         tip: "Choisissez vos éléments et organisez votre scène.",
       };
     }
 
     return {
-      key: "navigo",
+      key: WORKFLOW_ROOT_NAVIGO,
       title: "Navigo",
       tip: "Trace, ancre et lance la lecture du parcours depuis un seul espace.",
     };
@@ -103,20 +113,20 @@ export default function SoonApp({ onBack }) {
     const fromHash = parseWorkflowFromHash(window.location.hash);
     const persistedRoot = readPersistedWorkflowRoot();
 
-    if (fromHash?.root === "navigo") {
-      setMode("reso");
-      setOdysseoMode(fromHash.odysseoMode || "trace");
+    if (fromHash?.root === WORKFLOW_ROOT_NAVIGO) {
+      setMode(SOON_MODE_RESO);
+      setOdysseoMode(normalizeOdysseoMode(fromHash.odysseoMode));
       return;
     }
 
-    if (persistedRoot === "navigo") {
-      setMode("reso");
-      setOdysseoMode("trace");
+    if (persistedRoot === WORKFLOW_ROOT_NAVIGO) {
+      setMode(SOON_MODE_RESO);
+      setOdysseoMode(ODYSSEO_MODE_TRACE);
     }
   }, [setMode]);
 
   useEffect(() => {
-    const root = mode === "compo" ? "compo" : "navigo";
+    const root = modeToWorkflowRoot(mode);
     persistWorkflowRoot(root);
     window.history.replaceState(null, "", serializeWorkflowHash(root, odysseoMode));
   }, [mode, odysseoMode]);
@@ -126,13 +136,13 @@ export default function SoonApp({ onBack }) {
     setInteractionMode("swim");
     setIsTravelPlaying(false);
 
-    if (root === "navigo") {
-      setMode("reso");
-      setOdysseoMode((current) => current || "trace");
+    if (root === WORKFLOW_ROOT_NAVIGO) {
+      setMode(SOON_MODE_RESO);
+      setOdysseoMode((current) => normalizeOdysseoMode(current));
       return;
     }
 
-    setMode("compo");
+    setMode(workflowRootToMode(root));
   };
 
   useEffect(() => {
@@ -231,7 +241,7 @@ export default function SoonApp({ onBack }) {
 
         <div className="top-nav-flow">
           <WorkflowShell
-            activeRoot={mode === "compo" ? "compo" : "navigo"}
+            activeRoot={modeToWorkflowRoot(mode)}
             onChangeRoot={setWorkflowRoot}
           />
         </div>

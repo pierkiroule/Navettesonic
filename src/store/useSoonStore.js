@@ -22,6 +22,7 @@ import {
   smoothLoopPoint,
 } from "../core/traceCircuit.js";
 import { BREACH_GAP_SPAN, getFishNavigableRadius, MEMBRANE_LEVEL_MULTIPLIERS } from "../core/constants.js";
+import { SOON_MODE_COMPO, normalizeSoonMode } from "../core/uiState.js";
 import { buildMazeByArena, buildWorldDebugSnapshot, generateLabybulle, getPortalArrivalPosition, validateWorldGraph } from "../core/labybulleWorld.js";
 
 const saved = loadState();
@@ -174,7 +175,7 @@ const defaultFish = {
 };
 
 const initialState = {
-  mode: ["intro", "compo", "reso"].includes(saved?.mode) ? saved.mode : "compo",
+  mode: normalizeSoonMode(saved?.mode, SOON_MODE_COMPO),
   bubbles: defaultPack.bubbles.map((bubble) => ({ ...bubble })),
   fish: {
     ...defaultFish,
@@ -965,7 +966,7 @@ export const useSoonStore = create((set, get) => ({
     if (!data || !Array.isArray(data.bubbles)) return;
 
     set((state) => ({
-      mode: data.mode || "compo",
+      mode: normalizeSoonMode(data.mode, SOON_MODE_COMPO),
       bubbles: data.bubbles,
       fish: {
         ...state.fish,
@@ -995,7 +996,7 @@ export const useSoonStore = create((set, get) => ({
     clearState();
 
     set({
-      mode: "compo",
+      mode: SOON_MODE_COMPO,
       bubbles: defaultPack.bubbles,
       fish: { ...defaultFish },
       selectedBubbleId: null,
