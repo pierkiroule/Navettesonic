@@ -22,7 +22,7 @@ import {
   smoothLoopPoint,
 } from "../core/traceCircuit.js";
 import { getFishNavigableRadius } from "../core/constants.js";
-import { buildMazeByArena, buildWorldDebugSnapshot, clampPointToMaze, generateLabybulle, getPortalArrivalPosition, validateWorldGraph } from "../core/labybulleWorld.js";
+import { buildMazeByArena, buildWorldDebugSnapshot, generateLabybulle, getPortalArrivalPosition, validateWorldGraph } from "../core/labybulleWorld.js";
 
 const saved = loadState();
 const labybulleWorld = generateLabybulle(saved?.labybulleSeed ?? 1);
@@ -356,8 +356,7 @@ export const useSoonStore = create((set, get) => ({
     if (state.circuitAutopilot) return;
 
     const safeCircle = clampToCircle({ x, y }, getFishMovementRadius(arenaRadius));
-    const maze = state.mazeByArena?.[state.currentArenaId];
-    const safe = clampPointToMaze({ x: safeCircle.x, y: safeCircle.y, maze });
+    const safe = safeCircle;
 
     set((state) => {
       return {
