@@ -40,6 +40,18 @@ const FISH_MEMBRANE_BLOCK_RADIUS = 42;
 const MAX_ARENA_LEVEL = 2;
 
 
+const ARENA_OPENING_ANGLES = [-Math.PI / 2, 0, Math.PI];
+const ARENA_OPENING_HALF_SPAN = 0.22;
+
+function angleDistance(a, b) {
+  return Math.atan2(Math.sin(a - b), Math.cos(a - b));
+}
+
+function isNearOpening(angle, level) {
+  const opening = ARENA_OPENING_ANGLES[Math.max(0, Math.min(MAX_ARENA_LEVEL, level))] ?? ARENA_OPENING_ANGLES[0];
+  return Math.abs(angleDistance(angle, opening)) <= ARENA_OPENING_HALF_SPAN;
+}
+
 function getArenaIdForLevel(level = 0) {
   const normalized = Math.max(0, Math.min(MAX_ARENA_LEVEL, Number.isFinite(level) ? level : 0));
   if (normalized === 0) return "arena-1";
@@ -648,6 +660,82 @@ export const useSoonStore = create((set, get) => ({
         const ny = nextFishY / safeDistance;
         nextFishX = nx * lockDistance;
         nextFishY = ny * lockDistance;
+      }
+
+      const radialDistance = Math.hypot(nextFishX, nextFishY);
+      const radialAngle = Math.atan2(nextFishY, nextFishX);
+      const radialX = Math.cos(radialAngle);
+      const radialY = Math.sin(radialAngle);
+      const speedForDot = Math.hypot(nextVx, nextVy) || 0.0001;
+      const radialDot = ((radialX * nextVx) + (radialY * nextVy)) / speedForDot;
+      const nearMembrane = Math.abs(radialDistance - fishNavRadius) <= 48;
+      if (nearMembrane && isNearOpening(radialAngle, arenaLevel)) {
+        if (radialDot > 0.22 && arenaLevel < MAX_ARENA_LEVEL) {
+          const nextLevel = arenaLevel + 1;
+          nextFishX += radialX * 16;
+          nextFishY += radialY * 16;
+          return {
+            circuitAutopilot,
+            circuitSegmentIndex,
+            circuitSegmentT,
+            bubbles: separateBubblesByDepth(pushBubblesFromFish(state.bubbles, safe, fishDepth)),
+            currentArenaId: getArenaIdForLevel(nextLevel),
+            fish: {
+              ...state.fish,
+              x: nextFishX,
+              y: nextFishY,
+              vx: nextVx,
+              vy: nextVy,
+              targetX,
+              targetY,
+              arenaRadius,
+              arenaLevel: nextLevel,
+              membraneSide: "inside",
+              wallHitCount,
+              lastWallHitAt,
+              breachOpen: false,
+              breachAngle: null,
+              breachOpenedAt: null,
+              breachState: "closed",
+              breachExpiresAt: null,
+              breachUsed: false,
+              hasQuill,
+            },
+          };
+        }
+        if (radialDot < -0.22 && arenaLevel > 0) {
+          const nextLevel = arenaLevel - 1;
+          nextFishX -= radialX * 16;
+          nextFishY -= radialY * 16;
+          return {
+            circuitAutopilot,
+            circuitSegmentIndex,
+            circuitSegmentT,
+            bubbles: separateBubblesByDepth(pushBubblesFromFish(state.bubbles, safe, fishDepth)),
+            currentArenaId: getArenaIdForLevel(nextLevel),
+            fish: {
+              ...state.fish,
+              x: nextFishX,
+              y: nextFishY,
+              vx: nextVx,
+              vy: nextVy,
+              targetX,
+              targetY,
+              arenaRadius,
+              arenaLevel: nextLevel,
+              membraneSide: "inside",
+              wallHitCount,
+              lastWallHitAt,
+              breachOpen: false,
+              breachAngle: null,
+              breachOpenedAt: null,
+              breachState: "closed",
+              breachExpiresAt: null,
+              breachUsed: false,
+              hasQuill,
+            },
+          };
+        }
       }
 
       const speed = Math.hypot(limitedVx, limitedVy);

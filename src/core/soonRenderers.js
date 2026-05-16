@@ -138,6 +138,9 @@ export function drawQuill(ctx, fish = {}, time = 0) {
   ctx.restore();
 }
 
+const CONTOUR_OPENING_HALF_SPAN = 0.22;
+const CONTOUR_OPENING_ANGLES = [-Math.PI / 2, 0, Math.PI];
+
 export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
   const radius = arenaRef.current.radius;
   void time;
@@ -151,9 +154,10 @@ export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
     radius * (MEMBRANE_LEVEL_MULTIPLIERS[2] ?? 1),
   ];
 
-  rings.forEach((r) => {
+  rings.forEach((r, index) => {
     ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    const opening = CONTOUR_OPENING_ANGLES[index] ?? CONTOUR_OPENING_ANGLES[0];
+    ctx.arc(0, 0, r, opening + CONTOUR_OPENING_HALF_SPAN, opening - CONTOUR_OPENING_HALF_SPAN + Math.PI * 2);
     ctx.strokeStyle = "rgba(0, 0, 0, 0.92)";
     ctx.lineWidth = 8;
     ctx.stroke();
@@ -393,11 +397,13 @@ export function drawFish(ctx, fish, time) {
 
     const clipPath = new Path2D();
     if (effectiveSide === "inside") {
-      clipPath.arc(0, 0, membraneRadius + clipPadding, 0, Math.PI * 2);
+      const opening = CONTOUR_OPENING_ANGLES[safeLevel] ?? CONTOUR_OPENING_ANGLES[0];
+      clipPath.arc(0, 0, membraneRadius + clipPadding, opening + CONTOUR_OPENING_HALF_SPAN, opening - CONTOUR_OPENING_HALF_SPAN + Math.PI * 2);
       ctx.clip(clipPath);
     } else {
       clipPath.arc(0, 0, outerWorldRadius, 0, Math.PI * 2);
-      clipPath.arc(0, 0, membraneRadius - clipPadding * 0.4, 0, Math.PI * 2);
+      const opening = CONTOUR_OPENING_ANGLES[safeLevel] ?? CONTOUR_OPENING_ANGLES[0];
+      clipPath.arc(0, 0, membraneRadius - clipPadding * 0.4, opening + CONTOUR_OPENING_HALF_SPAN, opening - CONTOUR_OPENING_HALF_SPAN + Math.PI * 2);
       ctx.clip(clipPath, "evenodd");
     }
 
