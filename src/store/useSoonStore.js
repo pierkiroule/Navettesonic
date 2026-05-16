@@ -34,6 +34,7 @@ if (worldErrors.length) {
 
 const DEFAULT_ARENA_RADIUS = 1200;
 const DEFAULT_FISH_NAV_RADIUS = getFishNavigableRadius(DEFAULT_ARENA_RADIUS);
+const OUTSIDE_NAV_MAX_MULTIPLIER = 12;
 
 
 function getFishMovementRadius(arenaRadius) {
@@ -381,7 +382,7 @@ export const useSoonStore = create((set, get) => ({
     // - outside: on interdit les targets trop proches de la membrane intérieure pour éviter
     //   que le steering se retourne contre la ligne.
     const safe = side === "outside"
-      ? clampToRing({ x, y }, navRadius + 96, arenaRadius * 2.2)
+      ? clampToRing({ x, y }, navRadius + 96, arenaRadius * OUTSIDE_NAV_MAX_MULTIPLIER)
       : clampToCircle({ x, y }, Math.max(navRadius, arenaRadius * 1.9));
 
     set((state) => {
@@ -550,7 +551,7 @@ export const useSoonStore = create((set, get) => ({
       const nextY = state.fish.y + limitedVy;
       const nextDistance = Math.hypot(nextX, nextY);
       const membraneSide = state.fish.membraneSide === "outside" ? "outside" : "inside";
-      const outerNavRadius = fishNavRadius * 2.8;
+      const outerNavRadius = arenaRadius * OUTSIDE_NAV_MAX_MULTIPLIER;
       let safe = membraneSide === "outside"
         ? clampToRing({ x: nextX, y: nextY }, fishNavRadius + 24, outerNavRadius)
         : clampToCircle({ x: nextX, y: nextY }, fishNavRadius);
