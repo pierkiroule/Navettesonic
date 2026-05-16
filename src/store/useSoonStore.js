@@ -23,7 +23,7 @@ import {
 } from "../core/traceCircuit.js";
 import { BREACH_GAP_SPAN, getFishNavigableRadius, MEMBRANE_LEVEL_MULTIPLIERS } from "../core/constants.js";
 import { SOON_MODE_COMPO, normalizeSoonMode } from "../core/uiState.js";
-import { buildMazeByArena, buildWorldDebugSnapshot, generateLabybulle, getPortalArrivalPosition, validateWorldGraph } from "../core/labybulleWorld.js";
+import { buildMazeByArena, buildWorldDebugSnapshot, clampPointToMaze, generateLabybulle, getPortalArrivalPosition, validateWorldGraph } from "../core/labybulleWorld.js";
 
 const saved = loadState();
 const labybulleWorld = generateLabybulle(saved?.labybulleSeed ?? 1);
@@ -84,6 +84,12 @@ function getMembraneRadiusForLevel(arenaRadius, arenaLevel = 0) {
 
 function clampDepth(depth) {
   return normalizeDepth(depth);
+}
+
+function clampFishToArenaLabyrinth(point, mazeByArenaMap, arenaId) {
+  const maze = mazeByArenaMap?.[arenaId];
+  if (!maze) return point;
+  return clampPointToMaze({ x: point.x, y: point.y, maze });
 }
 
 function clampToRing(point, minRadius, maxRadius) {
@@ -616,7 +622,8 @@ export const useSoonStore = create((set, get) => ({
       const nextX = state.fish.x + limitedVx;
       const nextY = state.fish.y + limitedVy;
       const nextDistance = Math.hypot(nextX, nextY);
-      let safe = clampToCircle({ x: nextX, y: nextY }, fishNavRadius);
+      const circularSafe = clampToCircle({ x: nextX, y: nextY }, fishNavRadius);
+      let safe = clampFishToArenaLabyrinth(circularSafe, state.mazeByArena, state.currentArenaId);
       const hitWall = nextDistance > fishNavRadius + 0.0001;
       const nearWall = nextDistance >= fishNavRadius - 90;
       const hitDelayPassed = now - (state.fish.lastWallHitAt || 0) > 450;
@@ -674,7 +681,8 @@ export const useSoonStore = create((set, get) => ({
           nextFishX += radialX * 16;
           nextFishY += radialY * 16;
           const destinationNavRadius = getMembraneRadiusForLevel(arenaRadius, nextLevel);
-          const destinationSafe = clampToCircle({ x: nextFishX, y: nextFishY }, destinationNavRadius - 4);
+          const destinationCircularSafe = clampToCircle({ x: nextFishX, y: nextFishY }, destinationNavRadius - 4);
+          const destinationSafe = clampFishToArenaLabyrinth(destinationCircularSafe, state.mazeByArena, getArenaIdForLevel(nextLevel));
           nextFishX = destinationSafe.x;
           nextFishY = destinationSafe.y;
           return {
@@ -711,7 +719,8 @@ export const useSoonStore = create((set, get) => ({
           nextFishX -= radialX * 16;
           nextFishY -= radialY * 16;
           const destinationNavRadius = getMembraneRadiusForLevel(arenaRadius, nextLevel);
-          const destinationSafe = clampToCircle({ x: nextFishX, y: nextFishY }, destinationNavRadius - 4);
+          const destinationCircularSafe = clampToCircle({ x: nextFishX, y: nextFishY }, destinationNavRadius - 4);
+          const destinationSafe = clampFishToArenaLabyrinth(destinationCircularSafe, state.mazeByArena, getArenaIdForLevel(nextLevel));
           nextFishX = destinationSafe.x;
           nextFishY = destinationSafe.y;
           return {
