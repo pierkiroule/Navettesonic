@@ -376,13 +376,16 @@ export const useSoonStore = create((set, get) => ({
     if (state.circuitAutopilot) return;
 
     const navRadius = getFishMovementRadius(arenaRadius);
-    const side = state.fish?.membraneSide === "outside" ? "outside" : "inside";
+    const fishDistance = Math.hypot(state.fish?.x || 0, state.fish?.y || 0);
+    const side = state.fish?.membraneSide === "outside" || fishDistance > navRadius + 24
+      ? "outside"
+      : "inside";
     // Evite le bug "bloqué sur la ligne puis demi-tour":
     // - inside: on garde une target possible au-delà de la membrane pour pousser la brèche.
     // - outside: on interdit les targets trop proches de la membrane intérieure pour éviter
     //   que le steering se retourne contre la ligne.
     const safe = side === "outside"
-      ? clampToRing({ x, y }, navRadius + 96, arenaRadius * OUTSIDE_NAV_MAX_MULTIPLIER)
+      ? { x, y }
       : clampToCircle({ x, y }, Math.max(navRadius, arenaRadius * 1.9));
 
     set((state) => {
@@ -551,13 +554,14 @@ export const useSoonStore = create((set, get) => ({
       const nextY = state.fish.y + limitedVy;
       const nextDistance = Math.hypot(nextX, nextY);
       const membraneSide = state.fish.membraneSide === "outside" ? "outside" : "inside";
+      const isActuallyOutside = membraneSide === "outside" || Math.hypot(state.fish.x || 0, state.fish.y || 0) > fishNavRadius + 24;
       const outerNavRadius = arenaRadius * OUTSIDE_NAV_MAX_MULTIPLIER;
-      let safe = membraneSide === "outside"
-        ? clampToRing({ x: nextX, y: nextY }, fishNavRadius + 24, outerNavRadius)
+      let safe = isActuallyOutside
+        ? clampToCircle({ x: nextX, y: nextY }, outerNavRadius)
         : clampToCircle({ x: nextX, y: nextY }, fishNavRadius);
-      const hitWall = membraneSide === "inside"
-        ? nextDistance > fishNavRadius + 0.0001
-        : false;
+      const hitWall = isActuallyOutside
+        ? false
+        : nextDistance > fishNavRadius + 0.0001;
       const nearWall = nextDistance >= fishNavRadius - 90;
       const hitDelayPassed = now - (state.fish.lastWallHitAt || 0) > 450;
 
