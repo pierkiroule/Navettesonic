@@ -28,37 +28,6 @@ const saved = loadState();
 const DEFAULT_ARENA_RADIUS = 1200;
 const DEFAULT_FISH_NAV_RADIUS = getFishNavigableRadius(DEFAULT_ARENA_RADIUS);
 
-const PASSAGE_ANGLES = [-Math.PI / 2, 0, Math.PI / 2, Math.PI];
-
-const EVASION_SAMPLE_URLS = [
-  "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/evasion/evasion.mp3",
-  "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/evasion/Poisson-Plume.mp3",
-];
-const evasionAudios = new Map();
-let fishWasOutsideArena = false;
-
-function playEvasionSampleOnce() {
-  if (typeof window === "undefined") return;
-  const randomIndex = Math.floor(Math.random() * EVASION_SAMPLE_URLS.length);
-  const sampleUrl = EVASION_SAMPLE_URLS[randomIndex];
-  if (!sampleUrl) return;
-  let audio = evasionAudios.get(sampleUrl);
-  if (!audio) {
-    audio = new Audio(sampleUrl);
-    audio.preload = "auto";
-    evasionAudios.set(sampleUrl, audio);
-  }
-  audio.currentTime = 0;
-  void audio.play().catch(() => {});
-}
-
-function normalizeAngle(angle) {
-  let a = angle;
-  while (a > Math.PI) a -= Math.PI * 2;
-  while (a < -Math.PI) a += Math.PI * 2;
-  return a;
-}
-
 
 function lerp(start, end, t) {
   return start + (end - start) * t;
@@ -71,8 +40,11 @@ const PASSAGE_PORTALS = [
   { id: "O", angle: Math.PI },
 ];
 const PORTAL_ANGLE_TOLERANCE = 0.32;
-const PORTAL_TRANSITION_MS = 520;
-const PORTAL_EXIT_RADIUS_OFFSET = 240;
+const OUTSIDE_MARGIN = 6;
+const OUTSIDE_RELEASE_MARGIN = 14;
+const INSIDE_DESTINATION_OFFSET = 90;
+const OUTSIDE_DESTINATION_OFFSET = 220;
+const OUTSIDE_FREE_SWIM_RADIUS = 520;
 
 function angleDelta(a, b) {
   return Math.atan2(Math.sin(a - b), Math.cos(a - b));
@@ -113,7 +85,7 @@ function getPortalPoint(angle, radius) {
   };
 }
 
-function getFishMovementRadius(targetX, targetY, arenaRadius) {
+function getFishMovementRadius(arenaRadius) {
   return Math.max(0, arenaRadius - 18);
 }
 
@@ -122,6 +94,35 @@ function getRuntimeFishNavRadius(arenaRadius) {
     return getFishNavigableRadius(arenaRadius);
   }
   return DEFAULT_FISH_NAV_RADIUS;
+}
+
+
+function isFishOutside(fish = {}, navRadius = DEFAULT_FISH_NAV_RADIUS) {
+  const radius = Math.hypot(fish.x || 0, fish.y || 0);
+  return Boolean(fish.outsideFreeSwim) || radius > navRadius + OUTSIDE_MARGIN;
+}
+
+function projectOutsideTarget(x, y, arenaRadius) {
+  const angle = Math.atan2(y, x);
+  return {
+    x: Math.cos(angle) * (arenaRadius + 80),
+    y: Math.sin(angle) * (arenaRadius + 80),
+  };
+}
+
+function resetFishAfterPortal(baseFish, destination, nextOutside) {
+  return {
+    ...baseFish,
+    x: destination.x,
+    y: destination.y,
+    targetX: destination.x,
+    targetY: destination.y,
+    vx: 0,
+    vy: 0,
+    spine: createInitialSpine(destination.x, destination.y),
+    outsideFreeSwim: nextOutside,
+    portalTransition: null,
+  };
 }
 
 function clampDepth(depth) {
@@ -376,36 +377,23 @@ export const useSoonStore = create((set, get) => ({
     const portal = getPortalHit(x, y, arenaRadius);
 
     if (portal) {
-      const fishRadius = Math.hypot(state.fish?.x || 0, state.fish?.y || 0);
-      const fishIsOutside = Boolean(state.fish?.outsideFreeSwim) || fishRadius > navRadius + 6;
+      const fishIsOutside = isFishOutside(state.fish, navRadius);
 
       const destinationRadius = fishIsOutside
-        ? arenaRadius - 90
-        : arenaRadius + 220;
+        ? arenaRadius - INSIDE_DESTINATION_OFFSET
+        : arenaRadius + OUTSIDE_DESTINATION_OFFSET;
 
       const destination = getPortalPoint(portal.angle, destinationRadius);
 
       set((state) => ({
-        fish: {
-          ...state.fish,
-          x: destination.x,
-          y: destination.y,
-          targetX: destination.x,
-          targetY: destination.y,
-          vx: 0,
-          vy: 0,
-          spine: createInitialSpine(destination.x, destination.y),
-          outsideFreeSwim: !fishIsOutside,
-          portalTransition: null,
-        },
+        fish: resetFishAfterPortal(state.fish, destination, !fishIsOutside),
         fishTrail: [],
       }));
 
       return;
     }
 
-    const fishRadius = Math.hypot(state.fish?.x || 0, state.fish?.y || 0);
-    const isOutside = Boolean(state.fish?.outsideFreeSwim) || fishRadius > navRadius + 6;
+    const isOutside = isFishOutside(state.fish, navRadius);
 
     let target = { x, y };
 
@@ -414,17 +402,13 @@ export const useSoonStore = create((set, get) => ({
       const portal = getPortalHit(x, y, arenaRadius);
 
       if (targetRadius < navRadius - 12 && !portal) {
-        const angle = Math.atan2(y, x);
-        target = {
-          x: Math.cos(angle) * (arenaRadius + 80),
-          y: Math.sin(angle) * (arenaRadius + 80),
-        };
+        target = projectOutsideTarget(y === 0 && x === 0 ? state.fish?.x || 1 : x, y === 0 && x === 0 ? state.fish?.y || 0 : y, arenaRadius);
       }
     }
 
     const movementRadius = isOutside
-      ? arenaRadius + 520
-      : getFishMovementRadius(target.x, target.y, arenaRadius);
+      ? arenaRadius + OUTSIDE_FREE_SWIM_RADIUS
+      : getFishMovementRadius(arenaRadius);
 
     const safe = clampToCircle(target, movementRadius);
 
@@ -519,14 +503,10 @@ export const useSoonStore = create((set, get) => ({
       }
 
       const fish = state.fish;
-      let fishNavRadius = getFishMovementRadius(
-        state.fish.targetX,
-        state.fish.targetY,
-        arenaRadius
-      );
+      let fishNavRadius = getFishMovementRadius(arenaRadius);
 
       if (state.fish.outsideFreeSwim) {
-        fishNavRadius = arenaRadius + 520;
+        fishNavRadius = arenaRadius + OUTSIDE_FREE_SWIM_RADIUS;
       }
       if (state.fishTrail?.length) {
         const result = updateSnakeFishToTarget({
@@ -560,13 +540,7 @@ export const useSoonStore = create((set, get) => ({
 
       const navRadius = getRuntimeFishNavRadius(arenaRadius);
       const fishRadiusNow = Math.hypot(state.fish.x || 0, state.fish.y || 0);
-      const isOutsideArena = fishRadiusNow > navRadius + 1;
-      if (isOutsideArena && !fishWasOutsideArena) {
-        // playEvasionSampleOnce(); // désactivé: évènement évasion supprimé
-      }
-      fishWasOutsideArena = isOutsideArena;
-
-      if (circuitAutopilot && state.traceCircuit?.length > 1) {
+            if (circuitAutopilot && state.traceCircuit?.length > 1) {
         const currentBeacon =
           state.traceCircuit[circuitSegmentIndex % state.traceCircuit.length];
 
@@ -643,11 +617,11 @@ export const useSoonStore = create((set, get) => ({
       const limitedVx = speedRaw > speedLimit ? (vx / speedRaw) * speedLimit : vx;
       const limitedVy = speedRaw > speedLimit ? (vy / speedRaw) * speedLimit : vy;
 
-      fishNavRadius = getFishMovementRadius(targetX, targetY, arenaRadius);
-      const computedOutside = Boolean(state.fish.outsideFreeSwim) || fishRadiusNow > navRadius + 6;
-      const outsideFreeSwim = computedOutside && fishRadiusNow > navRadius - 14;
+      fishNavRadius = getFishMovementRadius(arenaRadius);
+      const computedOutside = isFishOutside(state.fish, navRadius);
+      const outsideFreeSwim = computedOutside && fishRadiusNow > navRadius - OUTSIDE_RELEASE_MARGIN;
       if (outsideFreeSwim) {
-        fishNavRadius = Math.max(fishNavRadius, arenaRadius + 520);
+        fishNavRadius = Math.max(fishNavRadius, arenaRadius + OUTSIDE_FREE_SWIM_RADIUS);
       }
 
       const safe = clampToCircle(
