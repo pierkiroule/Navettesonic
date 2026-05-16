@@ -68,6 +68,7 @@ export default function SoonApp({ onBack }) {
     worldGraph,
     currentArenaId,
     mazeByArena,
+    toggleMembraneSide,
   } = useSoonStore();
 
   const selectedBubble =
@@ -296,6 +297,7 @@ export default function SoonApp({ onBack }) {
         onToggleBubbles={() => setBubblesEnabled((v) => !v)}
         onSetBubblesIntensity={setBubblesIntensity}
         onResetFishContext={() => { setBubblesEnabled(true); setBubblesIntensity(1); recenterFish(); }}
+        onToggleMembraneSide={toggleMembraneSide}
       />
 
       <div className={`cockpit ${isOdysseo ? "odysseo-cockpit" : ""}`}>
@@ -409,6 +411,14 @@ export default function SoonApp({ onBack }) {
                     title="Augmenter l’intensité des bulles"
                   >
                     🧪 Intensité {bubblesIntensity.toFixed(2)}
+                  </button>
+                  <button
+                    type="button"
+                    className="bubble-btn tool-chip"
+                    onClick={toggleMembraneSide}
+                    title="Basculer intérieur / extérieur"
+                  >
+                    {fish?.membraneSide === "outside" ? "🌌 Extérieur" : "🫧 Intérieur"}
                   </button>
                 </>
               )}

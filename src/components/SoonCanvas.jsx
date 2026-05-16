@@ -40,6 +40,7 @@ export default function SoonCanvas({
   onToggleBubbles,
   onSetBubblesIntensity,
   onResetFishContext,
+  onToggleMembraneSide,
   worldGraph,
   currentArenaId,
   mazeByArena,
@@ -266,12 +267,14 @@ export default function SoonCanvas({
             { id: "depth", label: "Profondeur" },
             { id: "bubbles", label: `Bulles ${bubblesEnabled ? "ON" : "OFF"}` },
             { id: "intensity", label: "Intensité bulles" },
+            { id: "membrane", label: fish?.membraneSide === "outside" ? "Aller intérieur" : "Aller extérieur" },
             { id: "reset", label: "Reset" },
           ]}
           onSelect={(item) => {
             if (item.id === "depth") onSetFishDepth?.(((Math.round(fish?.depth || 1) % 3) + 1));
             if (item.id === "bubbles") onToggleBubbles?.();
             if (item.id === "intensity") onSetBubblesIntensity?.(Math.min(2, (bubblesIntensity || 1) + 0.25));
+            if (item.id === "membrane") onToggleMembraneSide?.();
             if (item.id === "reset") onResetFishContext?.();
           }}
         />
