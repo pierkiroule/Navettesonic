@@ -2,7 +2,7 @@ import { distance, getBubbleVisualRadius } from "./geometry.js";
 import { drawPoissonPlume } from "./poissonPlumeRenderer.js";
 import { drawCharacters } from "./characters/characterEngine.js";
 import { drawOdysseoPath } from "./odysseoPath.js";
-import { ARENA_INNER_BOUNDARY_INSET } from "./constants.js";
+import { ARENA_INNER_BOUNDARY_INSET, BREACH_GAP_SPAN } from "./constants.js";
 import {
   drawFireflies,
   drawPlacedTriangles,
@@ -145,7 +145,7 @@ export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
   const breachOpen = Boolean(current?.fish?.breachOpen);
   const breachAngle = Number.isFinite(current?.fish?.breachAngle) ? current.fish.breachAngle : null;
   // Trou visuel réduit: largeur ~ 2x largeur poisson à rayon d’arène standard.
-  const breachSpan = breachOpen && breachAngle !== null ? 0.08 : 0;
+  const breachSpan = breachOpen && breachAngle !== null ? BREACH_GAP_SPAN : 0;
   const pulse = Math.sin(time * 0.001) * 2;
 
   const strokeRing = (r, strokeStyle, lineWidth) => {

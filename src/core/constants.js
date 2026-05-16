@@ -5,3 +5,5 @@ export function getFishNavigableRadius(arenaRadius = 0) {
   const safeArenaRadius = Number.isFinite(arenaRadius) ? arenaRadius : 0;
   return Math.max(0, safeArenaRadius - ARENA_INNER_BOUNDARY_INSET);
 }
+
+export const BREACH_GAP_SPAN = 0.08;

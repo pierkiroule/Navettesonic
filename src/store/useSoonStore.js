@@ -21,7 +21,7 @@ import {
   getCircuitSpeedValue,
   smoothLoopPoint,
 } from "../core/traceCircuit.js";
-import { getFishNavigableRadius } from "../core/constants.js";
+import { BREACH_GAP_SPAN, getFishNavigableRadius } from "../core/constants.js";
 import { buildMazeByArena, buildWorldDebugSnapshot, generateLabybulle, getPortalArrivalPosition, validateWorldGraph } from "../core/labybulleWorld.js";
 
 const saved = loadState();
@@ -34,7 +34,6 @@ if (worldErrors.length) {
 
 const DEFAULT_ARENA_RADIUS = 1200;
 const DEFAULT_FISH_NAV_RADIUS = getFishNavigableRadius(DEFAULT_ARENA_RADIUS);
-const BREACH_PASSAGE_SPAN = 0.08;
 const OUTSIDE_NAV_MAX_MULTIPLIER = Number.POSITIVE_INFINITY;
 
 
@@ -640,11 +639,11 @@ export const useSoonStore = create((set, get) => ({
         }
       }
 
-      const nextAngleRaw = Math.atan2(nextY, nextX);
+      const nextAngleRaw = Math.atan2(nextFishY, nextFishX);
       const openCorridor =
         breachOpen &&
         breachAngle !== null &&
-        Math.abs(Math.atan2(Math.sin(nextAngleRaw - breachAngle), Math.cos(nextAngleRaw - breachAngle))) <= BREACH_PASSAGE_SPAN;
+        Math.abs(Math.atan2(Math.sin(nextAngleRaw - breachAngle), Math.cos(nextAngleRaw - breachAngle))) <= BREACH_GAP_SPAN;
 
       // Alternative au clamp strict: quand la brèche est ouverte, on autorise un couloir
       // traversant localement la membrane pour rendre le percement fiable.
@@ -682,7 +681,7 @@ export const useSoonStore = create((set, get) => ({
         const pushingTowardBreach = velocityDot > 0.22;
 
         const pushingInward = velocityDot < -0.22;
-        if (Math.abs(delta) <= BREACH_PASSAGE_SPAN && pushingTowardBreach && membraneSide === "inside") {
+        if (Math.abs(delta) <= BREACH_GAP_SPAN && pushingTowardBreach && membraneSide === "inside") {
           arenaLevel = Math.min(2, arenaLevel + 1);
           currentArenaId = `arene_${String(arenaLevel).padStart(4, "0")}`;
           nextMembraneSide = "outside";
@@ -697,7 +696,7 @@ export const useSoonStore = create((set, get) => ({
           breachExpiresAt = null;
           lastWallHitAt = now;
         }
-        if (Math.abs(delta) <= BREACH_PASSAGE_SPAN && nearMembrane && pushingInward && membraneSide === "outside") {
+        if (Math.abs(delta) <= BREACH_GAP_SPAN && nearMembrane && pushingInward && membraneSide === "outside") {
           arenaLevel = Math.max(0, arenaLevel - 1);
           currentArenaId = `arene_${String(arenaLevel).padStart(4, "0")}`;
           nextMembraneSide = "inside";
