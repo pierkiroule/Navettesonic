@@ -673,6 +673,10 @@ export const useSoonStore = create((set, get) => ({
           const nextLevel = arenaLevel + 1;
           nextFishX += radialX * 16;
           nextFishY += radialY * 16;
+          const destinationNavRadius = getMembraneRadiusForLevel(arenaRadius, nextLevel);
+          const destinationSafe = clampToCircle({ x: nextFishX, y: nextFishY }, destinationNavRadius - 4);
+          nextFishX = destinationSafe.x;
+          nextFishY = destinationSafe.y;
           return {
             circuitAutopilot,
             circuitSegmentIndex,
@@ -706,6 +710,10 @@ export const useSoonStore = create((set, get) => ({
           const nextLevel = arenaLevel - 1;
           nextFishX -= radialX * 16;
           nextFishY -= radialY * 16;
+          const destinationNavRadius = getMembraneRadiusForLevel(arenaRadius, nextLevel);
+          const destinationSafe = clampToCircle({ x: nextFishX, y: nextFishY }, destinationNavRadius - 4);
+          nextFishX = destinationSafe.x;
+          nextFishY = destinationSafe.y;
           return {
             circuitAutopilot,
             circuitSegmentIndex,
