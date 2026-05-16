@@ -23,7 +23,6 @@ const characters = {
   initialized: false,
   lastTime: 0,
   tornado: null,
-  pinkFish: [],
   lucioleSeeds: [],
   externalSeedStock: null,
 };
@@ -40,7 +39,6 @@ export function initCharacters(arenaRadius = 1200) {
     r: 38,
   });
 
-  characters.pinkFish = [];
   characters.lucioleSeeds = [];
   characters.externalSeedStock = createExternalSeedStock(120);
 }
@@ -95,7 +93,6 @@ export function getCharacterWorldEffects(time = performance.now()) {
 export function resetCharacters() {
   characters.initialized = false;
   characters.tornado = null;
-  characters.pinkFish = [];
   characters.lucioleSeeds = [];
   characters.externalSeedStock = null;
 }
