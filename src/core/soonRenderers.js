@@ -403,7 +403,11 @@ export function drawFish(ctx, fish, time) {
     const breachSpan = breachOpen && breachAngle !== null ? BREACH_GAP_SPAN : 0;
     const membraneSide = fish?.membraneSide === "outside" ? "outside" : "inside";
     const clipPadding = 70;
-    const outerWorldRadius = membraneRadius + 2200;
+    const fishDistance = Math.hypot(fish?.x || 0, fish?.y || 0);
+    const outerWorldRadius = Math.max(
+      membraneRadius + 2200,
+      fishDistance + 1800
+    );
 
     const clipPath = new Path2D();
     if (membraneSide === "inside") {
