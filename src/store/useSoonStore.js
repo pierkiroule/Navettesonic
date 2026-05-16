@@ -159,6 +159,7 @@ const defaultFish = {
   breachOpenedAt: null,
   breachState: "closed",
   breachExpiresAt: null,
+  breachUsed: false,
   hasQuill: false,
   membraneSide: "inside",
 };
@@ -619,13 +620,13 @@ export const useSoonStore = create((set, get) => ({
         hasQuill = true;
       }
 
-      if (breachState !== "closed" && breachExpiresAt && now >= breachExpiresAt) {
+      if (!state.fish.breachUsed && breachState !== "closed" && breachExpiresAt && now >= breachExpiresAt) {
         breachOpen = false;
         breachState = "closed";
         breachExpiresAt = null;
       }
 
-      if ((hitWall || nearWall) && hitDelayPassed) {
+      if (!state.fish.breachUsed && (hitWall || nearWall) && hitDelayPassed) {
         wallHitCount += 1;
         lastWallHitAt = now;
         breachAngle = Math.atan2(nextY, nextX);
@@ -641,7 +642,6 @@ export const useSoonStore = create((set, get) => ({
       const nextAngleRaw = Math.atan2(nextY, nextX);
       const openCorridor =
         breachOpen &&
-        (breachState === "open" || breachState === "crossing") &&
         breachAngle !== null &&
         Math.abs(Math.atan2(Math.sin(nextAngleRaw - breachAngle), Math.cos(nextAngleRaw - breachAngle))) <= 1.15;
 
@@ -678,10 +678,9 @@ export const useSoonStore = create((set, get) => ({
           nextTargetX = targetX;
           nextTargetY = targetY;
           wallHitCount = 0;
-          breachOpen = false;
-          breachState = "closed";
-          breachAngle = null;
-          breachOpenedAt = null;
+          breachOpen = true;
+          breachState = "permanent";
+          breachOpenedAt = breachOpenedAt ?? now;
           breachExpiresAt = null;
           lastWallHitAt = now;
         }
@@ -694,10 +693,9 @@ export const useSoonStore = create((set, get) => ({
           nextTargetX = targetX;
           nextTargetY = targetY;
           lastWallHitAt = now;
-          breachOpen = false;
-          breachState = "closed";
-          breachAngle = null;
-          breachOpenedAt = null;
+          breachOpen = true;
+          breachState = "permanent";
+          breachOpenedAt = breachOpenedAt ?? now;
           breachExpiresAt = null;
         }
       }
@@ -770,6 +768,7 @@ export const useSoonStore = create((set, get) => ({
           breachOpenedAt,
           breachState,
           breachExpiresAt,
+          breachUsed: state.fish.breachUsed || breachState === "permanent",
           hasQuill,
           membraneSide: nextMembraneSide,
         },

@@ -166,14 +166,18 @@ export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
 
   if (breachOpen && breachAngle !== null) {
     const span = 0.26;
+    const outerR = radius + pulse;
     ctx.beginPath();
-    ctx.arc(0, 0, radius + pulse, breachAngle - span, breachAngle + span);
-    ctx.strokeStyle = "rgba(125, 255, 240, 0.95)";
-    ctx.lineWidth = 8;
-    ctx.shadowColor = "rgba(125, 255, 240, 0.75)";
-    ctx.shadowBlur = 14;
+    ctx.arc(0, 0, outerR, breachAngle + span, breachAngle + Math.PI * 2 - span);
+    ctx.strokeStyle = "rgba(180, 220, 255, 0.85)";
+    ctx.lineWidth = 6;
     ctx.stroke();
-    ctx.shadowBlur = 0;
+
+    ctx.beginPath();
+    ctx.arc(0, 0, radius - ARENA_INNER_BOUNDARY_INSET, breachAngle + span, breachAngle + Math.PI * 2 - span);
+    ctx.strokeStyle = "rgba(148, 163, 184, 0.3)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
   }
 
   if (wallHitCount > 0) {
