@@ -284,7 +284,31 @@ export function clampPointToMaze({ x = 0, y = 0, maze }) {
   const gx = Math.max(0, Math.min(size - 1, Math.floor((cx + half) / cellSize)));
   const gy = Math.max(0, Math.min(size - 1, Math.floor((cy + half) / cellSize)));
   if (grid[gy]?.[gx] === 0) return { x: cx, y: cy };
-  return { x: 0, y: 0 };
+
+  let best = null;
+  for (let yCell = 0; yCell < size; yCell += 1) {
+    for (let xCell = 0; xCell < size; xCell += 1) {
+      if (grid[yCell]?.[xCell] !== 0) continue;
+      const dx = xCell - gx;
+      const dy = yCell - gy;
+      const score = dx * dx + dy * dy;
+      if (!best || score < best.score) {
+        best = { xCell, yCell, score };
+      }
+    }
+  }
+
+  if (!best) return { x: cx, y: cy };
+
+  const minX = -half + best.xCell * cellSize + 1;
+  const maxX = minX + cellSize - 2;
+  const minY = -half + best.yCell * cellSize + 1;
+  const maxY = minY + cellSize - 2;
+
+  return {
+    x: Math.max(minX, Math.min(maxX, cx)),
+    y: Math.max(minY, Math.min(maxY, cy)),
+  };
 }
 
 export { ARENA_TYPES, PORTAL_POSITIONS };
