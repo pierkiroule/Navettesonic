@@ -252,4 +252,64 @@ export function getPortalArrivalPosition({
 }
 
 
+
+
+export function createMazeForArena({ arenaId, size = 9, seed = 1 }) {
+  const grid = Array.from({ length: size }, () => Array.from({ length: size }, () => 1));
+  const center = Math.floor(size / 2);
+  for (let y = 1; y < size - 1; y += 1) {
+    for (let x = 1; x < size - 1; x += 1) {
+      grid[y][x] = 0;
+    }
+  }
+
+  // Murs internes simples et déterministes.
+  const bias = (Number(seed) + String(arenaId).length) % 3;
+  for (let i = 2; i < size - 2; i += 2) {
+    for (let j = 1 + ((i + bias) % 2); j < size - 1; j += 2) {
+      grid[i][j] = 1;
+    }
+  }
+
+  grid[center][center] = 0;
+  return { size, center, cellSize: 260, grid };
+}
+
+export function addMazePassageForHint(maze, hint) {
+  const { size, center, grid } = maze;
+  if (hint === PORTAL_POSITIONS.TOP) {
+    for (let y = 0; y <= center; y += 1) grid[y][center] = 0;
+  } else if (hint === PORTAL_POSITIONS.BOTTOM) {
+    for (let y = center; y < size; y += 1) grid[y][center] = 0;
+  } else if (hint === PORTAL_POSITIONS.LEFT) {
+    for (let x = 0; x <= center; x += 1) grid[center][x] = 0;
+  } else if (hint === PORTAL_POSITIONS.RIGHT) {
+    for (let x = center; x < size; x += 1) grid[center][x] = 0;
+  }
+}
+
+export function buildMazeByArena(world) {
+  const map = {};
+  const nodes = world?.nodes || [];
+  nodes.forEach((node, idx) => {
+    const maze = createMazeForArena({ arenaId: node.id, seed: (world?.seed || 1) + idx });
+    const exits = (world.portals || []).filter((p) => p.fromArenaId === node.id);
+    exits.forEach((p) => addMazePassageForHint(maze, p.positionHint));
+    map[node.id] = maze;
+  });
+  return map;
+}
+
+export function clampPointToMaze({ x = 0, y = 0, maze }) {
+  if (!maze?.grid?.length) return { x, y };
+  const { size, cellSize, grid } = maze;
+  const half = (size * cellSize) / 2;
+  const cx = Math.max(-half + 1, Math.min(half - 1, x));
+  const cy = Math.max(-half + 1, Math.min(half - 1, y));
+  const gx = Math.max(0, Math.min(size - 1, Math.floor((cx + half) / cellSize)));
+  const gy = Math.max(0, Math.min(size - 1, Math.floor((cy + half) / cellSize)));
+  if (grid[gy]?.[gx] === 0) return { x: cx, y: cy };
+  return { x: 0, y: 0 };
+}
+
 export { ARENA_TYPES, PORTAL_POSITIONS };

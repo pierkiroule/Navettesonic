@@ -22,11 +22,12 @@ import {
   smoothLoopPoint,
 } from "../core/traceCircuit.js";
 import { getFishNavigableRadius } from "../core/constants.js";
-import { buildWorldDebugSnapshot, generateLabybulle, getPortalArrivalPosition, validateWorldGraph } from "../core/labybulleWorld.js";
+import { buildMazeByArena, buildWorldDebugSnapshot, clampPointToMaze, generateLabybulle, getPortalArrivalPosition, validateWorldGraph } from "../core/labybulleWorld.js";
 
 const saved = loadState();
 const labybulleWorld = generateLabybulle(saved?.labybulleSeed ?? 1);
 const worldErrors = validateWorldGraph(labybulleWorld);
+const mazeByArena = buildMazeByArena(labybulleWorld);
 if (worldErrors.length) {
   console.warn("[labybulle] invalid generated world", worldErrors);
 }
@@ -161,6 +162,7 @@ const initialState = {
   labybulleSeed: saved?.labybulleSeed ?? 1,
   worldGraph: labybulleWorld,
   currentArenaId: saved?.currentArenaId || labybulleWorld.startArenaId,
+  mazeByArena,
 };
 
 function lerpAngle(current, target, amount) {
@@ -222,6 +224,7 @@ export const useSoonStore = create((set, get) => ({
     set({
       labybulleSeed: seed,
       worldGraph: nextWorld,
+      mazeByArena: buildMazeByArena(nextWorld),
       currentArenaId: nextWorld.startArenaId,
       fish: { ...get().fish, x: 0, y: 0, targetX: 0, targetY: -120 },
     });
@@ -346,7 +349,9 @@ export const useSoonStore = create((set, get) => ({
 
     if (state.circuitAutopilot) return;
 
-    const safe = clampToCircle({ x, y }, getFishMovementRadius(arenaRadius));
+    const safeCircle = clampToCircle({ x, y }, getFishMovementRadius(arenaRadius));
+    const maze = state.mazeByArena?.[state.currentArenaId];
+    const safe = clampPointToMaze({ x: safeCircle.x, y: safeCircle.y, maze });
 
     set((state) => {
       return {

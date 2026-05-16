@@ -69,6 +69,7 @@ export default function SoonApp({ onBack }) {
     deleteBubble,
     worldGraph,
     currentArenaId,
+    mazeByArena,
     travelToArena,
   } = useSoonStore();
 
@@ -313,6 +314,7 @@ export default function SoonApp({ onBack }) {
         bubblesIntensity={bubblesIntensity}
         worldGraph={worldGraph}
         currentArenaId={currentArenaId}
+        mazeByArena={mazeByArena}
         onToggleBubbles={() => setBubblesEnabled((v) => !v)}
         onSetBubblesIntensity={setBubblesIntensity}
         onResetFishContext={() => { setBubblesEnabled(true); setBubblesIntensity(1); recenterFish(); }}

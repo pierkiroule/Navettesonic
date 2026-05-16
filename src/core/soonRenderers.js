@@ -29,6 +29,7 @@ export function drawScene(ctx, rect, time, refs) {
   enterWorld(ctx, rect, cameraRef, stateRef);
 
   drawArenaBoundary(ctx, arenaRef, time);
+  drawMazeWalls(ctx, current);
   drawArenaPortals(ctx, arenaRef, current);
 
   if (!current.eyesClosed) {
@@ -612,5 +613,25 @@ export function drawArenaPortals(ctx, arenaRef, current = {}) {
     ctx.strokeStyle = "rgba(56, 189, 248, 0.8)";
     ctx.stroke();
   });
+  ctx.restore();
+}
+
+
+export function drawMazeWalls(ctx, current = {}) {
+  const maze = current?.mazeByArena?.[current?.currentArenaId];
+  if (!maze?.grid?.length) return;
+  const { size, cellSize, grid } = maze;
+  const half = (size * cellSize) / 2;
+
+  ctx.save();
+  ctx.fillStyle = "rgba(148, 163, 184, 0.22)";
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      if (grid[y][x] !== 1) continue;
+      const wx = -half + x * cellSize;
+      const wy = -half + y * cellSize;
+      ctx.fillRect(wx, wy, cellSize, cellSize);
+    }
+  }
   ctx.restore();
 }

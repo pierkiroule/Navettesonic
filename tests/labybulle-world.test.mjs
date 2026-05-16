@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { generateLabybulle, validateWorldGraph, resolvePortalAtPosition, getPortalArrivalPosition, getArenaRadiusForNode } from '../src/core/labybulleWorld.js';
+import { buildMazeByArena, clampPointToMaze, generateLabybulle, validateWorldGraph, resolvePortalAtPosition, getPortalArrivalPosition, getArenaRadiusForNode } from '../src/core/labybulleWorld.js';
 
 test('structure labybulle correcte: 1 GIGA, 3 MEGA, 9 ARENA', () => {
   const world = generateLabybulle(42);
@@ -91,4 +91,15 @@ test('arrivée conserve le côté du trou (labyrinthe simple)', () => {
   });
 
   assert.ok(arrivalTop.y < -700);
+});
+
+
+test('maze: le centre et le couloir haut sont praticables', () => {
+  const world = generateLabybulle(1);
+  const mazes = buildMazeByArena(world);
+  const maze = mazes['arena-1-1'];
+  const center = clampPointToMaze({ x: 0, y: 0, maze });
+  const top = clampPointToMaze({ x: 0, y: -1000, maze });
+  assert.deepEqual(center, { x: 0, y: 0 });
+  assert.ok(top.y < -500);
 });
