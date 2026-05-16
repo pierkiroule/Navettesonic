@@ -21,7 +21,7 @@ import {
   getCircuitSpeedValue,
   smoothLoopPoint,
 } from "../core/traceCircuit.js";
-import { BREACH_GAP_SPAN, getFishNavigableRadius } from "../core/constants.js";
+import { BREACH_GAP_SPAN, getFishNavigableRadius, MEMBRANE_LEVEL_MULTIPLIERS } from "../core/constants.js";
 import { buildMazeByArena, buildWorldDebugSnapshot, generateLabybulle, getPortalArrivalPosition, validateWorldGraph } from "../core/labybulleWorld.js";
 
 const saved = loadState();
@@ -53,7 +53,8 @@ function getRuntimeFishNavRadius(arenaRadius) {
 function getMembraneRadiusForLevel(arenaRadius, arenaLevel = 0) {
   const base = getRuntimeFishNavRadius(arenaRadius);
   const level = Math.max(0, Math.min(MAX_ARENA_LEVEL, Number.isFinite(arenaLevel) ? arenaLevel : 0));
-  return base * Math.pow(3, level);
+  const multiplier = MEMBRANE_LEVEL_MULTIPLIERS[level] ?? MEMBRANE_LEVEL_MULTIPLIERS[0];
+  return base * multiplier;
 }
 
 

@@ -7,3 +7,4 @@ export function getFishNavigableRadius(arenaRadius = 0) {
 }
 
 export const BREACH_GAP_SPAN = 0.08;
+export const MEMBRANE_LEVEL_MULTIPLIERS = [1, 2.6, 4.8];
