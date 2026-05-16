@@ -22,8 +22,14 @@ import {
   smoothLoopPoint,
 } from "../core/traceCircuit.js";
 import { getFishNavigableRadius } from "../core/constants.js";
+import { buildWorldDebugSnapshot, generateLabybulle, validateWorldGraph } from "../core/labybulleWorld.js";
 
 const saved = loadState();
+const labybulleWorld = generateLabybulle(saved?.labybulleSeed ?? 1);
+const worldErrors = validateWorldGraph(labybulleWorld);
+if (worldErrors.length) {
+  console.warn("[labybulle] invalid generated world", worldErrors);
+}
 
 const DEFAULT_ARENA_RADIUS = 1200;
 const DEFAULT_FISH_NAV_RADIUS = getFishNavigableRadius(DEFAULT_ARENA_RADIUS);
@@ -152,6 +158,9 @@ const initialState = {
   circuitSegmentT: 0,
   path: saved?.path || [],
   eyesClosed: false,
+  labybulleSeed: saved?.labybulleSeed ?? 1,
+  worldGraph: labybulleWorld,
+  currentArenaId: saved?.currentArenaId || labybulleWorld.startArenaId,
 };
 
 function lerpAngle(current, target, amount) {
@@ -201,6 +210,37 @@ export const useSoonStore = create((set, get) => ({
     saveState(get());
   },
 
+
+
+  regenerateWorld: (seed = 1) => {
+    const nextWorld = generateLabybulle(seed);
+    const errors = validateWorldGraph(nextWorld);
+    if (errors.length) {
+      console.warn("[labybulle] invalid regenerated world", errors);
+    }
+
+    set({
+      labybulleSeed: seed,
+      worldGraph: nextWorld,
+      currentArenaId: nextWorld.startArenaId,
+      fish: { ...get().fish, x: 0, y: 0, targetX: 0, targetY: -120 },
+    });
+    saveState(get());
+  },
+
+  travelToArena: (nextArenaId) => {
+    set((state) => {
+      const world = state.worldGraph;
+      if (!world?.nodes?.some((node) => node.id === nextArenaId)) return {};
+      return {
+        currentArenaId: nextArenaId,
+        fish: { ...state.fish, x: 0, y: 0, targetX: 0, targetY: -120 },
+      };
+    });
+    saveState(get());
+  },
+
+  getWorldDebugSnapshot: () => buildWorldDebugSnapshot(get().worldGraph),
   toggleEyesClosed: () => {
     set((state) => ({ eyesClosed: !state.eyesClosed }));
     saveState(get());

@@ -65,6 +65,8 @@ export default function SoonApp({ onBack }) {
     addPathPoint,
     updateBubble,
     deleteBubble,
+    worldGraph,
+    currentArenaId,
   } = useSoonStore();
 
   const selectedBubble =
@@ -286,6 +288,8 @@ export default function SoonApp({ onBack }) {
         onCycleBubbleDepth={cycleBubbleDepth}
         bubblesEnabled={bubblesEnabled}
         bubblesIntensity={bubblesIntensity}
+        worldGraph={worldGraph}
+        currentArenaId={currentArenaId}
         onToggleBubbles={() => setBubblesEnabled((v) => !v)}
         onSetBubblesIntensity={setBubblesIntensity}
         onResetFishContext={() => { setBubblesEnabled(true); setBubblesIntensity(1); recenterFish(); }}

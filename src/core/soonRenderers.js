@@ -28,6 +28,7 @@ export function drawScene(ctx, rect, time, refs) {
   enterWorld(ctx, rect, cameraRef, stateRef);
 
   drawArenaBoundary(ctx, arenaRef, time);
+  drawArenaPortals(ctx, arenaRef, current);
 
   if (!current.eyesClosed) {
     drawArenaNightSky(ctx, arenaRef, time);
@@ -578,4 +579,33 @@ function initSeedTransporters(radius) {
       transitStartedAt: 0,
     });
   }
+}
+
+
+export function drawArenaPortals(ctx, arenaRef, current = {}) {
+  const radius = arenaRef.current?.radius || 1200;
+  const world = current.worldGraph;
+  const currentArenaId = current.currentArenaId;
+  if (!world || !currentArenaId) return;
+
+  const portals = (world.portals || []).filter((portal) => portal.fromArenaId === currentArenaId);
+  if (!portals.length) return;
+
+  const hintToAngle = { TOP: -Math.PI / 2, BOTTOM: Math.PI / 2, LEFT: Math.PI, RIGHT: 0 };
+
+  ctx.save();
+  portals.forEach((portal, index) => {
+    const baseAngle = hintToAngle[portal.positionHint] ?? ((index / portals.length) * Math.PI * 2);
+    const x = Math.cos(baseAngle) * (radius - 30);
+    const y = Math.sin(baseAngle) * (radius - 30);
+
+    ctx.beginPath();
+    ctx.ellipse(x, y, 36, 18, baseAngle, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.8)";
+    ctx.stroke();
+  });
+  ctx.restore();
 }
