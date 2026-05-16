@@ -12,7 +12,7 @@ import { updateAmbientMix } from "../../core/audioEngine.js";
 import { consumeSemioseVideoTrigger, updateFireflyGame } from "../../core/fireflyGame.js";
 import { updateEcosystemFx } from "../../core/ecosystemFx.js";
 import { updateBubbleAudioTriggers } from "../../core/soonAudioTriggers.js";
-import { drawScene, getExternalBubblePose } from "../../core/soonRenderers.js";
+import { drawScene } from "../../core/soonRenderers.js";
 import {
   getCharacterWorldEffects,
   updateCharacters,
@@ -26,12 +26,10 @@ export function useSoonCanvasLoop({
   activeBubbleAudioRef,
   onTickFish,
   onSemioseVideoTrigger,
-  onExternalBubbleTouch,
 }) {
   useEffect(() => {
     let frame = 0;
     let wasEditMode = false;
-    let wasTouchingExternalBubble = false;
 
     function loop() {
       const canvas = canvasRef.current;
@@ -96,20 +94,6 @@ export function useSoonCanvasLoop({
       if (!isEditMode) {
         updateAmbientMix(next.bubbles || [], next.fish || null);
         updateBubbleAudioTriggers(next, activeBubbleAudioRef);
-
-        const fish = next.fish;
-        if (fish) {
-          const extBubble = getExternalBubblePose(arenaRef.current.radius, performance.now(), false);
-          const dx = (fish.x || 0) - extBubble.x;
-          const dy = (fish.y || 0) - extBubble.y;
-          const touchingExternalBubble = Math.hypot(dx, dy) <= extBubble.radius + 24;
-          if (touchingExternalBubble && !wasTouchingExternalBubble) {
-            onExternalBubbleTouch?.();
-          }
-          wasTouchingExternalBubble = touchingExternalBubble;
-        } else {
-          wasTouchingExternalBubble = false;
-        }
 
         updateFireflyGame({
           fish: next.fish,
@@ -195,6 +179,5 @@ export function useSoonCanvasLoop({
     activeBubbleAudioRef,
     onTickFish,
     onSemioseVideoTrigger,
-    onExternalBubbleTouch,
   ]);
 }

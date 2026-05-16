@@ -5,11 +5,6 @@ import {
   getStarTornadoWaveRadius,
 } from "./starTornado.js";
 import {
-  drawPinkWallFish,
-  spawnPinkWallFish,
-  updatePinkWallFish,
-} from "./pinkWallFish.js";
-import {
   createExternalSeedStock,
   drawLucioleSeeds,
   updateLucioleSeeds,
@@ -27,13 +22,10 @@ import {
 const characters = {
   initialized: false,
   lastTime: 0,
-  lastPinkSpawnAt: 0,
   tornado: null,
   pinkFish: [],
   lucioleSeeds: [],
   externalSeedStock: null,
-  lastWaveBurstAt: 0,
-  pendingSeedDeliveries: 0,
 };
 
 export function initCharacters(arenaRadius = 1200) {
@@ -51,7 +43,6 @@ export function initCharacters(arenaRadius = 1200) {
   characters.pinkFish = [];
   characters.lucioleSeeds = [];
   characters.externalSeedStock = createExternalSeedStock(120);
-  characters.pendingSeedDeliveries = 0;
 }
 
 export function updateCharacters({ fish, arenaRadius = 1200 } = {}) {
@@ -73,60 +64,15 @@ export function updateCharacters({ fish, arenaRadius = 1200 } = {}) {
   );
 
   const waveRadius = getStarTornadoWaveRadius(characters.tornado, now);
-  if (
-    waveRadius !== null &&
-    characters.tornado.waveStartedAt !== characters.lastWaveBurstAt
-  ) {
-    characters.lastWaveBurstAt = characters.tornado.waveStartedAt;
-
+  if (waveRadius !== null) {
     characters.lucioleSeeds.length = 0;
-
-    characters.pinkFish.forEach((pink) => {
-      const dx = pink.x - characters.tornado.x;
-      const dy = pink.y - characters.tornado.y;
-      const d = Math.hypot(dx, dy) || 1;
-      const nx = dx / d;
-      const ny = dy / d;
-
-      pink.state = "exiting";
-      pink.targetX = nx * (arenaRadius + 420);
-      pink.targetY = ny * (arenaRadius + 420);
-      pink.vx = nx * 2.4;
-      pink.vy = ny * 2.4;
-    });
   }
-
-  updatePinkWallFish({
-    fishes: characters.pinkFish,
-    seeds: characters.lucioleSeeds,
-    stock: characters.externalSeedStock,
-    mainFish: fish,
-    arenaRadius,
-    dt,
-  });
 
   const stock = characters.externalSeedStock;
-  const canSpawn = stock && stock.remaining > 0;
-  const freeFireflies = getUncollectedFireflyCount();
-  const shouldRestock = freeFireflies >= 1 && freeFireflies <= 2;
-
-  if (!shouldRestock) {
-    characters.pendingSeedDeliveries = 0;
-  } else if (characters.pendingSeedDeliveries <= 0 && canSpawn) {
-    const seedBatch = 1 + Math.floor(Math.random() * 3);
-    characters.pendingSeedDeliveries = Math.min(seedBatch, stock.remaining);
+  if (stock && stock.remaining <= 0 && getUncollectedFireflyCount() <= 2) {
+    stock.remaining = 12;
   }
 
-  if (
-    canSpawn &&
-    characters.pendingSeedDeliveries > 0 &&
-    now - characters.lastPinkSpawnAt > 1900 &&
-    characters.pinkFish.length < 16
-  ) {
-    characters.lastPinkSpawnAt = now;
-    characters.pinkFish.push(spawnPinkWallFish(arenaRadius, stock));
-    characters.pendingSeedDeliveries -= 1;
-  }
 }
 
 export function drawCharacters(ctx, time = performance.now()) {
@@ -134,7 +80,6 @@ export function drawCharacters(ctx, time = performance.now()) {
 
   drawLucioleSeeds(ctx, characters.lucioleSeeds, time);
   drawStarTornado(ctx, characters.tornado, time);
-  drawPinkWallFish(ctx, characters.pinkFish, characters.externalSeedStock, time);
 }
 
 export function getCharacterWorldEffects(time = performance.now()) {
@@ -153,7 +98,4 @@ export function resetCharacters() {
   characters.pinkFish = [];
   characters.lucioleSeeds = [];
   characters.externalSeedStock = null;
-  characters.lastPinkSpawnAt = 0;
-  characters.lastWaveBurstAt = 0;
-  characters.pendingSeedDeliveries = 0;
 }

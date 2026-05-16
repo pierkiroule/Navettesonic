@@ -97,7 +97,6 @@ export function drawScene(ctx, rect, time, refs) {
   if (!current.eyesClosed) {
     drawArenaNightSky(ctx, arenaRef, time);
     drawArenaPulseHalo(ctx, arenaRef, time);
-    drawPinkSeedTransporters(ctx, arenaRef, time);
     drawEcosystemWorld(ctx, current, time);
     drawWorldParticles(ctx, arenaRef, time);
 
@@ -196,9 +195,6 @@ export function drawArenaBoundary(ctx, arenaRef, time) {
   ctx.arc(0, 0, radius, 0, Math.PI * 2);
   ctx.fillStyle = halo;
   ctx.fill();
-
-  drawArenaPolesAndMarkers(ctx, radius, time);
-  drawExternalBubble(ctx, radius, time);
 
   ctx.restore();
 }
