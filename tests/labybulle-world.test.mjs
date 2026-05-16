@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { generateLabybulle, validateWorldGraph, resolvePortalAtPosition, getPortalArrivalPosition } from '../src/core/labybulleWorld.js';
+import { generateLabybulle, validateWorldGraph, resolvePortalAtPosition, getPortalArrivalPosition, getArenaRadiusForNode } from '../src/core/labybulleWorld.js';
 
 test('structure labybulle correcte: 1 GIGA, 3 MEGA, 9 ARENA', () => {
   const world = generateLabybulle(42);
@@ -65,4 +65,16 @@ test("arrivée portail: transition ARENA -> MEGA n'arrive pas au centre", () => 
 
   assert.notDeepEqual(arrival, { x: 0, y: 0 });
   assert.ok(Math.hypot(arrival.x, arrival.y) > 200);
+});
+
+
+test('rayon imbriqué: MEGA et GIGA sont plus vastes que ARENA', () => {
+  const world = generateLabybulle(3);
+  const arenaRadius = getArenaRadiusForNode({ world, arenaId: 'arena-1-1', baseRadius: 1000 });
+  const megaRadius = getArenaRadiusForNode({ world, arenaId: 'mega-1', baseRadius: 1000 });
+  const gigaRadius = getArenaRadiusForNode({ world, arenaId: 'giga-1', baseRadius: 1000 });
+
+  assert.equal(arenaRadius, 1000);
+  assert.ok(megaRadius > arenaRadius);
+  assert.ok(gigaRadius > megaRadius);
 });

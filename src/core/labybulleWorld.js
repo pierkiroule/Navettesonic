@@ -12,6 +12,23 @@ const PORTAL_POSITIONS = Object.freeze({
   CUSTOM: "CUSTOM",
 });
 
+
+
+const ARENA_RADIUS_MULTIPLIER = Object.freeze({
+  ARENA: 1,
+  MEGA: 2.2,
+  GIGA: 3.6,
+});
+
+export function getArenaRadiusMultiplier(type = ARENA_TYPES.ARENA) {
+  return ARENA_RADIUS_MULTIPLIER[type] || ARENA_RADIUS_MULTIPLIER.ARENA;
+}
+
+export function getArenaRadiusForNode({ world, arenaId, baseRadius = 1200 }) {
+  const node = (world?.nodes || []).find((item) => item.id === arenaId);
+  return baseRadius * getArenaRadiusMultiplier(node?.type);
+}
+
 function createSeededRandom(seed = 1) {
   let state = (Number(seed) || 1) >>> 0;
   return () => {
