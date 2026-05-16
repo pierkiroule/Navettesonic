@@ -141,6 +141,8 @@ const defaultFish = {
   breachOpen: false,
   breachAngle: null,
   breachOpenedAt: null,
+  breachState: "closed",
+  breachExpiresAt: null,
   hasQuill: false,
 };
 
@@ -533,6 +535,8 @@ export const useSoonStore = create((set, get) => ({
       let breachOpen = Boolean(state.fish.breachOpen);
       let breachAngle = Number.isFinite(state.fish.breachAngle) ? state.fish.breachAngle : null;
       let breachOpenedAt = state.fish.breachOpenedAt ?? null;
+      let breachState = state.fish.breachState || "closed";
+      let breachExpiresAt = state.fish.breachExpiresAt ?? null;
       let arenaLevel = Number.isFinite(state.fish.arenaLevel) ? state.fish.arenaLevel : 0;
       let currentArenaId = state.currentArenaId;
       let nextFishX = safe.x;
@@ -550,34 +554,31 @@ export const useSoonStore = create((set, get) => ({
         hasQuill = true;
       }
 
+      if (breachState !== "closed" && breachExpiresAt && now >= breachExpiresAt) {
+        breachOpen = false;
+        breachState = "closed";
+        breachExpiresAt = null;
+      }
+
       if (hitWall && hitDelayPassed) {
-        const impactSpeed = Math.hypot(nextVx, nextVy);
-        const wallNormalX = nextDistance > 0.0001 ? nextX / nextDistance : 0;
-        const wallNormalY = nextDistance > 0.0001 ? nextY / nextDistance : 0;
-        const outwardPush = wallNormalX * nextVx + wallNormalY * nextVy;
-        const fishInitiatedImpact = outwardPush > 0.18 && impactSpeed > 0.25;
-        if (!fishInitiatedImpact) {
-          // On ignore les faux contacts "passifs" pour que l'ouverture soit bien déclenchée par le poisson.
-        } else {
         wallHitCount += 1;
         lastWallHitAt = now;
         breachAngle = Math.atan2(nextY, nextX);
-        if (wallHitCount >= 3 && arenaLevel < 2) {
+        const shouldOpen = (wallHitCount >= 3 || hasQuill) && arenaLevel < 2;
+        if (shouldOpen) {
           breachOpen = true;
           breachOpenedAt = now;
-        }
-        if (hasQuill && arenaLevel <= 2) {
-          breachOpen = true;
-          breachOpenedAt = now;
-        }
+          breachState = "open";
+          breachExpiresAt = now + 1800;
         }
       }
 
       const nextAngleRaw = Math.atan2(nextY, nextX);
       const openCorridor =
         breachOpen &&
+        (breachState === "open" || breachState === "crossing") &&
         breachAngle !== null &&
-        Math.abs(Math.atan2(Math.sin(nextAngleRaw - breachAngle), Math.cos(nextAngleRaw - breachAngle))) <= 0.62;
+        Math.abs(Math.atan2(Math.sin(nextAngleRaw - breachAngle), Math.cos(nextAngleRaw - breachAngle))) <= 0.78;
 
       // Alternative au clamp strict: quand la brèche est ouverte, on autorise un couloir
       // traversant localement la membrane pour rendre le percement fiable.
@@ -585,6 +586,7 @@ export const useSoonStore = create((set, get) => ({
         safe = { x: nextX, y: nextY };
         nextFishX = safe.x;
         nextFishY = safe.y;
+        breachState = "crossing";
       }
 
       if (breachOpen && breachAngle !== null) {
@@ -602,7 +604,7 @@ export const useSoonStore = create((set, get) => ({
         const pushingTowardBreach = velocityDot > 0.22;
 
         const pushingInward = velocityDot < -0.22;
-        if (Math.abs(delta) <= 0.62 && radiusNow >= fishNavRadius + 8 && pushingTowardBreach && arenaLevel < 2) {
+        if (Math.abs(delta) <= 0.78 && radiusNow >= fishNavRadius + 4 && pushingTowardBreach && arenaLevel < 2) {
           arenaLevel += 1;
           currentArenaId = `arene_${String(arenaLevel).padStart(4, "0")}`;
           nextFishX = 0;
@@ -613,11 +615,13 @@ export const useSoonStore = create((set, get) => ({
           nextVy = 0;
           wallHitCount = 0;
           breachOpen = false;
+          breachState = "closed";
           breachAngle = null;
           breachOpenedAt = null;
+          breachExpiresAt = null;
           lastWallHitAt = now;
         }
-        if (Math.abs(delta) <= 0.62 && nearMembrane && pushingInward && arenaLevel > 0) {
+        if (Math.abs(delta) <= 0.78 && nearMembrane && pushingInward && arenaLevel > 0) {
           arenaLevel -= 1;
           currentArenaId = `arene_${String(arenaLevel).padStart(4, "0")}`;
           nextFishX = 0;
@@ -627,6 +631,11 @@ export const useSoonStore = create((set, get) => ({
           nextVx = 0;
           nextVy = 0;
           lastWallHitAt = now;
+          breachOpen = false;
+          breachState = "closed";
+          breachAngle = null;
+          breachOpenedAt = null;
+          breachExpiresAt = null;
         }
       }
 
@@ -696,6 +705,8 @@ export const useSoonStore = create((set, get) => ({
           breachOpen,
           breachAngle,
           breachOpenedAt,
+          breachState,
+          breachExpiresAt,
           hasQuill,
         },
       };
