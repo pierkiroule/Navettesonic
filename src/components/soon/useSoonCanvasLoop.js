@@ -13,7 +13,6 @@ import { consumeSemioseVideoTrigger, updateFireflyGame } from "../../core/firefl
 import { updateEcosystemFx } from "../../core/ecosystemFx.js";
 import { updateBubbleAudioTriggers } from "../../core/soonAudioTriggers.js";
 import { drawScene } from "../../core/soonRenderers.js";
-import { getArenaRadiusForNode } from "../../core/labybulleWorld.js";
 import {
   getCharacterWorldEffects,
   updateCharacters,
@@ -51,12 +50,9 @@ export function useSoonCanvasLoop({
       const isEditMode = current.interactionMode === "edit";
 
       updateArena(arenaRef, rect);
-      const baseRadius = arenaRef.current.radius;
-      const runtimeRadius = getArenaRadiusForNode({
-        world: current.worldGraph,
-        arenaId: current.currentArenaId,
-        baseRadius,
-      });
+      const runtimeRadius = arenaRef.current.radius;
+      // Important: pas de changement d'échelle caméra/monde entre niveaux.
+      // On garde un rayon runtime constant pour éviter tout effet de dezoom.
       arenaRef.current.radius = runtimeRadius;
       stateRef.current = {
         ...(stateRef.current || {}),
