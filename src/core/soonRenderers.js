@@ -65,6 +65,7 @@ export function drawScene(ctx, rect, time, refs) {
   }
 
   drawFish(ctx, current.fish, time);
+  drawQuill(ctx, current.fish, time);
 
   exitWorld(ctx);
 
@@ -101,6 +102,40 @@ export function drawOcean(ctx, rect, time, current) {
 
 export function drawDepthVeil() {
   return;
+}
+
+function drawQuillShape(ctx) {
+  ctx.beginPath();
+  ctx.moveTo(0, -24);
+  ctx.quadraticCurveTo(10, -6, 0, 22);
+  ctx.quadraticCurveTo(-10, -6, 0, -24);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(0, 22);
+  ctx.lineTo(0, 32);
+  ctx.stroke();
+}
+
+export function drawQuill(ctx, fish = {}, time = 0) {
+  const hasQuill = Boolean(fish?.hasQuill);
+  ctx.save();
+  if (!hasQuill) {
+    const bob = Math.sin(time * 0.003) * 6;
+    ctx.translate(140, -60 + bob);
+    ctx.rotate(-0.25);
+  } else {
+    const angle = Number.isFinite(fish?.angle) ? fish.angle : -Math.PI / 2;
+    const mx = (fish?.x || 0) + Math.cos(angle) * 44;
+    const my = (fish?.y || 0) + Math.sin(angle) * 44;
+    ctx.translate(mx, my);
+    ctx.rotate(angle + Math.PI / 2);
+  }
+  ctx.fillStyle = "rgba(240,248,255,0.9)";
+  ctx.strokeStyle = "rgba(125,211,252,0.9)";
+  ctx.lineWidth = 2;
+  drawQuillShape(ctx);
+  ctx.restore();
 }
 
 export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {

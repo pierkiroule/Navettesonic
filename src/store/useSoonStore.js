@@ -141,6 +141,7 @@ const defaultFish = {
   breachOpen: false,
   breachAngle: null,
   breachOpenedAt: null,
+  hasQuill: false,
 };
 
 const initialState = {
@@ -540,12 +541,24 @@ export const useSoonStore = create((set, get) => ({
       let nextTargetY = targetY;
       let nextVx = limitedVx;
       let nextVy = limitedVy;
+      let hasQuill = Boolean(state.fish.hasQuill);
+      const mouthNextX = nextX + Math.cos(currentAngle) * mouthOffset;
+      const mouthNextY = nextY + Math.sin(currentAngle) * mouthOffset;
+      const quillPickupX = 140;
+      const quillPickupY = -60;
+      if (!hasQuill && Math.hypot(mouthNextX - quillPickupX, mouthNextY - quillPickupY) < 54) {
+        hasQuill = true;
+      }
 
       if (hitWall && hitDelayPassed) {
         wallHitCount += 1;
         lastWallHitAt = now;
         breachAngle = Math.atan2(nextY, nextX);
         if (wallHitCount >= 3 && arenaLevel < 2) {
+          breachOpen = true;
+          breachOpenedAt = now;
+        }
+        if (hasQuill && arenaLevel <= 2) {
           breachOpen = true;
           breachOpenedAt = now;
         }
@@ -561,6 +574,7 @@ export const useSoonStore = create((set, get) => ({
         const pushDot = (Math.cos(breachAngle) * dirX) + (Math.sin(breachAngle) * dirY);
         const pushingTowardBreach = pushDot > 0.45;
 
+        const pushingInward = pushDot < -0.45;
         if (nearMembrane && Math.abs(delta) <= 0.35 && pushingTowardBreach && arenaLevel < 2) {
           arenaLevel += 1;
           currentArenaId = `arene_${String(arenaLevel).padStart(4, "0")}`;
@@ -574,6 +588,17 @@ export const useSoonStore = create((set, get) => ({
           breachOpen = false;
           breachAngle = null;
           breachOpenedAt = null;
+          lastWallHitAt = now;
+        }
+        if (nearMembrane && Math.abs(delta) <= 0.35 && pushingInward && arenaLevel > 0) {
+          arenaLevel -= 1;
+          currentArenaId = `arene_${String(arenaLevel).padStart(4, "0")}`;
+          nextFishX = 0;
+          nextFishY = 0;
+          nextTargetX = 0;
+          nextTargetY = -120;
+          nextVx = 0;
+          nextVy = 0;
           lastWallHitAt = now;
         }
       }
@@ -644,6 +669,7 @@ export const useSoonStore = create((set, get) => ({
           breachOpen,
           breachAngle,
           breachOpenedAt,
+          hasQuill,
         },
       };
     });
