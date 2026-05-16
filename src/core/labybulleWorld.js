@@ -64,54 +64,29 @@ export function generateLabybulle(seed = 1) {
   const nodes = [];
   const portals = [];
 
+  const arenaId = "arena-1";
+  const megaId = "mega-1";
   const gigaId = "giga-1";
-  const megaIds = ["mega-1", "mega-2", "mega-3"];
 
-  const megaOrder = megaIds
-    .map((id) => ({ id, sort: rand() }))
-    .sort((a, b) => a.sort - b.sort)
-    .map((entry) => entry.id);
+  nodes.push(makeArenaNode({ id: gigaId, type: ARENA_TYPES.GIGA, childrenIds: [megaId] }));
+  nodes.push(makeArenaNode({ id: megaId, type: ARENA_TYPES.MEGA, parentId: gigaId, childrenIds: [arenaId] }));
+  nodes.push(makeArenaNode({ id: arenaId, type: ARENA_TYPES.ARENA, parentId: megaId }));
 
-  const gigaNode = makeArenaNode({ id: gigaId, type: ARENA_TYPES.GIGA, childrenIds: megaOrder });
-  nodes.push(gigaNode);
+  const spin = Math.floor(rand() * 4);
+  const hints = [PORTAL_POSITIONS.TOP, PORTAL_POSITIONS.RIGHT, PORTAL_POSITIONS.BOTTOM, PORTAL_POSITIONS.LEFT];
+  const arenaToMega = hints[spin % hints.length];
+  const megaToArena = hints[(spin + 2) % hints.length];
+  const megaToGiga = hints[(spin + 1) % hints.length];
+  const gigaToMega = hints[(spin + 3) % hints.length];
 
-  megaOrder.forEach((megaId, megaIndex) => {
-    const childArenaIds = [1, 2, 3].map((n) => `arena-${megaId.split("-")[1]}-${n}`);
-    const megaNode = makeArenaNode({
-      id: megaId,
-      type: ARENA_TYPES.MEGA,
-      parentId: gigaId,
-      childrenIds: childArenaIds,
-    });
-    nodes.push(megaNode);
-
-    // Liaison MEGA <-> GIGA: un passage dans chaque sens.
-    pushBidirectionalPortal(
-      portals,
-      megaId,
-      gigaId,
-      PORTAL_POSITIONS.TOP,
-      [PORTAL_POSITIONS.BOTTOM, PORTAL_POSITIONS.LEFT, PORTAL_POSITIONS.RIGHT][megaIndex]
-    );
-
-    childArenaIds.forEach((arenaId, childIndex) => {
-      nodes.push(makeArenaNode({ id: arenaId, type: ARENA_TYPES.ARENA, parentId: megaId }));
-
-      pushBidirectionalPortal(
-        portals,
-        arenaId,
-        megaId,
-        [PORTAL_POSITIONS.TOP, PORTAL_POSITIONS.RIGHT, PORTAL_POSITIONS.LEFT][childIndex],
-        [PORTAL_POSITIONS.BOTTOM, PORTAL_POSITIONS.LEFT, PORTAL_POSITIONS.RIGHT][childIndex]
-      );
-    });
-  });
+  pushBidirectionalPortal(portals, arenaId, megaId, arenaToMega, megaToArena);
+  pushBidirectionalPortal(portals, megaId, gigaId, megaToGiga, gigaToMega);
 
   return {
     seed,
     nodes,
     portals,
-    startArenaId: "arena-1-1",
+    startArenaId: arenaId,
     startPosition: { x: 0, y: 0, hint: "CENTER" },
   };
 }
@@ -128,8 +103,8 @@ export function validateWorldGraph(world) {
   const arenaNodes = world.nodes.filter((node) => node.type === ARENA_TYPES.ARENA);
 
   if (gigaNodes.length !== 1) errors.push(`attendu 1 GIGA, reçu ${gigaNodes.length}`);
-  if (megaNodes.length !== 3) errors.push(`attendu 3 MEGA, reçu ${megaNodes.length}`);
-  if (arenaNodes.length !== 9) errors.push(`attendu 9 ARENA, reçu ${arenaNodes.length}`);
+  if (megaNodes.length !== 1) errors.push(`attendu 1 MEGA, reçu ${megaNodes.length}`);
+  if (arenaNodes.length !== 1) errors.push(`attendu 1 ARENA, reçu ${arenaNodes.length}`);
 
   world.nodes.forEach((node) => {
     if (node.parentId && !nodeById.has(node.parentId)) {

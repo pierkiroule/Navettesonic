@@ -2,15 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildMazeByArena, clampPointToMaze, generateLabybulle, validateWorldGraph, resolvePortalAtPosition, getPortalArrivalPosition, getArenaRadiusForNode } from '../src/core/labybulleWorld.js';
 
-test('structure labybulle correcte: 1 GIGA, 3 MEGA, 9 ARENA', () => {
+test('structure labybulle concentrique: 1 GIGA, 1 MEGA, 1 ARENA', () => {
   const world = generateLabybulle(42);
   const giga = world.nodes.filter((node) => node.type === 'GIGA');
   const mega = world.nodes.filter((node) => node.type === 'MEGA');
   const arena = world.nodes.filter((node) => node.type === 'ARENA');
 
   assert.equal(giga.length, 1);
-  assert.equal(mega.length, 3);
-  assert.equal(arena.length, 9);
+  assert.equal(mega.length, 1);
+  assert.equal(arena.length, 1);
 });
 
 test('tous les nœuds atteignables depuis start', () => {
@@ -43,13 +43,13 @@ test('détection de portail: proche du trou => transition possible', () => {
   const world = generateLabybulle(1);
   const portal = resolvePortalAtPosition({
     world,
-    arenaId: 'arena-1-1',
+    arenaId: 'arena-1',
     x: 0,
     y: -1170,
     radius: 1200,
   });
   assert.ok(portal);
-  assert.equal(portal.fromArenaId, 'arena-1-1');
+  assert.equal(portal.fromArenaId, 'arena-1');
   assert.equal(portal.toArenaId, 'mega-1');
 });
 
@@ -58,7 +58,7 @@ test("arrivée portail: transition ARENA -> MEGA n'arrive pas au centre", () => 
   const world = generateLabybulle(1);
   const arrival = getPortalArrivalPosition({
     world,
-    fromArenaId: 'arena-1-1',
+    fromArenaId: 'arena-1',
     toArenaId: 'mega-1',
     radius: 1200,
   });
@@ -70,7 +70,7 @@ test("arrivée portail: transition ARENA -> MEGA n'arrive pas au centre", () => 
 
 test('rayon imbriqué: MEGA et GIGA sont plus vastes que ARENA', () => {
   const world = generateLabybulle(3);
-  const arenaRadius = getArenaRadiusForNode({ world, arenaId: 'arena-1-1', baseRadius: 1000 });
+  const arenaRadius = getArenaRadiusForNode({ world, arenaId: 'arena-1', baseRadius: 1000 });
   const megaRadius = getArenaRadiusForNode({ world, arenaId: 'mega-1', baseRadius: 1000 });
   const gigaRadius = getArenaRadiusForNode({ world, arenaId: 'giga-1', baseRadius: 1000 });
 
@@ -84,7 +84,7 @@ test('arrivée conserve le côté du trou (labyrinthe simple)', () => {
   const world = generateLabybulle(1);
   const arrivalTop = getPortalArrivalPosition({
     world,
-    fromArenaId: 'arena-1-1',
+    fromArenaId: 'arena-1',
     toArenaId: 'mega-1',
     radius: 1200,
     entryPositionHint: 'TOP',
@@ -97,7 +97,7 @@ test('arrivée conserve le côté du trou (labyrinthe simple)', () => {
 test('maze: le centre et le couloir haut sont praticables', () => {
   const world = generateLabybulle(1);
   const mazes = buildMazeByArena(world);
-  const maze = mazes['arena-1-1'];
+  const maze = mazes['arena-1'];
   const center = clampPointToMaze({ x: 0, y: 0, maze });
   const top = clampPointToMaze({ x: 0, y: -1000, maze });
   assert.deepEqual(center, { x: 0, y: 0 });
