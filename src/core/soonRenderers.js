@@ -144,7 +144,8 @@ export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
   const wallHitCount = Math.max(0, Math.min(3, current?.fish?.wallHitCount || 0));
   const breachOpen = Boolean(current?.fish?.breachOpen);
   const breachAngle = Number.isFinite(current?.fish?.breachAngle) ? current.fish.breachAngle : null;
-  const breachSpan = breachOpen && breachAngle !== null ? 0.26 : 0;
+  // Trou visuel réduit: largeur ~ 2x largeur poisson à rayon d’arène standard.
+  const breachSpan = breachOpen && breachAngle !== null ? 0.08 : 0;
   const pulse = Math.sin(time * 0.001) * 2;
 
   const strokeRing = (r, strokeStyle, lineWidth) => {
