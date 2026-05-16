@@ -103,7 +103,7 @@ export default function SidePanel({
                     </label>
 
                     <label>
-                      Vitesse de passage
+                      Vitesse
                       <select
                         value={selectedBeacon.speed}
                         onChange={(event) =>
