@@ -228,7 +228,7 @@ export const useSoonStore = create((set, get) => ({
     saveState(get());
   },
 
-  travelToArena: ({ nextArenaId, fromArenaId, arenaRadius = DEFAULT_ARENA_RADIUS } = {}) => {
+  travelToArena: ({ nextArenaId, fromArenaId, arenaRadius = DEFAULT_ARENA_RADIUS, entryPositionHint = null } = {}) => {
     set((state) => {
       const world = state.worldGraph;
       if (!world?.nodes?.some((node) => node.id === nextArenaId)) return {};
@@ -238,6 +238,7 @@ export const useSoonStore = create((set, get) => ({
         fromArenaId: fromArenaId || state.currentArenaId,
         toArenaId: nextArenaId,
         radius: arenaRadius,
+        entryPositionHint,
       });
 
       return {

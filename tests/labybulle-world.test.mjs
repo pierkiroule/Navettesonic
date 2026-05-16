@@ -78,3 +78,17 @@ test('rayon imbriqué: MEGA et GIGA sont plus vastes que ARENA', () => {
   assert.ok(megaRadius > arenaRadius);
   assert.ok(gigaRadius > megaRadius);
 });
+
+
+test('arrivée conserve le côté du trou (labyrinthe simple)', () => {
+  const world = generateLabybulle(1);
+  const arrivalTop = getPortalArrivalPosition({
+    world,
+    fromArenaId: 'arena-1-1',
+    toArenaId: 'mega-1',
+    radius: 1200,
+    entryPositionHint: 'TOP',
+  });
+
+  assert.ok(arrivalTop.y < -700);
+});

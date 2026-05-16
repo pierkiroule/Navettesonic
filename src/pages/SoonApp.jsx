@@ -291,6 +291,7 @@ export default function SoonApp({ onBack }) {
             nextArenaId: portal.toArenaId,
             fromArenaId: portal.fromArenaId,
             arenaRadius,
+            entryPositionHint: portal.positionHint,
           });
           portalCooldownRef.current = now + 900;
         }}

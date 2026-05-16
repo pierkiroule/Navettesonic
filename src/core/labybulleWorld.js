@@ -210,8 +210,26 @@ export function resolvePortalAtPosition({ world, arenaId, x = 0, y = 0, radius =
 
 
 
-export function getPortalArrivalPosition({ world, fromArenaId, toArenaId, radius = 1200, inwardOffset = 150 }) {
-  if (!world || !fromArenaId || !toArenaId) return { x: 0, y: 0 };
+export function getPortalArrivalPosition({
+  world,
+  fromArenaId,
+  toArenaId,
+  radius = 1200,
+  inwardOffset = 150,
+  entryPositionHint = null,
+}) {
+  if (!world || !toArenaId) return { x: 0, y: 0 };
+
+  // Règle labyrinthe simple: on conserve le même côté d'entrée/sortie quand possible.
+  if (entryPositionHint) {
+    const anchor = getPortalAnchor({ positionHint: entryPositionHint, radius, index: 0, total: 1 });
+    return {
+      x: anchor.x - Math.cos(anchor.angle) * inwardOffset,
+      y: anchor.y - Math.sin(anchor.angle) * inwardOffset,
+    };
+  }
+
+  if (!fromArenaId) return { x: 0, y: 0 };
   const destinationPortals = (world.portals || []).filter(
     (portal) => portal.fromArenaId === toArenaId && portal.toArenaId === fromArenaId
   );
@@ -232,5 +250,6 @@ export function getPortalArrivalPosition({ world, fromArenaId, toArenaId, radius
     y: anchor.y - Math.sin(anchor.angle) * inwardOffset,
   };
 }
+
 
 export { ARENA_TYPES, PORTAL_POSITIONS };
