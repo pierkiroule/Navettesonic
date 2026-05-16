@@ -21,7 +21,7 @@ import {
   getCircuitSpeedValue,
   smoothLoopPoint,
 } from "../core/traceCircuit.js";
-import { getFishNavigableRadius } from "../core/constants.js";
+import { BREACH_GAP_SPAN, getFishNavigableRadius } from "../core/constants.js";
 import { buildMazeByArena, buildWorldDebugSnapshot, generateLabybulle, getPortalArrivalPosition, validateWorldGraph } from "../core/labybulleWorld.js";
 
 const saved = loadState();
@@ -35,6 +35,7 @@ if (worldErrors.length) {
 const DEFAULT_ARENA_RADIUS = 1200;
 const DEFAULT_FISH_NAV_RADIUS = getFishNavigableRadius(DEFAULT_ARENA_RADIUS);
 const OUTSIDE_NAV_MAX_MULTIPLIER = Number.POSITIVE_INFINITY;
+const FISH_MEMBRANE_BLOCK_RADIUS = 42;
 
 
 function getFishMovementRadius(arenaRadius) {
@@ -159,6 +160,7 @@ const defaultFish = {
   breachOpenedAt: null,
   breachState: "closed",
   breachExpiresAt: null,
+  breachUsed: false,
   hasQuill: false,
   membraneSide: "inside",
 };
@@ -619,13 +621,13 @@ export const useSoonStore = create((set, get) => ({
         hasQuill = true;
       }
 
-      if (breachState !== "closed" && breachExpiresAt && now >= breachExpiresAt) {
+      if (!state.fish.breachUsed && breachState !== "closed" && breachExpiresAt && now >= breachExpiresAt) {
         breachOpen = false;
         breachState = "closed";
         breachExpiresAt = null;
       }
 
-      if ((hitWall || nearWall) && hitDelayPassed) {
+      if (!state.fish.breachUsed && (hitWall || nearWall) && hitDelayPassed) {
         wallHitCount += 1;
         lastWallHitAt = now;
         breachAngle = Math.atan2(nextY, nextX);
@@ -638,12 +640,11 @@ export const useSoonStore = create((set, get) => ({
         }
       }
 
-      const nextAngleRaw = Math.atan2(nextY, nextX);
+      const nextAngleRaw = Math.atan2(nextFishY, nextFishX);
       const openCorridor =
         breachOpen &&
-        (breachState === "open" || breachState === "crossing") &&
         breachAngle !== null &&
-        Math.abs(Math.atan2(Math.sin(nextAngleRaw - breachAngle), Math.cos(nextAngleRaw - breachAngle))) <= 1.15;
+        Math.abs(Math.atan2(Math.sin(nextAngleRaw - breachAngle), Math.cos(nextAngleRaw - breachAngle))) <= BREACH_GAP_SPAN;
 
       // Alternative au clamp strict: quand la brèche est ouverte, on autorise un couloir
       // traversant localement la membrane pour rendre le percement fiable.
@@ -652,6 +653,18 @@ export const useSoonStore = create((set, get) => ({
         nextFishX = safe.x;
         nextFishY = safe.y;
         breachState = "crossing";
+      }
+
+      // Depuis l'extérieur, l'entrée est autorisée uniquement via le fragment retiré.
+      if (isActuallyOutside && !openCorridor) {
+        const safeDistance = Math.hypot(nextFishX, nextFishY);
+        if (safeDistance < fishNavRadius) {
+          const lockDistance = fishNavRadius + FISH_MEMBRANE_BLOCK_RADIUS;
+          const nx = safeDistance > 0.0001 ? nextFishX / safeDistance : 1;
+          const ny = safeDistance > 0.0001 ? nextFishY / safeDistance : 0;
+          nextFishX = nx * lockDistance;
+          nextFishY = ny * lockDistance;
+        }
       }
 
       if (breachOpen && breachAngle !== null) {
@@ -669,7 +682,7 @@ export const useSoonStore = create((set, get) => ({
         const pushingTowardBreach = velocityDot > 0.22;
 
         const pushingInward = velocityDot < -0.22;
-        if (Math.abs(delta) <= 1.15 && pushingTowardBreach && membraneSide === "inside") {
+        if (Math.abs(delta) <= BREACH_GAP_SPAN && pushingTowardBreach && membraneSide === "inside") {
           arenaLevel = Math.min(2, arenaLevel + 1);
           currentArenaId = `arene_${String(arenaLevel).padStart(4, "0")}`;
           nextMembraneSide = "outside";
@@ -678,14 +691,13 @@ export const useSoonStore = create((set, get) => ({
           nextTargetX = targetX;
           nextTargetY = targetY;
           wallHitCount = 0;
-          breachOpen = false;
-          breachState = "closed";
-          breachAngle = null;
-          breachOpenedAt = null;
+          breachOpen = true;
+          breachState = "permanent";
+          breachOpenedAt = breachOpenedAt ?? now;
           breachExpiresAt = null;
           lastWallHitAt = now;
         }
-        if (Math.abs(delta) <= 1.15 && nearMembrane && pushingInward && membraneSide === "outside") {
+        if (Math.abs(delta) <= BREACH_GAP_SPAN && nearMembrane && pushingInward && membraneSide === "outside") {
           arenaLevel = Math.max(0, arenaLevel - 1);
           currentArenaId = `arene_${String(arenaLevel).padStart(4, "0")}`;
           nextMembraneSide = "inside";
@@ -694,10 +706,9 @@ export const useSoonStore = create((set, get) => ({
           nextTargetX = targetX;
           nextTargetY = targetY;
           lastWallHitAt = now;
-          breachOpen = false;
-          breachState = "closed";
-          breachAngle = null;
-          breachOpenedAt = null;
+          breachOpen = true;
+          breachState = "permanent";
+          breachOpenedAt = breachOpenedAt ?? now;
           breachExpiresAt = null;
         }
       }
@@ -770,6 +781,7 @@ export const useSoonStore = create((set, get) => ({
           breachOpenedAt,
           breachState,
           breachExpiresAt,
+          breachUsed: state.fish.breachUsed || breachState === "permanent",
           hasQuill,
           membraneSide: nextMembraneSide,
         },

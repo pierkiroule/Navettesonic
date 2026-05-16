@@ -2,7 +2,7 @@ import { distance, getBubbleVisualRadius } from "./geometry.js";
 import { drawPoissonPlume } from "./poissonPlumeRenderer.js";
 import { drawCharacters } from "./characters/characterEngine.js";
 import { drawOdysseoPath } from "./odysseoPath.js";
-import { ARENA_INNER_BOUNDARY_INSET } from "./constants.js";
+import { ARENA_INNER_BOUNDARY_INSET, BREACH_GAP_SPAN } from "./constants.js";
 import {
   drawFireflies,
   drawPlacedTriangles,
@@ -144,37 +144,35 @@ export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
   const wallHitCount = Math.max(0, Math.min(3, current?.fish?.wallHitCount || 0));
   const breachOpen = Boolean(current?.fish?.breachOpen);
   const breachAngle = Number.isFinite(current?.fish?.breachAngle) ? current.fish.breachAngle : null;
+  // Trou visuel réduit: largeur ~ 2x largeur poisson à rayon d’arène standard.
+  const breachSpan = breachOpen && breachAngle !== null ? BREACH_GAP_SPAN : 0;
   const pulse = Math.sin(time * 0.001) * 2;
+
+  const strokeRing = (r, strokeStyle, lineWidth) => {
+    ctx.beginPath();
+    if (breachSpan > 0) {
+      ctx.arc(0, 0, r, breachAngle + breachSpan, breachAngle - breachSpan + Math.PI * 2);
+    } else {
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+    }
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+  };
 
   ctx.save();
 
   for (let i = 0; i <= level; i += 1) {
     const r = radius / Math.pow(3, level - i);
     const isCurrent = i === level;
-    ctx.beginPath();
-    ctx.arc(0, 0, r + (isCurrent ? pulse : 0), 0, Math.PI * 2);
-    ctx.strokeStyle = isCurrent ? "rgba(180, 220, 255, 0.85)" : "rgba(148, 163, 184, 0.28)";
-    ctx.lineWidth = isCurrent ? 6 : 2;
-    ctx.stroke();
+    strokeRing(
+      r + (isCurrent ? pulse : 0),
+      isCurrent ? "rgba(180, 220, 255, 0.85)" : "rgba(148, 163, 184, 0.28)",
+      isCurrent ? 6 : 2
+    );
   }
 
-  ctx.beginPath();
-  ctx.arc(0, 0, radius - ARENA_INNER_BOUNDARY_INSET, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(148, 163, 184, 0.3)";
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-
-  if (breachOpen && breachAngle !== null) {
-    const span = 0.26;
-    ctx.beginPath();
-    ctx.arc(0, 0, radius + pulse, breachAngle - span, breachAngle + span);
-    ctx.strokeStyle = "rgba(125, 255, 240, 0.95)";
-    ctx.lineWidth = 8;
-    ctx.shadowColor = "rgba(125, 255, 240, 0.75)";
-    ctx.shadowBlur = 14;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-  }
+  strokeRing(radius - ARENA_INNER_BOUNDARY_INSET, "rgba(148, 163, 184, 0.3)", 1.5);
 
   if (wallHitCount > 0) {
     ctx.fillStyle = "rgba(224, 242, 254, 0.8)";
