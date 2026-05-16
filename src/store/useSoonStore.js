@@ -374,11 +374,15 @@ export const useSoonStore = create((set, get) => ({
 
     if (state.circuitAutopilot) return;
 
-    // Important: garder une intention de poussée vers l'extérieur possible.
-    // Si on clamp la target au navRadius, le poisson "arrive" sur la membrane puis cesse
-    // de pousser, ce qui empêche le franchissement même quand la brèche est ouverte.
-    const safeCircle = clampToCircle({ x, y }, Math.max(getFishMovementRadius(arenaRadius), arenaRadius * 1.9));
-    const safe = safeCircle;
+    const navRadius = getFishMovementRadius(arenaRadius);
+    const side = state.fish?.membraneSide === "outside" ? "outside" : "inside";
+    // Evite le bug "bloqué sur la ligne puis demi-tour":
+    // - inside: on garde une target possible au-delà de la membrane pour pousser la brèche.
+    // - outside: on interdit les targets trop proches de la membrane intérieure pour éviter
+    //   que le steering se retourne contre la ligne.
+    const safe = side === "outside"
+      ? clampToRing({ x, y }, navRadius + 96, arenaRadius * 2.2)
+      : clampToCircle({ x, y }, Math.max(navRadius, arenaRadius * 1.9));
 
     set((state) => {
       return {
