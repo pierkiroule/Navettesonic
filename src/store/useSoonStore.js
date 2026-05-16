@@ -52,6 +52,21 @@ function clampDepth(depth) {
   return normalizeDepth(depth);
 }
 
+function clampToRing(point, minRadius, maxRadius) {
+  const x = point?.x || 0;
+  const y = point?.y || 0;
+  const d = Math.hypot(x, y) || 0.0001;
+  if (d > maxRadius) {
+    const k = maxRadius / d;
+    return { x: x * k, y: y * k };
+  }
+  if (d < minRadius) {
+    const k = minRadius / d;
+    return { x: x * k, y: y * k };
+  }
+  return { x, y };
+}
+
 export function pushBubblesFromFish(bubbles = [], fish = {}, fishDepth = 1) {
   const depth = clampDepth(fishDepth);
   const fishX = fish.x || 0;
@@ -144,6 +159,7 @@ const defaultFish = {
   breachState: "closed",
   breachExpiresAt: null,
   hasQuill: false,
+  membraneSide: "inside",
 };
 
 const initialState = {
@@ -529,8 +545,14 @@ export const useSoonStore = create((set, get) => ({
       const nextX = state.fish.x + limitedVx;
       const nextY = state.fish.y + limitedVy;
       const nextDistance = Math.hypot(nextX, nextY);
-      let safe = clampToCircle({ x: nextX, y: nextY }, fishNavRadius);
-      const hitWall = nextDistance > fishNavRadius + 0.0001;
+      const membraneSide = state.fish.membraneSide === "outside" ? "outside" : "inside";
+      const outerNavRadius = fishNavRadius * 2.8;
+      let safe = membraneSide === "outside"
+        ? clampToRing({ x: nextX, y: nextY }, fishNavRadius + 24, outerNavRadius)
+        : clampToCircle({ x: nextX, y: nextY }, fishNavRadius);
+      const hitWall = membraneSide === "inside"
+        ? nextDistance > fishNavRadius + 0.0001
+        : nextDistance < fishNavRadius + 24;
       const nearWall = nextDistance >= fishNavRadius - 90;
       const hitDelayPassed = now - (state.fish.lastWallHitAt || 0) > 450;
 
@@ -542,6 +564,7 @@ export const useSoonStore = create((set, get) => ({
       let breachState = state.fish.breachState || "closed";
       let breachExpiresAt = state.fish.breachExpiresAt ?? null;
       let arenaLevel = Number.isFinite(state.fish.arenaLevel) ? state.fish.arenaLevel : 0;
+      let nextMembraneSide = membraneSide;
       let currentArenaId = state.currentArenaId;
       let nextFishX = safe.x;
       let nextFishY = safe.y;
@@ -568,7 +591,7 @@ export const useSoonStore = create((set, get) => ({
         wallHitCount += 1;
         lastWallHitAt = now;
         breachAngle = Math.atan2(nextY, nextX);
-        const shouldOpen = (wallHitCount >= 1 || hasQuill) && arenaLevel < 2;
+        const shouldOpen = wallHitCount >= 1 || hasQuill;
         if (shouldOpen) {
           breachOpen = true;
           breachOpenedAt = now;
@@ -608,9 +631,10 @@ export const useSoonStore = create((set, get) => ({
         const pushingTowardBreach = velocityDot > 0.22;
 
         const pushingInward = velocityDot < -0.22;
-        if (Math.abs(delta) <= 1.15 && radiusNow >= fishNavRadius - 16 && pushingTowardBreach && arenaLevel < 2) {
-          arenaLevel += 1;
+        if (Math.abs(delta) <= 1.15 && pushingTowardBreach && membraneSide === "inside") {
+          arenaLevel = Math.min(2, arenaLevel + 1);
           currentArenaId = `arene_${String(arenaLevel).padStart(4, "0")}`;
+          nextMembraneSide = "outside";
           nextFishX += radialX * 8;
           nextFishY += radialY * 8;
           nextTargetX = targetX;
@@ -623,9 +647,10 @@ export const useSoonStore = create((set, get) => ({
           breachExpiresAt = null;
           lastWallHitAt = now;
         }
-        if (Math.abs(delta) <= 0.78 && nearMembrane && pushingInward && arenaLevel > 0) {
-          arenaLevel -= 1;
+        if (Math.abs(delta) <= 1.15 && nearMembrane && pushingInward && membraneSide === "outside") {
+          arenaLevel = Math.max(0, arenaLevel - 1);
           currentArenaId = `arene_${String(arenaLevel).padStart(4, "0")}`;
+          nextMembraneSide = "inside";
           nextFishX -= radialX * 8;
           nextFishY -= radialY * 8;
           nextTargetX = targetX;
@@ -708,6 +733,7 @@ export const useSoonStore = create((set, get) => ({
           breachState,
           breachExpiresAt,
           hasQuill,
+          membraneSide: nextMembraneSide,
         },
       };
     });
