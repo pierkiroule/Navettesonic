@@ -404,13 +404,20 @@ export function drawFish(ctx, fish, time) {
     const membraneSide = fish?.membraneSide === "outside" ? "outside" : "inside";
     const clipPadding = 70;
     const fishDistance = Math.hypot(fish?.x || 0, fish?.y || 0);
+    // Sécurité anti-disparition: en transition de niveau, la side logique peut
+    // être en retard d'un frame. On se base aussi sur la position réelle.
+    const effectiveSide = fishDistance > membraneRadius + 16
+      ? "outside"
+      : fishDistance < membraneRadius - 16
+        ? "inside"
+        : membraneSide;
     const outerWorldRadius = Math.max(
       membraneRadius + 2200,
       fishDistance + 1800
     );
 
     const clipPath = new Path2D();
-    if (membraneSide === "inside") {
+    if (effectiveSide === "inside") {
       if (breachSpan > 0) {
         clipPath.arc(0, 0, membraneRadius + clipPadding, breachAngle + breachSpan, breachAngle - breachSpan + Math.PI * 2);
       } else {
