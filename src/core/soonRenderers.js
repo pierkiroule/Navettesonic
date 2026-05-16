@@ -144,41 +144,34 @@ export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
   const wallHitCount = Math.max(0, Math.min(3, current?.fish?.wallHitCount || 0));
   const breachOpen = Boolean(current?.fish?.breachOpen);
   const breachAngle = Number.isFinite(current?.fish?.breachAngle) ? current.fish.breachAngle : null;
+  const breachSpan = breachOpen && breachAngle !== null ? 0.26 : 0;
   const pulse = Math.sin(time * 0.001) * 2;
+
+  const strokeRing = (r, strokeStyle, lineWidth) => {
+    ctx.beginPath();
+    if (breachSpan > 0) {
+      ctx.arc(0, 0, r, breachAngle + breachSpan, breachAngle - breachSpan + Math.PI * 2);
+    } else {
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+    }
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+  };
 
   ctx.save();
 
   for (let i = 0; i <= level; i += 1) {
     const r = radius / Math.pow(3, level - i);
     const isCurrent = i === level;
-    ctx.beginPath();
-    ctx.arc(0, 0, r + (isCurrent ? pulse : 0), 0, Math.PI * 2);
-    ctx.strokeStyle = isCurrent ? "rgba(180, 220, 255, 0.85)" : "rgba(148, 163, 184, 0.28)";
-    ctx.lineWidth = isCurrent ? 6 : 2;
-    ctx.stroke();
+    strokeRing(
+      r + (isCurrent ? pulse : 0),
+      isCurrent ? "rgba(180, 220, 255, 0.85)" : "rgba(148, 163, 184, 0.28)",
+      isCurrent ? 6 : 2
+    );
   }
 
-  ctx.beginPath();
-  ctx.arc(0, 0, radius - ARENA_INNER_BOUNDARY_INSET, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(148, 163, 184, 0.3)";
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-
-  if (breachOpen && breachAngle !== null) {
-    const span = 0.26;
-    const outerR = radius + pulse;
-    ctx.beginPath();
-    ctx.arc(0, 0, outerR, breachAngle + span, breachAngle + Math.PI * 2 - span);
-    ctx.strokeStyle = "rgba(180, 220, 255, 0.85)";
-    ctx.lineWidth = 6;
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(0, 0, radius - ARENA_INNER_BOUNDARY_INSET, breachAngle + span, breachAngle + Math.PI * 2 - span);
-    ctx.strokeStyle = "rgba(148, 163, 184, 0.3)";
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-  }
+  strokeRing(radius - ARENA_INNER_BOUNDARY_INSET, "rgba(148, 163, 184, 0.3)", 1.5);
 
   if (wallHitCount > 0) {
     ctx.fillStyle = "rgba(224, 242, 254, 0.8)";
