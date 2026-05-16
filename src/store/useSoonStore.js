@@ -35,8 +35,6 @@ if (worldErrors.length) {
 
 const DEFAULT_ARENA_RADIUS = 1200;
 const DEFAULT_FISH_NAV_RADIUS = getFishNavigableRadius(DEFAULT_ARENA_RADIUS);
-const OUTSIDE_NAV_MAX_MULTIPLIER = Number.POSITIVE_INFINITY;
-const FISH_MEMBRANE_BLOCK_RADIUS = 42;
 const MAX_ARENA_LEVEL = 2;
 
 
@@ -618,15 +616,8 @@ export const useSoonStore = create((set, get) => ({
       const nextX = state.fish.x + limitedVx;
       const nextY = state.fish.y + limitedVy;
       const nextDistance = Math.hypot(nextX, nextY);
-      const membraneSide = state.fish.membraneSide === "outside" ? "outside" : "inside";
-      const isActuallyOutside = membraneSide === "outside" || Math.hypot(state.fish.x || 0, state.fish.y || 0) > fishNavRadius + 24;
-      const outerNavRadius = arenaRadius * OUTSIDE_NAV_MAX_MULTIPLIER;
-      let safe = isActuallyOutside
-        ? clampToCircle({ x: nextX, y: nextY }, outerNavRadius)
-        : clampToCircle({ x: nextX, y: nextY }, fishNavRadius);
-      const hitWall = isActuallyOutside
-        ? false
-        : nextDistance > fishNavRadius + 0.0001;
+      let safe = clampToCircle({ x: nextX, y: nextY }, fishNavRadius);
+      const hitWall = nextDistance > fishNavRadius + 0.0001;
       const nearWall = nextDistance >= fishNavRadius - 90;
       const hitDelayPassed = now - (state.fish.lastWallHitAt || 0) > 450;
 
@@ -653,14 +644,6 @@ export const useSoonStore = create((set, get) => ({
         lastWallHitAt = now;
       }
 
-      if (isActuallyOutside) {
-        const lockDistance = fishNavRadius + FISH_MEMBRANE_BLOCK_RADIUS;
-        const safeDistance = Math.hypot(nextFishX, nextFishY) || 0.0001;
-        const nx = nextFishX / safeDistance;
-        const ny = nextFishY / safeDistance;
-        nextFishX = nx * lockDistance;
-        nextFishY = ny * lockDistance;
-      }
 
       const radialDistance = Math.hypot(nextFishX, nextFishY);
       const radialAngle = Math.atan2(nextFishY, nextFishX);
@@ -690,6 +673,10 @@ export const useSoonStore = create((set, get) => ({
           const nextLevel = arenaLevel + 1;
           nextFishX += radialX * 16;
           nextFishY += radialY * 16;
+          const destinationNavRadius = getMembraneRadiusForLevel(arenaRadius, nextLevel);
+          const destinationSafe = clampToCircle({ x: nextFishX, y: nextFishY }, destinationNavRadius - 4);
+          nextFishX = destinationSafe.x;
+          nextFishY = destinationSafe.y;
           return {
             circuitAutopilot,
             circuitSegmentIndex,
@@ -723,6 +710,10 @@ export const useSoonStore = create((set, get) => ({
           const nextLevel = arenaLevel - 1;
           nextFishX -= radialX * 16;
           nextFishY -= radialY * 16;
+          const destinationNavRadius = getMembraneRadiusForLevel(arenaRadius, nextLevel);
+          const destinationSafe = clampToCircle({ x: nextFishX, y: nextFishY }, destinationNavRadius - 4);
+          nextFishX = destinationSafe.x;
+          nextFishY = destinationSafe.y;
           return {
             circuitAutopilot,
             circuitSegmentIndex,
