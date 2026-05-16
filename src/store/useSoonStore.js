@@ -611,12 +611,10 @@ export const useSoonStore = create((set, get) => ({
         if (Math.abs(delta) <= 1.15 && radiusNow >= fishNavRadius - 16 && pushingTowardBreach && arenaLevel < 2) {
           arenaLevel += 1;
           currentArenaId = `arene_${String(arenaLevel).padStart(4, "0")}`;
-          nextFishX = 0;
-          nextFishY = 0;
-          nextTargetX = 0;
-          nextTargetY = -120;
-          nextVx = 0;
-          nextVy = 0;
+          nextFishX += radialX * 8;
+          nextFishY += radialY * 8;
+          nextTargetX = targetX;
+          nextTargetY = targetY;
           wallHitCount = 0;
           breachOpen = false;
           breachState = "closed";
@@ -628,12 +626,10 @@ export const useSoonStore = create((set, get) => ({
         if (Math.abs(delta) <= 0.78 && nearMembrane && pushingInward && arenaLevel > 0) {
           arenaLevel -= 1;
           currentArenaId = `arene_${String(arenaLevel).padStart(4, "0")}`;
-          nextFishX = 0;
-          nextFishY = 0;
-          nextTargetX = 0;
-          nextTargetY = -120;
-          nextVx = 0;
-          nextVy = 0;
+          nextFishX -= radialX * 8;
+          nextFishY -= radialY * 8;
+          nextTargetX = targetX;
+          nextTargetY = targetY;
           lastWallHitAt = now;
           breachOpen = false;
           breachState = "closed";
