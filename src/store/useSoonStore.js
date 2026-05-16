@@ -358,7 +358,10 @@ export const useSoonStore = create((set, get) => ({
 
     if (state.circuitAutopilot) return;
 
-    const safeCircle = clampToCircle({ x, y }, getFishMovementRadius(arenaRadius));
+    // Important: garder une intention de poussée vers l'extérieur possible.
+    // Si on clamp la target au navRadius, le poisson "arrive" sur la membrane puis cesse
+    // de pousser, ce qui empêche le franchissement même quand la brèche est ouverte.
+    const safeCircle = clampToCircle({ x, y }, Math.max(getFishMovementRadius(arenaRadius), arenaRadius * 1.9));
     const safe = safeCircle;
 
     set((state) => {
