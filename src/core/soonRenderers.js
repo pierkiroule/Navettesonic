@@ -2,7 +2,7 @@ import { distance, getBubbleVisualRadius } from "./geometry.js";
 import { drawPoissonPlume } from "./poissonPlumeRenderer.js";
 import { drawCharacters } from "./characters/characterEngine.js";
 import { drawOdysseoPath } from "./odysseoPath.js";
-import { ARENA_INNER_BOUNDARY_INSET, BREACH_GAP_SPAN, MEMBRANE_LEVEL_MULTIPLIERS } from "./constants.js";
+import { ARENA_INNER_BOUNDARY_INSET, MEMBRANE_LEVEL_MULTIPLIERS } from "./constants.js";
 import {
   drawFireflies,
   drawPlacedTriangles,
@@ -138,48 +138,30 @@ export function drawQuill(ctx, fish = {}, time = 0) {
   ctx.restore();
 }
 
+const CONTOUR_OPENING_HALF_SPAN = 0.22;
+const CONTOUR_OPENING_ANGLES = [-Math.PI / 2, 0, Math.PI];
+
 export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
   const radius = arenaRef.current.radius;
-  const level = Number.isFinite(current?.fish?.arenaLevel) ? current.fish.arenaLevel : 0;
-  const wallHitCount = Math.max(0, Math.min(3, current?.fish?.wallHitCount || 0));
-  const breachOpen = Boolean(current?.fish?.breachOpen);
-  const breachAngle = Number.isFinite(current?.fish?.breachAngle) ? current.fish.breachAngle : null;
-  // Trou visuel réduit: largeur ~ 2x largeur poisson à rayon d’arène standard.
-  const breachSpan = breachOpen && breachAngle !== null ? BREACH_GAP_SPAN : 0;
-  const pulse = Math.sin(time * 0.001) * 2;
-
-  const strokeRing = (r, strokeStyle, lineWidth) => {
-    ctx.beginPath();
-    if (breachSpan > 0) {
-      ctx.arc(0, 0, r, breachAngle + breachSpan, breachAngle - breachSpan + Math.PI * 2);
-    } else {
-      ctx.arc(0, 0, r, 0, Math.PI * 2);
-    }
-    ctx.strokeStyle = strokeStyle;
-    ctx.lineWidth = lineWidth;
-    ctx.stroke();
-  };
+  void time;
+  void current;
 
   ctx.save();
 
-  for (let i = 0; i <= level; i += 1) {
-    const r = radius * (MEMBRANE_LEVEL_MULTIPLIERS[i] ?? MEMBRANE_LEVEL_MULTIPLIERS[0]);
-    const isCurrent = i === level;
-    strokeRing(
-      r + (isCurrent ? pulse : 0),
-      isCurrent ? "rgba(180, 220, 255, 0.85)" : "rgba(148, 163, 184, 0.28)",
-      isCurrent ? 6 : 2
-    );
-  }
+  const rings = [
+    radius * (MEMBRANE_LEVEL_MULTIPLIERS[0] ?? 1),
+    radius * (MEMBRANE_LEVEL_MULTIPLIERS[1] ?? 1),
+    radius * (MEMBRANE_LEVEL_MULTIPLIERS[2] ?? 1),
+  ];
 
-  strokeRing(radius - ARENA_INNER_BOUNDARY_INSET, "rgba(148, 163, 184, 0.3)", 1.5);
-
-  if (wallHitCount > 0) {
-    ctx.fillStyle = "rgba(224, 242, 254, 0.8)";
-    ctx.font = '600 20px "Inter", sans-serif';
-    ctx.textAlign = "center";
-    ctx.fillText(`${wallHitCount}/3`, 0, -(radius - 70));
-  }
+  rings.forEach((r, index) => {
+    ctx.beginPath();
+    const opening = CONTOUR_OPENING_ANGLES[index] ?? CONTOUR_OPENING_ANGLES[0];
+    ctx.arc(0, 0, r, opening + CONTOUR_OPENING_HALF_SPAN, opening - CONTOUR_OPENING_HALF_SPAN + Math.PI * 2);
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.92)";
+    ctx.lineWidth = 8;
+    ctx.stroke();
+  });
 
   ctx.restore();
 }
@@ -398,9 +380,6 @@ export function drawFish(ctx, fish, time) {
     const level = Number.isFinite(fish?.arenaLevel) ? fish.arenaLevel : 0;
     const safeLevel = Math.max(0, Math.min(MEMBRANE_LEVEL_MULTIPLIERS.length - 1, level));
     const membraneRadius = innerRadius * (MEMBRANE_LEVEL_MULTIPLIERS[safeLevel] ?? 1);
-    const breachOpen = Boolean(fish?.breachOpen);
-    const breachAngle = Number.isFinite(fish?.breachAngle) ? fish.breachAngle : null;
-    const breachSpan = breachOpen && breachAngle !== null ? BREACH_GAP_SPAN : 0;
     const membraneSide = fish?.membraneSide === "outside" ? "outside" : "inside";
     const clipPadding = 70;
     const fishDistance = Math.hypot(fish?.x || 0, fish?.y || 0);
@@ -418,19 +397,13 @@ export function drawFish(ctx, fish, time) {
 
     const clipPath = new Path2D();
     if (effectiveSide === "inside") {
-      if (breachSpan > 0) {
-        clipPath.arc(0, 0, membraneRadius + clipPadding, breachAngle + breachSpan, breachAngle - breachSpan + Math.PI * 2);
-      } else {
-        clipPath.arc(0, 0, membraneRadius + clipPadding, 0, Math.PI * 2);
-      }
+      const opening = CONTOUR_OPENING_ANGLES[safeLevel] ?? CONTOUR_OPENING_ANGLES[0];
+      clipPath.arc(0, 0, membraneRadius + clipPadding, opening + CONTOUR_OPENING_HALF_SPAN, opening - CONTOUR_OPENING_HALF_SPAN + Math.PI * 2);
       ctx.clip(clipPath);
     } else {
       clipPath.arc(0, 0, outerWorldRadius, 0, Math.PI * 2);
-      if (breachSpan > 0) {
-        clipPath.arc(0, 0, membraneRadius - clipPadding * 0.4, breachAngle + breachSpan, breachAngle - breachSpan + Math.PI * 2);
-      } else {
-        clipPath.arc(0, 0, membraneRadius - clipPadding * 0.4, 0, Math.PI * 2);
-      }
+      const opening = CONTOUR_OPENING_ANGLES[safeLevel] ?? CONTOUR_OPENING_ANGLES[0];
+      clipPath.arc(0, 0, membraneRadius - clipPadding * 0.4, opening + CONTOUR_OPENING_HALF_SPAN, opening - CONTOUR_OPENING_HALF_SPAN + Math.PI * 2);
       ctx.clip(clipPath, "evenodd");
     }
 
