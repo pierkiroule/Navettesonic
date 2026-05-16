@@ -620,119 +620,34 @@ export const useSoonStore = create((set, get) => ({
 
       let wallHitCount = state.fish.wallHitCount || 0;
       let lastWallHitAt = state.fish.lastWallHitAt || 0;
-      let breachOpen = Boolean(state.fish.breachOpen);
-      let breachAngle = Number.isFinite(state.fish.breachAngle) ? state.fish.breachAngle : null;
-      let breachOpenedAt = state.fish.breachOpenedAt ?? null;
-      let breachState = state.fish.breachState || "closed";
-      let breachExpiresAt = state.fish.breachExpiresAt ?? null;
-      let arenaLevel = Math.max(0, Math.min(MAX_ARENA_LEVEL, Number.isFinite(state.fish.arenaLevel) ? state.fish.arenaLevel : 0));
-      let nextMembraneSide = membraneSide;
-      let currentArenaId = state.currentArenaId;
+      const breachOpen = false;
+      const breachAngle = null;
+      const breachOpenedAt = null;
+      const breachState = "closed";
+      const breachExpiresAt = null;
+      const arenaLevel = Math.max(0, Math.min(MAX_ARENA_LEVEL, Number.isFinite(state.fish.arenaLevel) ? state.fish.arenaLevel : 0));
+      const nextMembraneSide = "inside";
+      const currentArenaId = getArenaIdForLevel(arenaLevel);
       let nextFishX = safe.x;
       let nextFishY = safe.y;
-      let nextTargetX = targetX;
-      let nextTargetY = targetY;
-      let nextVx = limitedVx;
-      let nextVy = limitedVy;
-      let hasQuill = Boolean(state.fish.hasQuill);
-      const mouthNextX = nextX + Math.cos(currentAngle) * mouthOffset;
-      const mouthNextY = nextY + Math.sin(currentAngle) * mouthOffset;
-      const quillPickupX = 140;
-      const quillPickupY = -60;
-      if (!hasQuill && Math.hypot(mouthNextX - quillPickupX, mouthNextY - quillPickupY) < 84) {
-        hasQuill = true;
-      }
+      const nextTargetX = targetX;
+      const nextTargetY = targetY;
+      const nextVx = limitedVx;
+      const nextVy = limitedVy;
+      const hasQuill = Boolean(state.fish.hasQuill);
 
-      if (!state.fish.breachUsed && breachState !== "closed" && breachExpiresAt && now >= breachExpiresAt) {
-        breachOpen = false;
-        breachState = "closed";
-        breachExpiresAt = null;
-      }
-
-      if (!state.fish.breachUsed && (hitWall || nearWall) && hitDelayPassed) {
-        wallHitCount += 1;
+      if ((hitWall || nearWall) && hitDelayPassed) {
+        wallHitCount = Math.min(3, wallHitCount + 1);
         lastWallHitAt = now;
-        breachAngle = Math.atan2(nextY, nextX);
-        const shouldOpen = wallHitCount >= 1 || hasQuill;
-        if (shouldOpen) {
-          breachOpen = true;
-          breachOpenedAt = now;
-          breachState = "open";
-          breachExpiresAt = now + 2600;
-        }
       }
 
-      const nextAngleRaw = Math.atan2(nextFishY, nextFishX);
-      const openCorridor =
-        breachOpen &&
-        breachAngle !== null &&
-        Math.abs(Math.atan2(Math.sin(nextAngleRaw - breachAngle), Math.cos(nextAngleRaw - breachAngle))) <= BREACH_GAP_SPAN;
-
-      // Alternative au clamp strict: quand la brèche est ouverte, on autorise un couloir
-      // traversant localement la membrane pour rendre le percement fiable.
-      if (openCorridor) {
-        safe = { x: nextX, y: nextY };
-        nextFishX = safe.x;
-        nextFishY = safe.y;
-        breachState = "crossing";
-      }
-
-      // Depuis l'extérieur, l'entrée est autorisée uniquement via le fragment retiré.
-      if (isActuallyOutside && !openCorridor) {
-        const safeDistance = Math.hypot(nextFishX, nextFishY);
-        if (safeDistance < fishNavRadius) {
-          const lockDistance = fishNavRadius + FISH_MEMBRANE_BLOCK_RADIUS;
-          const nx = safeDistance > 0.0001 ? nextFishX / safeDistance : 1;
-          const ny = safeDistance > 0.0001 ? nextFishY / safeDistance : 0;
-          nextFishX = nx * lockDistance;
-          nextFishY = ny * lockDistance;
-        }
-      }
-
-      if (breachOpen && breachAngle !== null) {
-        const fishAngle = Math.atan2(nextFishY, nextFishX);
-        const delta = Math.atan2(
-          Math.sin(fishAngle - breachAngle),
-          Math.cos(fishAngle - breachAngle)
-        );
-        const radiusNow = Math.hypot(nextFishX, nextFishY);
-        const nearMembrane = radiusNow >= fishNavRadius - 42;
-        const radialX = Math.cos(breachAngle);
-        const radialY = Math.sin(breachAngle);
-        const speedForDot = Math.hypot(nextVx, nextVy) || 0.0001;
-        const velocityDot = ((radialX * nextVx) + (radialY * nextVy)) / speedForDot;
-        const pushingTowardBreach = velocityDot > 0.22;
-
-        const pushingInward = velocityDot < -0.22;
-        if (Math.abs(delta) <= BREACH_GAP_SPAN && pushingTowardBreach && membraneSide === "inside") {
-          arenaLevel = Math.min(MAX_ARENA_LEVEL, arenaLevel + 1);
-          currentArenaId = getArenaIdForLevel(arenaLevel);
-          nextMembraneSide = "outside";
-          nextFishX += radialX * 8;
-          nextFishY += radialY * 8;
-          nextTargetX = targetX;
-          nextTargetY = targetY;
-          wallHitCount = 0;
-          breachOpen = true;
-          breachState = "permanent";
-          breachOpenedAt = breachOpenedAt ?? now;
-          breachExpiresAt = null;
-          lastWallHitAt = now;
-        }
-        if (Math.abs(delta) <= BREACH_GAP_SPAN && nearMembrane && pushingInward && membraneSide === "outside") {
-          arenaLevel = Math.max(0, arenaLevel - 1);
-          currentArenaId = getArenaIdForLevel(arenaLevel);
-          nextMembraneSide = "inside";
-          nextFishX -= radialX * 8;
-          nextFishY -= radialY * 8;
-          nextTargetX = targetX;
-          nextTargetY = targetY;
-          lastWallHitAt = now;
-          breachOpen = true;
-          breachState = "permanent";
-          breachOpenedAt = breachOpenedAt ?? now;
-          breachExpiresAt = null;
-        }
+      if (isActuallyOutside) {
+        const lockDistance = fishNavRadius + FISH_MEMBRANE_BLOCK_RADIUS;
+        const safeDistance = Math.hypot(nextFishX, nextFishY) || 0.0001;
+        const nx = nextFishX / safeDistance;
+        const ny = nextFishY / safeDistance;
+        nextFishX = nx * lockDistance;
+        nextFishY = ny * lockDistance;
       }
 
       const speed = Math.hypot(limitedVx, limitedVy);
@@ -804,7 +719,7 @@ export const useSoonStore = create((set, get) => ({
           breachOpenedAt,
           breachState,
           breachExpiresAt,
-          breachUsed: state.fish.breachUsed || breachState === "permanent",
+          breachUsed: false,
           hasQuill,
           membraneSide: nextMembraneSide,
         },

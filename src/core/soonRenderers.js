@@ -2,7 +2,7 @@ import { distance, getBubbleVisualRadius } from "./geometry.js";
 import { drawPoissonPlume } from "./poissonPlumeRenderer.js";
 import { drawCharacters } from "./characters/characterEngine.js";
 import { drawOdysseoPath } from "./odysseoPath.js";
-import { ARENA_INNER_BOUNDARY_INSET, BREACH_GAP_SPAN, MEMBRANE_LEVEL_MULTIPLIERS } from "./constants.js";
+import { ARENA_INNER_BOUNDARY_INSET, MEMBRANE_LEVEL_MULTIPLIERS } from "./constants.js";
 import {
   drawFireflies,
   drawPlacedTriangles,
@@ -376,9 +376,6 @@ export function drawFish(ctx, fish, time) {
     const level = Number.isFinite(fish?.arenaLevel) ? fish.arenaLevel : 0;
     const safeLevel = Math.max(0, Math.min(MEMBRANE_LEVEL_MULTIPLIERS.length - 1, level));
     const membraneRadius = innerRadius * (MEMBRANE_LEVEL_MULTIPLIERS[safeLevel] ?? 1);
-    const breachOpen = Boolean(fish?.breachOpen);
-    const breachAngle = Number.isFinite(fish?.breachAngle) ? fish.breachAngle : null;
-    const breachSpan = breachOpen && breachAngle !== null ? BREACH_GAP_SPAN : 0;
     const membraneSide = fish?.membraneSide === "outside" ? "outside" : "inside";
     const clipPadding = 70;
     const fishDistance = Math.hypot(fish?.x || 0, fish?.y || 0);
@@ -396,19 +393,11 @@ export function drawFish(ctx, fish, time) {
 
     const clipPath = new Path2D();
     if (effectiveSide === "inside") {
-      if (breachSpan > 0) {
-        clipPath.arc(0, 0, membraneRadius + clipPadding, breachAngle + breachSpan, breachAngle - breachSpan + Math.PI * 2);
-      } else {
-        clipPath.arc(0, 0, membraneRadius + clipPadding, 0, Math.PI * 2);
-      }
+      clipPath.arc(0, 0, membraneRadius + clipPadding, 0, Math.PI * 2);
       ctx.clip(clipPath);
     } else {
       clipPath.arc(0, 0, outerWorldRadius, 0, Math.PI * 2);
-      if (breachSpan > 0) {
-        clipPath.arc(0, 0, membraneRadius - clipPadding * 0.4, breachAngle + breachSpan, breachAngle - breachSpan + Math.PI * 2);
-      } else {
-        clipPath.arc(0, 0, membraneRadius - clipPadding * 0.4, 0, Math.PI * 2);
-      }
+      clipPath.arc(0, 0, membraneRadius - clipPadding * 0.4, 0, Math.PI * 2);
       ctx.clip(clipPath, "evenodd");
     }
 
