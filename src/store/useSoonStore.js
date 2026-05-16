@@ -187,7 +187,6 @@ const initialState = {
   odysseoPathIndex: 0,
   odysseoDirection: 1,
   odysseoTool: "draw",
-  fishTrail: [],
   traceCircuit: saved?.traceCircuit || createSlalomCircuitFromBubbles(saved?.bubbles || defaultPack.bubbles),
   selectedBeaconId: null,
   circuitAutopilot: false,
