@@ -546,11 +546,19 @@ export const useSoonStore = create((set, get) => ({
       const mouthNextY = nextY + Math.sin(currentAngle) * mouthOffset;
       const quillPickupX = 140;
       const quillPickupY = -60;
-      if (!hasQuill && Math.hypot(mouthNextX - quillPickupX, mouthNextY - quillPickupY) < 54) {
+      if (!hasQuill && Math.hypot(mouthNextX - quillPickupX, mouthNextY - quillPickupY) < 84) {
         hasQuill = true;
       }
 
       if (hitWall && hitDelayPassed) {
+        const impactSpeed = Math.hypot(nextVx, nextVy);
+        const wallNormalX = nextDistance > 0.0001 ? nextX / nextDistance : 0;
+        const wallNormalY = nextDistance > 0.0001 ? nextY / nextDistance : 0;
+        const outwardPush = wallNormalX * nextVx + wallNormalY * nextVy;
+        const fishInitiatedImpact = outwardPush > 0.18 && impactSpeed > 0.25;
+        if (!fishInitiatedImpact) {
+          // On ignore les faux contacts "passifs" pour que l'ouverture soit bien déclenchée par le poisson.
+        } else {
         wallHitCount += 1;
         lastWallHitAt = now;
         breachAngle = Math.atan2(nextY, nextX);
@@ -562,13 +570,14 @@ export const useSoonStore = create((set, get) => ({
           breachOpen = true;
           breachOpenedAt = now;
         }
+        }
       }
 
       const nextAngleRaw = Math.atan2(nextY, nextX);
       const openCorridor =
         breachOpen &&
         breachAngle !== null &&
-        Math.abs(Math.atan2(Math.sin(nextAngleRaw - breachAngle), Math.cos(nextAngleRaw - breachAngle))) <= 0.4;
+        Math.abs(Math.atan2(Math.sin(nextAngleRaw - breachAngle), Math.cos(nextAngleRaw - breachAngle))) <= 0.62;
 
       // Alternative au clamp strict: quand la brèche est ouverte, on autorise un couloir
       // traversant localement la membrane pour rendre le percement fiable.
@@ -593,7 +602,7 @@ export const useSoonStore = create((set, get) => ({
         const pushingTowardBreach = velocityDot > 0.22;
 
         const pushingInward = velocityDot < -0.22;
-        if (Math.abs(delta) <= 0.4 && radiusNow >= fishNavRadius + 18 && pushingTowardBreach && arenaLevel < 2) {
+        if (Math.abs(delta) <= 0.62 && radiusNow >= fishNavRadius + 8 && pushingTowardBreach && arenaLevel < 2) {
           arenaLevel += 1;
           currentArenaId = `arene_${String(arenaLevel).padStart(4, "0")}`;
           nextFishX = 0;
@@ -608,7 +617,7 @@ export const useSoonStore = create((set, get) => ({
           breachOpenedAt = null;
           lastWallHitAt = now;
         }
-        if (Math.abs(delta) <= 0.4 && nearMembrane && pushingInward && arenaLevel > 0) {
+        if (Math.abs(delta) <= 0.62 && nearMembrane && pushingInward && arenaLevel > 0) {
           arenaLevel -= 1;
           currentArenaId = `arene_${String(arenaLevel).padStart(4, "0")}`;
           nextFishX = 0;
