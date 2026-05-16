@@ -644,8 +644,8 @@ export const useSoonStore = create((set, get) => ({
       let nextFishY = safe.y;
       const nextTargetX = targetX;
       const nextTargetY = targetY;
-      const nextVx = limitedVx;
-      const nextVy = limitedVy;
+      let nextVx = limitedVx;
+      let nextVy = limitedVy;
       const hasQuill = Boolean(state.fish.hasQuill);
 
       if ((hitWall || nearWall) && hitDelayPassed) {
@@ -669,7 +669,23 @@ export const useSoonStore = create((set, get) => ({
       const speedForDot = Math.hypot(nextVx, nextVy) || 0.0001;
       const radialDot = ((radialX * nextVx) + (radialY * nextVy)) / speedForDot;
       const nearMembrane = Math.abs(radialDistance - fishNavRadius) <= 48;
-      if (nearMembrane && isNearOpening(radialAngle, arenaLevel)) {
+      const nearOpening = isNearOpening(radialAngle, arenaLevel);
+
+      // Contour hermétique: hors ouverture, on interdit strictement la traversée radiale.
+      if (nearMembrane && !nearOpening) {
+        const tangentX = -radialY;
+        const tangentY = radialX;
+        const tangentialSpeed = (nextVx * tangentX) + (nextVy * tangentY);
+        nextVx = tangentX * tangentialSpeed;
+        nextVy = tangentY * tangentialSpeed;
+
+        const lockRadius = fishNavRadius - 4;
+        const clamped = clampToCircle({ x: nextFishX, y: nextFishY }, lockRadius);
+        nextFishX = clamped.x;
+        nextFishY = clamped.y;
+      }
+
+      if (nearMembrane && nearOpening) {
         if (radialDot > 0.22 && arenaLevel < MAX_ARENA_LEVEL) {
           const nextLevel = arenaLevel + 1;
           nextFishX += radialX * 16;
