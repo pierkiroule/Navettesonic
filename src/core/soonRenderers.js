@@ -31,7 +31,6 @@ export function drawScene(ctx, rect, time, refs) {
 
   if (!current.eyesClosed) {
     drawArenaNightSky(ctx, arenaRef, time);
-    drawArenaPulseHalo(ctx, arenaRef, time);
     drawEcosystemWorld(ctx, current, time);
     drawWorldParticles(ctx, arenaRef, time);
 
@@ -106,30 +105,21 @@ export function drawDepthVeil() {
 
 export function drawArenaBoundary(ctx, arenaRef, time) {
   const radius = arenaRef.current.radius;
-  const pulse = Math.sin(time * 0.0012) * 8;
+  const pulse = Math.sin(time * 0.001) * 2;
 
   ctx.save();
 
   ctx.beginPath();
   ctx.arc(0, 0, radius + pulse, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(125, 211, 252, 0.32)";
-  ctx.lineWidth = 8;
+  ctx.strokeStyle = "rgba(148, 163, 184, 0.45)";
+  ctx.lineWidth = 6;
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.arc(0, 0, radius - ARENA_INNER_BOUNDARY_INSET + pulse * 0.4, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
-  ctx.lineWidth = 2;
+  ctx.arc(0, 0, radius - ARENA_INNER_BOUNDARY_INSET, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(148, 163, 184, 0.3)";
+  ctx.lineWidth = 1.5;
   ctx.stroke();
-
-  const halo = ctx.createRadialGradient(0, 0, radius * 0.72, 0, 0, radius);
-  halo.addColorStop(0, "rgba(0,0,0,0)");
-  halo.addColorStop(1, "rgba(14,165,233,0.12)");
-
-  ctx.beginPath();
-  ctx.arc(0, 0, radius, 0, Math.PI * 2);
-  ctx.fillStyle = halo;
-  ctx.fill();
 
   ctx.restore();
 }
@@ -448,54 +438,6 @@ export function drawCameraVignette(ctx, rect, fish) {
   ctx.restore();
 }
 
-function getPolePrompt(fish, arenaRadius) {
-  if (!fish || !Number.isFinite(arenaRadius)) return null;
-
-  const navigableRadius = arenaRadius - ARENA_INNER_BOUNDARY_INSET;
-  const poleRadius = Math.max(0, navigableRadius - 8);
-  const detectRadius = 120;
-
-  const polePrompts = [
-    {
-      title: "",
-      question: "",
-      x: 0,
-      y: -poleRadius,
-    },
-    {
-      title: "",
-      question: "",
-      x: poleRadius,
-      y: 0,
-    },
-    {
-      title: "",
-      question: "",
-      x: 0,
-      y: poleRadius,
-    },
-    {
-      title: "",
-      question: "",
-      x: -poleRadius,
-      y: 0,
-    },
-  ];
-
-  let nearest = null;
-  let nearestDist = Infinity;
-  polePrompts.forEach((pole) => {
-    const dist = Math.hypot((fish.x || 0) - pole.x, (fish.y || 0) - pole.y);
-    if (dist < nearestDist) {
-      nearestDist = dist;
-      nearest = pole;
-    }
-  });
-
-  if (nearestDist > detectRadius) return null;
-  return nearest;
-}
-
 export function drawHud(ctx, rect, current, arenaRef) {
   const fishDepth = Math.round(current?.fish?.depth || 1);
   const showDepth = current.mode === "compo" || current.mode === "reso";
@@ -516,9 +458,6 @@ export function drawHud(ctx, rect, current, arenaRef) {
     ctx.textBaseline = "middle";
     ctx.fillText(`P${fishDepth}`, rect.width - 58, 33);
   }
-
-  const arenaRadius = arenaRef?.current?.radius || 1200;
-  const polePrompt = getPolePrompt(current?.fish, arenaRadius);
 
   if (!current.eyesClosed) {
     ctx.restore();
@@ -640,4 +579,3 @@ function initSeedTransporters(radius) {
     });
   }
 }
-
