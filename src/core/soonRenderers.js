@@ -163,7 +163,7 @@ export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
   ctx.save();
 
   for (let i = 0; i <= level; i += 1) {
-    const r = radius / Math.pow(3, level - i);
+    const r = radius * Math.pow(3, i);
     const isCurrent = i === level;
     strokeRing(
       r + (isCurrent ? pulse : 0),
@@ -393,6 +393,35 @@ export function drawFish(ctx, fish, time) {
   ctx.save();
 
   try {
+    const arenaRadius = Number.isFinite(fish?.arenaRadius) ? fish.arenaRadius : 1200;
+    const innerRadius = Math.max(0, arenaRadius - ARENA_INNER_BOUNDARY_INSET);
+    const level = Number.isFinite(fish?.arenaLevel) ? fish.arenaLevel : 0;
+    const membraneRadius = innerRadius * Math.pow(3, Math.max(0, level));
+    const breachOpen = Boolean(fish?.breachOpen);
+    const breachAngle = Number.isFinite(fish?.breachAngle) ? fish.breachAngle : null;
+    const breachSpan = breachOpen && breachAngle !== null ? BREACH_GAP_SPAN : 0;
+    const membraneSide = fish?.membraneSide === "outside" ? "outside" : "inside";
+    const clipPadding = 70;
+    const outerWorldRadius = membraneRadius + 2200;
+
+    ctx.beginPath();
+    if (membraneSide === "inside") {
+      if (breachSpan > 0) {
+        ctx.arc(0, 0, membraneRadius + clipPadding, breachAngle - breachSpan, breachAngle + breachSpan);
+        ctx.arc(0, 0, membraneRadius + clipPadding, breachAngle + breachSpan, breachAngle - breachSpan + Math.PI * 2);
+      } else {
+        ctx.arc(0, 0, membraneRadius + clipPadding, 0, Math.PI * 2);
+      }
+    } else {
+      ctx.arc(0, 0, outerWorldRadius, 0, Math.PI * 2);
+      if (breachSpan > 0) {
+        ctx.arc(0, 0, membraneRadius - clipPadding * 0.4, breachAngle + breachSpan, breachAngle - breachSpan + Math.PI * 2, true);
+      } else {
+        ctx.arc(0, 0, membraneRadius - clipPadding * 0.4, 0, Math.PI * 2, true);
+      }
+    }
+    ctx.clip();
+
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "source-over";
     ctx.shadowBlur = 0;
