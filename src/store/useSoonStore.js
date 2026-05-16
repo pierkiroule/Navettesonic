@@ -528,6 +528,7 @@ export const useSoonStore = create((set, get) => ({
       const nextDistance = Math.hypot(nextX, nextY);
       let safe = clampToCircle({ x: nextX, y: nextY }, fishNavRadius);
       const hitWall = nextDistance > fishNavRadius + 0.0001;
+      const nearWall = nextDistance >= fishNavRadius - 90;
       const hitDelayPassed = now - (state.fish.lastWallHitAt || 0) > 450;
 
       let wallHitCount = state.fish.wallHitCount || 0;
@@ -560,16 +561,16 @@ export const useSoonStore = create((set, get) => ({
         breachExpiresAt = null;
       }
 
-      if (hitWall && hitDelayPassed) {
+      if ((hitWall || nearWall) && hitDelayPassed) {
         wallHitCount += 1;
         lastWallHitAt = now;
         breachAngle = Math.atan2(nextY, nextX);
-        const shouldOpen = (wallHitCount >= 3 || hasQuill) && arenaLevel < 2;
+        const shouldOpen = (wallHitCount >= 1 || hasQuill) && arenaLevel < 2;
         if (shouldOpen) {
           breachOpen = true;
           breachOpenedAt = now;
           breachState = "open";
-          breachExpiresAt = now + 1800;
+          breachExpiresAt = now + 2600;
         }
       }
 
@@ -578,7 +579,7 @@ export const useSoonStore = create((set, get) => ({
         breachOpen &&
         (breachState === "open" || breachState === "crossing") &&
         breachAngle !== null &&
-        Math.abs(Math.atan2(Math.sin(nextAngleRaw - breachAngle), Math.cos(nextAngleRaw - breachAngle))) <= 0.78;
+        Math.abs(Math.atan2(Math.sin(nextAngleRaw - breachAngle), Math.cos(nextAngleRaw - breachAngle))) <= 1.15;
 
       // Alternative au clamp strict: quand la brèche est ouverte, on autorise un couloir
       // traversant localement la membrane pour rendre le percement fiable.
@@ -604,7 +605,7 @@ export const useSoonStore = create((set, get) => ({
         const pushingTowardBreach = velocityDot > 0.22;
 
         const pushingInward = velocityDot < -0.22;
-        if (Math.abs(delta) <= 0.78 && radiusNow >= fishNavRadius + 4 && pushingTowardBreach && arenaLevel < 2) {
+        if (Math.abs(delta) <= 1.15 && radiusNow >= fishNavRadius - 16 && pushingTowardBreach && arenaLevel < 2) {
           arenaLevel += 1;
           currentArenaId = `arene_${String(arenaLevel).padStart(4, "0")}`;
           nextFishX = 0;
