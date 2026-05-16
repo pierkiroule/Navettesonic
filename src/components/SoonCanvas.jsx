@@ -40,6 +40,9 @@ export default function SoonCanvas({
   onToggleBubbles,
   onSetBubblesIntensity,
   onResetFishContext,
+  worldGraph,
+  currentArenaId,
+  mazeByArena,
 }) {
   const canvasRef = useRef(null);
   const [semioseVideo, setSemioseVideo] = useState(null);
@@ -98,6 +101,9 @@ export default function SoonCanvas({
     depth,
     bubblesEnabled,
     bubblesIntensity,
+    worldGraph,
+    currentArenaId,
+    mazeByArena,
   });
 
   useEffect(() => {
@@ -120,6 +126,9 @@ export default function SoonCanvas({
       depth,
       bubblesEnabled,
       bubblesIntensity,
+      worldGraph,
+      currentArenaId,
+      mazeByArena,
     };
   }, [
     mode,
@@ -140,6 +149,9 @@ export default function SoonCanvas({
     depth,
     bubblesEnabled,
     bubblesIntensity,
+    worldGraph,
+    currentArenaId,
+    mazeByArena,
   ]);
 
   useSoonCanvasLoop({

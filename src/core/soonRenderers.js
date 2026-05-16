@@ -1,4 +1,5 @@
 import { distance, getBubbleVisualRadius } from "./geometry.js";
+import { getPortalAnchor } from "./labybulleWorld.js";
 import { drawPoissonPlume } from "./poissonPlumeRenderer.js";
 import { drawCharacters } from "./characters/characterEngine.js";
 import { drawOdysseoPath } from "./odysseoPath.js";
@@ -28,6 +29,8 @@ export function drawScene(ctx, rect, time, refs) {
   enterWorld(ctx, rect, cameraRef, stateRef);
 
   drawArenaBoundary(ctx, arenaRef, time);
+  drawMazeWalls(ctx, current);
+  drawArenaPortals(ctx, arenaRef, current);
 
   if (!current.eyesClosed) {
     drawArenaNightSky(ctx, arenaRef, time);
@@ -578,4 +581,57 @@ function initSeedTransporters(radius) {
       transitStartedAt: 0,
     });
   }
+}
+
+
+export function drawArenaPortals(ctx, arenaRef, current = {}) {
+  const radius = arenaRef.current?.radius || 1200;
+  const world = current.worldGraph;
+  const currentArenaId = current.currentArenaId;
+  if (!world || !currentArenaId) return;
+
+  const portals = (world.portals || []).filter((portal) => portal.fromArenaId === currentArenaId);
+  if (!portals.length) return;
+
+  ctx.save();
+  portals.forEach((portal, index) => {
+    const anchor = getPortalAnchor({
+      positionHint: portal.positionHint,
+      radius,
+      index,
+      total: portals.length,
+    });
+    const x = anchor.x;
+    const y = anchor.y;
+    const baseAngle = anchor.angle;
+
+    ctx.beginPath();
+    ctx.ellipse(x, y, 36, 18, baseAngle, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.8)";
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
+
+export function drawMazeWalls(ctx, current = {}) {
+  const maze = current?.mazeByArena?.[current?.currentArenaId];
+  if (!maze?.grid?.length) return;
+  const { size, cellSize, grid } = maze;
+  const half = (size * cellSize) / 2;
+
+  ctx.save();
+  ctx.fillStyle = "rgba(148, 163, 184, 0.22)";
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      if (grid[y][x] !== 1) continue;
+      const wx = -half + x * cellSize;
+      const wy = -half + y * cellSize;
+      ctx.fillRect(wx, wy, cellSize, cellSize);
+    }
+  }
+  ctx.restore();
 }

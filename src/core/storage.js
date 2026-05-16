@@ -6,6 +6,8 @@ export function saveState(state) {
     bubbles: state.bubbles,
     fish: state.fish,
     path: state.path,
+    currentArenaId: state.currentArenaId,
+    labybulleSeed: state.labybulleSeed,
   };
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));

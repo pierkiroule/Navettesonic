@@ -22,8 +22,15 @@ import {
   smoothLoopPoint,
 } from "../core/traceCircuit.js";
 import { getFishNavigableRadius } from "../core/constants.js";
+import { buildMazeByArena, buildWorldDebugSnapshot, clampPointToMaze, generateLabybulle, getPortalArrivalPosition, validateWorldGraph } from "../core/labybulleWorld.js";
 
 const saved = loadState();
+const labybulleWorld = generateLabybulle(saved?.labybulleSeed ?? 1);
+const worldErrors = validateWorldGraph(labybulleWorld);
+const mazeByArena = buildMazeByArena(labybulleWorld);
+if (worldErrors.length) {
+  console.warn("[labybulle] invalid generated world", worldErrors);
+}
 
 const DEFAULT_ARENA_RADIUS = 1200;
 const DEFAULT_FISH_NAV_RADIUS = getFishNavigableRadius(DEFAULT_ARENA_RADIUS);
@@ -152,6 +159,10 @@ const initialState = {
   circuitSegmentT: 0,
   path: saved?.path || [],
   eyesClosed: false,
+  labybulleSeed: saved?.labybulleSeed ?? 1,
+  worldGraph: labybulleWorld,
+  currentArenaId: saved?.currentArenaId || labybulleWorld.startArenaId,
+  mazeByArena,
 };
 
 function lerpAngle(current, target, amount) {
@@ -201,6 +212,55 @@ export const useSoonStore = create((set, get) => ({
     saveState(get());
   },
 
+
+
+  regenerateWorld: (seed = 1) => {
+    const nextWorld = generateLabybulle(seed);
+    const errors = validateWorldGraph(nextWorld);
+    if (errors.length) {
+      console.warn("[labybulle] invalid regenerated world", errors);
+    }
+
+    set({
+      labybulleSeed: seed,
+      worldGraph: nextWorld,
+      mazeByArena: buildMazeByArena(nextWorld),
+      currentArenaId: nextWorld.startArenaId,
+      fish: { ...get().fish, x: 0, y: 0, targetX: 0, targetY: -120 },
+    });
+    saveState(get());
+  },
+
+  travelToArena: ({ nextArenaId, fromArenaId, arenaRadius = DEFAULT_ARENA_RADIUS, entryPositionHint = null } = {}) => {
+    set((state) => {
+      const world = state.worldGraph;
+      if (!world?.nodes?.some((node) => node.id === nextArenaId)) return {};
+
+      const arrival = getPortalArrivalPosition({
+        world,
+        fromArenaId: fromArenaId || state.currentArenaId,
+        toArenaId: nextArenaId,
+        radius: arenaRadius,
+        entryPositionHint,
+      });
+
+      return {
+        currentArenaId: nextArenaId,
+        fish: {
+          ...state.fish,
+          x: arrival.x,
+          y: arrival.y,
+          targetX: arrival.x,
+          targetY: arrival.y,
+          vx: 0,
+          vy: 0,
+        },
+      };
+    });
+    saveState(get());
+  },
+
+  getWorldDebugSnapshot: () => buildWorldDebugSnapshot(get().worldGraph),
   toggleEyesClosed: () => {
     set((state) => ({ eyesClosed: !state.eyesClosed }));
     saveState(get());
@@ -289,7 +349,9 @@ export const useSoonStore = create((set, get) => ({
 
     if (state.circuitAutopilot) return;
 
-    const safe = clampToCircle({ x, y }, getFishMovementRadius(arenaRadius));
+    const safeCircle = clampToCircle({ x, y }, getFishMovementRadius(arenaRadius));
+    const maze = state.mazeByArena?.[state.currentArenaId];
+    const safe = clampPointToMaze({ x: safeCircle.x, y: safeCircle.y, maze });
 
     set((state) => {
       return {

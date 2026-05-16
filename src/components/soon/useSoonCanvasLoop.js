@@ -13,6 +13,7 @@ import { consumeSemioseVideoTrigger, updateFireflyGame } from "../../core/firefl
 import { updateEcosystemFx } from "../../core/ecosystemFx.js";
 import { updateBubbleAudioTriggers } from "../../core/soonAudioTriggers.js";
 import { drawScene } from "../../core/soonRenderers.js";
+import { getArenaRadiusForNode } from "../../core/labybulleWorld.js";
 import {
   getCharacterWorldEffects,
   updateCharacters,
@@ -50,9 +51,16 @@ export function useSoonCanvasLoop({
       const isEditMode = current.interactionMode === "edit";
 
       updateArena(arenaRef, rect);
+      const baseRadius = arenaRef.current.radius;
+      const runtimeRadius = getArenaRadiusForNode({
+        world: current.worldGraph,
+        arenaId: current.currentArenaId,
+        baseRadius,
+      });
+      arenaRef.current.radius = runtimeRadius;
       stateRef.current = {
         ...(stateRef.current || {}),
-        arenaRadius: arenaRef.current.radius,
+        arenaRadius: runtimeRadius,
       };
 
       if (current.mode === "reso" || current.mode === "compo") {
