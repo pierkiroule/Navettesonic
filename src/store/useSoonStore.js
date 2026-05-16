@@ -21,7 +21,7 @@ import {
   getCircuitSpeedValue,
   smoothLoopPoint,
 } from "../core/traceCircuit.js";
-import { BREACH_GAP_SPAN, getFishNavigableRadius } from "../core/constants.js";
+import { BREACH_GAP_SPAN, getFishNavigableRadius, MEMBRANE_LEVEL_MULTIPLIERS } from "../core/constants.js";
 import { buildMazeByArena, buildWorldDebugSnapshot, generateLabybulle, getPortalArrivalPosition, validateWorldGraph } from "../core/labybulleWorld.js";
 
 const saved = loadState();
@@ -36,6 +36,7 @@ const DEFAULT_ARENA_RADIUS = 1200;
 const DEFAULT_FISH_NAV_RADIUS = getFishNavigableRadius(DEFAULT_ARENA_RADIUS);
 const OUTSIDE_NAV_MAX_MULTIPLIER = Number.POSITIVE_INFINITY;
 const FISH_MEMBRANE_BLOCK_RADIUS = 42;
+const MAX_ARENA_LEVEL = 2;
 
 
 function getFishMovementRadius(arenaRadius) {
@@ -47,6 +48,13 @@ function getRuntimeFishNavRadius(arenaRadius) {
     return getFishNavigableRadius(arenaRadius);
   }
   return DEFAULT_FISH_NAV_RADIUS;
+}
+
+function getMembraneRadiusForLevel(arenaRadius, arenaLevel = 0) {
+  const base = getRuntimeFishNavRadius(arenaRadius);
+  const level = Math.max(0, Math.min(MAX_ARENA_LEVEL, Number.isFinite(arenaLevel) ? arenaLevel : 0));
+  const multiplier = MEMBRANE_LEVEL_MULTIPLIERS[level] ?? MEMBRANE_LEVEL_MULTIPLIERS[0];
+  return base * multiplier;
 }
 
 
@@ -578,7 +586,8 @@ export const useSoonStore = create((set, get) => ({
       const limitedVx = speedRaw > speedLimit ? (vx / speedRaw) * speedLimit : vx;
       const limitedVy = speedRaw > speedLimit ? (vy / speedRaw) * speedLimit : vy;
 
-      fishNavRadius = getFishMovementRadius(arenaRadius);
+      const currentArenaLevel = Number.isFinite(state.fish?.arenaLevel) ? state.fish.arenaLevel : 0;
+      fishNavRadius = getMembraneRadiusForLevel(arenaRadius, currentArenaLevel);
 
       const now = performance.now();
       const nextX = state.fish.x + limitedVx;
@@ -603,7 +612,7 @@ export const useSoonStore = create((set, get) => ({
       let breachOpenedAt = state.fish.breachOpenedAt ?? null;
       let breachState = state.fish.breachState || "closed";
       let breachExpiresAt = state.fish.breachExpiresAt ?? null;
-      let arenaLevel = Number.isFinite(state.fish.arenaLevel) ? state.fish.arenaLevel : 0;
+      let arenaLevel = Math.max(0, Math.min(MAX_ARENA_LEVEL, Number.isFinite(state.fish.arenaLevel) ? state.fish.arenaLevel : 0));
       let nextMembraneSide = membraneSide;
       let currentArenaId = state.currentArenaId;
       let nextFishX = safe.x;
@@ -683,7 +692,7 @@ export const useSoonStore = create((set, get) => ({
 
         const pushingInward = velocityDot < -0.22;
         if (Math.abs(delta) <= BREACH_GAP_SPAN && pushingTowardBreach && membraneSide === "inside") {
-          arenaLevel = Math.min(2, arenaLevel + 1);
+          arenaLevel = Math.min(MAX_ARENA_LEVEL, arenaLevel + 1);
           currentArenaId = `arene_${String(arenaLevel).padStart(4, "0")}`;
           nextMembraneSide = "outside";
           nextFishX += radialX * 8;
@@ -773,6 +782,7 @@ export const useSoonStore = create((set, get) => ({
           turnAmount: nextTurnAmount,
           turnVelocity: nextTurnVelocity,
           maxSpeed: state.fish.maxSpeed || 3.1,
+          arenaRadius,
           arenaLevel,
           wallHitCount,
           lastWallHitAt,

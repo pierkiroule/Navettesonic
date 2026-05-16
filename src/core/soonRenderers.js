@@ -2,7 +2,7 @@ import { distance, getBubbleVisualRadius } from "./geometry.js";
 import { drawPoissonPlume } from "./poissonPlumeRenderer.js";
 import { drawCharacters } from "./characters/characterEngine.js";
 import { drawOdysseoPath } from "./odysseoPath.js";
-import { ARENA_INNER_BOUNDARY_INSET, BREACH_GAP_SPAN } from "./constants.js";
+import { ARENA_INNER_BOUNDARY_INSET, BREACH_GAP_SPAN, MEMBRANE_LEVEL_MULTIPLIERS } from "./constants.js";
 import {
   drawFireflies,
   drawPlacedTriangles,
@@ -163,7 +163,7 @@ export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
   ctx.save();
 
   for (let i = 0; i <= level; i += 1) {
-    const r = radius / Math.pow(3, level - i);
+    const r = radius * (MEMBRANE_LEVEL_MULTIPLIERS[i] ?? MEMBRANE_LEVEL_MULTIPLIERS[0]);
     const isCurrent = i === level;
     strokeRing(
       r + (isCurrent ? pulse : 0),
@@ -393,6 +393,47 @@ export function drawFish(ctx, fish, time) {
   ctx.save();
 
   try {
+    const arenaRadius = Number.isFinite(fish?.arenaRadius) ? fish.arenaRadius : 1200;
+    const innerRadius = Math.max(0, arenaRadius - ARENA_INNER_BOUNDARY_INSET);
+    const level = Number.isFinite(fish?.arenaLevel) ? fish.arenaLevel : 0;
+    const safeLevel = Math.max(0, Math.min(MEMBRANE_LEVEL_MULTIPLIERS.length - 1, level));
+    const membraneRadius = innerRadius * (MEMBRANE_LEVEL_MULTIPLIERS[safeLevel] ?? 1);
+    const breachOpen = Boolean(fish?.breachOpen);
+    const breachAngle = Number.isFinite(fish?.breachAngle) ? fish.breachAngle : null;
+    const breachSpan = breachOpen && breachAngle !== null ? BREACH_GAP_SPAN : 0;
+    const membraneSide = fish?.membraneSide === "outside" ? "outside" : "inside";
+    const clipPadding = 70;
+    const fishDistance = Math.hypot(fish?.x || 0, fish?.y || 0);
+    // Sécurité anti-disparition: en transition de niveau, la side logique peut
+    // être en retard d'un frame. On se base aussi sur la position réelle.
+    const effectiveSide = fishDistance > membraneRadius + 16
+      ? "outside"
+      : fishDistance < membraneRadius - 16
+        ? "inside"
+        : membraneSide;
+    const outerWorldRadius = Math.max(
+      membraneRadius + 2200,
+      fishDistance + 1800
+    );
+
+    const clipPath = new Path2D();
+    if (effectiveSide === "inside") {
+      if (breachSpan > 0) {
+        clipPath.arc(0, 0, membraneRadius + clipPadding, breachAngle + breachSpan, breachAngle - breachSpan + Math.PI * 2);
+      } else {
+        clipPath.arc(0, 0, membraneRadius + clipPadding, 0, Math.PI * 2);
+      }
+      ctx.clip(clipPath);
+    } else {
+      clipPath.arc(0, 0, outerWorldRadius, 0, Math.PI * 2);
+      if (breachSpan > 0) {
+        clipPath.arc(0, 0, membraneRadius - clipPadding * 0.4, breachAngle + breachSpan, breachAngle - breachSpan + Math.PI * 2);
+      } else {
+        clipPath.arc(0, 0, membraneRadius - clipPadding * 0.4, 0, Math.PI * 2);
+      }
+      ctx.clip(clipPath, "evenodd");
+    }
+
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "source-over";
     ctx.shadowBlur = 0;
