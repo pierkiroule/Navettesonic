@@ -40,6 +40,19 @@ const FISH_MEMBRANE_BLOCK_RADIUS = 42;
 const MAX_ARENA_LEVEL = 2;
 
 
+function getArenaIdForLevel(level = 0) {
+  const normalized = Math.max(0, Math.min(MAX_ARENA_LEVEL, Number.isFinite(level) ? level : 0));
+  if (normalized === 0) return "arena-1";
+  if (normalized === 1) return "mega-1";
+  return "giga-1";
+}
+
+function getArenaLevelFromId(arenaId = "") {
+  if (arenaId === "giga-1") return 2;
+  if (arenaId === "mega-1") return 1;
+  return 0;
+}
+
 function getFishMovementRadius(arenaRadius) {
   return getRuntimeFishNavRadius(arenaRadius);
 }
@@ -180,6 +193,7 @@ const initialState = {
   fish: {
     ...defaultFish,
     ...(saved?.fish || {}),
+    arenaLevel: getArenaLevelFromId(saved?.currentArenaId || labybulleWorld.startArenaId),
   },
   fishTrail: saved?.fishTrail || [],
   selectedBubbleId: null,
@@ -262,7 +276,7 @@ export const useSoonStore = create((set, get) => ({
       worldGraph: nextWorld,
       mazeByArena: buildMazeByArena(nextWorld),
       currentArenaId: nextWorld.startArenaId,
-      fish: { ...get().fish, x: 0, y: 0, targetX: 0, targetY: -120 },
+      fish: { ...get().fish, x: 0, y: 0, targetX: 0, targetY: -120, arenaLevel: getArenaLevelFromId(nextWorld.startArenaId) },
     });
     saveState(get());
   },
@@ -284,12 +298,11 @@ export const useSoonStore = create((set, get) => ({
         currentArenaId: nextArenaId,
         fish: {
           ...state.fish,
-          x: arrival.x,
-          y: arrival.y,
           targetX: arrival.x,
           targetY: arrival.y,
-          vx: 0,
-          vy: 0,
+          vx: state.fish.vx * 0.2,
+          vy: state.fish.vy * 0.2,
+          arenaLevel: getArenaLevelFromId(nextArenaId),
         },
       };
     });
@@ -312,7 +325,7 @@ export const useSoonStore = create((set, get) => ({
         : Math.max(0, arenaLevel - 1);
 
       return {
-        currentArenaId: `arene_${String(nextArenaLevel).padStart(4, "0")}`,
+        currentArenaId: getArenaIdForLevel(nextArenaLevel),
         fish: {
           ...state.fish,
           membraneSide: nextMembraneSide,
@@ -693,7 +706,7 @@ export const useSoonStore = create((set, get) => ({
         const pushingInward = velocityDot < -0.22;
         if (Math.abs(delta) <= BREACH_GAP_SPAN && pushingTowardBreach && membraneSide === "inside") {
           arenaLevel = Math.min(MAX_ARENA_LEVEL, arenaLevel + 1);
-          currentArenaId = `arene_${String(arenaLevel).padStart(4, "0")}`;
+          currentArenaId = getArenaIdForLevel(arenaLevel);
           nextMembraneSide = "outside";
           nextFishX += radialX * 8;
           nextFishY += radialY * 8;
@@ -708,7 +721,7 @@ export const useSoonStore = create((set, get) => ({
         }
         if (Math.abs(delta) <= BREACH_GAP_SPAN && nearMembrane && pushingInward && membraneSide === "outside") {
           arenaLevel = Math.max(0, arenaLevel - 1);
-          currentArenaId = `arene_${String(arenaLevel).padStart(4, "0")}`;
+          currentArenaId = getArenaIdForLevel(arenaLevel);
           nextMembraneSide = "inside";
           nextFishX -= radialX * 8;
           nextFishY -= radialY * 8;
