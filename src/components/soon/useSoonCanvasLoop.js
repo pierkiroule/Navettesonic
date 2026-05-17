@@ -72,7 +72,6 @@ export function useSoonCanvasLoop({
 
       if (current.mode === "reso" || current.mode === "compo") {
         cameraRef.current.zoom = 1;
-        smoothFollowCameraToFish(current.fish);
       } else if (isEditMode) {
         if (!wasEditMode) {
           resetEditCamera(cameraRef, rect, arenaRef.current.radius);
@@ -80,7 +79,6 @@ export function useSoonCanvasLoop({
         clampEditCamera(cameraRef, rect, arenaRef.current.radius);
       } else {
         cameraRef.current.zoom = 1;
-        smoothFollowCameraToFish(current.fish);
       }
 
       wasEditMode = isEditMode;
@@ -97,6 +95,9 @@ export function useSoonCanvasLoop({
       }
 
       const next = stateRef.current || {};
+      if (!isEditMode) {
+        smoothFollowCameraToFish(next.fish);
+      }
 
       if (!isEditMode) {
         updateAmbientMix(next.bubbles || [], next.fish || null);
