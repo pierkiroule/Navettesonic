@@ -46,5 +46,5 @@ export const initialState = {
   worldGraph: labybulleWorld,
   currentArenaId: saved?.currentArenaId || labybulleWorld.startArenaId,
   mazeByArena,
-  roseFish: Array.isArray(saved?.roseFish) && saved.roseFish.length ? saved.roseFish : createRoseFishSchool(),
+  roseFish: createRoseFishSchool({ count: 10, center: { x: 0, y: 0 }, arenaLevel: 0 }),
 };

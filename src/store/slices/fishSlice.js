@@ -13,11 +13,11 @@ tickFish:({swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADIUS}={})=>set((s)=>{
   const next=tickFishEngine(s,{swimSpeed,arenaRadius});
   return {
     ...next,
-    roseFish: tickRoseFishSchool({
-      roseFish: Array.isArray(s.roseFish) && s.roseFish.length ? s.roseFish : createRoseFishSchool(),
-      fish: next.fish || s.fish,
-      arenaRadius,
-    }),
+    roseFish: tickRoseFishSchool(
+      Array.isArray(s.roseFish) ? s.roseFish : createRoseFishSchool({ count: 10, center: { x: 0, y: 0 }, arenaLevel: 0 }),
+      next.fish || s.fish,
+      { arenaRadius }
+    ),
   };
 }),
 startFishTrailAt:(x,y)=>set(()=>({fishTrail:startFishTrailAt(x,y)})),

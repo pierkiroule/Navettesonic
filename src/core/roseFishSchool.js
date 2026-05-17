@@ -1,66 +1,67 @@
-const ROSE_FISH_COUNT = 10;
 const FOLLOW_DURATION_MS = 30_000;
 const FOLLOW_TRIGGER_DISTANCE = 220;
 
-function makeRoseFish(index) {
-  const angle = (Math.PI * 2 * index) / ROSE_FISH_COUNT;
-  const radius = 180 + (index % 4) * 38;
+function buildRoseFish({ index = 0, count = 10, center = { x: 0, y: 0 }, arenaLevel = 0 }) {
+  const angle = (index / Math.max(1, count)) * Math.PI * 2;
+  const radius = 180 + index * 20;
   return {
     id: `rose-${index + 1}`,
-    x: Math.cos(angle) * radius,
-    y: Math.sin(angle) * radius,
-    vx: 0,
-    vy: 0,
+    x: (center.x || 0) + Math.cos(angle) * radius,
+    y: (center.y || 0) + Math.sin(angle) * radius,
+    vx: Math.cos(angle + Math.PI / 2) * 0.25,
+    vy: Math.sin(angle + Math.PI / 2) * 0.25,
+    size: 34,
+    alpha: 1,
+    arenaLevel,
     angle,
+    speed: 0.014 + (index % 3) * 0.002,
     orbitRadius: radius,
-    phase: index * 0.9,
-    speed: 0.015 + (index % 3) * 0.003,
     followUntil: 0,
   };
 }
 
-export function createRoseFishSchool() {
-  return Array.from({ length: ROSE_FISH_COUNT }, (_, index) => makeRoseFish(index));
+export function createRoseFishSchool({ count = 10, center = { x: 0, y: 0 }, arenaLevel = 0 } = {}) {
+  return Array.from({ length: Math.max(8, count) }, (_, index) =>
+    buildRoseFish({ index, count: Math.max(8, count), center, arenaLevel })
+  );
 }
 
-export function tickRoseFishSchool({ roseFish = [], fish, now = Date.now() }) {
-  if (!fish) return Array.isArray(roseFish) && roseFish.length ? roseFish : createRoseFishSchool();
-
+export function tickRoseFishSchool(roseFish = [], fish = {}, options = {}) {
+  const now = options.now || Date.now();
   const school = Array.isArray(roseFish) && roseFish.length
     ? roseFish
-    : createRoseFishSchool(fish);
+    : createRoseFishSchool({ count: 10, center: { x: 0, y: 0 }, arenaLevel: 0 });
+
+  const fx = fish?.x || 0;
+  const fy = fish?.y || 0;
 
   return school.map((item, index) => {
-    const nextAngle = (item.angle || 0) + (item.speed || 0.016);
-    const orbit = item.orbitRadius || (180 + (index % 4) * 38);
+    const angle = (item.angle || 0) + (item.speed || 0.014);
+    const orbit = Number.isFinite(item.orbitRadius) ? item.orbitRadius : (180 + index * 20);
+    const anchorX = Math.cos(angle) * orbit;
+    const anchorY = Math.sin(angle) * orbit;
 
-    const anchorX = Math.cos(nextAngle + (item.phase || 0)) * orbit;
-    const anchorY = Math.sin(nextAngle + (item.phase || 0)) * orbit;
-
-    const dxFish = (fish.x || 0) - (item.x || 0);
-    const dyFish = (fish.y || 0) - (item.y || 0);
-    const nearFish = Math.hypot(dxFish, dyFish) <= FOLLOW_TRIGGER_DISTANCE;
-    const followUntil = nearFish ? now + FOLLOW_DURATION_MS : (item.followUntil || 0);
+    const dFish = Math.hypot(fx - (item.x || 0), fy - (item.y || 0));
+    const followUntil = dFish <= FOLLOW_TRIGGER_DISTANCE ? now + FOLLOW_DURATION_MS : (item.followUntil || 0);
     const isFollowing = followUntil > now;
 
-    const targetX = isFollowing
-      ? (fish.x || 0) + Math.cos(nextAngle * 2 + index) * 90
-      : anchorX;
-    const targetY = isFollowing
-      ? (fish.y || 0) + Math.sin(nextAngle * 2 + index) * 56
-      : anchorY;
+    const targetX = isFollowing ? fx + Math.cos(angle * 2 + index) * 90 : anchorX;
+    const targetY = isFollowing ? fy + Math.sin(angle * 2 + index) * 56 : anchorY;
 
-    const vx = (item.vx || 0) * 0.8 + (targetX - (item.x || 0)) * 0.08;
-    const vy = (item.vy || 0) * 0.8 + (targetY - (item.y || 0)) * 0.08;
+    const vx = (item.vx || 0) * 0.82 + (targetX - (item.x || 0)) * 0.07;
+    const vy = (item.vy || 0) * 0.82 + (targetY - (item.y || 0)) * 0.07;
 
     return {
       ...item,
-      angle: nextAngle,
-      followUntil,
-      vx,
-      vy,
       x: (item.x || 0) + vx,
       y: (item.y || 0) + vy,
+      vx,
+      vy,
+      angle,
+      size: Math.max(34, Number(item.size) || 34),
+      alpha: 1,
+      arenaLevel: 0,
+      followUntil,
     };
   });
 }
