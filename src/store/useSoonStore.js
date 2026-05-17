@@ -23,7 +23,7 @@ import {
 } from "../core/traceCircuit.js";
 import { BREACH_GAP_SPAN, getFishNavigableRadius, MEMBRANE_LEVEL_MULTIPLIERS } from "../core/constants.js";
 import { SOON_MODE_COMPO, normalizeSoonMode } from "../core/uiState.js";
-import { buildMazeByArena, buildWorldDebugSnapshot, clampPointToMaze, generateLabybulle, getPortalArrivalPosition, validateWorldGraph } from "../core/labybulleWorld.js";
+import { buildMazeByArena, buildWorldDebugSnapshot, clampPointToMaze, generateLabybulle, getPortalArrivalPosition, getPortalOpeningAngle, getPortalOpeningHalfSpan, validateWorldGraph } from "../core/labybulleWorld.js";
 
 const saved = loadState();
 const labybulleWorld = generateLabybulle(saved?.labybulleSeed ?? 1);
@@ -38,16 +38,13 @@ const DEFAULT_FISH_NAV_RADIUS = getFishNavigableRadius(DEFAULT_ARENA_RADIUS);
 const MAX_ARENA_LEVEL = 2;
 
 
-const ARENA_OPENING_ANGLES = [-Math.PI / 2, 0, Math.PI];
-const ARENA_OPENING_HALF_SPAN = 0.22;
-
 function angleDistance(a, b) {
   return Math.atan2(Math.sin(a - b), Math.cos(a - b));
 }
 
-function isNearOpening(angle, level) {
-  const opening = ARENA_OPENING_ANGLES[Math.max(0, Math.min(MAX_ARENA_LEVEL, level))] ?? ARENA_OPENING_ANGLES[0];
-  return Math.abs(angleDistance(angle, opening)) <= ARENA_OPENING_HALF_SPAN;
+function isNearOpening(angle, openingAngle, openingHalfSpan) {
+  if (!Number.isFinite(openingAngle)) return false;
+  return Math.abs(angleDistance(angle, openingAngle)) <= openingHalfSpan;
 }
 
 function getArenaIdForLevel(level = 0) {
@@ -659,7 +656,18 @@ export const useSoonStore = create((set, get) => ({
       const speedForDot = Math.hypot(nextVx, nextVy) || 0.0001;
       const radialDot = ((radialX * nextVx) + (radialY * nextVy)) / speedForDot;
       const nearMembrane = Math.abs(radialDistance - fishNavRadius) <= 48;
-      const nearOpening = isNearOpening(radialAngle, arenaLevel);
+      const outwardLevel = Math.min(MAX_ARENA_LEVEL, arenaLevel + 1);
+      const inwardLevel = Math.max(0, arenaLevel - 1);
+      const outwardFromId = getArenaIdForLevel(arenaLevel);
+      const outwardToId = getArenaIdForLevel(outwardLevel);
+      const inwardFromId = outwardFromId;
+      const inwardToId = getArenaIdForLevel(inwardLevel);
+      const outwardOpeningAngle = getPortalOpeningAngle(labybulleWorld, outwardFromId, outwardToId);
+      const inwardOpeningAngle = getPortalOpeningAngle(labybulleWorld, inwardFromId, inwardToId);
+      const openingHalfSpan = getPortalOpeningHalfSpan({ radius: fishNavRadius });
+      const nearOpening = radialDot >= 0
+        ? isNearOpening(radialAngle, outwardOpeningAngle, openingHalfSpan)
+        : isNearOpening(radialAngle, inwardOpeningAngle, openingHalfSpan);
 
       // Contour hermétique: hors ouverture, on interdit strictement la traversée radiale.
       if (nearMembrane && !nearOpening) {

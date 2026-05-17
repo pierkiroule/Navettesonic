@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildMazeByArena, clampPointToMaze, generateLabybulle, validateWorldGraph, resolvePortalAtPosition, getPortalArrivalPosition, getArenaRadiusForNode, getPortalAnchor, POISSON_PLUME_WIDTH, PORTAL_WIDTH_MULTIPLIER } from '../src/core/labybulleWorld.js';
+import { buildMazeByArena, clampPointToMaze, generateLabybulle, validateWorldGraph, resolvePortalAtPosition, getPortalArrivalPosition, getArenaRadiusForNode, getPortalAnchor, getPortalOpeningHalfSpan, POISSON_PLUME_WIDTH, PORTAL_WIDTH_MULTIPLIER } from '../src/core/labybulleWorld.js';
 
 test('structure labybulle concentrique: 1 GIGA, 1 MEGA, 1 ARENA', () => {
   const world = generateLabybulle(42);
@@ -62,6 +62,14 @@ test('règles passages: largeur = 2x poisson-plume et bidirectionnels', () => {
     assert.equal(portal.passageWidth, expected);
     assert.equal(portal.bidirectional, true);
   });
+});
+
+test('ouverture contour: largeur géométrique alignée avec la largeur de passage', () => {
+  const expected = POISSON_PLUME_WIDTH * PORTAL_WIDTH_MULTIPLIER;
+  const radius = 1200;
+  const halfSpan = getPortalOpeningHalfSpan({ radius, passageWidth: expected });
+  const openingWidth = 2 * radius * halfSpan;
+  assert.ok(Math.abs(openingWidth - expected) < 0.01);
 });
 
 test('règles imbriquées: centres asymétriques pour les arènes internes', () => {

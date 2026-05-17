@@ -3,6 +3,7 @@ import { drawPoissonPlume } from "./poissonPlumeRenderer.js";
 import { drawCharacters } from "./characters/characterEngine.js";
 import { drawOdysseoPath } from "./odysseoPath.js";
 import { ARENA_INNER_BOUNDARY_INSET, MEMBRANE_LEVEL_MULTIPLIERS } from "./constants.js";
+import { getPortalOpeningAngle, getPortalOpeningHalfSpan } from "./labybulleWorld.js";
 import {
   drawFireflies,
   drawPlacedTriangles,
@@ -138,9 +139,6 @@ export function drawQuill(ctx, fish = {}, time = 0) {
   ctx.restore();
 }
 
-const CONTOUR_OPENING_HALF_SPAN = 0.22;
-const CONTOUR_OPENING_ANGLES = [-Math.PI / 2, 0, Math.PI];
-
 export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
   const radius = arenaRef.current.radius;
   void time;
@@ -153,11 +151,15 @@ export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
     radius * (MEMBRANE_LEVEL_MULTIPLIERS[1] ?? 1),
     radius * (MEMBRANE_LEVEL_MULTIPLIERS[2] ?? 1),
   ];
+  const arenaIds = ["arena-1", "mega-1", "giga-1"];
+  const targetIds = ["mega-1", "giga-1", "mega-1"];
+  const worldGraph = current?.worldGraph;
 
   rings.forEach((r, index) => {
     ctx.beginPath();
-    const opening = CONTOUR_OPENING_ANGLES[index] ?? CONTOUR_OPENING_ANGLES[0];
-    ctx.arc(0, 0, r, opening + CONTOUR_OPENING_HALF_SPAN, opening - CONTOUR_OPENING_HALF_SPAN + Math.PI * 2);
+    const opening = getPortalOpeningAngle(worldGraph, arenaIds[index], targetIds[index]) ?? (-Math.PI / 2);
+    const halfSpan = getPortalOpeningHalfSpan({ radius: r });
+    ctx.arc(0, 0, r, opening + halfSpan, opening - halfSpan + Math.PI * 2);
     ctx.strokeStyle = "rgba(0, 0, 0, 0.92)";
     ctx.lineWidth = 8;
     ctx.stroke();

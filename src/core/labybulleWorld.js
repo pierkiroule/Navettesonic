@@ -193,6 +193,19 @@ export function getPortalAnchor({ positionHint, radius = 1200, index = 0, total 
   return { x: Math.cos(angle) * (radius - 30), y: Math.sin(angle) * (radius - 30), angle };
 }
 
+export function getPortalOpeningAngle(world, fromArenaId, toArenaId) {
+  const portal = (world?.portals || []).find(
+    (item) => item.fromArenaId === fromArenaId && item.toArenaId === toArenaId
+  );
+  if (!portal) return null;
+  return getPortalAnchor({ positionHint: portal.positionHint, radius: 1 }).angle;
+}
+
+export function getPortalOpeningHalfSpan({ radius = 1200, passageWidth = POISSON_PLUME_WIDTH * PORTAL_WIDTH_MULTIPLIER }) {
+  const safeRadius = Math.max(1, radius);
+  return Math.min(Math.PI / 3, Math.max(0.03, (passageWidth / 2) / safeRadius));
+}
+
 export function resolvePortalAtPosition({ world, arenaId, x = 0, y = 0, radius = 1200, activationDistance = 78 }) {
   if (!world || !arenaId) return null;
   const portals = (world.portals || []).filter((portal) => portal.fromArenaId === arenaId);
