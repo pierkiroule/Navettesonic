@@ -65,7 +65,7 @@ export function drawScene(ctx, rect, time, refs) {
     }
   }
 
-  drawFish(ctx, current.fish, time);
+  drawFish(ctx, current.fish, time, current.worldGraph);
   drawQuill(ctx, current.fish, time);
 
   exitWorld(ctx);
@@ -371,7 +371,7 @@ export function drawNestedDepositFigure(ctx, bubble, radius, deposits = [], time
   ctx.restore();
 }
 
-export function drawFish(ctx, fish, time) {
+export function drawFish(ctx, fish, time, worldGraph) {
   if (!fish) return;
 
   ctx.save();
@@ -398,14 +398,16 @@ export function drawFish(ctx, fish, time) {
     );
 
     const clipPath = new Path2D();
+    const safeArenaId = safeLevel === 0 ? "arena-1" : safeLevel === 1 ? "mega-1" : "giga-1";
+    const transitionTargetId = safeLevel < 2 ? (safeLevel === 0 ? "mega-1" : "giga-1") : "mega-1";
+    const opening = getPortalOpeningAngle(worldGraph, safeArenaId, transitionTargetId) ?? (-Math.PI / 2);
+    const halfSpan = getPortalOpeningHalfSpan({ radius: membraneRadius });
     if (effectiveSide === "inside") {
-      const opening = CONTOUR_OPENING_ANGLES[safeLevel] ?? CONTOUR_OPENING_ANGLES[0];
-      clipPath.arc(0, 0, membraneRadius + clipPadding, opening + CONTOUR_OPENING_HALF_SPAN, opening - CONTOUR_OPENING_HALF_SPAN + Math.PI * 2);
+      clipPath.arc(0, 0, membraneRadius + clipPadding, opening + halfSpan, opening - halfSpan + Math.PI * 2);
       ctx.clip(clipPath);
     } else {
       clipPath.arc(0, 0, outerWorldRadius, 0, Math.PI * 2);
-      const opening = CONTOUR_OPENING_ANGLES[safeLevel] ?? CONTOUR_OPENING_ANGLES[0];
-      clipPath.arc(0, 0, membraneRadius - clipPadding * 0.4, opening + CONTOUR_OPENING_HALF_SPAN, opening - CONTOUR_OPENING_HALF_SPAN + Math.PI * 2);
+      clipPath.arc(0, 0, membraneRadius - clipPadding * 0.4, opening + halfSpan, opening - halfSpan + Math.PI * 2);
       ctx.clip(clipPath, "evenodd");
     }
 
