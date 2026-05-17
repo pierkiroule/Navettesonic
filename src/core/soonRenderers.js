@@ -361,12 +361,10 @@ export function drawRoseFish(ctx, roseFish = [], { fish = null, time = 0 } = {})
     return;
   }
 
-  const activeLevel = Number.isFinite(fish?.arenaLevel) ? fish.arenaLevel : null;
   ctx.save();
   ctx.globalCompositeOperation = "source-over";
 
   roseFish.forEach((item, index) => {
-    if (activeLevel !== null && item.arenaLevel !== activeLevel) return;
     const angle = Math.atan2(item.vy || 0.001, item.vx || 0.001);
     const size = Math.max(14, Number(item.size) || 16);
     const pulse = 0.92 + (Math.sin(time * 0.005 + index * 0.8) * 0.5 + 0.5) * 0.22;
