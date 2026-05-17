@@ -1,33 +1,55 @@
 const FOLLOW_DURATION_MS = 30_000;
-const FOLLOW_TRIGGER_DISTANCE = 220;
+const FOLLOW_TRIGGER_DISTANCE = 180;
+const LEVEL_COUNT = 3;
 
-function buildRoseFish({ index = 0, count = 10, center = { x: 0, y: 0 }, arenaLevel = 0 }) {
+function seeded(index, salt = 1) {
+  const n = Math.sin((index + 1) * 91.7 + salt * 37.1) * 43758.5453;
+  return n - Math.floor(n);
+}
+
+function wrapAngle(a = 0) {
+  let out = a;
+  while (out > Math.PI) out -= Math.PI * 2;
+  while (out < -Math.PI) out += Math.PI * 2;
+  return out;
+}
+
+function levelRadius(level = 0, arenaRadius = 1200) {
+  const safe = Math.max(300, arenaRadius);
+  if (level <= 0) return safe * 0.28;
+  if (level === 1) return safe * 0.5;
+  return safe * 0.72;
+}
+
+function makeRoseFish({ index = 0, count = 10, center = { x: 0, y: 0 }, arenaLevel = 0 }) {
   const angle = (index / Math.max(1, count)) * Math.PI * 2;
-  const radius = 180 + index * 20;
+  const radius = 120 + index * 18;
   return {
     id: `rose-${index + 1}`,
     x: (center.x || 0) + Math.cos(angle) * radius,
     y: (center.y || 0) + Math.sin(angle) * radius,
-    vx: Math.cos(angle + Math.PI / 2) * 0.25,
-    vy: Math.sin(angle + Math.PI / 2) * 0.25,
-    size: 34,
-    alpha: 1,
+    vx: Math.cos(angle + Math.PI / 2) * 0.8,
+    vy: Math.sin(angle + Math.PI / 2) * 0.8,
+    size: 16 + seeded(index, 2) * 8,
+    alpha: 0.95,
     arenaLevel,
-    angle,
-    speed: 0.014 + (index % 3) * 0.002,
-    orbitRadius: radius,
+    heading: angle,
+    turnRate: (seeded(index, 3) - 0.5) * 0.06,
+    speed: 0.8 + seeded(index, 4) * 1.6,
+    levelSwitchAt: Date.now() + 2500 + seeded(index, 5) * 5000,
     followUntil: 0,
   };
 }
 
 export function createRoseFishSchool({ count = 10, center = { x: 0, y: 0 }, arenaLevel = 0 } = {}) {
   return Array.from({ length: Math.max(8, count) }, (_, index) =>
-    buildRoseFish({ index, count: Math.max(8, count), center, arenaLevel })
+    makeRoseFish({ index, count: Math.max(8, count), center, arenaLevel: index % LEVEL_COUNT })
   );
 }
 
 export function tickRoseFishSchool(roseFish = [], fish = {}, options = {}) {
   const now = options.now || Date.now();
+  const arenaRadius = Number.isFinite(options.arenaRadius) ? options.arenaRadius : 1200;
   const school = Array.isArray(roseFish) && roseFish.length
     ? roseFish
     : createRoseFishSchool({ count: 10, center: { x: 0, y: 0 }, arenaLevel: 0 });
@@ -36,31 +58,55 @@ export function tickRoseFishSchool(roseFish = [], fish = {}, options = {}) {
   const fy = fish?.y || 0;
 
   return school.map((item, index) => {
-    const angle = (item.angle || 0) + (item.speed || 0.014);
-    const orbit = Number.isFinite(item.orbitRadius) ? item.orbitRadius : (180 + index * 20);
-    const anchorX = Math.cos(angle) * orbit;
-    const anchorY = Math.sin(angle) * orbit;
+    const oldLevel = Number.isFinite(item.arenaLevel) ? item.arenaLevel : (index % LEVEL_COUNT);
+    const shouldSwitch = now >= (item.levelSwitchAt || 0);
+    const nextLevel = shouldSwitch ? ((oldLevel + 1 + Math.floor(seeded(index, now * 0.001) * 2)) % LEVEL_COUNT) : oldLevel;
+    const nextSwitchAt = shouldSwitch ? now + 3500 + seeded(index, now * 0.002) * 8000 : (item.levelSwitchAt || now + 4000);
+
+    const noiseTurn = (Math.sin(now * 0.0012 + index * 1.7) + (seeded(index, now * 0.0007) - 0.5)) * 0.02;
+    const heading = wrapAngle((item.heading || 0) + (item.turnRate || 0) + noiseTurn);
+
+    const swimSpeed = Math.max(0.3, item.speed || 1.1);
+    let vx = Math.cos(heading) * swimSpeed;
+    let vy = Math.sin(heading) * swimSpeed;
 
     const dFish = Math.hypot(fx - (item.x || 0), fy - (item.y || 0));
     const followUntil = dFish <= FOLLOW_TRIGGER_DISTANCE ? now + FOLLOW_DURATION_MS : (item.followUntil || 0);
     const isFollowing = followUntil > now;
 
-    const targetX = isFollowing ? fx + Math.cos(angle * 2 + index) * 90 : anchorX;
-    const targetY = isFollowing ? fy + Math.sin(angle * 2 + index) * 56 : anchorY;
+    if (isFollowing) {
+      vx += ((fx - (item.x || 0)) / Math.max(30, dFish)) * 1.4;
+      vy += ((fy - (item.y || 0)) / Math.max(30, dFish)) * 1.4;
+    }
 
-    const vx = (item.vx || 0) * 0.82 + (targetX - (item.x || 0)) * 0.07;
-    const vy = (item.vy || 0) * 0.82 + (targetY - (item.y || 0)) * 0.07;
+    let nx = (item.x || 0) + vx;
+    let ny = (item.y || 0) + vy;
+
+    const band = levelRadius(nextLevel, arenaRadius);
+    const dist = Math.hypot(nx, ny);
+    const maxBand = band + 130;
+    const minBand = Math.max(40, band - 130);
+    if (dist > maxBand || dist < minBand) {
+      const target = dist > maxBand ? maxBand : minBand;
+      const sx = nx / Math.max(0.0001, dist);
+      const sy = ny / Math.max(0.0001, dist);
+      nx = sx * target;
+      ny = sy * target;
+      vx *= 0.6;
+      vy *= 0.6;
+    }
 
     return {
       ...item,
-      x: (item.x || 0) + vx,
-      y: (item.y || 0) + vy,
+      x: nx,
+      y: ny,
       vx,
       vy,
-      angle,
-      size: Math.max(34, Number(item.size) || 34),
-      alpha: 1,
-      arenaLevel: 0,
+      heading,
+      size: Math.max(14, Number(item.size) || 16),
+      alpha: 0.95,
+      arenaLevel: nextLevel,
+      levelSwitchAt: nextSwitchAt,
       followUntil,
     };
   });

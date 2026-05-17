@@ -350,54 +350,70 @@ export function drawRoseFish(ctx, roseFish = [], { fish = null, time = 0 } = {})
   if (!Array.isArray(roseFish) || !roseFish.length) {
     ctx.save();
     ctx.beginPath();
-    ctx.arc(0, 0, 80, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255, 0, 180, 0.92)";
+    ctx.arc(0, 0, 64, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255, 0, 180, 0.9)";
     ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.95)";
-    ctx.lineWidth = 6;
-    ctx.stroke();
     ctx.fillStyle = "white";
-    ctx.font = "700 22px system-ui";
+    ctx.font = "700 18px system-ui";
     ctx.textAlign = "center";
     ctx.fillText("NO ROSE FISH STATE", 0, 6);
     ctx.restore();
     return;
   }
+
+  const activeLevel = Number.isFinite(fish?.arenaLevel) ? fish.arenaLevel : null;
   ctx.save();
-  ctx.globalCompositeOperation = "screen";
-  roseFish.forEach((fish, index) => {
-    const pulse = Math.sin(time * 0.004 + index * 0.9) * 0.5 + 0.5;
-    const body = Math.max(28, Number(fish?.size) || 34) + pulse * 2;
-    const angle = Math.atan2(fish.vy || 0.001, fish.vx || 0.001);
+  ctx.globalCompositeOperation = "source-over";
+
+  roseFish.forEach((item, index) => {
+    if (activeLevel !== null && item.arenaLevel !== activeLevel) return;
+    const angle = Math.atan2(item.vy || 0.001, item.vx || 0.001);
+    const size = Math.max(14, Number(item.size) || 16);
+    const pulse = 0.92 + (Math.sin(time * 0.005 + index * 0.8) * 0.5 + 0.5) * 0.22;
+
     ctx.save();
-    ctx.translate(fish.x || 0, fish.y || 0);
+    ctx.translate(item.x || 0, item.y || 0);
     ctx.rotate(angle);
+
     ctx.beginPath();
-    ctx.ellipse(0, 0, body * 1.5, body, 0, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255, 0, 180, ${Math.max(0.9, Number(fish?.alpha) || 1)})`;
+    ctx.ellipse(-size * 0.75, 0, size * 0.85, size * 0.55, 0, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255, 125, 210, ${item.alpha || 0.95})`;
     ctx.fill();
 
     ctx.beginPath();
-    ctx.ellipse(0, 0, body * 2.3, body * 1.55, 0, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(255, 190, 232, ${0.65 + pulse * 0.2})`;
-    ctx.lineWidth = 5;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(-body * 1.2, 0);
-    ctx.lineTo(-body * 2.1, body * 0.8);
-    ctx.lineTo(-body * 2.1, -body * 0.8);
+    ctx.moveTo(-size * 1.55, 0);
+    ctx.lineTo(-size * 2.45, size * 0.7);
+    ctx.lineTo(-size * 2.45, -size * 0.7);
     ctx.closePath();
-    ctx.fillStyle = `rgba(255, 60, 200, ${Math.max(0.9, Number(fish?.alpha) || 1)})`;
+    ctx.fillStyle = `rgba(255, 155, 225, ${0.88 * pulse})`;
     ctx.fill();
+
     ctx.beginPath();
-    ctx.arc(0, 0, body * 2.1, 0, Math.PI * 2);
-    const glow = ctx.createRadialGradient(0, 0, body * 0.4, 0, 0, body * 3.2);
-    glow.addColorStop(0, "rgba(255, 170, 230, 0.55)");
-    glow.addColorStop(1, "rgba(255, 170, 230, 0)");
-    ctx.fillStyle = glow;
+    ctx.ellipse(-size * 0.15, 0, size * 1.25, size * 0.78, 0, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255, 95, 192, ${0.96 * pulse})`;
     ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.1, 0);
+    ctx.lineTo(size * 0.95, size * 0.42);
+    ctx.lineTo(size * 0.95, -size * 0.42);
+    ctx.closePath();
+    ctx.fillStyle = `rgba(255, 200, 238, ${0.95 * pulse})`;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(size * 0.55, -size * 0.12, size * 0.12, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.95)";
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(size * 0.6, -size * 0.12, size * 0.06, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(7,12,30,0.92)";
+    ctx.fill();
+
     ctx.restore();
   });
+
   ctx.restore();
 }
 
