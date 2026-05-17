@@ -18,6 +18,12 @@ export function getExternalBubblePose() {
   return { x: 0, y: 0, radius: 0 };
 }
 
+function getArenaTransitionIdsForLevel(level = 0) {
+  if (level <= 0) return { fromArenaId: "arena-1", toArenaId: "mega-1" };
+  if (level === 1) return { fromArenaId: "mega-1", toArenaId: "giga-1" };
+  return { fromArenaId: "giga-1", toArenaId: "mega-1" };
+}
+
 export function drawScene(ctx, rect, time, refs) {
   const { stateRef, arenaRef, cameraRef, enterWorld, exitWorld } = refs;
   const current = stateRef.current;
@@ -398,9 +404,8 @@ export function drawFish(ctx, fish, time, worldGraph) {
     );
 
     const clipPath = new Path2D();
-    const safeArenaId = safeLevel === 0 ? "arena-1" : safeLevel === 1 ? "mega-1" : "giga-1";
-    const transitionTargetId = safeLevel < 2 ? (safeLevel === 0 ? "mega-1" : "giga-1") : "mega-1";
-    const opening = getPortalOpeningAngle(worldGraph, safeArenaId, transitionTargetId) ?? (-Math.PI / 2);
+    const { fromArenaId, toArenaId } = getArenaTransitionIdsForLevel(safeLevel);
+    const opening = getPortalOpeningAngle(worldGraph, fromArenaId, toArenaId) ?? (-Math.PI / 2);
     const halfSpan = getPortalOpeningHalfSpan({ radius: membraneRadius });
     if (effectiveSide === "inside") {
       clipPath.arc(0, 0, membraneRadius + clipPadding, opening + halfSpan, opening - halfSpan + Math.PI * 2);

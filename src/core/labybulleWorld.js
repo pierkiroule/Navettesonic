@@ -22,6 +22,7 @@ const ARENA_RADIUS_MULTIPLIER = Object.freeze({
 
 export const POISSON_PLUME_WIDTH = 52;
 export const PORTAL_WIDTH_MULTIPLIER = 2;
+export const DEFAULT_PORTAL_PASSAGE_WIDTH = POISSON_PLUME_WIDTH * PORTAL_WIDTH_MULTIPLIER;
 
 export function getArenaRadiusMultiplier(type = ARENA_TYPES.ARENA) {
   return ARENA_RADIUS_MULTIPLIER[type] || ARENA_RADIUS_MULTIPLIER.ARENA;
@@ -45,7 +46,7 @@ function makeArenaNode({ id, type, parentId = null, childrenIds = [], centerOffs
 }
 
 function pushBidirectionalPortal(portals, fromArenaId, toArenaId, forwardHint, backwardHint) {
-  const passageWidth = POISSON_PLUME_WIDTH * PORTAL_WIDTH_MULTIPLIER;
+  const passageWidth = DEFAULT_PORTAL_PASSAGE_WIDTH;
   portals.push({
     id: `${fromArenaId}__to__${toArenaId}`,
     fromArenaId,
@@ -126,7 +127,7 @@ export function validateWorldGraph(world) {
   world.portals.forEach((portal) => {
     if (!nodeById.has(portal.fromArenaId)) errors.push(`portal.from invalide: ${portal.id}`);
     if (!nodeById.has(portal.toArenaId)) errors.push(`portal.to invalide: ${portal.id}`);
-    const expectedWidth = POISSON_PLUME_WIDTH * PORTAL_WIDTH_MULTIPLIER;
+    const expectedWidth = DEFAULT_PORTAL_PASSAGE_WIDTH;
     if (portal.passageWidth !== expectedWidth) {
       errors.push(`largeur passage invalide pour ${portal.id}: ${portal.passageWidth} (attendu ${expectedWidth})`);
     }
@@ -201,7 +202,7 @@ export function getPortalOpeningAngle(world, fromArenaId, toArenaId) {
   return getPortalAnchor({ positionHint: portal.positionHint, radius: 1 }).angle;
 }
 
-export function getPortalOpeningHalfSpan({ radius = 1200, passageWidth = POISSON_PLUME_WIDTH * PORTAL_WIDTH_MULTIPLIER }) {
+export function getPortalOpeningHalfSpan({ radius = 1200, passageWidth = DEFAULT_PORTAL_PASSAGE_WIDTH }) {
   const safeRadius = Math.max(1, radius);
   return Math.min(Math.PI / 3, Math.max(0.03, (passageWidth / 2) / safeRadius));
 }
