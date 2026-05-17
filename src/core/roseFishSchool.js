@@ -1,4 +1,5 @@
 import { getArenaIdForLevel, getPortalOpeningAngle, getPortalOpeningHalfSpan } from "./labybulleWorld.js";
+import { clampWithinBand } from "./arenaPhysics.js";
 
 const FOLLOW_DURATION_MS = 30_000;
 const FOLLOW_TRIGGER_DISTANCE = 180;
@@ -95,16 +96,11 @@ export function tickRoseFishSchool(roseFish = [], fish = {}, options = {}) {
     ? (() => {
       const next = school.slice();
       missingLevels.forEach((missingLevel) => {
-        const donorLevel = levelCounts.findIndex((count) => count > 1);
-        if (donorLevel < 0) return;
-        const donorIndex = next.findIndex((item) => Number.isFinite(item?.arenaLevel) && item.arenaLevel === donorLevel);
-        if (donorIndex < 0) return;
-        next[donorIndex] = { ...next[donorIndex], arenaLevel: missingLevel };
-        levelCounts[donorLevel] -= 1;
-        levelCounts[missingLevel] += 1;
-      });
-      return next;
-    })()
+    const clamped = clampWithinBand({ x: nx, y: ny, minRadius: minBand, maxRadius: maxBand, damping: 0.6, vx, vy });
+    nx = clamped.x;
+    ny = clamped.y;
+    vx = clamped.vx;
+    vy = clamped.vy;
     : school;
 
   const fx = fish?.x || 0;

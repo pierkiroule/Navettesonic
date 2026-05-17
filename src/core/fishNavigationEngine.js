@@ -1,5 +1,6 @@
 import { updateSnakeFishToTarget, createInitialSpine } from "./fishSnakeMotion.js";
 import { clampToCircle } from "./geometry.js";
+import { slideOnCircularWall } from "./arenaPhysics.js";
 import { getCircuitSpeedValue, smoothLoopPoint } from "./traceCircuit.js";
 import { getFishNavigableRadius, MEMBRANE_LEVEL_MULTIPLIERS } from "./constants.js";
 import { getArenaIdForLevel, getPortalOpeningAngle, getPortalOpeningHalfSpan } from "./labybulleWorld.js";
@@ -26,14 +27,11 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
   const radialDistance=Math.hypot(nextFishX,nextFishY), radialAngle=Math.atan2(nextFishY,nextFishX), radialX=Math.cos(radialAngle), radialY=Math.sin(radialAngle), radialDot=(radialX*nextVx+radialY*nextVy)/(Math.hypot(nextVx,nextVy)||0.0001); const outwardToId=arenaLevel<MAX_ARENA_LEVEL?getArenaIdForLevel(arenaLevel+1):null,inwardToId=arenaLevel>0?getArenaIdForLevel(arenaLevel-1):null; const activeWorld=state.worldGraph||labybulleWorld; const outwardOpeningAngle=outwardToId?getPortalOpeningAngle(activeWorld,getArenaIdForLevel(arenaLevel),outwardToId):null; const inwardOpeningAngle=inwardToId?getPortalOpeningAngle(activeWorld,getArenaIdForLevel(arenaLevel),inwardToId):null; const outerHalfSpan=getPortalOpeningHalfSpan({radius:outerNavRadius}); const innerHalfSpan=innerNavRadius>0?getPortalOpeningHalfSpan({radius:innerNavRadius}):0;
   const nearOuter=Math.abs(radialDistance-outerNavRadius)<=120, nearInner=innerNavRadius>0&&Math.abs(radialDistance-innerNavRadius)<=120, nearOut=isNearOpening(radialAngle,outwardOpeningAngle,outerHalfSpan), nearIn=innerNavRadius>0&&isNearOpening(radialAngle,inwardOpeningAngle,innerHalfSpan);
   if (nearOuter && !nearOut && radialDot > 0.02) {
-    const tx = -radialY;
-    const ty = radialX;
-    const ts = nextVx * tx + nextVy * ty;
-    nextVx = tx * ts;
-    nextVy = ty * ts;
-    const c = clampToCircle({ x: nextFishX, y: nextFishY }, outerNavRadius - 4);
-    nextFishX = c.x;
-    nextFishY = c.y;
+    const slid = slideOnCircularWall({ x: nextFishX, y: nextFishY, vx: nextVx, vy: nextVy, wallRadius: outerNavRadius, inwardOffset: 4 });
+    nextFishX = slid.x;
+    nextFishY = slid.y;
+    nextVx = slid.vx;
+    nextVy = slid.vy;
   }
   if (nearInner && !nearIn && radialDot < -0.02) {
     const tx = -radialY;
