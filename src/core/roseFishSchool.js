@@ -1,63 +1,88 @@
-const ROSE_FISH_COUNT = 12;
+const ROSE_FISH_COUNT = 14;
 const FOLLOW_DURATION_MS = 30_000;
-const FOLLOW_TRIGGER_DISTANCE = 145;
+const FOLLOW_TRIGGER_DISTANCE = 190;
+const ROSE_MIN_ORBIT = 0.28;
+const ROSE_MAX_ORBIT = 0.72;
 
-function levelByIndex(index = 0) {
-  return (Math.abs(index) % 2) + 1;
+function randSeed(index, salt = 1) {
+  const n = Math.sin((index + 1) * 127.1 + salt * 311.7) * 43758.5453;
+  return n - Math.floor(n);
 }
 
-export function createRoseFishSchool() {
-  return Array.from({ length: ROSE_FISH_COUNT }, (_, index) => ({
-    id: `rose-${index + 1}`,
-    angle: (Math.PI * 2 * index) / ROSE_FISH_COUNT,
-    orbit: 0.2 + (index % 4) * 0.17,
-    level: levelByIndex(index),
-    spawnRadiusFactor: 0.55 + (index % 5) * 0.08,
-    phase: index * 1.37,
-    speed: 0.00065 + (index % 3) * 0.00021,
-    followUntil: 0,
-    x: Math.cos((Math.PI * 2 * index) / ROSE_FISH_COUNT) * (1200 * (0.55 + (index % 5) * 0.08)),
-    y: Math.sin((Math.PI * 2 * index) / ROSE_FISH_COUNT) * (1200 * (0.55 + (index % 5) * 0.08)),
-    vx: 0,
-    vy: 0,
-  }));
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function clampToRadius(x, y, radius) {
+  const d = Math.hypot(x, y);
+  if (!Number.isFinite(d) || d <= radius) return { x, y };
+  const s = radius / Math.max(0.0001, d);
+  return { x: x * s, y: y * s };
+}
+
+function normalizeRoseFish(item = {}, index = 0, arenaRadius = 1200) {
+  const orbit = clamp(Number.isFinite(item.orbit) ? item.orbit : (ROSE_MIN_ORBIT + randSeed(index, 2) * (ROSE_MAX_ORBIT - ROSE_MIN_ORBIT)), ROSE_MIN_ORBIT, ROSE_MAX_ORBIT);
+  const angle = Number.isFinite(item.angle) ? item.angle : randSeed(index, 3) * Math.PI * 2;
+  const radius = arenaRadius * orbit;
+  const baseX = Number.isFinite(item.x) ? item.x : Math.cos(angle) * radius;
+  const baseY = Number.isFinite(item.y) ? item.y : Math.sin(angle) * radius;
+  return {
+    id: item.id || `rose-${index + 1}`,
+    orbit,
+    angle,
+    phase: Number.isFinite(item.phase) ? item.phase : randSeed(index, 4) * Math.PI * 2,
+    speed: Number.isFinite(item.speed) ? item.speed : 0.006 + randSeed(index, 5) * 0.005,
+    followUntil: Number.isFinite(item.followUntil) ? item.followUntil : 0,
+    x: baseX,
+    y: baseY,
+    vx: Number.isFinite(item.vx) ? item.vx : 0,
+    vy: Number.isFinite(item.vy) ? item.vy : 0,
+  };
+}
+
+export function createRoseFishSchool(arenaRadius = 1200) {
+  return Array.from({ length: ROSE_FISH_COUNT }, (_, index) => normalizeRoseFish({}, index, arenaRadius));
 }
 
 export function tickRoseFishSchool({ roseFish = [], fish, arenaRadius = 1200, now = Date.now() }) {
-  if (!Array.isArray(roseFish) || !roseFish.length || !fish) return roseFish;
+  if (!fish) return Array.isArray(roseFish) && roseFish.length ? roseFish : createRoseFishSchool(arenaRadius);
+
   const safeRadius = Math.max(220, Number.isFinite(arenaRadius) ? arenaRadius : 1200);
+  const school = Array.isArray(roseFish) && roseFish.length
+    ? roseFish.map((item, index) => normalizeRoseFish(item, index, safeRadius))
+    : createRoseFishSchool(safeRadius);
 
-  return roseFish.map((item, index) => {
-    const currentLevel = Number.isFinite(item.level) ? item.level : levelByIndex(index);
-    const travelBit = Math.floor((now * (0.00003 + index * 0.0000017)) % 2);
-    const nextLevel = travelBit === 0 ? currentLevel : (currentLevel === 1 ? 2 : 1);
-    const targetRadius = safeRadius * (nextLevel === 1 ? 0.72 : 1.03) * (0.45 + (item.orbit || item.spawnRadiusFactor || 0.2));
-    const nextAngle = (item.angle || 0) + (item.speed || 0.0008) * 16;
+  return school.map((item, index) => {
+    const nextAngle = item.angle + item.speed;
+    const orbitPulse = Math.sin(now * 0.00035 + item.phase + index * 0.4) * 0.08;
+    const orbitRadius = safeRadius * clamp(item.orbit + orbitPulse, ROSE_MIN_ORBIT, ROSE_MAX_ORBIT);
 
-    const anchorX = Math.cos(nextAngle + (item.phase || 0)) * targetRadius;
-    const anchorY = Math.sin(nextAngle + (item.phase || 0)) * targetRadius;
+    const anchorX = Math.cos(nextAngle + item.phase * 0.15) * orbitRadius;
+    const anchorY = Math.sin(nextAngle + item.phase * 0.15) * orbitRadius;
 
     const dxFish = (fish.x || 0) - (item.x || 0);
     const dyFish = (fish.y || 0) - (item.y || 0);
     const nearFish = Math.hypot(dxFish, dyFish) <= FOLLOW_TRIGGER_DISTANCE;
-    const followUntil = nearFish ? now + FOLLOW_DURATION_MS : (item.followUntil || 0);
+    const followUntil = nearFish ? now + FOLLOW_DURATION_MS : item.followUntil;
     const isFollowing = followUntil > now;
 
-    const targetX = isFollowing ? (fish.x || 0) + Math.cos(nextAngle * 2 + index) * 42 : anchorX;
-    const targetY = isFollowing ? (fish.y || 0) + Math.sin(nextAngle * 2 + index) * 24 : anchorY;
-    const vx = (item.vx || 0) * 0.86 + (targetX - (item.x || 0)) * 0.032;
-    const vy = (item.vy || 0) * 0.86 + (targetY - (item.y || 0)) * 0.032;
+    const targetX = isFollowing ? (fish.x || 0) + Math.cos(nextAngle * 1.9 + index) * 80 : anchorX;
+    const targetY = isFollowing ? (fish.y || 0) + Math.sin(nextAngle * 1.7 + index) * 54 : anchorY;
+
+    const vx = item.vx * 0.84 + (targetX - item.x) * 0.04;
+    const vy = item.vy * 0.84 + (targetY - item.y) * 0.04;
+    const unclampedX = item.x + vx;
+    const unclampedY = item.y + vy;
+    const bounded = clampToRadius(unclampedX, unclampedY, safeRadius * 0.86);
 
     return {
       ...item,
-      level: nextLevel,
       angle: nextAngle,
       followUntil,
-      vx,
-      vy,
-      x: (item.x || 0) + vx,
-      y: (item.y || 0) + vy,
+      vx: bounded.x !== unclampedX ? vx * 0.45 : vx,
+      vy: bounded.y !== unclampedY ? vy * 0.45 : vy,
+      x: bounded.x,
+      y: bounded.y,
     };
   });
 }
-
