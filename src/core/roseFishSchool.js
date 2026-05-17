@@ -1,5 +1,5 @@
 import { getArenaIdForLevel, getPortalOpeningAngle, getPortalOpeningHalfSpan } from "./labybulleWorld.js";
-import { clampWithinBand } from "./arenaPhysics.js";
+import { clampWithinBand, projectVelocityOnTangent } from "./arenaPhysics.js";
 
 const FOLLOW_DURATION_MS = 30_000;
 const FOLLOW_TRIGGER_DISTANCE = 180;
@@ -98,6 +98,12 @@ export function tickRoseFishSchool(roseFish = [], fish = {}, options = {}) {
       missingLevels.forEach((missingLevel) => {
     const clamped = clampWithinBand({ x: nx, y: ny, minRadius: minBand, maxRadius: maxBand, damping: 0.6, vx, vy });
     nx = clamped.x;
+    const nd = Math.hypot(nx, ny);
+    if (nd > maxBand || nd < minBand) {
+      const tangent = projectVelocityOnTangent({ x: nx, y: ny, vx, vy });
+      vx = tangent.vx;
+      vy = tangent.vy;
+    }
     ny = clamped.y;
     vx = clamped.vx;
     vy = clamped.vy;

@@ -53,3 +53,13 @@ export function slideOnInnerCircularWall({ x = 0, y = 0, vx = 0, vy = 0, wallRad
     vy: projectedVy,
   };
 }
+
+export function projectVelocityOnTangent({ x = 0, y = 0, vx = 0, vy = 0 }) {
+  const radialAngle = Math.atan2(y, x);
+  const radialY = Math.sin(radialAngle);
+  const radialX = Math.cos(radialAngle);
+  const tx = -radialY;
+  const ty = radialX;
+  const ts = vx * tx + vy * ty;
+  return { vx: tx * ts, vy: ty * ts };
+}
