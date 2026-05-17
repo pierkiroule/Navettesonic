@@ -351,21 +351,27 @@ export function drawRoseFish(ctx, roseFish = [], time = 0) {
   ctx.save();
   roseFish.forEach((fish, index) => {
     const pulse = Math.sin(time * 0.004 + index * 0.9) * 0.5 + 0.5;
-    const body = 8 + pulse * 3;
+    const body = 16 + pulse * 6;
     const angle = Math.atan2(fish.vy || 0.001, fish.vx || 0.001);
     ctx.save();
     ctx.translate(fish.x || 0, fish.y || 0);
     ctx.rotate(angle);
     ctx.beginPath();
     ctx.ellipse(0, 0, body * 1.5, body, 0, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255, 130, 206, ${0.72 + pulse * 0.2})`;
+    ctx.fillStyle = `rgba(255, 130, 206, ${0.86 + pulse * 0.12})`;
     ctx.fill();
+
+    ctx.beginPath();
+    ctx.ellipse(0, 0, body * 2.3, body * 1.55, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255, 190, 232, ${0.65 + pulse * 0.2})`;
+    ctx.lineWidth = 2.6;
+    ctx.stroke();
     ctx.beginPath();
     ctx.moveTo(-body * 1.2, 0);
     ctx.lineTo(-body * 2.1, body * 0.8);
     ctx.lineTo(-body * 2.1, -body * 0.8);
     ctx.closePath();
-    ctx.fillStyle = `rgba(255, 158, 222, ${0.62 + pulse * 0.2})`;
+    ctx.fillStyle = `rgba(255, 172, 228, ${0.82 + pulse * 0.14})`;
     ctx.fill();
     ctx.restore();
   });
