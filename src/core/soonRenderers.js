@@ -141,15 +141,16 @@ export function drawQuill(ctx, fish = {}, time = 0) {
 
 export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
   const radius = arenaRef.current.radius;
+  const innerRadius = Math.max(0, radius - ARENA_INNER_BOUNDARY_INSET);
   void time;
   void current;
 
   ctx.save();
 
   const rings = [
-    radius * (MEMBRANE_LEVEL_MULTIPLIERS[0] ?? 1),
-    radius * (MEMBRANE_LEVEL_MULTIPLIERS[1] ?? 1),
-    radius * (MEMBRANE_LEVEL_MULTIPLIERS[2] ?? 1),
+    innerRadius * (MEMBRANE_LEVEL_MULTIPLIERS[0] ?? 1),
+    innerRadius * (MEMBRANE_LEVEL_MULTIPLIERS[1] ?? 1),
+    innerRadius * (MEMBRANE_LEVEL_MULTIPLIERS[2] ?? 1),
   ];
   const worldGraph = current?.worldGraph;
 

@@ -47,6 +47,24 @@ function isNearOpening(angle, openingAngle, openingHalfSpan) {
   return Math.abs(angleDistance(angle, openingAngle)) <= openingHalfSpan;
 }
 
+function resolveOpeningContext({ world, arenaLevel, radialAngle, membraneRadius }) {
+  const safeLevel = Math.max(0, Math.min(MAX_ARENA_LEVEL, Number.isFinite(arenaLevel) ? arenaLevel : 0));
+  const outwardLevel = Math.min(MAX_ARENA_LEVEL, safeLevel + 1);
+  const inwardLevel = Math.max(0, safeLevel - 1);
+  const currentArenaId = getArenaIdForLevel(safeLevel);
+  const outwardToId = getArenaIdForLevel(outwardLevel);
+  const inwardToId = getArenaIdForLevel(inwardLevel);
+  const openingHalfSpan = getPortalOpeningHalfSpan({ radius: membraneRadius });
+  const outwardOpeningAngle = getPortalOpeningAngle(world, currentArenaId, outwardToId);
+  const inwardOpeningAngle = getPortalOpeningAngle(world, currentArenaId, inwardToId);
+  return {
+    outwardOpeningAngle,
+    inwardOpeningAngle,
+    nearOutwardOpening: isNearOpening(radialAngle, outwardOpeningAngle, openingHalfSpan),
+    nearInwardOpening: isNearOpening(radialAngle, inwardOpeningAngle, openingHalfSpan),
+  };
+}
+
 function getFishMovementRadius(arenaRadius) {
   return getRuntimeFishNavRadius(arenaRadius);
 }
@@ -623,19 +641,14 @@ export const useSoonStore = create((set, get) => ({
       const speedForDot = Math.hypot(nextVx, nextVy) || 0.0001;
       const radialDot = ((radialX * nextVx) + (radialY * nextVy)) / speedForDot;
       const nearMembrane = Math.abs(radialDistance - fishNavRadius) <= 48;
-      const outwardLevel = Math.min(MAX_ARENA_LEVEL, arenaLevel + 1);
-      const inwardLevel = Math.max(0, arenaLevel - 1);
-      const outwardFromId = getArenaIdForLevel(arenaLevel);
-      const outwardToId = getArenaIdForLevel(outwardLevel);
-      const inwardFromId = outwardFromId;
-      const inwardToId = getArenaIdForLevel(inwardLevel);
       const activeWorld = state.worldGraph || labybulleWorld;
-      const outwardOpeningAngle = getPortalOpeningAngle(activeWorld, outwardFromId, outwardToId);
-      const inwardOpeningAngle = getPortalOpeningAngle(activeWorld, inwardFromId, inwardToId);
-      const openingHalfSpan = getPortalOpeningHalfSpan({ radius: fishNavRadius });
-      const nearOpening = radialDot >= 0
-        ? isNearOpening(radialAngle, outwardOpeningAngle, openingHalfSpan)
-        : isNearOpening(radialAngle, inwardOpeningAngle, openingHalfSpan);
+      const { nearOutwardOpening, nearInwardOpening } = resolveOpeningContext({
+        world: activeWorld,
+        arenaLevel,
+        radialAngle,
+        membraneRadius: fishNavRadius,
+      });
+      const nearOpening = nearOutwardOpening || nearInwardOpening;
 
       // Contour hermétique: hors ouverture, on interdit strictement la traversée radiale.
       if (nearMembrane && !nearOpening) {
@@ -652,7 +665,7 @@ export const useSoonStore = create((set, get) => ({
       }
 
       if (nearMembrane && nearOpening) {
-        if (radialDot > 0.22 && arenaLevel < MAX_ARENA_LEVEL) {
+        if (radialDot > 0.22 && arenaLevel < MAX_ARENA_LEVEL && nearOutwardOpening) {
           const nextLevel = arenaLevel + 1;
           nextFishX += radialX * 16;
           nextFishY += radialY * 16;
@@ -690,7 +703,7 @@ export const useSoonStore = create((set, get) => ({
             },
           };
         }
-        if (radialDot < -0.22 && arenaLevel > 0) {
+        if (radialDot < -0.22 && arenaLevel > 0 && nearInwardOpening) {
           const nextLevel = arenaLevel - 1;
           nextFishX -= radialX * 16;
           nextFishY -= radialY * 16;
