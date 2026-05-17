@@ -3,7 +3,7 @@ import { tickFishEngine } from "../../core/fishNavigationEngine.js";
 import { clampDepth } from "../../core/fishBubblePhysics.js";
 import { startFishTrailAt, addFishTrailPoint } from "../../core/fishPathTrail.js";
 import { DEFAULT_ARENA_RADIUS } from "../soonInitialState.js";
-import { tickRoseFishSchool } from "../../core/roseFishSchool.js";
+import { createRoseFishSchool, tickRoseFishSchool } from "../../core/roseFishSchool.js";
 
 export const createFishSlice=(set,get)=>({
 setFishTarget:(x,y)=>{if(get().circuitAutopilot)return;set((s)=>({fish:{...s.fish,targetX:x,targetY:y}}));},
@@ -13,7 +13,11 @@ tickFish:({swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADIUS}={})=>set((s)=>{
   const next=tickFishEngine(s,{swimSpeed,arenaRadius});
   return {
     ...next,
-    roseFish: tickRoseFishSchool({ roseFish: s.roseFish, fish: next.fish || s.fish, arenaRadius }),
+    roseFish: tickRoseFishSchool({
+      roseFish: Array.isArray(s.roseFish) && s.roseFish.length ? s.roseFish : createRoseFishSchool(),
+      fish: next.fish || s.fish,
+      arenaRadius,
+    }),
   };
 }),
 startFishTrailAt:(x,y)=>set(()=>({fishTrail:startFishTrailAt(x,y)})),
