@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node --check src/core/roseFishSchool.js && vite build",
     "preview": "vite preview",
     "test": "node --test tests/*.test.mjs"
   },
