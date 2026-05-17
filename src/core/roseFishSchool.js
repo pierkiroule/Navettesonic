@@ -1,9 +1,9 @@
-const ROSE_FISH_COUNT = 8;
+const ROSE_FISH_COUNT = 12;
 const FOLLOW_DURATION_MS = 30_000;
 const FOLLOW_TRIGGER_DISTANCE = 145;
 
 function levelByIndex(index = 0) {
-  return Math.abs(index) % 3;
+  return (Math.abs(index) % 2) + 1;
 }
 
 export function createRoseFishSchool() {
@@ -12,11 +12,12 @@ export function createRoseFishSchool() {
     angle: (Math.PI * 2 * index) / ROSE_FISH_COUNT,
     orbit: 0.2 + (index % 4) * 0.17,
     level: levelByIndex(index),
+    spawnRadiusFactor: 0.55 + (index % 5) * 0.08,
     phase: index * 1.37,
     speed: 0.00065 + (index % 3) * 0.00021,
     followUntil: 0,
-    x: 0,
-    y: 0,
+    x: Math.cos((Math.PI * 2 * index) / ROSE_FISH_COUNT) * (1200 * (0.55 + (index % 5) * 0.08)),
+    y: Math.sin((Math.PI * 2 * index) / ROSE_FISH_COUNT) * (1200 * (0.55 + (index % 5) * 0.08)),
     vx: 0,
     vy: 0,
   }));
@@ -28,9 +29,9 @@ export function tickRoseFishSchool({ roseFish = [], fish, arenaRadius = 1200, no
 
   return roseFish.map((item, index) => {
     const currentLevel = Number.isFinite(item.level) ? item.level : levelByIndex(index);
-    const levelCycle = Math.floor((now * (0.00002 + index * 0.0000013)) % 3);
-    const nextLevel = (currentLevel + levelCycle) % 3;
-    const targetRadius = safeRadius * (0.3 + nextLevel * 0.25) * (0.55 + (item.orbit || 0.2));
+    const travelBit = Math.floor((now * (0.00003 + index * 0.0000017)) % 2);
+    const nextLevel = travelBit === 0 ? currentLevel : (currentLevel === 1 ? 2 : 1);
+    const targetRadius = safeRadius * (nextLevel === 1 ? 0.72 : 1.03) * (0.45 + (item.orbit || item.spawnRadiusFactor || 0.2));
     const nextAngle = (item.angle || 0) + (item.speed || 0.0008) * 16;
 
     const anchorX = Math.cos(nextAngle + (item.phase || 0)) * targetRadius;
