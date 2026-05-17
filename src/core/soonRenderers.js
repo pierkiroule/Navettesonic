@@ -151,25 +151,35 @@ export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
   const worldGraph = current?.worldGraph;
 
   rings.forEach((r, index) => {
-    const isCurrent = index === arenaLevel;
+    const isOuterWall = index === arenaLevel;
+    const isInnerWall = index === arenaLevel - 1;
+    const isActive = isOuterWall || isInnerWall;
     const { fromArenaId, toArenaId } = getArenaTransitionIdsForLevel(index);
-    const opening = getPortalOpeningAngle(worldGraph, fromArenaId, toArenaId) ?? (-Math.PI / 2);
-    const halfSpan = getPortalOpeningHalfSpan({ radius: r });
+    const opening = toArenaId
+      ? (getPortalOpeningAngle(worldGraph, fromArenaId, toArenaId) ?? (-Math.PI / 2))
+      : null;
+    const halfSpan = opening !== null ? getPortalOpeningHalfSpan({ radius: r }) : 0;
 
     ctx.beginPath();
-    ctx.arc(0, 0, r, opening + halfSpan, opening - halfSpan + Math.PI * 2);
-    ctx.strokeStyle = isCurrent
-      ? `rgba(125, 211, 252, ${0.5 + pulse * 0.28})`
-      : "rgba(15, 40, 70, 0.55)";
-    ctx.lineWidth = isCurrent ? 5 : 2.5;
+    if (opening !== null) {
+      ctx.arc(0, 0, r, opening + halfSpan, opening - halfSpan + Math.PI * 2);
+    } else {
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+    }
+    ctx.strokeStyle = isOuterWall
+      ? `rgba(125, 211, 252, ${0.55 + pulse * 0.3})`
+      : isInnerWall
+        ? `rgba(100, 180, 240, ${0.35 + pulse * 0.18})`
+        : "rgba(15, 40, 70, 0.45)";
+    ctx.lineWidth = isOuterWall ? 5 : isInnerWall ? 3.5 : 2;
     ctx.stroke();
 
-    if (index <= arenaLevel + 1) {
+    if (opening !== null && isActive) {
       const glowX = Math.cos(opening) * r;
       const glowY = Math.sin(opening) * r;
       const glowRadius = r * halfSpan * 3.5;
       const grad = ctx.createRadialGradient(glowX, glowY, 0, glowX, glowY, glowRadius);
-      const glowAlpha = isCurrent ? 0.3 + pulse * 0.18 : 0.1 + pulse * 0.07;
+      const glowAlpha = isOuterWall ? 0.32 + pulse * 0.2 : 0.18 + pulse * 0.12;
       grad.addColorStop(0, `rgba(34, 211, 238, ${glowAlpha})`);
       grad.addColorStop(1, "rgba(34, 211, 238, 0)");
       ctx.beginPath();

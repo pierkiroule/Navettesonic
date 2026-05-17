@@ -39,7 +39,7 @@ export function getArenaTransitionIdsForLevel(level = 0) {
   const fromArenaId = getArenaIdForLevel(level);
   if (level <= 0) return { fromArenaId, toArenaId: getArenaIdForLevel(1) };
   if (level === 1) return { fromArenaId, toArenaId: getArenaIdForLevel(2) };
-  return { fromArenaId, toArenaId: getArenaIdForLevel(1) };
+  return { fromArenaId, toArenaId: null };
 }
 
 export function getArenaRadiusMultiplier(type = ARENA_TYPES.ARENA) {
@@ -102,12 +102,10 @@ export function generateLabybulle(seed = 1) {
   const spin = Math.floor(rand() * 4);
   const hints = [PORTAL_POSITIONS.TOP, PORTAL_POSITIONS.RIGHT, PORTAL_POSITIONS.BOTTOM, PORTAL_POSITIONS.LEFT];
   const arenaToMega = hints[spin % hints.length];
-  const megaToArena = hints[(spin + 2) % hints.length];
   const megaToGiga = hints[(spin + 1) % hints.length];
-  const gigaToMega = hints[(spin + 3) % hints.length];
 
-  pushBidirectionalPortal(portals, arenaId, megaId, arenaToMega, megaToArena);
-  pushBidirectionalPortal(portals, megaId, gigaId, megaToGiga, gigaToMega);
+  pushBidirectionalPortal(portals, arenaId, megaId, arenaToMega, arenaToMega);
+  pushBidirectionalPortal(portals, megaId, gigaId, megaToGiga, megaToGiga);
 
   return {
     seed,

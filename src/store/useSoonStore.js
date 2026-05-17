@@ -47,23 +47,6 @@ function isNearOpening(angle, openingAngle, openingHalfSpan) {
   return Math.abs(angleDistance(angle, openingAngle)) <= openingHalfSpan;
 }
 
-function resolveOpeningContext({ world, arenaLevel, radialAngle, membraneRadius }) {
-  const safeLevel = Math.max(0, Math.min(MAX_ARENA_LEVEL, Number.isFinite(arenaLevel) ? arenaLevel : 0));
-  const outwardLevel = Math.min(MAX_ARENA_LEVEL, safeLevel + 1);
-  const inwardLevel = Math.max(0, safeLevel - 1);
-  const currentArenaId = getArenaIdForLevel(safeLevel);
-  const outwardToId = getArenaIdForLevel(outwardLevel);
-  const inwardToId = getArenaIdForLevel(inwardLevel);
-  const openingHalfSpan = getPortalOpeningHalfSpan({ radius: membraneRadius });
-  const outwardOpeningAngle = getPortalOpeningAngle(world, currentArenaId, outwardToId);
-  const inwardOpeningAngle = getPortalOpeningAngle(world, currentArenaId, inwardToId);
-  return {
-    outwardOpeningAngle,
-    inwardOpeningAngle,
-    nearOutwardOpening: isNearOpening(radialAngle, outwardOpeningAngle, openingHalfSpan),
-    nearInwardOpening: isNearOpening(radialAngle, inwardOpeningAngle, openingHalfSpan),
-  };
-}
 
 function getFishMovementRadius(arenaRadius) {
   return getRuntimeFishNavRadius(arenaRadius);
@@ -88,9 +71,6 @@ function clampDepth(depth) {
   return normalizeDepth(depth);
 }
 
-function clampFishToArenaLabyrinth(point) {
-  return point;
-}
 
 export function pushBubblesFromFish(bubbles = [], fish = {}, fishDepth = 1) {
   const depth = clampDepth(fishDepth);
@@ -423,33 +403,11 @@ export const useSoonStore = create((set, get) => ({
     });
   },
 
-  setFishTarget: (x, y, arenaRadius = DEFAULT_ARENA_RADIUS) => {
-    const state = get();
-
-    if (state.circuitAutopilot) return;
-
-    const navRadius = getFishMovementRadius(arenaRadius);
-    const fishDistance = Math.hypot(state.fish?.x || 0, state.fish?.y || 0);
-    const side = state.fish?.membraneSide === "outside" || fishDistance > navRadius + 24
-      ? "outside"
-      : "inside";
-    // Evite le bug "bloqué sur la ligne puis demi-tour":
-    // - inside: on garde une target possible au-delà de la membrane pour pousser la brèche.
-    // - outside: on interdit les targets trop proches de la membrane intérieure pour éviter
-    //   que le steering se retourne contre la ligne.
-    const safe = side === "outside"
-      ? { x, y }
-      : clampToCircle({ x, y }, Math.max(navRadius, arenaRadius * 1.9));
-
-    set((state) => {
-      return {
-        fish: {
-          ...state.fish,
-          targetX: safe.x,
-          targetY: safe.y,
-        },
-      };
-    });
+  setFishTarget: (x, y) => {
+    if (get().circuitAutopilot) return;
+    set((state) => ({
+      fish: { ...state.fish, targetX: x, targetY: y },
+    }));
   },
   recenterFish: () => {
     set((state) => {
@@ -595,151 +553,183 @@ export const useSoonStore = create((set, get) => ({
       const limitedVx = speedRaw > speedLimit ? (vx / speedRaw) * speedLimit : vx;
       const limitedVy = speedRaw > speedLimit ? (vy / speedRaw) * speedLimit : vy;
 
-      const currentArenaLevel = Number.isFinite(state.fish?.arenaLevel) ? state.fish.arenaLevel : 0;
-      fishNavRadius = getMembraneRadiusForLevel(arenaRadius, currentArenaLevel);
+      const arenaLevel = Math.max(0, Math.min(MAX_ARENA_LEVEL, Number.isFinite(state.fish.arenaLevel) ? state.fish.arenaLevel : 0));
+      const outerNavRadius = getMembraneRadiusForLevel(arenaRadius, arenaLevel);
+      const innerNavRadius = arenaLevel > 0 ? getMembraneRadiusForLevel(arenaRadius, arenaLevel - 1) : 0;
+      fishNavRadius = outerNavRadius;
 
       const now = performance.now();
-      const nextX = state.fish.x + limitedVx;
-      const nextY = state.fish.y + limitedVy;
-      const nextDistance = Math.hypot(nextX, nextY);
-      const circularSafe = clampToCircle({ x: nextX, y: nextY }, fishNavRadius);
-      let safe = clampFishToArenaLabyrinth(circularSafe, state.mazeByArena, state.currentArenaId);
-      const hitWall = nextDistance > fishNavRadius + 0.0001;
-      const nearWall = nextDistance >= fishNavRadius - 90;
-      const hitDelayPassed = now - (state.fish.lastWallHitAt || 0) > 450;
+      let nextFishX = state.fish.x + limitedVx;
+      let nextFishY = state.fish.y + limitedVy;
+      let nextVx = limitedVx;
+      let nextVy = limitedVy;
+      const nextTargetX = targetX;
+      const nextTargetY = targetY;
+      const hasQuill = Boolean(state.fish.hasQuill);
+      const nextMembraneSide = "inside";
+      const currentArenaId = getArenaIdForLevel(arenaLevel);
 
       let wallHitCount = state.fish.wallHitCount || 0;
       let lastWallHitAt = state.fish.lastWallHitAt || 0;
+      const hitDelayPassed = now - lastWallHitAt > 450;
       const breachOpen = false;
       const breachAngle = null;
       const breachOpenedAt = null;
       const breachState = "closed";
       const breachExpiresAt = null;
-      const arenaLevel = Math.max(0, Math.min(MAX_ARENA_LEVEL, Number.isFinite(state.fish.arenaLevel) ? state.fish.arenaLevel : 0));
-      const nextMembraneSide = "inside";
-      const currentArenaId = getArenaIdForLevel(arenaLevel);
-      let nextFishX = safe.x;
-      let nextFishY = safe.y;
-      const nextTargetX = targetX;
-      const nextTargetY = targetY;
-      let nextVx = limitedVx;
-      let nextVy = limitedVy;
-      const hasQuill = Boolean(state.fish.hasQuill);
 
-      if ((hitWall || nearWall) && hitDelayPassed) {
-        wallHitCount = Math.min(3, wallHitCount + 1);
-        lastWallHitAt = now;
+      // Clamp fish to its annular region [innerNavRadius, outerNavRadius].
+      const rawDistance = Math.hypot(nextFishX, nextFishY);
+      if (rawDistance > outerNavRadius) {
+        const sc = clampToCircle({ x: nextFishX, y: nextFishY }, outerNavRadius);
+        nextFishX = sc.x;
+        nextFishY = sc.y;
+        if (rawDistance > outerNavRadius + 0.5 && hitDelayPassed) {
+          wallHitCount = Math.min(3, wallHitCount + 1);
+          lastWallHitAt = now;
+        }
+      } else if (innerNavRadius > 0 && rawDistance < innerNavRadius) {
+        const d = rawDistance || 0.0001;
+        nextFishX = (nextFishX / d) * (innerNavRadius + 2);
+        nextFishY = (nextFishY / d) * (innerNavRadius + 2);
+        if (hitDelayPassed) {
+          wallHitCount = Math.min(3, wallHitCount + 1);
+          lastWallHitAt = now;
+        }
       }
-
 
       const radialDistance = Math.hypot(nextFishX, nextFishY);
       const radialAngle = Math.atan2(nextFishY, nextFishX);
       const radialX = Math.cos(radialAngle);
       const radialY = Math.sin(radialAngle);
       const speedForDot = Math.hypot(nextVx, nextVy) || 0.0001;
-      const radialDot = ((radialX * nextVx) + (radialY * nextVy)) / speedForDot;
-      const nearMembrane = Math.abs(radialDistance - fishNavRadius) <= 120;
-      const activeWorld = state.worldGraph || labybulleWorld;
-      const { nearOutwardOpening, nearInwardOpening } = resolveOpeningContext({
-        world: activeWorld,
-        arenaLevel,
-        radialAngle,
-        membraneRadius: fishNavRadius,
-      });
-      const nearOpening = nearOutwardOpening || nearInwardOpening;
+      const radialDot = (radialX * nextVx + radialY * nextVy) / speedForDot;
 
-      // Contour hermétique: hors ouverture, on interdit strictement la traversée radiale.
-      if (nearMembrane && !nearOpening) {
+      const activeWorld = state.worldGraph || labybulleWorld;
+      const outwardToId = arenaLevel < MAX_ARENA_LEVEL ? getArenaIdForLevel(arenaLevel + 1) : null;
+      const inwardToId = arenaLevel > 0 ? getArenaIdForLevel(arenaLevel - 1) : null;
+
+      const outwardOpeningAngle = outwardToId
+        ? getPortalOpeningAngle(activeWorld, currentArenaId, outwardToId)
+        : null;
+      const inwardOpeningAngle = inwardToId
+        ? getPortalOpeningAngle(activeWorld, currentArenaId, inwardToId)
+        : null;
+
+      const outerHalfSpan = getPortalOpeningHalfSpan({ radius: outerNavRadius });
+      const innerHalfSpan = innerNavRadius > 0 ? getPortalOpeningHalfSpan({ radius: innerNavRadius }) : 0;
+
+      const nearOuterMembrane = Math.abs(radialDistance - outerNavRadius) <= 120;
+      const nearInnerMembrane = innerNavRadius > 0 && Math.abs(radialDistance - innerNavRadius) <= 120;
+      const nearOutwardOpening = isNearOpening(radialAngle, outwardOpeningAngle, outerHalfSpan);
+      const nearInwardOpening = innerNavRadius > 0 && isNearOpening(radialAngle, inwardOpeningAngle, innerHalfSpan);
+
+      // Outer wall: hermetic except at outward portal.
+      if (nearOuterMembrane && !nearOutwardOpening) {
         const tangentX = -radialY;
         const tangentY = radialX;
-        const tangentialSpeed = (nextVx * tangentX) + (nextVy * tangentY);
+        const tangentialSpeed = nextVx * tangentX + nextVy * tangentY;
         nextVx = tangentX * tangentialSpeed;
         nextVy = tangentY * tangentialSpeed;
-
-        const lockRadius = fishNavRadius - 4;
-        const clamped = clampToCircle({ x: nextFishX, y: nextFishY }, lockRadius);
+        const clamped = clampToCircle({ x: nextFishX, y: nextFishY }, outerNavRadius - 4);
         nextFishX = clamped.x;
         nextFishY = clamped.y;
       }
 
-      if (nearMembrane && nearOpening) {
-        if (radialDot > 0.1 && arenaLevel < MAX_ARENA_LEVEL && nearOutwardOpening) {
-          const nextLevel = arenaLevel + 1;
-          nextFishX += radialX * 16;
-          nextFishY += radialY * 16;
-          const destinationNavRadius = getMembraneRadiusForLevel(arenaRadius, nextLevel);
-          const destinationCircularSafe = clampToCircle({ x: nextFishX, y: nextFishY }, destinationNavRadius - 4);
-          const destinationSafe = clampFishToArenaLabyrinth(destinationCircularSafe, state.mazeByArena, getArenaIdForLevel(nextLevel));
-          nextFishX = destinationSafe.x;
-          nextFishY = destinationSafe.y;
-          return {
-            circuitAutopilot,
-            circuitSegmentIndex,
-            circuitSegmentT,
-            bubbles: separateBubblesByDepth(pushBubblesFromFish(state.bubbles, safe, fishDepth)),
-            currentArenaId: getArenaIdForLevel(nextLevel),
-            fish: {
-              ...state.fish,
-              x: nextFishX,
-              y: nextFishY,
-              vx: nextVx,
-              vy: nextVy,
-              targetX,
-              targetY,
-              arenaRadius,
-              arenaLevel: nextLevel,
-              membraneSide: "inside",
-              wallHitCount,
-              lastWallHitAt,
-              breachOpen: false,
-              breachAngle: null,
-              breachOpenedAt: null,
-              breachState: "closed",
-              breachExpiresAt: null,
-              breachUsed: false,
-              hasQuill,
-            },
-          };
-        }
-        if (radialDot < -0.1 && arenaLevel > 0 && nearInwardOpening) {
-          const nextLevel = arenaLevel - 1;
-          nextFishX -= radialX * 16;
-          nextFishY -= radialY * 16;
-          const destinationNavRadius = getMembraneRadiusForLevel(arenaRadius, nextLevel);
-          const destinationCircularSafe = clampToCircle({ x: nextFishX, y: nextFishY }, destinationNavRadius - 4);
-          const destinationSafe = clampFishToArenaLabyrinth(destinationCircularSafe, state.mazeByArena, getArenaIdForLevel(nextLevel));
-          nextFishX = destinationSafe.x;
-          nextFishY = destinationSafe.y;
-          return {
-            circuitAutopilot,
-            circuitSegmentIndex,
-            circuitSegmentT,
-            bubbles: separateBubblesByDepth(pushBubblesFromFish(state.bubbles, safe, fishDepth)),
-            currentArenaId: getArenaIdForLevel(nextLevel),
-            fish: {
-              ...state.fish,
-              x: nextFishX,
-              y: nextFishY,
-              vx: nextVx,
-              vy: nextVy,
-              targetX,
-              targetY,
-              arenaRadius,
-              arenaLevel: nextLevel,
-              membraneSide: "inside",
-              wallHitCount,
-              lastWallHitAt,
-              breachOpen: false,
-              breachAngle: null,
-              breachOpenedAt: null,
-              breachState: "closed",
-              breachExpiresAt: null,
-              breachUsed: false,
-              hasQuill,
-            },
-          };
-        }
+      // Inner wall: hermetic except at inward portal.
+      if (nearInnerMembrane && !nearInwardOpening) {
+        const tangentX = -radialY;
+        const tangentY = radialX;
+        const tangentialSpeed = nextVx * tangentX + nextVy * tangentY;
+        nextVx = tangentX * tangentialSpeed;
+        nextVy = tangentY * tangentialSpeed;
+        const d = Math.hypot(nextFishX, nextFishY) || 0.0001;
+        nextFishX = (nextFishX / d) * (innerNavRadius + 4);
+        nextFishY = (nextFishY / d) * (innerNavRadius + 4);
       }
+
+      // Outward transition: cross outer wall through portal opening.
+      if (nearOuterMembrane && nearOutwardOpening && radialDot > 0.1 && arenaLevel < MAX_ARENA_LEVEL) {
+        const nextLevel = arenaLevel + 1;
+        nextFishX += radialX * 20;
+        nextFishY += radialY * 20;
+        const destOuter = getMembraneRadiusForLevel(arenaRadius, nextLevel);
+        const destInner = outerNavRadius;
+        const sc = clampToCircle({ x: nextFishX, y: nextFishY }, destOuter - 4);
+        const scDist = Math.hypot(sc.x, sc.y) || 0.0001;
+        const minR = destInner + 12;
+        nextFishX = scDist < minR ? (sc.x / scDist) * minR : sc.x;
+        nextFishY = scDist < minR ? (sc.y / scDist) * minR : sc.y;
+        return {
+          circuitAutopilot,
+          circuitSegmentIndex,
+          circuitSegmentT,
+          bubbles: separateBubblesByDepth(pushBubblesFromFish(state.bubbles, { x: nextFishX, y: nextFishY }, fishDepth)),
+          currentArenaId: getArenaIdForLevel(nextLevel),
+          fish: {
+            ...state.fish,
+            x: nextFishX,
+            y: nextFishY,
+            vx: nextVx,
+            vy: nextVy,
+            targetX,
+            targetY,
+            arenaRadius,
+            arenaLevel: nextLevel,
+            membraneSide: "inside",
+            wallHitCount,
+            lastWallHitAt,
+            breachOpen: false,
+            breachAngle: null,
+            breachOpenedAt: null,
+            breachState: "closed",
+            breachExpiresAt: null,
+            breachUsed: false,
+            hasQuill,
+          },
+        };
+      }
+
+      // Inward transition: cross inner wall through portal opening.
+      if (nearInnerMembrane && nearInwardOpening && radialDot < -0.1 && arenaLevel > 0) {
+        const nextLevel = arenaLevel - 1;
+        nextFishX -= radialX * 20;
+        nextFishY -= radialY * 20;
+        const destOuter = getMembraneRadiusForLevel(arenaRadius, nextLevel);
+        const sc = clampToCircle({ x: nextFishX, y: nextFishY }, destOuter - 4);
+        nextFishX = sc.x;
+        nextFishY = sc.y;
+        return {
+          circuitAutopilot,
+          circuitSegmentIndex,
+          circuitSegmentT,
+          bubbles: separateBubblesByDepth(pushBubblesFromFish(state.bubbles, { x: nextFishX, y: nextFishY }, fishDepth)),
+          currentArenaId: getArenaIdForLevel(nextLevel),
+          fish: {
+            ...state.fish,
+            x: nextFishX,
+            y: nextFishY,
+            vx: nextVx,
+            vy: nextVy,
+            targetX,
+            targetY,
+            arenaRadius,
+            arenaLevel: nextLevel,
+            membraneSide: "inside",
+            wallHitCount,
+            lastWallHitAt,
+            breachOpen: false,
+            breachAngle: null,
+            breachOpenedAt: null,
+            breachState: "closed",
+            breachExpiresAt: null,
+            breachUsed: false,
+            hasQuill,
+          },
+        };
+      }
+
+      const safe = { x: nextFishX, y: nextFishY };
 
       const speed = Math.hypot(limitedVx, limitedVy);
 
