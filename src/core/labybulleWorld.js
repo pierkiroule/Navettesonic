@@ -20,6 +20,9 @@ const ARENA_RADIUS_MULTIPLIER = Object.freeze({
   GIGA: 3.6,
 });
 
+export const POISSON_PLUME_WIDTH = 52;
+export const PORTAL_WIDTH_MULTIPLIER = 2;
+
 export function getArenaRadiusMultiplier(type = ARENA_TYPES.ARENA) {
   return ARENA_RADIUS_MULTIPLIER[type] || ARENA_RADIUS_MULTIPLIER.ARENA;
 }
@@ -37,17 +40,19 @@ function createSeededRandom(seed = 1) {
   };
 }
 
-function makeArenaNode({ id, type, parentId = null, childrenIds = [] }) {
-  return { id, type, parentId, childrenIds: [...childrenIds] };
+function makeArenaNode({ id, type, parentId = null, childrenIds = [], centerOffset = { x: 0, y: 0 } }) {
+  return { id, type, parentId, childrenIds: [...childrenIds], centerOffset: { x: centerOffset.x || 0, y: centerOffset.y || 0 } };
 }
 
 function pushBidirectionalPortal(portals, fromArenaId, toArenaId, forwardHint, backwardHint) {
+  const passageWidth = POISSON_PLUME_WIDTH * PORTAL_WIDTH_MULTIPLIER;
   portals.push({
     id: `${fromArenaId}__to__${toArenaId}`,
     fromArenaId,
     toArenaId,
     positionHint: forwardHint,
-    bidirectional: false,
+    bidirectional: true,
+    passageWidth,
   });
 
   portals.push({
@@ -55,7 +60,8 @@ function pushBidirectionalPortal(portals, fromArenaId, toArenaId, forwardHint, b
     fromArenaId: toArenaId,
     toArenaId: fromArenaId,
     positionHint: backwardHint,
-    bidirectional: false,
+    bidirectional: true,
+    passageWidth,
   });
 }
 
@@ -68,9 +74,11 @@ export function generateLabybulle(seed = 1) {
   const megaId = "mega-1";
   const gigaId = "giga-1";
 
-  nodes.push(makeArenaNode({ id: gigaId, type: ARENA_TYPES.GIGA, childrenIds: [megaId] }));
-  nodes.push(makeArenaNode({ id: megaId, type: ARENA_TYPES.MEGA, parentId: gigaId, childrenIds: [arenaId] }));
-  nodes.push(makeArenaNode({ id: arenaId, type: ARENA_TYPES.ARENA, parentId: megaId }));
+  const asymX = Math.round((rand() - 0.5) * 420);
+  const asymY = Math.round((rand() - 0.5) * 420);
+  nodes.push(makeArenaNode({ id: gigaId, type: ARENA_TYPES.GIGA, childrenIds: [megaId], centerOffset: { x: 0, y: 0 } }));
+  nodes.push(makeArenaNode({ id: megaId, type: ARENA_TYPES.MEGA, parentId: gigaId, childrenIds: [arenaId], centerOffset: { x: asymX, y: asymY } }));
+  nodes.push(makeArenaNode({ id: arenaId, type: ARENA_TYPES.ARENA, parentId: megaId, centerOffset: { x: Math.round(asymX * 0.5), y: Math.round(asymY * 0.5) } }));
 
   const spin = Math.floor(rand() * 4);
   const hints = [PORTAL_POSITIONS.TOP, PORTAL_POSITIONS.RIGHT, PORTAL_POSITIONS.BOTTOM, PORTAL_POSITIONS.LEFT];
@@ -118,6 +126,21 @@ export function validateWorldGraph(world) {
   world.portals.forEach((portal) => {
     if (!nodeById.has(portal.fromArenaId)) errors.push(`portal.from invalide: ${portal.id}`);
     if (!nodeById.has(portal.toArenaId)) errors.push(`portal.to invalide: ${portal.id}`);
+    const expectedWidth = POISSON_PLUME_WIDTH * PORTAL_WIDTH_MULTIPLIER;
+    if (portal.passageWidth !== expectedWidth) {
+      errors.push(`largeur passage invalide pour ${portal.id}: ${portal.passageWidth} (attendu ${expectedWidth})`);
+    }
+    if (portal.bidirectional !== true) {
+      errors.push(`passage non bidirectionnel pour ${portal.id}`);
+    }
+  });
+
+  world.nodes.forEach((node) => {
+    if (node.type === ARENA_TYPES.GIGA) return;
+    const offset = node.centerOffset || {};
+    if ((offset.x || 0) === 0 && (offset.y || 0) === 0) {
+      errors.push(`arena imbriquée centrée interdite: ${node.id}`);
+    }
   });
 
   gigaNodes.forEach((giga) => {
