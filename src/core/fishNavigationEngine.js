@@ -1,6 +1,6 @@
 import { updateSnakeFishToTarget, createInitialSpine } from "./fishSnakeMotion.js";
 import { clampToCircle } from "./geometry.js";
-import { slideOnCircularWall } from "./arenaPhysics.js";
+import { slideOnCircularWall, slideOnInnerCircularWall } from "./arenaPhysics.js";
 import { getCircuitSpeedValue, smoothLoopPoint } from "./traceCircuit.js";
 import { getFishNavigableRadius, MEMBRANE_LEVEL_MULTIPLIERS } from "./constants.js";
 import { getArenaIdForLevel, getPortalOpeningAngle, getPortalOpeningHalfSpan } from "./labybulleWorld.js";
@@ -34,14 +34,11 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
     nextVy = slid.vy;
   }
   if (nearInner && !nearIn && radialDot < -0.02) {
-    const tx = -radialY;
-    const ty = radialX;
-    const ts = nextVx * tx + nextVy * ty;
-    nextVx = tx * ts;
-    nextVy = ty * ts;
-    const d = Math.hypot(nextFishX, nextFishY) || 0.0001;
-    nextFishX = (nextFishX / d) * (innerNavRadius + 4);
-    nextFishY = (nextFishY / d) * (innerNavRadius + 4);
+    const slid = slideOnInnerCircularWall({ x: nextFishX, y: nextFishY, vx: nextVx, vy: nextVy, wallRadius: innerNavRadius, outwardOffset: 4 });
+    nextFishX = slid.x;
+    nextFishY = slid.y;
+    nextVx = slid.vx;
+    nextVy = slid.vy;
   }
 
   if (nearOuter && nearOut && radialDot > 0.1 && arenaLevel < MAX_ARENA_LEVEL) {

@@ -34,3 +34,22 @@ export function slideOnCircularWall({ x = 0, y = 0, vx = 0, vy = 0, wallRadius =
     vy: projectedVy,
   };
 }
+
+export function slideOnInnerCircularWall({ x = 0, y = 0, vx = 0, vy = 0, wallRadius = 0, outwardOffset = 4 }) {
+  const radialAngle = Math.atan2(y, x);
+  const radialX = Math.cos(radialAngle);
+  const radialY = Math.sin(radialAngle);
+  const tx = -radialY;
+  const ty = radialX;
+  const ts = vx * tx + vy * ty;
+  const projectedVx = tx * ts;
+  const projectedVy = ty * ts;
+  const dist = Math.hypot(x, y) || 0.0001;
+  const targetRadius = Math.max(1, wallRadius + outwardOffset);
+  return {
+    x: (x / dist) * targetRadius,
+    y: (y / dist) * targetRadius,
+    vx: projectedVx,
+    vy: projectedVy,
+  };
+}
