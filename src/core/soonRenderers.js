@@ -3,7 +3,7 @@ import { drawPoissonPlume } from "./poissonPlumeRenderer.js";
 import { drawCharacters } from "./characters/characterEngine.js";
 import { drawOdysseoPath } from "./odysseoPath.js";
 import { ARENA_INNER_BOUNDARY_INSET, MEMBRANE_LEVEL_MULTIPLIERS } from "./constants.js";
-import { getPortalOpeningAngle, getPortalOpeningHalfSpan } from "./labybulleWorld.js";
+import { getArenaTransitionIdsForLevel, getPortalOpeningAngle, getPortalOpeningHalfSpan } from "./labybulleWorld.js";
 import {
   drawFireflies,
   drawPlacedTriangles,
@@ -16,12 +16,6 @@ import {
 
 export function getExternalBubblePose() {
   return { x: 0, y: 0, radius: 0 };
-}
-
-function getArenaTransitionIdsForLevel(level = 0) {
-  if (level <= 0) return { fromArenaId: "arena-1", toArenaId: "mega-1" };
-  if (level === 1) return { fromArenaId: "mega-1", toArenaId: "giga-1" };
-  return { fromArenaId: "giga-1", toArenaId: "mega-1" };
 }
 
 export function drawScene(ctx, rect, time, refs) {
@@ -157,13 +151,12 @@ export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
     radius * (MEMBRANE_LEVEL_MULTIPLIERS[1] ?? 1),
     radius * (MEMBRANE_LEVEL_MULTIPLIERS[2] ?? 1),
   ];
-  const arenaIds = ["arena-1", "mega-1", "giga-1"];
-  const targetIds = ["mega-1", "giga-1", "mega-1"];
   const worldGraph = current?.worldGraph;
 
   rings.forEach((r, index) => {
     ctx.beginPath();
-    const opening = getPortalOpeningAngle(worldGraph, arenaIds[index], targetIds[index]) ?? (-Math.PI / 2);
+    const { fromArenaId, toArenaId } = getArenaTransitionIdsForLevel(index);
+    const opening = getPortalOpeningAngle(worldGraph, fromArenaId, toArenaId) ?? (-Math.PI / 2);
     const halfSpan = getPortalOpeningHalfSpan({ radius: r });
     ctx.arc(0, 0, r, opening + halfSpan, opening - halfSpan + Math.PI * 2);
     ctx.strokeStyle = "rgba(0, 0, 0, 0.92)";

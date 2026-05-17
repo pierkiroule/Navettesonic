@@ -23,6 +23,24 @@ const ARENA_RADIUS_MULTIPLIER = Object.freeze({
 export const POISSON_PLUME_WIDTH = 52;
 export const PORTAL_WIDTH_MULTIPLIER = 2;
 export const DEFAULT_PORTAL_PASSAGE_WIDTH = POISSON_PLUME_WIDTH * PORTAL_WIDTH_MULTIPLIER;
+export const ARENA_ID_BY_LEVEL = Object.freeze(["arena-1", "mega-1", "giga-1"]);
+
+export function getArenaIdForLevel(level = 0) {
+  const safeLevel = Math.max(0, Math.min(ARENA_ID_BY_LEVEL.length - 1, Number.isFinite(level) ? level : 0));
+  return ARENA_ID_BY_LEVEL[safeLevel];
+}
+
+export function getArenaLevelFromId(arenaId = "") {
+  const idx = ARENA_ID_BY_LEVEL.indexOf(arenaId);
+  return idx >= 0 ? idx : 0;
+}
+
+export function getArenaTransitionIdsForLevel(level = 0) {
+  const fromArenaId = getArenaIdForLevel(level);
+  if (level <= 0) return { fromArenaId, toArenaId: getArenaIdForLevel(1) };
+  if (level === 1) return { fromArenaId, toArenaId: getArenaIdForLevel(2) };
+  return { fromArenaId, toArenaId: getArenaIdForLevel(1) };
+}
 
 export function getArenaRadiusMultiplier(type = ARENA_TYPES.ARENA) {
   return ARENA_RADIUS_MULTIPLIER[type] || ARENA_RADIUS_MULTIPLIER.ARENA;

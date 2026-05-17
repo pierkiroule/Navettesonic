@@ -23,7 +23,7 @@ import {
 } from "../core/traceCircuit.js";
 import { BREACH_GAP_SPAN, getFishNavigableRadius, MEMBRANE_LEVEL_MULTIPLIERS } from "../core/constants.js";
 import { SOON_MODE_COMPO, normalizeSoonMode } from "../core/uiState.js";
-import { buildMazeByArena, buildWorldDebugSnapshot, clampPointToMaze, generateLabybulle, getPortalArrivalPosition, getPortalOpeningAngle, getPortalOpeningHalfSpan, validateWorldGraph } from "../core/labybulleWorld.js";
+import { buildMazeByArena, buildWorldDebugSnapshot, clampPointToMaze, generateLabybulle, getArenaIdForLevel, getArenaLevelFromId, getPortalArrivalPosition, getPortalOpeningAngle, getPortalOpeningHalfSpan, validateWorldGraph } from "../core/labybulleWorld.js";
 
 const saved = loadState();
 const labybulleWorld = generateLabybulle(saved?.labybulleSeed ?? 1);
@@ -45,19 +45,6 @@ function angleDistance(a, b) {
 function isNearOpening(angle, openingAngle, openingHalfSpan) {
   if (!Number.isFinite(openingAngle)) return false;
   return Math.abs(angleDistance(angle, openingAngle)) <= openingHalfSpan;
-}
-
-function getArenaIdForLevel(level = 0) {
-  const normalized = Math.max(0, Math.min(MAX_ARENA_LEVEL, Number.isFinite(level) ? level : 0));
-  if (normalized === 0) return "arena-1";
-  if (normalized === 1) return "mega-1";
-  return "giga-1";
-}
-
-function getArenaLevelFromId(arenaId = "") {
-  if (arenaId === "giga-1") return 2;
-  if (arenaId === "mega-1") return 1;
-  return 0;
 }
 
 function getFishMovementRadius(arenaRadius) {
