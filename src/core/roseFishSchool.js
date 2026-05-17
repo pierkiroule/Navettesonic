@@ -2,13 +2,13 @@ const ROSE_FISH_COUNT = 10;
 const FOLLOW_DURATION_MS = 30_000;
 const FOLLOW_TRIGGER_DISTANCE = 220;
 
-function makeRoseFish(index, fish = { x: 0, y: 0 }) {
+function makeRoseFish(index) {
   const angle = (Math.PI * 2 * index) / ROSE_FISH_COUNT;
   const radius = 180 + (index % 4) * 38;
   return {
     id: `rose-${index + 1}`,
-    x: (fish.x || 0) + Math.cos(angle) * radius,
-    y: (fish.y || 0) + Math.sin(angle) * radius,
+    x: Math.cos(angle) * radius,
+    y: Math.sin(angle) * radius,
     vx: 0,
     vy: 0,
     angle,
@@ -19,8 +19,8 @@ function makeRoseFish(index, fish = { x: 0, y: 0 }) {
   };
 }
 
-export function createRoseFishSchool(fish) {
-  return Array.from({ length: ROSE_FISH_COUNT }, (_, index) => makeRoseFish(index, fish));
+export function createRoseFishSchool() {
+  return Array.from({ length: ROSE_FISH_COUNT }, (_, index) => makeRoseFish(index));
 }
 
 export function tickRoseFishSchool({ roseFish = [], fish, now = Date.now() }) {
@@ -34,8 +34,8 @@ export function tickRoseFishSchool({ roseFish = [], fish, now = Date.now() }) {
     const nextAngle = (item.angle || 0) + (item.speed || 0.016);
     const orbit = item.orbitRadius || (180 + (index % 4) * 38);
 
-    const anchorX = (fish.x || 0) + Math.cos(nextAngle + (item.phase || 0)) * orbit;
-    const anchorY = (fish.y || 0) + Math.sin(nextAngle + (item.phase || 0)) * orbit;
+    const anchorX = Math.cos(nextAngle + (item.phase || 0)) * orbit;
+    const anchorY = Math.sin(nextAngle + (item.phase || 0)) * orbit;
 
     const dxFish = (fish.x || 0) - (item.x || 0);
     const dyFish = (fish.y || 0) - (item.y || 0);

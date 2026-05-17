@@ -63,8 +63,8 @@ export function drawScene(ctx, rect, time, refs) {
     }
   }
 
-  drawRoseFish(ctx, current.roseFish, time);
   drawFish(ctx, current.fish, time, current.worldGraph);
+  drawRoseFish(ctx, current.roseFish, time);
   drawQuill(ctx, current.fish, time);
 
   exitWorld(ctx);
@@ -349,6 +349,7 @@ export function drawNestedDepositFigure(ctx, bubble, radius, deposits = [], time
 export function drawRoseFish(ctx, roseFish = [], time = 0) {
   if (!Array.isArray(roseFish) || !roseFish.length) return;
   ctx.save();
+  ctx.globalCompositeOperation = "screen";
   roseFish.forEach((fish, index) => {
     const pulse = Math.sin(time * 0.004 + index * 0.9) * 0.5 + 0.5;
     const body = 16 + pulse * 6;
@@ -372,6 +373,13 @@ export function drawRoseFish(ctx, roseFish = [], time = 0) {
     ctx.lineTo(-body * 2.1, -body * 0.8);
     ctx.closePath();
     ctx.fillStyle = `rgba(255, 172, 228, ${0.82 + pulse * 0.14})`;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(0, 0, body * 3.2, 0, Math.PI * 2);
+    const glow = ctx.createRadialGradient(0, 0, body * 0.4, 0, 0, body * 3.2);
+    glow.addColorStop(0, "rgba(255, 170, 230, 0.55)");
+    glow.addColorStop(1, "rgba(255, 170, 230, 0)");
+    ctx.fillStyle = glow;
     ctx.fill();
     ctx.restore();
   });
