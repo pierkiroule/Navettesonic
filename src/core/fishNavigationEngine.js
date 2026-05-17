@@ -57,13 +57,15 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
     const minR = destInner + 12;
     nextFishX = scDist < minR ? (sc.x / scDist) * minR : sc.x;
     nextFishY = scDist < minR ? (sc.y / scDist) * minR : sc.y;
+    const settledTargetX = nextFishX + radialX * 32;
+    const settledTargetY = nextFishY + radialY * 32;
     return {
       circuitAutopilot,
       circuitSegmentIndex,
       circuitSegmentT,
       bubbles: separateBubblesByDepth(pushBubblesFromFish(state.bubbles, { x: nextFishX, y: nextFishY }, fishDepth)),
       currentArenaId: getArenaIdForLevel(nextLevel),
-      fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: nextVx, vy: nextVy, targetX, targetY, arenaRadius, arenaLevel: nextLevel, membraneSide: "inside", wallHitCount, lastWallHitAt, breachOpen: false, breachAngle: null, breachOpenedAt: null, breachState: "closed", breachExpiresAt: null, breachUsed: false, hasQuill: Boolean(state.fish.hasQuill) },
+      fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: nextVx * 0.35, vy: nextVy * 0.35, targetX: settledTargetX, targetY: settledTargetY, arenaRadius, arenaLevel: nextLevel, membraneSide: "inside", wallHitCount, lastWallHitAt, breachOpen: false, breachAngle: null, breachOpenedAt: null, breachState: "closed", breachExpiresAt: null, breachUsed: false, hasQuill: Boolean(state.fish.hasQuill) },
     };
   }
 
@@ -75,13 +77,15 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
     const sc = clampToCircle({ x: nextFishX, y: nextFishY }, destOuter - 4);
     nextFishX = sc.x;
     nextFishY = sc.y;
+    const settledTargetX = nextFishX - radialX * 32;
+    const settledTargetY = nextFishY - radialY * 32;
     return {
       circuitAutopilot,
       circuitSegmentIndex,
       circuitSegmentT,
       bubbles: separateBubblesByDepth(pushBubblesFromFish(state.bubbles, { x: nextFishX, y: nextFishY }, fishDepth)),
       currentArenaId: getArenaIdForLevel(nextLevel),
-      fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: nextVx, vy: nextVy, targetX, targetY, arenaRadius, arenaLevel: nextLevel, membraneSide: "inside", wallHitCount, lastWallHitAt, breachOpen: false, breachAngle: null, breachOpenedAt: null, breachState: "closed", breachExpiresAt: null, breachUsed: false, hasQuill: Boolean(state.fish.hasQuill) },
+      fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: nextVx * 0.35, vy: nextVy * 0.35, targetX: settledTargetX, targetY: settledTargetY, arenaRadius, arenaLevel: nextLevel, membraneSide: "inside", wallHitCount, lastWallHitAt, breachOpen: false, breachAngle: null, breachOpenedAt: null, breachState: "closed", breachExpiresAt: null, breachUsed: false, hasQuill: Boolean(state.fish.hasQuill) },
     };
   }
   const basePatch={circuitAutopilot,circuitSegmentIndex,circuitSegmentT,bubbles:separateBubblesByDepth(pushBubblesFromFish(state.bubbles,{x:nextFishX,y:nextFishY},fishDepth))};
