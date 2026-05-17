@@ -91,19 +91,26 @@ export function tickRoseFishSchool(roseFish = [], fish = {}, options = {}) {
   for (let level = 0; level < LEVEL_COUNT; level += 1) {
     if (levelCounts[level] === 0) missingLevels.push(level);
   }
-  if (missingLevels.length) {
-    let cursor = 0;
-    missingLevels.forEach((level) => {
-      const idx = cursor % school.length;
-      if (school[idx]) school[idx] = { ...school[idx], arenaLevel: level };
-      cursor += 1;
-    });
-  }
+  const rebalancedSchool = missingLevels.length
+    ? (() => {
+      const next = school.slice();
+      missingLevels.forEach((missingLevel) => {
+        const donorLevel = levelCounts.findIndex((count) => count > 1);
+        if (donorLevel < 0) return;
+        const donorIndex = next.findIndex((item) => Number.isFinite(item?.arenaLevel) && item.arenaLevel === donorLevel);
+        if (donorIndex < 0) return;
+        next[donorIndex] = { ...next[donorIndex], arenaLevel: missingLevel };
+        levelCounts[donorLevel] -= 1;
+        levelCounts[missingLevel] += 1;
+      });
+      return next;
+    })()
+    : school;
 
   const fx = fish?.x || 0;
   const fy = fish?.y || 0;
 
-  return school.map((item, index) => {
+  return rebalancedSchool.map((item, index) => {
     let level = Number.isFinite(item.arenaLevel) ? item.arenaLevel : (index % LEVEL_COUNT);
     const noiseTurn = (Math.sin(now * 0.0012 + index * 1.7) + (seeded(index, now * 0.0007) - 0.5)) * 0.02;
     const heading = wrapAngle((item.heading || 0) + (item.turnRate || 0) + noiseTurn);
