@@ -168,12 +168,11 @@ export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
     } else {
       ctx.arc(0, 0, r, 0, Math.PI * 2);
     }
-    ctx.strokeStyle = isOuterWall
-      ? `rgba(125, 211, 252, ${0.55 + pulse * 0.3})`
-      : isInnerWall
-        ? `rgba(100, 180, 240, ${0.35 + pulse * 0.18})`
-        : "rgba(15, 40, 70, 0.45)";
-    ctx.lineWidth = (isOuterWall ? 5 : isInnerWall ? 3.5 : 2) * CONTOUR_WIDTH_MULTIPLIER;
+    const activeAlpha = 0.55 + pulse * 0.3;
+    ctx.strokeStyle = isActive
+      ? `rgba(125, 211, 252, ${activeAlpha})`
+      : "rgba(15, 40, 70, 0.45)";
+    ctx.lineWidth = (isActive ? 5 : 2) * CONTOUR_WIDTH_MULTIPLIER;
     ctx.stroke();
 
     if (opening !== null && isActive) {
@@ -181,7 +180,7 @@ export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
       const glowY = Math.sin(opening) * r;
       const glowRadius = r * halfSpan * 3.5;
       const grad = ctx.createRadialGradient(glowX, glowY, 0, glowX, glowY, glowRadius);
-      const glowAlpha = isOuterWall ? 0.32 + pulse * 0.2 : 0.18 + pulse * 0.12;
+      const glowAlpha = 0.32 + pulse * 0.2;
       grad.addColorStop(0, `rgba(34, 211, 238, ${glowAlpha})`);
       grad.addColorStop(1, "rgba(34, 211, 238, 0)");
       ctx.beginPath();
@@ -528,4 +527,3 @@ export function drawArenaNightSky(ctx, arenaRef, time) {
 
   ctx.restore();
 }
-
