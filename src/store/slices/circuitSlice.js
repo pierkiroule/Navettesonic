@@ -1,0 +1,7 @@
+import { clampToCircle } from "../../core/geometry.js";
+import { createSlalomCircuitFromBubbles } from "../../core/traceCircuit.js";
+import { saveState } from "../../core/storage.js";
+import { clampDepth } from "../../core/fishBubblePhysics.js";
+import { DEFAULT_ARENA_RADIUS } from "../soonInitialState.js";
+
+export const createCircuitSlice=(set,get)=>({moveBeacon:(id,x,y)=>{const safe=clampToCircle({x,y},DEFAULT_ARENA_RADIUS*1.55);set((s)=>({traceCircuit:s.traceCircuit.map((b)=>b.id===id?{...b,x:safe.x,y:safe.y}:b)}));saveState(get());},updateBeacon:(id,patch)=>{set((s)=>({traceCircuit:s.traceCircuit.map((b)=>b.id===id?{...b,...patch}:b)}));saveState(get());},autoGenerateTraceCircuit:()=>{set((s)=>({traceCircuit:createSlalomCircuitFromBubbles(s.bubbles),selectedBeaconId:null,circuitAutopilot:false,circuitSegmentIndex:0,circuitSegmentT:0}));saveState(get());},resetTraceCircuit:()=>{set((s)=>({traceCircuit:createSlalomCircuitFromBubbles(s.bubbles),selectedBeaconId:null,circuitAutopilot:false,circuitSegmentIndex:0,circuitSegmentT:0}));saveState(get());},startCircuitAutopilot:()=>{const s=get();if(!s.traceCircuit||s.traceCircuit.length<2)return;const first=s.traceCircuit[0];set((st)=>({circuitAutopilot:true,circuitSegmentIndex:0,circuitSegmentT:0,selectedBubbleId:null,fish:{...st.fish,targetX:first.x,targetY:first.y,depth:clampDepth(first.depth||1)}}));},stopCircuitAutopilot:()=>set({circuitAutopilot:false})});
