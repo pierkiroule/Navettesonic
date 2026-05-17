@@ -1,3 +1,5 @@
+import { getArenaIdForLevel, getPortalOpeningAngle, getPortalOpeningHalfSpan } from "./labybulleWorld.js";
+
 const FOLLOW_DURATION_MS = 30_000;
 const FOLLOW_TRIGGER_DISTANCE = 180;
 const LEVEL_COUNT = 3;
@@ -12,6 +14,10 @@ function wrapAngle(a = 0) {
   while (out > Math.PI) out -= Math.PI * 2;
   while (out < -Math.PI) out += Math.PI * 2;
   return out;
+}
+
+function angleDistance(a, b) {
+  return Math.atan2(Math.sin(a - b), Math.cos(a - b));
 }
 
 function levelRadius(level = 0, arenaRadius = 1200) {
@@ -36,20 +42,43 @@ function makeRoseFish({ index = 0, count = 10, center = { x: 0, y: 0 }, arenaLev
     heading: angle,
     turnRate: (seeded(index, 3) - 0.5) * 0.06,
     speed: 0.8 + seeded(index, 4) * 1.6,
-    levelSwitchAt: Date.now() + 2500 + seeded(index, 5) * 5000,
     followUntil: 0,
   };
 }
 
 export function createRoseFishSchool({ count = 10, center = { x: 0, y: 0 }, arenaLevel = 0 } = {}) {
   return Array.from({ length: Math.max(8, count) }, (_, index) =>
-    makeRoseFish({ index, count: Math.max(8, count), center, arenaLevel: index % LEVEL_COUNT })
+    makeRoseFish({ index, count: Math.max(8, count), center, arenaLevel: (arenaLevel + index) % LEVEL_COUNT })
   );
+}
+
+function canTransitLevel({ level, radialDistance, radialAngle, radialDot, arenaRadius, worldGraph }) {
+  const currentR = levelRadius(level, arenaRadius);
+  const halfSpan = getPortalOpeningHalfSpan({ radius: currentR });
+
+  if (level < LEVEL_COUNT - 1) {
+    const outAngle = getPortalOpeningAngle(worldGraph, getArenaIdForLevel(level), getArenaIdForLevel(level + 1));
+    const nearOuter = Math.abs(radialDistance - (currentR + 120)) <= 45;
+    if (outAngle !== null && nearOuter && radialDot > 0.06 && Math.abs(angleDistance(radialAngle, outAngle)) <= halfSpan) {
+      return 1;
+    }
+  }
+
+  if (level > 0) {
+    const inAngle = getPortalOpeningAngle(worldGraph, getArenaIdForLevel(level), getArenaIdForLevel(level - 1));
+    const nearInner = Math.abs(radialDistance - (currentR - 120)) <= 45;
+    if (inAngle !== null && nearInner && radialDot < -0.06 && Math.abs(angleDistance(radialAngle, inAngle)) <= halfSpan) {
+      return -1;
+    }
+  }
+
+  return 0;
 }
 
 export function tickRoseFishSchool(roseFish = [], fish = {}, options = {}) {
   const now = options.now || Date.now();
   const arenaRadius = Number.isFinite(options.arenaRadius) ? options.arenaRadius : 1200;
+  const worldGraph = options.worldGraph || fish?.worldGraph || null;
   const school = Array.isArray(roseFish) && roseFish.length
     ? roseFish
     : createRoseFishSchool({ count: 10, center: { x: 0, y: 0 }, arenaLevel: 0 });
@@ -58,11 +87,7 @@ export function tickRoseFishSchool(roseFish = [], fish = {}, options = {}) {
   const fy = fish?.y || 0;
 
   return school.map((item, index) => {
-    const oldLevel = Number.isFinite(item.arenaLevel) ? item.arenaLevel : (index % LEVEL_COUNT);
-    const shouldSwitch = now >= (item.levelSwitchAt || 0);
-    const nextLevel = shouldSwitch ? ((oldLevel + 1 + Math.floor(seeded(index, now * 0.001) * 2)) % LEVEL_COUNT) : oldLevel;
-    const nextSwitchAt = shouldSwitch ? now + 3500 + seeded(index, now * 0.002) * 8000 : (item.levelSwitchAt || now + 4000);
-
+    let level = Number.isFinite(item.arenaLevel) ? item.arenaLevel : (index % LEVEL_COUNT);
     const noiseTurn = (Math.sin(now * 0.0012 + index * 1.7) + (seeded(index, now * 0.0007) - 0.5)) * 0.02;
     const heading = wrapAngle((item.heading || 0) + (item.turnRate || 0) + noiseTurn);
 
@@ -72,9 +97,7 @@ export function tickRoseFishSchool(roseFish = [], fish = {}, options = {}) {
 
     const dFish = Math.hypot(fx - (item.x || 0), fy - (item.y || 0));
     const followUntil = dFish <= FOLLOW_TRIGGER_DISTANCE ? now + FOLLOW_DURATION_MS : (item.followUntil || 0);
-    const isFollowing = followUntil > now;
-
-    if (isFollowing) {
+    if (followUntil > now) {
       vx += ((fx - (item.x || 0)) / Math.max(30, dFish)) * 1.4;
       vy += ((fy - (item.y || 0)) / Math.max(30, dFish)) * 1.4;
     }
@@ -82,14 +105,28 @@ export function tickRoseFishSchool(roseFish = [], fish = {}, options = {}) {
     let nx = (item.x || 0) + vx;
     let ny = (item.y || 0) + vy;
 
-    const band = levelRadius(nextLevel, arenaRadius);
     const dist = Math.hypot(nx, ny);
+    const radialAngle = Math.atan2(ny, nx);
+    const radialDot = ((Math.cos(radialAngle) * vx) + (Math.sin(radialAngle) * vy)) / (Math.hypot(vx, vy) || 0.0001);
+
+    const transit = canTransitLevel({ level, radialDistance: dist, radialAngle, radialDot, arenaRadius, worldGraph });
+    if (transit !== 0) {
+      level = Math.max(0, Math.min(LEVEL_COUNT - 1, level + transit));
+      const targetBand = levelRadius(level, arenaRadius);
+      nx = Math.cos(radialAngle) * targetBand;
+      ny = Math.sin(radialAngle) * targetBand;
+      vx *= 0.75;
+      vy *= 0.75;
+    }
+
+    const band = levelRadius(level, arenaRadius);
+    const nd = Math.hypot(nx, ny);
     const maxBand = band + 130;
     const minBand = Math.max(40, band - 130);
-    if (dist > maxBand || dist < minBand) {
-      const target = dist > maxBand ? maxBand : minBand;
-      const sx = nx / Math.max(0.0001, dist);
-      const sy = ny / Math.max(0.0001, dist);
+    if (nd > maxBand || nd < minBand) {
+      const target = nd > maxBand ? maxBand : minBand;
+      const sx = nx / Math.max(0.0001, nd);
+      const sy = ny / Math.max(0.0001, nd);
       nx = sx * target;
       ny = sy * target;
       vx *= 0.6;
@@ -105,8 +142,7 @@ export function tickRoseFishSchool(roseFish = [], fish = {}, options = {}) {
       heading,
       size: Math.max(14, Number(item.size) || 16),
       alpha: 0.95,
-      arenaLevel: nextLevel,
-      levelSwitchAt: nextSwitchAt,
+      arenaLevel: level,
       followUntil,
     };
   });

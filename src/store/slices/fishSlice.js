@@ -16,7 +16,7 @@ tickFish:({swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADIUS}={})=>set((s)=>{
     roseFish: tickRoseFishSchool(
       Array.isArray(s.roseFish) ? s.roseFish : createRoseFishSchool({ count: 10, center: { x: 0, y: 0 }, arenaLevel: 0 }),
       next.fish || s.fish,
-      { arenaRadius }
+      { arenaRadius, worldGraph: s.worldGraph }
     ),
   };
 }),
