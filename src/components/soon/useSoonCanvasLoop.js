@@ -29,6 +29,18 @@ export function useSoonCanvasLoop({
   useEffect(() => {
     let frame = 0;
     let wasEditMode = false;
+    const CAMERA_FOLLOW_SMOOTHING = 0.22;
+
+    function smoothFollowCameraToFish(fish) {
+      if (!fish) return;
+      const targetX = Number.isFinite(fish.x) ? fish.x : 0;
+      const targetY = Number.isFinite(fish.y) ? fish.y : 0;
+      const cam = cameraRef.current;
+      const currentX = Number.isFinite(cam.x) ? cam.x : targetX;
+      const currentY = Number.isFinite(cam.y) ? cam.y : targetY;
+      cam.x = currentX + (targetX - currentX) * CAMERA_FOLLOW_SMOOTHING;
+      cam.y = currentY + (targetY - currentY) * CAMERA_FOLLOW_SMOOTHING;
+    }
 
     function loop() {
       const canvas = canvasRef.current;
@@ -60,10 +72,7 @@ export function useSoonCanvasLoop({
 
       if (current.mode === "reso" || current.mode === "compo") {
         cameraRef.current.zoom = 1;
-        if (current.fish) {
-          cameraRef.current.x = Number.isFinite(current.fish.x) ? current.fish.x : 0;
-          cameraRef.current.y = Number.isFinite(current.fish.y) ? current.fish.y : 0;
-        }
+        smoothFollowCameraToFish(current.fish);
       } else if (isEditMode) {
         if (!wasEditMode) {
           resetEditCamera(cameraRef, rect, arenaRef.current.radius);
@@ -71,10 +80,7 @@ export function useSoonCanvasLoop({
         clampEditCamera(cameraRef, rect, arenaRef.current.radius);
       } else {
         cameraRef.current.zoom = 1;
-        if (current.fish) {
-          cameraRef.current.x = Number.isFinite(current.fish.x) ? current.fish.x : 0;
-          cameraRef.current.y = Number.isFinite(current.fish.y) ? current.fish.y : 0;
-        }
+        smoothFollowCameraToFish(current.fish);
       }
 
       wasEditMode = isEditMode;

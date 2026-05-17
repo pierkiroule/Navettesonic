@@ -1,0 +1,3 @@
+import { addDepthMarker, addOdysseoPathPoint, clearOdysseoPath } from "../../core/odysseoPath.js";
+import { tickOdysseoEngine } from "../../core/odysseoEngine.js";
+export const createOdysseoSlice=(set,get)=>({setOdysseoTool:(tool)=>set({odysseoTool:tool}),addOdysseoPathPoint:(x,y)=>set((s)=>({odysseoPath:addOdysseoPathPoint(s.odysseoPath||[],x,y)})),clearOdysseoPath:()=>set({odysseoPath:clearOdysseoPath(),odysseoDepthMarkers:[],odysseoPathIndex:0,odysseoDirection:1}),addOdysseoDepthMarker:(x,y,depth=1)=>set((s)=>({odysseoDepthMarkers:addDepthMarker(s.odysseoDepthMarkers||[],s.odysseoPath||[],x,y,depth)})),tickOdysseoPath:({swimSpeed=1}={})=>set((s)=>tickOdysseoEngine(s,{swimSpeed}))});
