@@ -82,6 +82,23 @@ export function tickRoseFishSchool(roseFish = [], fish = {}, options = {}) {
   const school = Array.isArray(roseFish) && roseFish.length
     ? roseFish
     : createRoseFishSchool({ count: 10, center: { x: 0, y: 0 }, arenaLevel: 0 });
+  const levelCounts = school.reduce((acc, item) => {
+    const lvl = Number.isFinite(item?.arenaLevel) ? item.arenaLevel : -1;
+    if (lvl >= 0 && lvl < LEVEL_COUNT) acc[lvl] += 1;
+    return acc;
+  }, [0, 0, 0]);
+  const missingLevels = [];
+  for (let level = 0; level < LEVEL_COUNT; level += 1) {
+    if (levelCounts[level] === 0) missingLevels.push(level);
+  }
+  if (missingLevels.length) {
+    let cursor = 0;
+    missingLevels.forEach((level) => {
+      const idx = cursor % school.length;
+      if (school[idx]) school[idx] = { ...school[idx], arenaLevel: level };
+      cursor += 1;
+    });
+  }
 
   const fx = fish?.x || 0;
   const fy = fish?.y || 0;
