@@ -89,21 +89,6 @@ function clampFishToArenaLabyrinth(point, mazeByArenaMap, arenaId) {
   return clampPointToMaze({ x: point.x, y: point.y, maze });
 }
 
-function clampToRing(point, minRadius, maxRadius) {
-  const x = point?.x || 0;
-  const y = point?.y || 0;
-  const d = Math.hypot(x, y) || 0.0001;
-  if (d > maxRadius) {
-    const k = maxRadius / d;
-    return { x: x * k, y: y * k };
-  }
-  if (d < minRadius) {
-    const k = minRadius / d;
-    return { x: x * k, y: y * k };
-  }
-  return { x, y };
-}
-
 export function pushBubblesFromFish(bubbles = [], fish = {}, fishDepth = 1) {
   const depth = clampDepth(fishDepth);
   const fishX = fish.x || 0;
@@ -575,8 +560,6 @@ export const useSoonStore = create((set, get) => ({
         stopRadius,
       } = control;
 
-      const isAutoPassageActive = false;
-
       // Point de bouche : le doigt tire le poisson par l'avant.
       const mouthX = state.fish.x + Math.cos(currentAngle) * mouthOffset;
       const mouthY = state.fish.y + Math.sin(currentAngle) * mouthOffset;
@@ -593,20 +576,17 @@ export const useSoonStore = create((set, get) => ({
       // - loin: vitesse cible max
       // - proche: ralentit progressivement
       // - très proche: arrêt stable (anti-jitter)
-      const desiredSpeed = isAutoPassageActive
-        ? Math.max(speedLimit * 0.72, Math.min(speedLimit, speedLimit * Math.max(0.75, pullNorm)))
-        : pullDistance <= stopRadius
-          ? 0
-          : Math.min(speedLimit, speedLimit * pullNorm);
+      const desiredSpeed = pullDistance <= stopRadius
+        ? 0
+        : Math.min(speedLimit, speedLimit * pullNorm);
 
       const dirX = pullDistance > 0.0001 ? pullX / pullDistance : 0;
       const dirY = pullDistance > 0.0001 ? pullY / pullDistance : 0;
       const desiredVx = dirX * desiredSpeed;
       const desiredVy = dirY * desiredSpeed;
 
-      const steerAccel = isAutoPassageActive ? Math.max(accel, 0.28) : accel;
-      const vx = state.fish.vx + (desiredVx - state.fish.vx) * steerAccel;
-      const vy = state.fish.vy + (desiredVy - state.fish.vy) * steerAccel;
+      const vx = state.fish.vx + (desiredVx - state.fish.vx) * accel;
+      const vy = state.fish.vy + (desiredVy - state.fish.vy) * accel;
 
       const speedRaw = Math.hypot(vx, vy);
       const limitedVx = speedRaw > speedLimit ? (vx / speedRaw) * speedLimit : vx;
@@ -662,8 +642,9 @@ export const useSoonStore = create((set, get) => ({
       const outwardToId = getArenaIdForLevel(outwardLevel);
       const inwardFromId = outwardFromId;
       const inwardToId = getArenaIdForLevel(inwardLevel);
-      const outwardOpeningAngle = getPortalOpeningAngle(labybulleWorld, outwardFromId, outwardToId);
-      const inwardOpeningAngle = getPortalOpeningAngle(labybulleWorld, inwardFromId, inwardToId);
+      const activeWorld = state.worldGraph || labybulleWorld;
+      const outwardOpeningAngle = getPortalOpeningAngle(activeWorld, outwardFromId, outwardToId);
+      const inwardOpeningAngle = getPortalOpeningAngle(activeWorld, inwardFromId, inwardToId);
       const openingHalfSpan = getPortalOpeningHalfSpan({ radius: fishNavRadius });
       const nearOpening = radialDot >= 0
         ? isNearOpening(radialAngle, outwardOpeningAngle, openingHalfSpan)
