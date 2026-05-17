@@ -26,6 +26,45 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
   const radialDistance=Math.hypot(nextFishX,nextFishY), radialAngle=Math.atan2(nextFishY,nextFishX), radialX=Math.cos(radialAngle), radialY=Math.sin(radialAngle), radialDot=(radialX*nextVx+radialY*nextVy)/(Math.hypot(nextVx,nextVy)||0.0001); const outwardToId=arenaLevel<MAX_ARENA_LEVEL?getArenaIdForLevel(arenaLevel+1):null,inwardToId=arenaLevel>0?getArenaIdForLevel(arenaLevel-1):null; const activeWorld=state.worldGraph||labybulleWorld; const outwardOpeningAngle=outwardToId?getPortalOpeningAngle(activeWorld,getArenaIdForLevel(arenaLevel),outwardToId):null; const inwardOpeningAngle=inwardToId?getPortalOpeningAngle(activeWorld,getArenaIdForLevel(arenaLevel),inwardToId):null; const outerHalfSpan=getPortalOpeningHalfSpan({radius:outerNavRadius}); const innerHalfSpan=innerNavRadius>0?getPortalOpeningHalfSpan({radius:innerNavRadius}):0;
   const nearOuter=Math.abs(radialDistance-outerNavRadius)<=120, nearInner=innerNavRadius>0&&Math.abs(radialDistance-innerNavRadius)<=120, nearOut=isNearOpening(radialAngle,outwardOpeningAngle,outerHalfSpan), nearIn=innerNavRadius>0&&isNearOpening(radialAngle,inwardOpeningAngle,innerHalfSpan);
   if(nearOuter&&!nearOut){const tx=-radialY,ty=radialX,ts=nextVx*tx+nextVy*ty;nextVx=tx*ts;nextVy=ty*ts;const c=clampToCircle({x:nextFishX,y:nextFishY},outerNavRadius-4);nextFishX=c.x;nextFishY=c.y;} if(nearInner&&!nearIn){const tx=-radialY,ty=radialX,ts=nextVx*tx+nextVy*ty;nextVx=tx*ts;nextVy=ty*ts;const d=Math.hypot(nextFishX,nextFishY)||0.0001;nextFishX=(nextFishX/d)*(innerNavRadius+4);nextFishY=(nextFishY/d)*(innerNavRadius+4);}
+
+  if (nearOuter && nearOut && radialDot > 0.1 && arenaLevel < MAX_ARENA_LEVEL) {
+    const nextLevel = arenaLevel + 1;
+    nextFishX += radialX * 20;
+    nextFishY += radialY * 20;
+    const destOuter = getMembraneRadiusForLevel(arenaRadius, nextLevel);
+    const destInner = outerNavRadius;
+    const sc = clampToCircle({ x: nextFishX, y: nextFishY }, destOuter - 4);
+    const scDist = Math.hypot(sc.x, sc.y) || 0.0001;
+    const minR = destInner + 12;
+    nextFishX = scDist < minR ? (sc.x / scDist) * minR : sc.x;
+    nextFishY = scDist < minR ? (sc.y / scDist) * minR : sc.y;
+    return {
+      circuitAutopilot,
+      circuitSegmentIndex,
+      circuitSegmentT,
+      bubbles: separateBubblesByDepth(pushBubblesFromFish(state.bubbles, { x: nextFishX, y: nextFishY }, fishDepth)),
+      currentArenaId: getArenaIdForLevel(nextLevel),
+      fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: nextVx, vy: nextVy, targetX, targetY, arenaRadius, arenaLevel: nextLevel, membraneSide: "inside", wallHitCount, lastWallHitAt, breachOpen: false, breachAngle: null, breachOpenedAt: null, breachState: "closed", breachExpiresAt: null, breachUsed: false, hasQuill: Boolean(state.fish.hasQuill) },
+    };
+  }
+
+  if (nearInner && nearIn && radialDot < -0.1 && arenaLevel > 0) {
+    const nextLevel = arenaLevel - 1;
+    nextFishX -= radialX * 20;
+    nextFishY -= radialY * 20;
+    const destOuter = getMembraneRadiusForLevel(arenaRadius, nextLevel);
+    const sc = clampToCircle({ x: nextFishX, y: nextFishY }, destOuter - 4);
+    nextFishX = sc.x;
+    nextFishY = sc.y;
+    return {
+      circuitAutopilot,
+      circuitSegmentIndex,
+      circuitSegmentT,
+      bubbles: separateBubblesByDepth(pushBubblesFromFish(state.bubbles, { x: nextFishX, y: nextFishY }, fishDepth)),
+      currentArenaId: getArenaIdForLevel(nextLevel),
+      fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: nextVx, vy: nextVy, targetX, targetY, arenaRadius, arenaLevel: nextLevel, membraneSide: "inside", wallHitCount, lastWallHitAt, breachOpen: false, breachAngle: null, breachOpenedAt: null, breachState: "closed", breachExpiresAt: null, breachUsed: false, hasQuill: Boolean(state.fish.hasQuill) },
+    };
+  }
   const basePatch={circuitAutopilot,circuitSegmentIndex,circuitSegmentT,bubbles:separateBubblesByDepth(pushBubblesFromFish(state.bubbles,{x:nextFishX,y:nextFishY},fishDepth))};
   const speed=Math.hypot(limitedVx,limitedVy),moveAngle=speed>0.035?Math.atan2(limitedVy,limitedVx):currentAngle,angle=speed>0.035?lerpAngle(currentAngle,moveAngle,0.055+Math.min(0.055,speed*0.006)):currentAngle;
   const turnStrengthSigned=Math.max(-1,Math.min(1,((()=>{let d=moveAngle-currentAngle;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;return d;})())/1.15)); const nextMouthPull=(state.fish.mouthPull||0)+(pullNorm-(state.fish.mouthPull||0))*0.12; const targetTurnVelocity=turnStrengthSigned*(0.55+Math.min(0.45,speed*0.08)); const nextTurnVelocity=(state.fish.turnVelocity||0)+(targetTurnVelocity-(state.fish.turnVelocity||0))*0.18; const nextTurnAmount=(state.fish.turnAmount||0)+(nextTurnVelocity-(state.fish.turnAmount||0))*0.16;
