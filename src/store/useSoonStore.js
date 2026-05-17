@@ -21,9 +21,9 @@ import {
   getCircuitSpeedValue,
   smoothLoopPoint,
 } from "../core/traceCircuit.js";
-import { BREACH_GAP_SPAN, getFishNavigableRadius, MEMBRANE_LEVEL_MULTIPLIERS } from "../core/constants.js";
+import { getFishNavigableRadius, MEMBRANE_LEVEL_MULTIPLIERS } from "../core/constants.js";
 import { SOON_MODE_COMPO, normalizeSoonMode } from "../core/uiState.js";
-import { buildMazeByArena, buildWorldDebugSnapshot, clampPointToMaze, generateLabybulle, getArenaIdForLevel, getArenaLevelFromId, getPortalArrivalPosition, getPortalOpeningAngle, getPortalOpeningHalfSpan, validateWorldGraph } from "../core/labybulleWorld.js";
+import { buildMazeByArena, buildWorldDebugSnapshot, generateLabybulle, getArenaIdForLevel, getArenaLevelFromId, getPortalArrivalPosition, getPortalOpeningAngle, getPortalOpeningHalfSpan, validateWorldGraph } from "../core/labybulleWorld.js";
 
 const saved = loadState();
 const labybulleWorld = generateLabybulle(saved?.labybulleSeed ?? 1);
@@ -88,10 +88,8 @@ function clampDepth(depth) {
   return normalizeDepth(depth);
 }
 
-function clampFishToArenaLabyrinth(point, mazeByArenaMap, arenaId) {
-  const maze = mazeByArenaMap?.[arenaId];
-  if (!maze) return point;
-  return clampPointToMaze({ x: point.x, y: point.y, maze });
+function clampFishToArenaLabyrinth(point) {
+  return point;
 }
 
 export function pushBubblesFromFish(bubbles = [], fish = {}, fishDepth = 1) {
@@ -640,7 +638,7 @@ export const useSoonStore = create((set, get) => ({
       const radialY = Math.sin(radialAngle);
       const speedForDot = Math.hypot(nextVx, nextVy) || 0.0001;
       const radialDot = ((radialX * nextVx) + (radialY * nextVy)) / speedForDot;
-      const nearMembrane = Math.abs(radialDistance - fishNavRadius) <= 48;
+      const nearMembrane = Math.abs(radialDistance - fishNavRadius) <= 120;
       const activeWorld = state.worldGraph || labybulleWorld;
       const { nearOutwardOpening, nearInwardOpening } = resolveOpeningContext({
         world: activeWorld,
@@ -665,7 +663,7 @@ export const useSoonStore = create((set, get) => ({
       }
 
       if (nearMembrane && nearOpening) {
-        if (radialDot > 0.22 && arenaLevel < MAX_ARENA_LEVEL && nearOutwardOpening) {
+        if (radialDot > 0.1 && arenaLevel < MAX_ARENA_LEVEL && nearOutwardOpening) {
           const nextLevel = arenaLevel + 1;
           nextFishX += radialX * 16;
           nextFishY += radialY * 16;
@@ -703,7 +701,7 @@ export const useSoonStore = create((set, get) => ({
             },
           };
         }
-        if (radialDot < -0.22 && arenaLevel > 0 && nearInwardOpening) {
+        if (radialDot < -0.1 && arenaLevel > 0 && nearInwardOpening) {
           const nextLevel = arenaLevel - 1;
           nextFishX -= radialX * 16;
           nextFishY -= radialY * 16;
@@ -1021,11 +1019,11 @@ export const useSoonStore = create((set, get) => ({
       bubbles: defaultPack.bubbles,
       fish: { ...defaultFish },
       selectedBubbleId: null,
-  odysseoPath: [],
-  odysseoDepthMarkers: [],
-  odysseoPathIndex: 0,
-  odysseoDirection: 1,
-  odysseoTool: "draw",
+      odysseoPath: [],
+      odysseoDepthMarkers: [],
+      odysseoPathIndex: 0,
+      odysseoDirection: 1,
+      odysseoTool: "draw",
       traceCircuit: createDefaultTraceCircuit(),
       selectedBeaconId: null,
       circuitAutopilot: false,
@@ -1034,5 +1032,27 @@ export const useSoonStore = create((set, get) => ({
       path: [],
       eyesClosed: false,
     });
+  },
+
+  exportPack: () => {
+    const state = get();
+    return {
+      mode: state.mode,
+      bubbles: state.bubbles,
+      fish: state.fish,
+      traceCircuit: state.traceCircuit,
+      path: state.path,
+      eyesClosed: state.eyesClosed,
+      labybulleSeed: state.labybulleSeed,
+      currentArenaId: state.currentArenaId,
+    };
+  },
+
+  importPack: (data) => {
+    get().importSoonData(data);
+  },
+
+  resetPack: () => {
+    get().reset();
   },
 }));

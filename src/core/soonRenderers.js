@@ -14,10 +14,6 @@ import {
   drawEcosystemWorld,
 } from "./ecosystemFx.js";
 
-export function getExternalBubblePose() {
-  return { x: 0, y: 0, radius: 0 };
-}
-
 export function drawScene(ctx, rect, time, refs) {
   const { stateRef, arenaRef, cameraRef, enterWorld, exitWorld } = refs;
   const current = stateRef.current;
@@ -142,8 +138,8 @@ export function drawQuill(ctx, fish = {}, time = 0) {
 export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
   const radius = arenaRef.current.radius;
   const innerRadius = Math.max(0, radius - ARENA_INNER_BOUNDARY_INSET);
-  void time;
-  void current;
+  const arenaLevel = Number.isFinite(current?.fish?.arenaLevel) ? current.fish.arenaLevel : 0;
+  const pulse = Math.sin(time * 0.0018) * 0.5 + 0.5;
 
   ctx.save();
 
@@ -155,27 +151,35 @@ export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
   const worldGraph = current?.worldGraph;
 
   rings.forEach((r, index) => {
-    ctx.beginPath();
+    const isCurrent = index === arenaLevel;
     const { fromArenaId, toArenaId } = getArenaTransitionIdsForLevel(index);
     const opening = getPortalOpeningAngle(worldGraph, fromArenaId, toArenaId) ?? (-Math.PI / 2);
     const halfSpan = getPortalOpeningHalfSpan({ radius: r });
+
+    ctx.beginPath();
     ctx.arc(0, 0, r, opening + halfSpan, opening - halfSpan + Math.PI * 2);
-    ctx.strokeStyle = "rgba(0, 0, 0, 0.92)";
-    ctx.lineWidth = 8;
+    ctx.strokeStyle = isCurrent
+      ? `rgba(125, 211, 252, ${0.5 + pulse * 0.28})`
+      : "rgba(15, 40, 70, 0.55)";
+    ctx.lineWidth = isCurrent ? 5 : 2.5;
     ctx.stroke();
+
+    if (index <= arenaLevel + 1) {
+      const glowX = Math.cos(opening) * r;
+      const glowY = Math.sin(opening) * r;
+      const glowRadius = r * halfSpan * 3.5;
+      const grad = ctx.createRadialGradient(glowX, glowY, 0, glowX, glowY, glowRadius);
+      const glowAlpha = isCurrent ? 0.3 + pulse * 0.18 : 0.1 + pulse * 0.07;
+      grad.addColorStop(0, `rgba(34, 211, 238, ${glowAlpha})`);
+      grad.addColorStop(1, "rgba(34, 211, 238, 0)");
+      ctx.beginPath();
+      ctx.arc(glowX, glowY, glowRadius, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
   });
 
   ctx.restore();
-}
-
-function fitText(ctx, text, maxWidth, baseSize, minSize, family, weight = 500) {
-  let size = baseSize;
-  while (size > minSize) {
-    ctx.font = `${weight} ${size}px ${family}`;
-    if (ctx.measureText(text).width <= maxWidth) return size;
-    size -= 1;
-  }
-  return minSize;
 }
 
 export function drawWorldParticles(ctx, arenaRef, time) {
@@ -266,48 +270,6 @@ export function drawBubbles(ctx, bubbles = [], selectedBubbleId, mode, time, int
     }
 
     drawNestedDepositFigure(ctx, bubble, radius, bubble.deposits || [], time);
-  });
-
-  ctx.restore();
-}
-
-export function drawEyesClosedEchoes(ctx, bubbles = [], fish, time) {
-  if (!fish) return;
-
-  ctx.save();
-
-  bubbles.forEach((bubble) => {
-    const d = distance(bubble, fish);
-    const strength = Math.max(0, 1 - d / 680);
-
-    if (strength <= 0.015) return;
-
-    const pulse = Math.sin(time * 0.004 + bubble.x * 0.01) * 10;
-    const radius = bubble.r * (0.8 + strength * 1.4) + pulse;
-
-    const glow = ctx.createRadialGradient(
-      bubble.x,
-      bubble.y,
-      radius * 0.1,
-      bubble.x,
-      bubble.y,
-      radius * 2.3
-    );
-
-    glow.addColorStop(0, `hsla(${bubble.hue}, 100%, 76%, ${0.05 + strength * 0.24})`);
-    glow.addColorStop(0.45, `hsla(${bubble.hue}, 100%, 62%, ${0.03 + strength * 0.14})`);
-    glow.addColorStop(1, `hsla(${bubble.hue}, 100%, 50%, 0)`);
-
-    ctx.beginPath();
-    ctx.arc(bubble.x, bubble.y, radius * 2.3, 0, Math.PI * 2);
-    ctx.fillStyle = glow;
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(bubble.x, bubble.y, radius, 0, Math.PI * 2);
-    ctx.strokeStyle = `hsla(${bubble.hue}, 100%, 82%, ${0.06 + strength * 0.34})`;
-    ctx.lineWidth = 1.5 + strength * 4;
-    ctx.stroke();
   });
 
   ctx.restore();
@@ -440,50 +402,6 @@ export function drawFish(ctx, fish, time, worldGraph) {
   }
 }
 
-export function drawEyesClosedVeil(ctx, rect, time) {
-  const t = time * 0.001;
-  const breath = Math.sin(t * 0.7) * 0.5 + 0.5;
-
-  ctx.save();
-
-  ctx.fillStyle = "rgba(2, 6, 23, 0.46)";
-  ctx.fillRect(0, 0, rect.width, rect.height);
-
-  const mist = ctx.createRadialGradient(
-    rect.width * 0.5,
-    rect.height * 0.48,
-    Math.min(rect.width, rect.height) * 0.08,
-    rect.width * 0.5,
-    rect.height * 0.5,
-    Math.max(rect.width, rect.height) * 0.72
-  );
-
-  mist.addColorStop(0, `rgba(220, 235, 255, ${0.035 + breath * 0.025})`);
-  mist.addColorStop(0.45, "rgba(80, 110, 160, 0.035)");
-  mist.addColorStop(1, "rgba(2, 6, 23, 0.22)");
-
-  ctx.fillStyle = mist;
-  ctx.fillRect(0, 0, rect.width, rect.height);
-
-  const vignette = ctx.createRadialGradient(
-    rect.width * 0.5,
-    rect.height * 0.5,
-    Math.min(rect.width, rect.height) * 0.28,
-    rect.width * 0.5,
-    rect.height * 0.5,
-    Math.max(rect.width, rect.height) * 0.78
-  );
-
-  vignette.addColorStop(0, "rgba(0,0,0,0)");
-  vignette.addColorStop(0.65, "rgba(0,0,0,0.12)");
-  vignette.addColorStop(1, "rgba(0,0,0,0.52)");
-
-  ctx.fillStyle = vignette;
-  ctx.fillRect(0, 0, rect.width, rect.height);
-
-  ctx.restore();
-}
-
 export function drawCameraVignette(ctx, rect, fish) {
   const depth = Math.max(1, Math.min(3, Math.round(fish?.depth || 1)));
   const speed = Math.hypot(fish?.vx || 0, fish?.vy || 0);
@@ -516,7 +434,9 @@ export function drawCameraVignette(ctx, rect, fish) {
 }
 
 export function drawHud(ctx, rect, current, arenaRef) {
+  void arenaRef;
   const fishDepth = Math.round(current?.fish?.depth || 1);
+  const arenaLevel = Number.isFinite(current?.fish?.arenaLevel) ? current.fish.arenaLevel : 0;
   const showDepth = current.mode === "compo" || current.mode === "reso";
 
   ctx.save();
@@ -536,6 +456,22 @@ export function drawHud(ctx, rect, current, arenaRef) {
     ctx.fillText(`P${fishDepth}`, rect.width - 58, 33);
   }
 
+  const dotR = 5;
+  const dotSpacing = 16;
+  const dotsTotal = 3;
+  const dotsWidth = (dotsTotal - 1) * dotSpacing;
+  const dotY = rect.height - 28;
+  const dotX0 = rect.width * 0.5 - dotsWidth * 0.5;
+  for (let i = 0; i < dotsTotal; i += 1) {
+    const active = i === arenaLevel;
+    ctx.beginPath();
+    ctx.arc(dotX0 + i * dotSpacing, dotY, dotR, 0, Math.PI * 2);
+    ctx.fillStyle = active
+      ? "rgba(125, 211, 252, 0.9)"
+      : "rgba(125, 211, 252, 0.22)";
+    ctx.fill();
+  }
+
   if (!current.eyesClosed) {
     ctx.restore();
     return;
@@ -544,8 +480,6 @@ export function drawHud(ctx, rect, current, arenaRef) {
   ctx.fillStyle = "rgba(226, 232, 240, 0.78)";
   ctx.font = "500 18px Georgia";
   ctx.textAlign = "center";
-
-  // ctx.fillText("Réso•° · suis le circuit", rect.width / 2, rect.height / 2 + 98);
 
   ctx.restore();
 }
@@ -583,80 +517,4 @@ export function drawArenaNightSky(ctx, arenaRef, time) {
   ctx.restore();
 }
 
-export function drawArenaPulseHalo(ctx, arenaRef, time) {
-  const radius = arenaRef.current?.radius || 1200;
-  const pulse = Math.sin(time * 0.0022) * 20;
 
-  ctx.save();
-  ctx.globalCompositeOperation = "screen";
-
-  const halo = ctx.createRadialGradient(0, 0, radius - 40, 0, 0, radius + 180 + pulse);
-  halo.addColorStop(0, "rgba(255, 214, 238, 0)");
-  halo.addColorStop(0.55, "rgba(255, 195, 120, 0.16)");
-  halo.addColorStop(0.82, "rgba(255, 145, 214, 0.24)");
-  halo.addColorStop(1, "rgba(255, 240, 160, 0)");
-
-  ctx.beginPath();
-  ctx.arc(0, 0, radius + 180 + pulse, 0, Math.PI * 2);
-  ctx.fillStyle = halo;
-  ctx.fill();
-
-  ctx.restore();
-}
-
-
-const seedTransportState = {
-  lastTime: 0,
-  fishes: [],
-  sprouts: [],
-  poleGlowUntil: { N: 0, E: 0, S: 0, O: 0 },
-};
-
-function getPoleLabelFromAngle(angle, tolerance = 0.12) {
-  const normalized = Math.atan2(Math.sin(angle), Math.cos(angle));
-  const poles = [
-    { label: "N", angle: -Math.PI / 2 },
-    { label: "E", angle: 0 },
-    { label: "S", angle: Math.PI / 2 },
-    { label: "O", angle: Math.PI },
-  ];
-
-  for (const pole of poles) {
-    const delta = Math.atan2(
-      Math.sin(normalized - pole.angle),
-      Math.cos(normalized - pole.angle)
-    );
-    if (Math.abs(delta) <= tolerance) return pole.label;
-  }
-  return null;
-}
-
-function getPoleAngle(label) {
-  if (label === "N") return -Math.PI / 2;
-  if (label === "E") return 0;
-  if (label === "S") return Math.PI / 2;
-  if (label === "O") return Math.PI;
-  return null;
-}
-
-function initSeedTransporters(radius) {
-  if (seedTransportState.fishes.length) return;
-  for (let i = 0; i < 34; i += 1) {
-    const angle = (Math.PI * 2 * i) / 34;
-    seedTransportState.fishes.push({
-      angle,
-      orbit: radius + 190 + (i % 6) * 24,
-      speed: 0.00022 + (i % 5) * 0.00003,
-      phase: Math.random() * Math.PI * 2,
-      carry: Math.random() > 0.28,
-      diving: Math.random() > 0.55,
-      insideMembrane: false,
-      transitPole: null,
-      transitStartedAt: 0,
-    });
-  }
-}
-
-export function drawMazeWalls(ctx, current = {}) {
-  return;
-}

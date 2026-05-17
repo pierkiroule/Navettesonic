@@ -21,7 +21,7 @@ const ARENA_RADIUS_MULTIPLIER = Object.freeze({
 });
 
 export const POISSON_PLUME_WIDTH = 52;
-export const PORTAL_WIDTH_MULTIPLIER = 2;
+export const PORTAL_WIDTH_MULTIPLIER = 8;
 export const DEFAULT_PORTAL_PASSAGE_WIDTH = POISSON_PLUME_WIDTH * PORTAL_WIDTH_MULTIPLIER;
 export const ARENA_ID_BY_LEVEL = Object.freeze(["arena-1", "mega-1", "giga-1"]);
 
@@ -222,7 +222,7 @@ export function getPortalOpeningAngle(world, fromArenaId, toArenaId) {
 
 export function getPortalOpeningHalfSpan({ radius = 1200, passageWidth = DEFAULT_PORTAL_PASSAGE_WIDTH }) {
   const safeRadius = Math.max(1, radius);
-  return Math.min(Math.PI / 3, Math.max(0.03, (passageWidth / 2) / safeRadius));
+  return Math.min(Math.PI / 3, Math.max(0.12, (passageWidth / 2) / safeRadius));
 }
 
 export function resolvePortalAtPosition({ world, arenaId, x = 0, y = 0, radius = 1200, activationDistance = 78 }) {
