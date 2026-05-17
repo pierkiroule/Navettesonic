@@ -20,6 +20,28 @@ const ARENA_RADIUS_MULTIPLIER = Object.freeze({
   GIGA: 3.6,
 });
 
+export const POISSON_PLUME_WIDTH = 52;
+export const PORTAL_WIDTH_MULTIPLIER = 2;
+export const DEFAULT_PORTAL_PASSAGE_WIDTH = POISSON_PLUME_WIDTH * PORTAL_WIDTH_MULTIPLIER;
+export const ARENA_ID_BY_LEVEL = Object.freeze(["arena-1", "mega-1", "giga-1"]);
+
+export function getArenaIdForLevel(level = 0) {
+  const safeLevel = Math.max(0, Math.min(ARENA_ID_BY_LEVEL.length - 1, Number.isFinite(level) ? level : 0));
+  return ARENA_ID_BY_LEVEL[safeLevel];
+}
+
+export function getArenaLevelFromId(arenaId = "") {
+  const idx = ARENA_ID_BY_LEVEL.indexOf(arenaId);
+  return idx >= 0 ? idx : 0;
+}
+
+export function getArenaTransitionIdsForLevel(level = 0) {
+  const fromArenaId = getArenaIdForLevel(level);
+  if (level <= 0) return { fromArenaId, toArenaId: getArenaIdForLevel(1) };
+  if (level === 1) return { fromArenaId, toArenaId: getArenaIdForLevel(2) };
+  return { fromArenaId, toArenaId: getArenaIdForLevel(1) };
+}
+
 export function getArenaRadiusMultiplier(type = ARENA_TYPES.ARENA) {
   return ARENA_RADIUS_MULTIPLIER[type] || ARENA_RADIUS_MULTIPLIER.ARENA;
 }
@@ -37,17 +59,19 @@ function createSeededRandom(seed = 1) {
   };
 }
 
-function makeArenaNode({ id, type, parentId = null, childrenIds = [] }) {
-  return { id, type, parentId, childrenIds: [...childrenIds] };
+function makeArenaNode({ id, type, parentId = null, childrenIds = [], centerOffset = { x: 0, y: 0 } }) {
+  return { id, type, parentId, childrenIds: [...childrenIds], centerOffset: { x: centerOffset.x || 0, y: centerOffset.y || 0 } };
 }
 
 function pushBidirectionalPortal(portals, fromArenaId, toArenaId, forwardHint, backwardHint) {
+  const passageWidth = DEFAULT_PORTAL_PASSAGE_WIDTH;
   portals.push({
     id: `${fromArenaId}__to__${toArenaId}`,
     fromArenaId,
     toArenaId,
     positionHint: forwardHint,
-    bidirectional: false,
+    bidirectional: true,
+    passageWidth,
   });
 
   portals.push({
@@ -55,7 +79,8 @@ function pushBidirectionalPortal(portals, fromArenaId, toArenaId, forwardHint, b
     fromArenaId: toArenaId,
     toArenaId: fromArenaId,
     positionHint: backwardHint,
-    bidirectional: false,
+    bidirectional: true,
+    passageWidth,
   });
 }
 
@@ -68,9 +93,11 @@ export function generateLabybulle(seed = 1) {
   const megaId = "mega-1";
   const gigaId = "giga-1";
 
-  nodes.push(makeArenaNode({ id: gigaId, type: ARENA_TYPES.GIGA, childrenIds: [megaId] }));
-  nodes.push(makeArenaNode({ id: megaId, type: ARENA_TYPES.MEGA, parentId: gigaId, childrenIds: [arenaId] }));
-  nodes.push(makeArenaNode({ id: arenaId, type: ARENA_TYPES.ARENA, parentId: megaId }));
+  const asymX = Math.round((rand() - 0.5) * 420);
+  const asymY = Math.round((rand() - 0.5) * 420);
+  nodes.push(makeArenaNode({ id: gigaId, type: ARENA_TYPES.GIGA, childrenIds: [megaId], centerOffset: { x: 0, y: 0 } }));
+  nodes.push(makeArenaNode({ id: megaId, type: ARENA_TYPES.MEGA, parentId: gigaId, childrenIds: [arenaId], centerOffset: { x: asymX, y: asymY } }));
+  nodes.push(makeArenaNode({ id: arenaId, type: ARENA_TYPES.ARENA, parentId: megaId, centerOffset: { x: Math.round(asymX * 0.5), y: Math.round(asymY * 0.5) } }));
 
   const spin = Math.floor(rand() * 4);
   const hints = [PORTAL_POSITIONS.TOP, PORTAL_POSITIONS.RIGHT, PORTAL_POSITIONS.BOTTOM, PORTAL_POSITIONS.LEFT];
@@ -118,6 +145,21 @@ export function validateWorldGraph(world) {
   world.portals.forEach((portal) => {
     if (!nodeById.has(portal.fromArenaId)) errors.push(`portal.from invalide: ${portal.id}`);
     if (!nodeById.has(portal.toArenaId)) errors.push(`portal.to invalide: ${portal.id}`);
+    const expectedWidth = DEFAULT_PORTAL_PASSAGE_WIDTH;
+    if (portal.passageWidth !== expectedWidth) {
+      errors.push(`largeur passage invalide pour ${portal.id}: ${portal.passageWidth} (attendu ${expectedWidth})`);
+    }
+    if (portal.bidirectional !== true) {
+      errors.push(`passage non bidirectionnel pour ${portal.id}`);
+    }
+  });
+
+  world.nodes.forEach((node) => {
+    if (node.type === ARENA_TYPES.GIGA) return;
+    const offset = node.centerOffset || {};
+    if ((offset.x || 0) === 0 && (offset.y || 0) === 0) {
+      errors.push(`arena imbriquée centrée interdite: ${node.id}`);
+    }
   });
 
   gigaNodes.forEach((giga) => {
@@ -168,6 +210,19 @@ export function getPortalAnchor({ positionHint, radius = 1200, index = 0, total 
   const hintToAngle = { TOP: -Math.PI / 2, BOTTOM: Math.PI / 2, LEFT: Math.PI, RIGHT: 0 };
   const angle = hintToAngle[positionHint] ?? ((index / Math.max(1, total)) * Math.PI * 2);
   return { x: Math.cos(angle) * (radius - 30), y: Math.sin(angle) * (radius - 30), angle };
+}
+
+export function getPortalOpeningAngle(world, fromArenaId, toArenaId) {
+  const portal = (world?.portals || []).find(
+    (item) => item.fromArenaId === fromArenaId && item.toArenaId === toArenaId
+  );
+  if (!portal) return null;
+  return getPortalAnchor({ positionHint: portal.positionHint, radius: 1 }).angle;
+}
+
+export function getPortalOpeningHalfSpan({ radius = 1200, passageWidth = DEFAULT_PORTAL_PASSAGE_WIDTH }) {
+  const safeRadius = Math.max(1, radius);
+  return Math.min(Math.PI / 3, Math.max(0.03, (passageWidth / 2) / safeRadius));
 }
 
 export function resolvePortalAtPosition({ world, arenaId, x = 0, y = 0, radius = 1200, activationDistance = 78 }) {

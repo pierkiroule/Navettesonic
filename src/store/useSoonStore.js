@@ -23,7 +23,7 @@ import {
 } from "../core/traceCircuit.js";
 import { BREACH_GAP_SPAN, getFishNavigableRadius, MEMBRANE_LEVEL_MULTIPLIERS } from "../core/constants.js";
 import { SOON_MODE_COMPO, normalizeSoonMode } from "../core/uiState.js";
-import { buildMazeByArena, buildWorldDebugSnapshot, clampPointToMaze, generateLabybulle, getPortalArrivalPosition, validateWorldGraph } from "../core/labybulleWorld.js";
+import { buildMazeByArena, buildWorldDebugSnapshot, clampPointToMaze, generateLabybulle, getArenaIdForLevel, getArenaLevelFromId, getPortalArrivalPosition, getPortalOpeningAngle, getPortalOpeningHalfSpan, validateWorldGraph } from "../core/labybulleWorld.js";
 
 const saved = loadState();
 const labybulleWorld = generateLabybulle(saved?.labybulleSeed ?? 1);
@@ -38,29 +38,31 @@ const DEFAULT_FISH_NAV_RADIUS = getFishNavigableRadius(DEFAULT_ARENA_RADIUS);
 const MAX_ARENA_LEVEL = 2;
 
 
-const ARENA_OPENING_ANGLES = [-Math.PI / 2, 0, Math.PI];
-const ARENA_OPENING_HALF_SPAN = 0.22;
-
 function angleDistance(a, b) {
   return Math.atan2(Math.sin(a - b), Math.cos(a - b));
 }
 
-function isNearOpening(angle, level) {
-  const opening = ARENA_OPENING_ANGLES[Math.max(0, Math.min(MAX_ARENA_LEVEL, level))] ?? ARENA_OPENING_ANGLES[0];
-  return Math.abs(angleDistance(angle, opening)) <= ARENA_OPENING_HALF_SPAN;
+function isNearOpening(angle, openingAngle, openingHalfSpan) {
+  if (!Number.isFinite(openingAngle)) return false;
+  return Math.abs(angleDistance(angle, openingAngle)) <= openingHalfSpan;
 }
 
-function getArenaIdForLevel(level = 0) {
-  const normalized = Math.max(0, Math.min(MAX_ARENA_LEVEL, Number.isFinite(level) ? level : 0));
-  if (normalized === 0) return "arena-1";
-  if (normalized === 1) return "mega-1";
-  return "giga-1";
-}
-
-function getArenaLevelFromId(arenaId = "") {
-  if (arenaId === "giga-1") return 2;
-  if (arenaId === "mega-1") return 1;
-  return 0;
+function resolveOpeningContext({ world, arenaLevel, radialAngle, membraneRadius }) {
+  const safeLevel = Math.max(0, Math.min(MAX_ARENA_LEVEL, Number.isFinite(arenaLevel) ? arenaLevel : 0));
+  const outwardLevel = Math.min(MAX_ARENA_LEVEL, safeLevel + 1);
+  const inwardLevel = Math.max(0, safeLevel - 1);
+  const currentArenaId = getArenaIdForLevel(safeLevel);
+  const outwardToId = getArenaIdForLevel(outwardLevel);
+  const inwardToId = getArenaIdForLevel(inwardLevel);
+  const openingHalfSpan = getPortalOpeningHalfSpan({ radius: membraneRadius });
+  const outwardOpeningAngle = getPortalOpeningAngle(world, currentArenaId, outwardToId);
+  const inwardOpeningAngle = getPortalOpeningAngle(world, currentArenaId, inwardToId);
+  return {
+    outwardOpeningAngle,
+    inwardOpeningAngle,
+    nearOutwardOpening: isNearOpening(radialAngle, outwardOpeningAngle, openingHalfSpan),
+    nearInwardOpening: isNearOpening(radialAngle, inwardOpeningAngle, openingHalfSpan),
+  };
 }
 
 function getFishMovementRadius(arenaRadius) {
@@ -90,21 +92,6 @@ function clampFishToArenaLabyrinth(point, mazeByArenaMap, arenaId) {
   const maze = mazeByArenaMap?.[arenaId];
   if (!maze) return point;
   return clampPointToMaze({ x: point.x, y: point.y, maze });
-}
-
-function clampToRing(point, minRadius, maxRadius) {
-  const x = point?.x || 0;
-  const y = point?.y || 0;
-  const d = Math.hypot(x, y) || 0.0001;
-  if (d > maxRadius) {
-    const k = maxRadius / d;
-    return { x: x * k, y: y * k };
-  }
-  if (d < minRadius) {
-    const k = minRadius / d;
-    return { x: x * k, y: y * k };
-  }
-  return { x, y };
 }
 
 export function pushBubblesFromFish(bubbles = [], fish = {}, fishDepth = 1) {
@@ -266,11 +253,11 @@ export const useSoonStore = create((set, get) => ({
       mode,
       eyesClosed: false,
       selectedBubbleId: null,
-  odysseoPath: [],
-  odysseoDepthMarkers: [],
-  odysseoPathIndex: 0,
-  odysseoDirection: 1,
-  odysseoTool: "draw",
+      odysseoPath: [],
+      odysseoDepthMarkers: [],
+      odysseoPathIndex: 0,
+      odysseoDirection: 1,
+      odysseoTool: "draw",
       selectedBeaconId: null,
       circuitAutopilot: get().circuitAutopilot,
     });
@@ -578,8 +565,6 @@ export const useSoonStore = create((set, get) => ({
         stopRadius,
       } = control;
 
-      const isAutoPassageActive = false;
-
       // Point de bouche : le doigt tire le poisson par l'avant.
       const mouthX = state.fish.x + Math.cos(currentAngle) * mouthOffset;
       const mouthY = state.fish.y + Math.sin(currentAngle) * mouthOffset;
@@ -596,20 +581,17 @@ export const useSoonStore = create((set, get) => ({
       // - loin: vitesse cible max
       // - proche: ralentit progressivement
       // - très proche: arrêt stable (anti-jitter)
-      const desiredSpeed = isAutoPassageActive
-        ? Math.max(speedLimit * 0.72, Math.min(speedLimit, speedLimit * Math.max(0.75, pullNorm)))
-        : pullDistance <= stopRadius
-          ? 0
-          : Math.min(speedLimit, speedLimit * pullNorm);
+      const desiredSpeed = pullDistance <= stopRadius
+        ? 0
+        : Math.min(speedLimit, speedLimit * pullNorm);
 
       const dirX = pullDistance > 0.0001 ? pullX / pullDistance : 0;
       const dirY = pullDistance > 0.0001 ? pullY / pullDistance : 0;
       const desiredVx = dirX * desiredSpeed;
       const desiredVy = dirY * desiredSpeed;
 
-      const steerAccel = isAutoPassageActive ? Math.max(accel, 0.28) : accel;
-      const vx = state.fish.vx + (desiredVx - state.fish.vx) * steerAccel;
-      const vy = state.fish.vy + (desiredVy - state.fish.vy) * steerAccel;
+      const vx = state.fish.vx + (desiredVx - state.fish.vx) * accel;
+      const vy = state.fish.vy + (desiredVy - state.fish.vy) * accel;
 
       const speedRaw = Math.hypot(vx, vy);
       const limitedVx = speedRaw > speedLimit ? (vx / speedRaw) * speedLimit : vx;
@@ -659,7 +641,14 @@ export const useSoonStore = create((set, get) => ({
       const speedForDot = Math.hypot(nextVx, nextVy) || 0.0001;
       const radialDot = ((radialX * nextVx) + (radialY * nextVy)) / speedForDot;
       const nearMembrane = Math.abs(radialDistance - fishNavRadius) <= 48;
-      const nearOpening = isNearOpening(radialAngle, arenaLevel);
+      const activeWorld = state.worldGraph || labybulleWorld;
+      const { nearOutwardOpening, nearInwardOpening } = resolveOpeningContext({
+        world: activeWorld,
+        arenaLevel,
+        radialAngle,
+        membraneRadius: fishNavRadius,
+      });
+      const nearOpening = nearOutwardOpening || nearInwardOpening;
 
       // Contour hermétique: hors ouverture, on interdit strictement la traversée radiale.
       if (nearMembrane && !nearOpening) {
@@ -676,7 +665,7 @@ export const useSoonStore = create((set, get) => ({
       }
 
       if (nearMembrane && nearOpening) {
-        if (radialDot > 0.22 && arenaLevel < MAX_ARENA_LEVEL) {
+        if (radialDot > 0.22 && arenaLevel < MAX_ARENA_LEVEL && nearOutwardOpening) {
           const nextLevel = arenaLevel + 1;
           nextFishX += radialX * 16;
           nextFishY += radialY * 16;
@@ -714,7 +703,7 @@ export const useSoonStore = create((set, get) => ({
             },
           };
         }
-        if (radialDot < -0.22 && arenaLevel > 0) {
+        if (radialDot < -0.22 && arenaLevel > 0 && nearInwardOpening) {
           const nextLevel = arenaLevel - 1;
           nextFishX -= radialX * 16;
           nextFishY -= radialY * 16;

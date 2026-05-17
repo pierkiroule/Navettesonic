@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildMazeByArena, clampPointToMaze, generateLabybulle, validateWorldGraph, resolvePortalAtPosition, getPortalArrivalPosition, getArenaRadiusForNode } from '../src/core/labybulleWorld.js';
+import { buildMazeByArena, clampPointToMaze, generateLabybulle, validateWorldGraph, resolvePortalAtPosition, getPortalArrivalPosition, getArenaRadiusForNode, getPortalAnchor, getPortalOpeningHalfSpan, POISSON_PLUME_WIDTH, PORTAL_WIDTH_MULTIPLIER } from '../src/core/labybulleWorld.js';
 
 test('structure labybulle concentrique: 1 GIGA, 1 MEGA, 1 ARENA', () => {
   const world = generateLabybulle(42);
@@ -41,16 +41,43 @@ test('déterminisme: même seed => même structure', () => {
 
 test('détection de portail: proche du trou => transition possible', () => {
   const world = generateLabybulle(1);
+  const outgoing = world.portals.filter((p) => p.fromArenaId === 'arena-1');
+  const anchor = getPortalAnchor({ positionHint: outgoing[0].positionHint, radius: 1200, index: 0, total: outgoing.length });
   const portal = resolvePortalAtPosition({
     world,
     arenaId: 'arena-1',
-    x: 0,
-    y: -1170,
+    x: anchor.x,
+    y: anchor.y,
     radius: 1200,
   });
   assert.ok(portal);
   assert.equal(portal.fromArenaId, 'arena-1');
   assert.equal(portal.toArenaId, 'mega-1');
+});
+
+test('règles passages: largeur = 2x poisson-plume et bidirectionnels', () => {
+  const world = generateLabybulle(9);
+  const expected = POISSON_PLUME_WIDTH * PORTAL_WIDTH_MULTIPLIER;
+  world.portals.forEach((portal) => {
+    assert.equal(portal.passageWidth, expected);
+    assert.equal(portal.bidirectional, true);
+  });
+});
+
+test('ouverture contour: largeur géométrique alignée avec la largeur de passage', () => {
+  const expected = POISSON_PLUME_WIDTH * PORTAL_WIDTH_MULTIPLIER;
+  const radius = 1200;
+  const halfSpan = getPortalOpeningHalfSpan({ radius, passageWidth: expected });
+  const openingWidth = 2 * radius * halfSpan;
+  assert.ok(Math.abs(openingWidth - expected) < 0.01);
+});
+
+test('règles imbriquées: centres asymétriques pour les arènes internes', () => {
+  const world = generateLabybulle(9);
+  const mega = world.nodes.find((n) => n.id === 'mega-1');
+  const arena = world.nodes.find((n) => n.id === 'arena-1');
+  assert.ok((mega.centerOffset.x !== 0) || (mega.centerOffset.y !== 0));
+  assert.ok((arena.centerOffset.x !== 0) || (arena.centerOffset.y !== 0));
 });
 
 

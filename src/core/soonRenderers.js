@@ -3,6 +3,7 @@ import { drawPoissonPlume } from "./poissonPlumeRenderer.js";
 import { drawCharacters } from "./characters/characterEngine.js";
 import { drawOdysseoPath } from "./odysseoPath.js";
 import { ARENA_INNER_BOUNDARY_INSET, MEMBRANE_LEVEL_MULTIPLIERS } from "./constants.js";
+import { getArenaTransitionIdsForLevel, getPortalOpeningAngle, getPortalOpeningHalfSpan } from "./labybulleWorld.js";
 import {
   drawFireflies,
   drawPlacedTriangles,
@@ -64,7 +65,7 @@ export function drawScene(ctx, rect, time, refs) {
     }
   }
 
-  drawFish(ctx, current.fish, time);
+  drawFish(ctx, current.fish, time, current.worldGraph);
   drawQuill(ctx, current.fish, time);
 
   exitWorld(ctx);
@@ -138,26 +139,27 @@ export function drawQuill(ctx, fish = {}, time = 0) {
   ctx.restore();
 }
 
-const CONTOUR_OPENING_HALF_SPAN = 0.22;
-const CONTOUR_OPENING_ANGLES = [-Math.PI / 2, 0, Math.PI];
-
 export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
   const radius = arenaRef.current.radius;
+  const innerRadius = Math.max(0, radius - ARENA_INNER_BOUNDARY_INSET);
   void time;
   void current;
 
   ctx.save();
 
   const rings = [
-    radius * (MEMBRANE_LEVEL_MULTIPLIERS[0] ?? 1),
-    radius * (MEMBRANE_LEVEL_MULTIPLIERS[1] ?? 1),
-    radius * (MEMBRANE_LEVEL_MULTIPLIERS[2] ?? 1),
+    innerRadius * (MEMBRANE_LEVEL_MULTIPLIERS[0] ?? 1),
+    innerRadius * (MEMBRANE_LEVEL_MULTIPLIERS[1] ?? 1),
+    innerRadius * (MEMBRANE_LEVEL_MULTIPLIERS[2] ?? 1),
   ];
+  const worldGraph = current?.worldGraph;
 
   rings.forEach((r, index) => {
     ctx.beginPath();
-    const opening = CONTOUR_OPENING_ANGLES[index] ?? CONTOUR_OPENING_ANGLES[0];
-    ctx.arc(0, 0, r, opening + CONTOUR_OPENING_HALF_SPAN, opening - CONTOUR_OPENING_HALF_SPAN + Math.PI * 2);
+    const { fromArenaId, toArenaId } = getArenaTransitionIdsForLevel(index);
+    const opening = getPortalOpeningAngle(worldGraph, fromArenaId, toArenaId) ?? (-Math.PI / 2);
+    const halfSpan = getPortalOpeningHalfSpan({ radius: r });
+    ctx.arc(0, 0, r, opening + halfSpan, opening - halfSpan + Math.PI * 2);
     ctx.strokeStyle = "rgba(0, 0, 0, 0.92)";
     ctx.lineWidth = 8;
     ctx.stroke();
@@ -369,7 +371,7 @@ export function drawNestedDepositFigure(ctx, bubble, radius, deposits = [], time
   ctx.restore();
 }
 
-export function drawFish(ctx, fish, time) {
+export function drawFish(ctx, fish, time, worldGraph) {
   if (!fish) return;
 
   ctx.save();
@@ -396,14 +398,15 @@ export function drawFish(ctx, fish, time) {
     );
 
     const clipPath = new Path2D();
+    const { fromArenaId, toArenaId } = getArenaTransitionIdsForLevel(safeLevel);
+    const opening = getPortalOpeningAngle(worldGraph, fromArenaId, toArenaId) ?? (-Math.PI / 2);
+    const halfSpan = getPortalOpeningHalfSpan({ radius: membraneRadius });
     if (effectiveSide === "inside") {
-      const opening = CONTOUR_OPENING_ANGLES[safeLevel] ?? CONTOUR_OPENING_ANGLES[0];
-      clipPath.arc(0, 0, membraneRadius + clipPadding, opening + CONTOUR_OPENING_HALF_SPAN, opening - CONTOUR_OPENING_HALF_SPAN + Math.PI * 2);
+      clipPath.arc(0, 0, membraneRadius + clipPadding, opening + halfSpan, opening - halfSpan + Math.PI * 2);
       ctx.clip(clipPath);
     } else {
       clipPath.arc(0, 0, outerWorldRadius, 0, Math.PI * 2);
-      const opening = CONTOUR_OPENING_ANGLES[safeLevel] ?? CONTOUR_OPENING_ANGLES[0];
-      clipPath.arc(0, 0, membraneRadius - clipPadding * 0.4, opening + CONTOUR_OPENING_HALF_SPAN, opening - CONTOUR_OPENING_HALF_SPAN + Math.PI * 2);
+      clipPath.arc(0, 0, membraneRadius - clipPadding * 0.4, opening + halfSpan, opening - halfSpan + Math.PI * 2);
       ctx.clip(clipPath, "evenodd");
     }
 
