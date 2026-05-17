@@ -48,17 +48,17 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
 
   if (nearOuter && nearOut && radialDot > 0.1 && arenaLevel < MAX_ARENA_LEVEL) {
     const nextLevel = arenaLevel + 1;
-    nextFishX += radialX * 20;
-    nextFishY += radialY * 20;
+    nextFishX += radialX * 8;
+    nextFishY += radialY * 8;
     const destOuter = getMembraneRadiusForLevel(arenaRadius, nextLevel);
     const destInner = outerNavRadius;
     const sc = clampToCircle({ x: nextFishX, y: nextFishY }, destOuter - 4);
     const scDist = Math.hypot(sc.x, sc.y) || 0.0001;
-    const minR = destInner + 12;
+    const minR = destInner + 4;
     nextFishX = scDist < minR ? (sc.x / scDist) * minR : sc.x;
     nextFishY = scDist < minR ? (sc.y / scDist) * minR : sc.y;
-    const settledTargetX = nextFishX + radialX * 32;
-    const settledTargetY = nextFishY + radialY * 32;
+    const settledTargetX = nextFishX + radialX * 12;
+    const settledTargetY = nextFishY + radialY * 12;
     return {
       circuitAutopilot,
       circuitSegmentIndex,
@@ -71,14 +71,14 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
 
   if (nearInner && nearIn && radialDot < -0.1 && arenaLevel > 0) {
     const nextLevel = arenaLevel - 1;
-    nextFishX -= radialX * 20;
-    nextFishY -= radialY * 20;
+    nextFishX -= radialX * 8;
+    nextFishY -= radialY * 8;
     const destOuter = getMembraneRadiusForLevel(arenaRadius, nextLevel);
     const sc = clampToCircle({ x: nextFishX, y: nextFishY }, destOuter - 4);
     nextFishX = sc.x;
     nextFishY = sc.y;
-    const settledTargetX = nextFishX - radialX * 32;
-    const settledTargetY = nextFishY - radialY * 32;
+    const settledTargetX = nextFishX - radialX * 12;
+    const settledTargetY = nextFishY - radialY * 12;
     return {
       circuitAutopilot,
       circuitSegmentIndex,
