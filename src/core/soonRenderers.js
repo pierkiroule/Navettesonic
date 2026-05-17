@@ -14,6 +14,8 @@ import {
   drawEcosystemWorld,
 } from "./ecosystemFx.js";
 
+const CONTOUR_WIDTH_MULTIPLIER = 3;
+
 export function drawScene(ctx, rect, time, refs) {
   const { stateRef, arenaRef, cameraRef, enterWorld, exitWorld } = refs;
   const current = stateRef.current;
@@ -130,7 +132,7 @@ export function drawQuill(ctx, fish = {}, time = 0) {
   }
   ctx.fillStyle = "rgba(240,248,255,0.9)";
   ctx.strokeStyle = "rgba(125,211,252,0.9)";
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2 * CONTOUR_WIDTH_MULTIPLIER;
   drawQuillShape(ctx);
   ctx.restore();
 }
@@ -171,7 +173,7 @@ export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
       : isInnerWall
         ? `rgba(100, 180, 240, ${0.35 + pulse * 0.18})`
         : "rgba(15, 40, 70, 0.45)";
-    ctx.lineWidth = isOuterWall ? 5 : isInnerWall ? 3.5 : 2;
+    ctx.lineWidth = (isOuterWall ? 5 : isInnerWall ? 3.5 : 2) * CONTOUR_WIDTH_MULTIPLIER;
     ctx.stroke();
 
     if (opening !== null && isActive) {
@@ -526,5 +528,4 @@ export function drawArenaNightSky(ctx, arenaRef, time) {
 
   ctx.restore();
 }
-
 
