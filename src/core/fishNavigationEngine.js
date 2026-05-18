@@ -2,7 +2,7 @@ import { updateSnakeFishToTarget, createInitialSpine } from "./fishSnakeMotion.j
 import { clampToCircle } from "./geometry.js";
 import { getCircuitSpeedValue, smoothLoopPoint } from "./traceCircuit.js";
 import { getFishNavigableRadius, MEMBRANE_LEVEL_MULTIPLIERS } from "./constants.js";
-import { getArenaIdForLevel, getArenaLevelFromId, getPortalOpeningAngle, getPortalOpeningHalfSpan, resolveMembraneContact } from "./labybulleWorld.js";
+import { getArenaIdForLevel, getArenaLevelFromId, getPortalArrivalPosition, getPortalOpeningAngle, getPortalOpeningHalfSpan, resolveMembraneContact } from "./labybulleWorld.js";
 import { DEFAULT_FISH_NAV_RADIUS, MAX_ARENA_LEVEL, DEFAULT_ARENA_RADIUS, labybulleWorld } from "../store/soonInitialState.js";
 import { clampDepth, pushBubblesFromFish, separateBubblesByDepth } from "./fishBubblePhysics.js";
 
@@ -51,20 +51,21 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
     nextFishY = (nextFishY / d) * (innerNavRadius + 4);
   }
 
-  if (nearOuter && (nearOut||nearOutByContact) && radialDot > 0.1 && (arenaLevel < MAX_ARENA_LEVEL || activePortal)) {
+  if (nearOuter && (nearOut||nearOutByContact) && radialDot > 0.1 && activePortal) {
     const nextArenaId = activePortal?.toArenaId || runtimeArenaId;
     const nextLevel = Math.max(0, Math.min(MAX_ARENA_LEVEL, getArenaLevelFromId(nextArenaId)));
-    nextFishX += radialX * 8;
-    nextFishY += radialY * 8;
-    const destOuter = getMembraneRadiusForLevel(arenaRadius, nextLevel);
-    const destInner = outerNavRadius;
-    const sc = clampToCircle({ x: nextFishX, y: nextFishY }, destOuter - 4);
-    const scDist = Math.hypot(sc.x, sc.y) || 0.0001;
-    const minR = destInner + 4;
-    nextFishX = scDist < minR ? (sc.x / scDist) * minR : sc.x;
-    nextFishY = scDist < minR ? (sc.y / scDist) * minR : sc.y;
-    const settledTargetX = nextFishX + radialX * 12;
-    const settledTargetY = nextFishY + radialY * 12;
+    const arrival = getPortalArrivalPosition({
+      world: activeWorld,
+      fromArenaId: runtimeArenaId,
+      toArenaId: nextArenaId,
+      radius: getMembraneRadiusForLevel(arenaRadius, nextLevel),
+      inwardOffset: 160,
+      entryPositionHint: activePortal.positionHint || null,
+    });
+    nextFishX = arrival.x;
+    nextFishY = arrival.y;
+    const settledTargetX = nextFishX + Math.cos(radialAngle) * 12;
+    const settledTargetY = nextFishY + Math.sin(radialAngle) * 12;
     return {
       circuitAutopilot,
       circuitSegmentIndex,
@@ -78,14 +79,18 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
   if (nearInner && nearIn && radialDot < -0.1 && inwardPortal) {
     const nextArenaId = inwardPortal.toArenaId;
     const nextLevel = Math.max(0, Math.min(MAX_ARENA_LEVEL, getArenaLevelFromId(nextArenaId)));
-    nextFishX -= radialX * 8;
-    nextFishY -= radialY * 8;
-    const destOuter = getMembraneRadiusForLevel(arenaRadius, nextLevel);
-    const sc = clampToCircle({ x: nextFishX, y: nextFishY }, destOuter - 4);
-    nextFishX = sc.x;
-    nextFishY = sc.y;
-    const settledTargetX = nextFishX - radialX * 12;
-    const settledTargetY = nextFishY - radialY * 12;
+    const arrival = getPortalArrivalPosition({
+      world: activeWorld,
+      fromArenaId: runtimeArenaId,
+      toArenaId: nextArenaId,
+      radius: getMembraneRadiusForLevel(arenaRadius, nextLevel),
+      inwardOffset: 160,
+      entryPositionHint: inwardPortal.positionHint || null,
+    });
+    nextFishX = arrival.x;
+    nextFishY = arrival.y;
+    const settledTargetX = nextFishX - Math.cos(radialAngle) * 12;
+    const settledTargetY = nextFishY - Math.sin(radialAngle) * 12;
     return {
       circuitAutopilot,
       circuitSegmentIndex,
