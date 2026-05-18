@@ -89,20 +89,8 @@ function drawArenaWorldNetwork(ctx, current = {}) {
   const nodeById = new Map(nodes.map((n) => [n.id, n]));
 
   ctx.save();
-  ctx.strokeStyle = 'rgba(34,211,238,0.22)';
-  ctx.lineWidth = 22;
-  ctx.lineCap = 'round';
-  (world?.portals || []).forEach((portal) => {
-    const aNode = nodeById.get(portal.fromArenaId);
-    const bNode = nodeById.get(portal.toArenaId);
-    if (!aNode || !bNode) return;
-    const a = toLocal(aNode.absoluteCenter);
-    const b = toLocal(bNode.absoluteCenter);
-    ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
-    ctx.stroke();
-  });
+  // Vue monde: on n'affiche pas de couloir continu entre arènes.
+  // Les arènes restent tangentes et reliées par des portes seulement.
 
   nodes.forEach((node) => {
     const p = toLocal(node.absoluteCenter);

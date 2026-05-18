@@ -30,6 +30,8 @@ function buildArenaTransitionPatch({
   circuitAutopilot,
   circuitSegmentIndex,
   circuitSegmentT,
+  entryPositionHint = null,
+  inwardOffset = 32,
 }) {
   const nextLevel = Math.max(0, Math.min(MAX_ARENA_LEVEL, getArenaLevelFromId(nextArenaId)));
   const arrival = getPortalArrivalPosition({
@@ -37,7 +39,8 @@ function buildArenaTransitionPatch({
     fromArenaId: runtimeArenaId,
     toArenaId: nextArenaId,
     radius: getMembraneRadiusForLevel(arenaRadius, nextLevel),
-    inwardOffset: 160,
+    inwardOffset,
+    entryPositionHint,
   });
   const nextFishX = arrival.x;
   const nextFishY = arrival.y;
@@ -49,7 +52,7 @@ function buildArenaTransitionPatch({
     circuitSegmentT,
     bubbles: separateBubblesByDepth(pushBubblesFromFish(state.bubbles, { x: nextFishX, y: nextFishY }, fishDepth)),
     currentArenaId: nextArenaId,
-    fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: nextVx * 0.35, vy: nextVy * 0.35, targetX: settledTargetX, targetY: settledTargetY, arenaRadius, arenaLevel: nextLevel, membraneSide: "inside", wallHitCount, lastWallHitAt, breachOpen: false, breachAngle: null, breachOpenedAt: null, breachState: "closed", breachExpiresAt: null, breachUsed: false, hasQuill: Boolean(state.fish.hasQuill) },
+    fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: nextVx * 0.78, vy: nextVy * 0.78, targetX: settledTargetX, targetY: settledTargetY, arenaRadius, arenaLevel: nextLevel, membraneSide: "inside", wallHitCount, lastWallHitAt, breachOpen: false, breachAngle: null, breachOpenedAt: null, breachState: "closed", breachExpiresAt: null, breachUsed: false, hasQuill: Boolean(state.fish.hasQuill) },
   };
 }
 
@@ -88,6 +91,8 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
       circuitAutopilot,
       circuitSegmentIndex,
       circuitSegmentT,
+      entryPositionHint: contactPortal.positionHint || null,
+      inwardOffset: 28,
     });
   }
 
@@ -129,6 +134,8 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
       circuitAutopilot,
       circuitSegmentIndex,
       circuitSegmentT,
+      entryPositionHint: activePortal.positionHint || null,
+      inwardOffset: 28,
     });
   }
 
@@ -148,6 +155,8 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
       circuitAutopilot,
       circuitSegmentIndex,
       circuitSegmentT,
+      entryPositionHint: inwardPortal.positionHint || null,
+      inwardOffset: 28,
     });
   }
   const basePatch={circuitAutopilot,circuitSegmentIndex,circuitSegmentT,bubbles:separateBubblesByDepth(pushBubblesFromFish(state.bubbles,{x:nextFishX,y:nextFishY},fishDepth))};
