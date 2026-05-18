@@ -30,6 +30,7 @@ export function useSoonCanvasLoop({
     let frame = 0;
     let wasEditMode = false;
     const CAMERA_FOLLOW_SMOOTHING = 0.22;
+    const CAMERA_MAX_STEP_PER_FRAME = 42;
 
     function smoothFollowCameraToFish(fish) {
       if (!fish) return;
@@ -38,8 +39,17 @@ export function useSoonCanvasLoop({
       const cam = cameraRef.current;
       const currentX = Number.isFinite(cam.x) ? cam.x : targetX;
       const currentY = Number.isFinite(cam.y) ? cam.y : targetY;
-      cam.x = currentX + (targetX - currentX) * CAMERA_FOLLOW_SMOOTHING;
-      cam.y = currentY + (targetY - currentY) * CAMERA_FOLLOW_SMOOTHING;
+      const dx = (targetX - currentX) * CAMERA_FOLLOW_SMOOTHING;
+      const dy = (targetY - currentY) * CAMERA_FOLLOW_SMOOTHING;
+      const step = Math.hypot(dx, dy);
+      if (step > CAMERA_MAX_STEP_PER_FRAME && step > 0) {
+        const ratio = CAMERA_MAX_STEP_PER_FRAME / step;
+        cam.x = currentX + dx * ratio;
+        cam.y = currentY + dy * ratio;
+        return;
+      }
+      cam.x = currentX + dx;
+      cam.y = currentY + dy;
     }
 
     function loop() {
