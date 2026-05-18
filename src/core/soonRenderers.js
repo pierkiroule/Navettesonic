@@ -26,7 +26,6 @@ export function drawScene(ctx, rect, time, refs) {
 
   enterWorld(ctx, rect, cameraRef, stateRef);
 
-  drawArenaWorldNetwork(ctx, current);
   drawArenaBoundary(ctx, arenaRef, time, current);
 
   if (!current.eyesClosed) {
@@ -70,102 +69,9 @@ export function drawScene(ctx, rect, time, refs) {
   exitWorld(ctx);
 
   if (!current.eyesClosed) {
-    drawArenaNetworkMap(ctx, rect, current, arenaRef);
     drawCameraVignette(ctx, rect, current.fish);
     drawHud(ctx, rect, current, arenaRef);
   }
-}
-
-
-
-function drawArenaWorldNetwork(ctx, current = {}) {
-  const world = current?.worldGraph;
-  const nodes = world?.nodes || [];
-  if (nodes.length < 2) return;
-  const currentArenaId = current?.currentArenaId || world?.startArenaId || nodes[0]?.id;
-  const centerNode = nodes.find((n) => n.id === currentArenaId) || nodes[0];
-  const center = centerNode?.absoluteCenter || { x: 0, y: 0 };
-  const toLocal = (abs) => ({ x: (abs?.x || 0) - (center?.x || 0), y: (abs?.y || 0) - (center?.y || 0) });
-  const nodeById = new Map(nodes.map((n) => [n.id, n]));
-
-  ctx.save();
-  // Vue monde: on n'affiche pas de couloir continu entre arènes.
-  // Les arènes restent tangentes et reliées par des portes seulement.
-
-  nodes.forEach((node) => {
-    const p = toLocal(node.absoluteCenter);
-    const isCurrent = node.id === currentArenaId;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, isCurrent ? 56 : 36, 0, Math.PI * 2);
-    ctx.fillStyle = isCurrent ? 'rgba(250,204,21,0.22)' : 'rgba(125,211,252,0.16)';
-    ctx.fill();
-  });
-  ctx.restore();
-}
-
-function drawArenaNetworkMap(ctx, rect, current = {}, arenaRef) {
-  const world = current?.worldGraph;
-  const nodes = world?.nodes || [];
-  if (!nodes.length) return;
-  const currentArenaId = current?.currentArenaId || world?.startArenaId || nodes[0]?.id;
-  const currentNode = nodes.find((n) => n.id === currentArenaId) || nodes[0];
-  const center = currentNode?.absoluteCenter || { x: 0, y: 0 };
-
-  const panelW = 240;
-  const panelH = 190;
-  const margin = 18;
-  const ox = rect.width - panelW - margin;
-  const oy = margin;
-  const scale = 0.045;
-
-  ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = 'rgba(2, 10, 24, 0.7)';
-  ctx.strokeStyle = 'rgba(125,211,252,0.45)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.roundRect(ox, oy, panelW, panelH, 14);
-  ctx.fill();
-  ctx.stroke();
-
-  const toMini = (abs) => ({
-    x: ox + panelW * 0.5 + ((abs?.x || 0) - (center?.x || 0)) * scale,
-    y: oy + panelH * 0.5 + ((abs?.y || 0) - (center?.y || 0)) * scale,
-  });
-
-  const nodeById = new Map(nodes.map((n) => [n.id, n]));
-  const links = world?.portals || [];
-  ctx.strokeStyle = 'rgba(45,212,191,0.45)';
-  ctx.lineWidth = 1.5;
-  links.forEach((portal) => {
-    const from = nodeById.get(portal.fromArenaId);
-    const to = nodeById.get(portal.toArenaId);
-    if (!from || !to) return;
-    const a = toMini(from.absoluteCenter);
-    const b = toMini(to.absoluteCenter);
-    ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
-    ctx.stroke();
-  });
-
-  nodes.forEach((node) => {
-    const p = toMini(node.absoluteCenter);
-    const isCurrent = node.id === currentArenaId;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, isCurrent ? 6 : 4, 0, Math.PI * 2);
-    ctx.fillStyle = isCurrent ? 'rgba(250,204,21,0.95)' : 'rgba(125,211,252,0.9)';
-    ctx.fill();
-  });
-
-  ctx.fillStyle = 'rgba(226,232,240,0.95)';
-  ctx.font = '600 11px system-ui';
-  ctx.textAlign = 'left';
-  ctx.fillText("Réseau d'arènes", ox + 12, oy + 18);
-  ctx.fillStyle = 'rgba(148,163,184,0.95)';
-  ctx.font = '500 10px system-ui';
-  ctx.fillText(`Nœuds: ${nodes.length}  Corridors: ${Math.floor((world?.portals || []).length / 2)}`, ox + 12, oy + 34);
-  ctx.restore();
 }
 
 export function drawOcean(ctx, rect, time, current) {

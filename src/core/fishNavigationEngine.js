@@ -31,7 +31,7 @@ function buildArenaTransitionPatch({
   circuitSegmentIndex,
   circuitSegmentT,
   entryPositionHint = null,
-  inwardOffset = 32,
+  inwardOffset = 10,
 }) {
   const nextLevel = Math.max(0, Math.min(MAX_ARENA_LEVEL, getArenaLevelFromId(nextArenaId)));
   const arrival = getPortalArrivalPosition({
@@ -52,7 +52,7 @@ function buildArenaTransitionPatch({
     circuitSegmentT,
     bubbles: separateBubblesByDepth(pushBubblesFromFish(state.bubbles, { x: nextFishX, y: nextFishY }, fishDepth)),
     currentArenaId: nextArenaId,
-    fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: nextVx * 0.78, vy: nextVy * 0.78, targetX: settledTargetX, targetY: settledTargetY, arenaRadius, arenaLevel: nextLevel, membraneSide: "inside", wallHitCount, lastWallHitAt, breachOpen: false, breachAngle: null, breachOpenedAt: null, breachState: "closed", breachExpiresAt: null, breachUsed: false, hasQuill: Boolean(state.fish.hasQuill) },
+    fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: nextVx * 0.92, vy: nextVy * 0.92, targetX: settledTargetX, targetY: settledTargetY, arenaRadius, arenaLevel: nextLevel, membraneSide: "inside", wallHitCount, lastWallHitAt, breachOpen: false, breachAngle: null, breachOpenedAt: null, breachState: "closed", breachExpiresAt: null, breachUsed: false, hasQuill: Boolean(state.fish.hasQuill) },
   };
 }
 
@@ -92,7 +92,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
       circuitSegmentIndex,
       circuitSegmentT,
       entryPositionHint: contactPortal.positionHint || null,
-      inwardOffset: 28,
+      inwardOffset: 10,
     });
   }
 
@@ -135,7 +135,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
       circuitSegmentIndex,
       circuitSegmentT,
       entryPositionHint: activePortal.positionHint || null,
-      inwardOffset: 28,
+      inwardOffset: 10,
     });
   }
 
@@ -156,7 +156,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
       circuitSegmentIndex,
       circuitSegmentT,
       entryPositionHint: inwardPortal.positionHint || null,
-      inwardOffset: 28,
+      inwardOffset: 10,
     });
   }
   const basePatch={circuitAutopilot,circuitSegmentIndex,circuitSegmentT,bubbles:separateBubblesByDepth(pushBubblesFromFish(state.bubbles,{x:nextFishX,y:nextFishY},fishDepth))};
