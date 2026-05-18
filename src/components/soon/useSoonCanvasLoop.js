@@ -31,6 +31,8 @@ export function useSoonCanvasLoop({
     let wasEditMode = false;
     const CAMERA_FOLLOW_SMOOTHING = 0.22;
     const CAMERA_MAX_STEP_PER_FRAME = 42;
+    let previousArenaId = null;
+    let previousFishPosition = null;
 
     function smoothFollowCameraToFish(fish) {
       if (!fish) return;
@@ -105,9 +107,24 @@ export function useSoonCanvasLoop({
       }
 
       const next = stateRef.current || {};
-      if (!isEditMode) {
-        smoothFollowCameraToFish(next.fish);
+      const nextFish = next.fish || null;
+      const nextArenaId = next.currentArenaId || null;
+      if (!isEditMode && nextFish && previousFishPosition && previousArenaId && nextArenaId && previousArenaId !== nextArenaId) {
+        const dxArena = (Number.isFinite(nextFish.x) ? nextFish.x : 0) - previousFishPosition.x;
+        const dyArena = (Number.isFinite(nextFish.y) ? nextFish.y : 0) - previousFishPosition.y;
+        cameraRef.current.x += dxArena;
+        cameraRef.current.y += dyArena;
       }
+      if (!isEditMode) {
+        smoothFollowCameraToFish(nextFish);
+      }
+      if (nextFish) {
+        previousFishPosition = {
+          x: Number.isFinite(nextFish.x) ? nextFish.x : 0,
+          y: Number.isFinite(nextFish.y) ? nextFish.y : 0,
+        };
+      }
+      previousArenaId = nextArenaId;
 
       if (!isEditMode) {
         updateAmbientMix(next.bubbles || [], next.fish || null);
