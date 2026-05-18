@@ -30,16 +30,37 @@ export function useSoonCanvasLoop({
     let frame = 0;
     let wasEditMode = false;
     const CAMERA_FOLLOW_SMOOTHING = 0.22;
+    const CAMERA_MAX_STEP_PER_FRAME = 42;
 
-    function smoothFollowCameraToFish(fish) {
-      if (!fish) return;
-      const targetX = Number.isFinite(fish.x) ? fish.x : 0;
-      const targetY = Number.isFinite(fish.y) ? fish.y : 0;
+    function getArenaWorldCenter(current = {}) {
+      const world = current.worldGraph;
+      const arenaId = current.currentArenaId || world?.startArenaId;
+      const node = (world?.nodes || []).find((item) => item.id === arenaId);
+      const center = node?.absoluteCenter || { x: 0, y: 0 };
+      return {
+        x: Number.isFinite(center.x) ? center.x : 0,
+        y: Number.isFinite(center.y) ? center.y : 0,
+      };
+    }
+
+    function smoothFollowCameraToFish(fishWorld) {
+      if (!fishWorld) return;
+      const targetX = Number.isFinite(fishWorld.x) ? fishWorld.x : 0;
+      const targetY = Number.isFinite(fishWorld.y) ? fishWorld.y : 0;
       const cam = cameraRef.current;
       const currentX = Number.isFinite(cam.x) ? cam.x : targetX;
       const currentY = Number.isFinite(cam.y) ? cam.y : targetY;
-      cam.x = currentX + (targetX - currentX) * CAMERA_FOLLOW_SMOOTHING;
-      cam.y = currentY + (targetY - currentY) * CAMERA_FOLLOW_SMOOTHING;
+      const dx = (targetX - currentX) * CAMERA_FOLLOW_SMOOTHING;
+      const dy = (targetY - currentY) * CAMERA_FOLLOW_SMOOTHING;
+      const step = Math.hypot(dx, dy);
+      if (step > CAMERA_MAX_STEP_PER_FRAME && step > 0) {
+        const ratio = CAMERA_MAX_STEP_PER_FRAME / step;
+        cam.x = currentX + dx * ratio;
+        cam.y = currentY + dy * ratio;
+        return;
+      }
+      cam.x = currentX + dx;
+      cam.y = currentY + dy;
     }
 
     function loop() {
@@ -95,8 +116,16 @@ export function useSoonCanvasLoop({
       }
 
       const next = stateRef.current || {};
+      const nextFish = next.fish || null;
+      const arenaCenter = getArenaWorldCenter(next);
+      const fishWorld = nextFish
+        ? {
+            x: arenaCenter.x + (Number.isFinite(nextFish.x) ? nextFish.x : 0),
+            y: arenaCenter.y + (Number.isFinite(nextFish.y) ? nextFish.y : 0),
+          }
+        : null;
       if (!isEditMode) {
-        smoothFollowCameraToFish(next.fish);
+        smoothFollowCameraToFish(fishWorld);
       }
 
       if (!isEditMode) {

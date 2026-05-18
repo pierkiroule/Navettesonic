@@ -208,10 +208,16 @@ export default function SoonCanvas({
         const viewZoom = Number.isFinite(current.viewZoom) ? current.viewZoom : 0;
         const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 2.55);
         const userZoom = fitZoom * (1 + viewZoom * 1.55);
+        const world = current.worldGraph;
+        const arenaId = current.currentArenaId || world?.startArenaId;
+        const arenaNode = (world?.nodes || []).find((node) => node.id === arenaId) || null;
+        const center = arenaNode?.absoluteCenter || { x: 0, y: 0 };
+        const arenaCenterX = Number.isFinite(center.x) ? center.x : 0;
+        const arenaCenterY = Number.isFinite(center.y) ? center.y : 0;
 
         setArenaCenterScreen({
-          x: rect.width * 0.5 - camera.x * userZoom,
-          y: rect.height * 0.5 - camera.y * userZoom,
+          x: rect.width * 0.5 + (arenaCenterX - camera.x) * userZoom,
+          y: rect.height * 0.5 + (arenaCenterY - camera.y) * userZoom,
         });
       }
 

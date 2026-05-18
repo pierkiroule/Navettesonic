@@ -47,9 +47,15 @@ export function useSoonPointer({
 
     const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 2.55);
     const finalZoom = fitZoom * (1 + viewZoom * 1.55);
+    const world = current.worldGraph;
+    const arenaId = current.currentArenaId || world?.startArenaId;
+    const arenaNode = (world?.nodes || []).find((node) => node.id === arenaId) || null;
+    const arenaCenter = arenaNode?.absoluteCenter || { x: 0, y: 0 };
+    const centerX = Number.isFinite(arenaCenter.x) ? arenaCenter.x : 0;
+    const centerY = Number.isFinite(arenaCenter.y) ? arenaCenter.y : 0;
 
-    const x = (event.clientX - rect.left - rect.width / 2) / finalZoom + cameraRef.current.x;
-    const y = (event.clientY - rect.top - rect.height / 2) / finalZoom + cameraRef.current.y;
+    const x = (event.clientX - rect.left - rect.width / 2) / finalZoom + cameraRef.current.x - centerX;
+    const y = (event.clientY - rect.top - rect.height / 2) / finalZoom + cameraRef.current.y - centerY;
 
     return { x, y };
   }

@@ -102,6 +102,12 @@ export function enterWorld(ctx, rect, cameraRef, stateRef) {
   const camera = cameraRef.current;
   const current = stateRef.current || {};
   const fish = current.fish || {};
+  const world = current.worldGraph;
+  const arenaId = current.currentArenaId || world?.startArenaId;
+  const arenaNode = (world?.nodes || []).find((node) => node.id === arenaId) || null;
+  const arenaCenter = arenaNode?.absoluteCenter || { x: 0, y: 0 };
+  const arenaCenterX = Number.isFinite(arenaCenter.x) ? arenaCenter.x : 0;
+  const arenaCenterY = Number.isFinite(arenaCenter.y) ? arenaCenter.y : 0;
 
   const viewZoom = Number.isFinite(current.viewZoom) ? current.viewZoom : 0;
   const arenaRadius = current.arenaRadius || 1200;
@@ -119,7 +125,7 @@ export function enterWorld(ctx, rect, cameraRef, stateRef) {
   ctx.save();
   ctx.translate(rect.width / 2, rect.height / 2);
   ctx.scale(userZoom, userZoom);
-  ctx.translate(-camera.x + driftX, -camera.y + driftY);
+  ctx.translate(-camera.x + arenaCenterX + driftX, -camera.y + arenaCenterY + driftY);
 }
 
 export function exitWorld(ctx) {
