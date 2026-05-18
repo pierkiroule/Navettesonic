@@ -83,7 +83,8 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
   const nearOuter=Math.abs(radialDistance-outerNavRadius)<=120, nearInner=innerNavRadius>0&&Math.abs(radialDistance-innerNavRadius)<=120, nearOut=Boolean(activePortal), nearIn=Boolean(inwardPortal);
   const pushingOutward=radialDot>0.02;
   const transitionCooldownUntil = Number.isFinite(state?.fish?.arenaTransitionCooldownUntil) ? state.fish.arenaTransitionCooldownUntil : 0;
-  const transitionLocked = now < transitionCooldownUntil;
+  const canUseOpenPassage = breachOpen && nearOut;
+  const transitionLocked = now < transitionCooldownUntil && !canUseOpenPassage;
   const shouldResolveMembraneContact=(hitOuterBoundary||nearOuter||radialDistance>=outerNavRadius-8)&&!transitionLocked; const membraneContact=shouldResolveMembraneContact?resolveMembraneContact({world:activeWorld,arenaId:runtimeArenaId,x:nextFishX,y:nextFishY,radius:outerNavRadius,angularToleranceDeg:20}):null;
   const contactPortal=membraneContact?.action==="transition"?membraneContact?.portal||null:null;
 
@@ -131,7 +132,8 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
     nextFishY = (nextFishY / d) * (innerNavRadius + 4);
   }
 
-  const canTransitionOutward=!transitionLocked&&nearOuter&&activePortal&&nearOut&&radialDot>0.1;
+  const outwardThreshold = canUseOpenPassage ? 0.02 : 0.1;
+  const canTransitionOutward=!transitionLocked&&nearOuter&&activePortal&&nearOut&&radialDot>outwardThreshold;
   if (canTransitionOutward) {
     return buildArenaTransitionPatch({
       state,
