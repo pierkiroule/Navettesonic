@@ -215,7 +215,9 @@ export function generateLabybulle(seed = 1) {
 
   neighbors.forEach(({ suffix, hint, angle }) => {
     const childId = `${startArenaId}-${suffix}`;
-    const centerDistance = (DEFAULT_LAYOUT_BASE_RADIUS * 2) - ROOM_TOUCH_OVERLAP;
+    const parentRadius = DEFAULT_LAYOUT_BASE_RADIUS * getArenaRadiusMultiplier(centerNode.type);
+    const childRadius = DEFAULT_LAYOUT_BASE_RADIUS * getArenaRadiusMultiplier(ARENA_TYPES.ARENA);
+    const centerDistance = parentRadius + childRadius;
     const childAbsoluteCenter = {
       x: Math.cos(angle) * centerDistance,
       y: Math.sin(angle) * centerDistance,

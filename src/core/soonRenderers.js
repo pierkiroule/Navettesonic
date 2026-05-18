@@ -144,6 +144,7 @@ function drawArenaNetworkBackdrop(ctx, current = {}, baseRadius = 1200) {
   if (!worldGraph || !activeArenaId) return;
 
   const nodes = worldGraph?.nodes || [];
+  const portals = worldGraph?.portals || [];
   const activeNode = nodes.find((n) => n.id === activeArenaId);
   if (!activeNode) return;
 
@@ -156,17 +157,36 @@ function drawArenaNetworkBackdrop(ctx, current = {}, baseRadius = 1200) {
     const y = (center.y || 0) - (activeCenter.y || 0);
     const radius = getArenaRadiusForNode({ world: worldGraph, arenaId: node.id, baseRadius });
 
+    const portalToActive = portals.find((p) => p.fromArenaId === node.id && p.toArenaId === activeArenaId) || null;
+    const opening = portalToActive
+      ? getPortalOpeningAngle(worldGraph, portalToActive.fromArenaId, portalToActive.toArenaId)
+      : null;
+    const halfSpan = opening !== null ? getPortalOpeningHalfSpan({ radius }) : 0;
+
+    ctx.save();
+    ctx.translate(x, y);
+
     ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.2)';
-    ctx.lineWidth = 2 * CONTOUR_WIDTH_MULTIPLIER;
+    if (opening !== null) {
+      ctx.arc(0, 0, radius, opening + halfSpan, opening - halfSpan + Math.PI * 2);
+    } else {
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    }
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.58)';
+    ctx.lineWidth = 4 * CONTOUR_WIDTH_MULTIPLIER;
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.arc(x, y, radius * 0.95, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(14, 116, 144, 0.18)';
-    ctx.lineWidth = 1 * CONTOUR_WIDTH_MULTIPLIER;
+    if (opening !== null) {
+      ctx.arc(0, 0, radius * 0.95, opening + halfSpan, opening - halfSpan + Math.PI * 2);
+    } else {
+      ctx.arc(0, 0, radius * 0.95, 0, Math.PI * 2);
+    }
+    ctx.strokeStyle = 'rgba(14, 116, 144, 0.48)';
+    ctx.lineWidth = 2 * CONTOUR_WIDTH_MULTIPLIER;
     ctx.stroke();
+
+    ctx.restore();
   });
   ctx.restore();
 }
