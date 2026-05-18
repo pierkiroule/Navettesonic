@@ -16,3 +16,26 @@ test('après transition, le passage retour reste tolérant temporairement', () =
   assert.notEqual(first.currentArenaId, 'arena-1');
   assert.equal(first.fish.breachOpen, true);
 });
+
+test('portail ouvert prioritaire: traverse sans rester clampé au bord', () => {
+  const world = generateLabybulle(11);
+  resolveMembraneContact({ world, arenaId: 'arena-1', x: 1200, y: 0, radius: 1200 });
+  const arenaRadius = 1200;
+  const outer = getMembraneRadiusForLevel(arenaRadius, 0);
+  const first = tickFishEngine(baseState(world, 'arena-1', { x: outer + 1, y: 0, vx: 0.12, vy: 0.02, targetX: outer + 24, targetY: 40, angle: 0, depth: 1, maxSpeed: 3.1, arenaLevel: 0, swimPhase: 0, mouthPull: 0, turnAmount: 0, turnVelocity: 0, wallHitCount: 0, lastWallHitAt: 0, hasQuill: false }), { arenaRadius });
+  const returnedArenaId = first.currentArenaId;
+  const back = tickFishEngine(baseState(world, returnedArenaId, {
+    ...first.fish,
+    x: outer - 2,
+    y: 0,
+    vx: 0.3,
+    vy: 0.01,
+    targetX: outer + 80,
+    targetY: 24,
+    breachOpen: true,
+    breachUsed: false,
+  }), { arenaRadius });
+  assert.notEqual(back.currentArenaId, returnedArenaId);
+  assert.ok(Math.hypot(back.fish.x, back.fish.y) < outer - 6, 'should transition, not stay clamped on membrane edge');
+  assert.equal(back.fish.breachOpen, true, 'open breach should not block transition');
+});

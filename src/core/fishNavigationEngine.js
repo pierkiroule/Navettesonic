@@ -18,6 +18,37 @@ export const getMembraneRadiusForLevel=(arenaRadius,arenaLevel=0)=>{const base=g
 const ARENA_TRANSITION_COOLDOWN_MS = 220;
 const ARENA_PASSAGE_OPEN_MS = 1400;
 
+export function shouldTraverseOpenPassage({
+  radialDistance,
+  radialDot,
+  radialAngle,
+  outerNavRadius,
+  innerNavRadius,
+  activePortal,
+  inwardPortal,
+  breachOpen,
+  breachAngle,
+  breachExpiresAt,
+  now,
+}) {
+  const nearOuter = Math.abs(radialDistance - outerNavRadius) <= 120;
+  const nearInner = innerNavRadius > 0 && Math.abs(radialDistance - innerNavRadius) <= 120;
+  const openWindowActive = breachOpen && Number.isFinite(breachExpiresAt) && now < breachExpiresAt;
+  const outwardThreshold = openWindowActive ? 0.02 : 0.1;
+  const inwardThreshold = -0.1;
+
+  if (nearOuter && activePortal && radialDot > outwardThreshold) {
+    return { portal: activePortal, direction: "out" };
+  }
+  if (nearInner && inwardPortal && radialDot < inwardThreshold) {
+    return { portal: inwardPortal, direction: "in" };
+  }
+  if (openWindowActive && nearOuter && activePortal && Number.isFinite(breachAngle) && isNearOpening(radialAngle, breachAngle, getPortalOpeningHalfSpan({ radius: outerNavRadius }) * 1.9) && radialDot > 0.01) {
+    return { portal: activePortal, direction: "out" };
+  }
+  return null;
+}
+
 function buildArenaTransitionPatch({
   state,
   activeWorld,
@@ -85,6 +116,39 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
   const transitionCooldownUntil = Number.isFinite(state?.fish?.arenaTransitionCooldownUntil) ? state.fish.arenaTransitionCooldownUntil : 0;
   const canUseOpenPassage = breachOpen && nearOut;
   const transitionLocked = now < transitionCooldownUntil && !canUseOpenPassage;
+  const traverseOpenPassage = shouldTraverseOpenPassage({
+    radialDistance,
+    radialDot,
+    radialAngle,
+    outerNavRadius,
+    innerNavRadius,
+    activePortal,
+    inwardPortal,
+    breachOpen,
+    breachAngle: state.fish?.breachAngle,
+    breachExpiresAt: state.fish?.breachExpiresAt,
+    now,
+  });
+  if (traverseOpenPassage?.portal?.toArenaId) {
+    return buildArenaTransitionPatch({
+      state,
+      activeWorld,
+      runtimeArenaId,
+      nextArenaId: traverseOpenPassage.portal.toArenaId,
+      radialAngle: traverseOpenPassage.direction === "in" ? radialAngle + Math.PI : radialAngle,
+      nextVx,
+      nextVy,
+      fishDepth,
+      arenaRadius,
+      wallHitCount,
+      lastWallHitAt,
+      circuitAutopilot,
+      circuitSegmentIndex,
+      circuitSegmentT,
+      entryPositionHint: traverseOpenPassage.portal.positionHint || null,
+      inwardOffset: 140,
+    });
+  }
   const shouldResolveMembraneContact=(hitOuterBoundary||nearOuter||radialDistance>=outerNavRadius-8)&&!transitionLocked; const membraneContact=shouldResolveMembraneContact?resolveMembraneContact({world:activeWorld,arenaId:runtimeArenaId,x:nextFishX,y:nextFishY,radius:outerNavRadius,angularToleranceDeg:20}):null;
   const contactPortal=membraneContact?.action==="transition"?membraneContact?.portal||null:null;
 
@@ -178,5 +242,6 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
   const basePatch={circuitAutopilot,circuitSegmentIndex,circuitSegmentT,bubbles:separateBubblesByDepth(pushBubblesFromFish(state.bubbles,{x:nextFishX,y:nextFishY},fishDepth))};
   const speed=Math.hypot(limitedVx,limitedVy),moveAngle=speed>0.035?Math.atan2(limitedVy,limitedVx):currentAngle,angle=speed>0.035?lerpAngle(currentAngle,moveAngle,0.055+Math.min(0.055,speed*0.006)):currentAngle;
   const turnStrengthSigned=Math.max(-1,Math.min(1,((()=>{let d=moveAngle-currentAngle;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;return d;})())/1.15)); const nextMouthPull=(state.fish.mouthPull||0)+(pullNorm-(state.fish.mouthPull||0))*0.12; const targetTurnVelocity=turnStrengthSigned*(0.55+Math.min(0.45,speed*0.08)); const nextTurnVelocity=(state.fish.turnVelocity||0)+(targetTurnVelocity-(state.fish.turnVelocity||0))*0.18; const nextTurnAmount=(state.fish.turnAmount||0)+(nextTurnVelocity-(state.fish.turnAmount||0))*0.16;
-  return {...basePatch,currentArenaId:runtimeArenaId,fish:{...state.fish,x:nextFishX,y:nextFishY,vx:nextVx,vy:nextVy,targetX,targetY,angle,swimPhase:(state.fish.swimPhase||0)+0.045+Math.min(0.16,speed*0.011)+nextTurnAmount*0.025,depth:clampDepth(fishDepth),mouthPull:nextMouthPull,turnAmount:nextTurnAmount,turnVelocity:nextTurnVelocity,maxSpeed:state.fish.maxSpeed||3.1,arenaRadius,arenaLevel,wallHitCount,lastWallHitAt,breachOpen:false,breachAngle:null,breachOpenedAt:null,breachState:"closed",breachExpiresAt:null,breachUsed:false,hasQuill:Boolean(state.fish.hasQuill),membraneSide:"inside"}};
+  const keepBreachOpen = breachOpen && (nearOut || (Number.isFinite(state.fish?.breachAngle) && isNearOpening(radialAngle, state.fish.breachAngle, outerHalfSpan * 1.7)));
+  return {...basePatch,currentArenaId:runtimeArenaId,fish:{...state.fish,x:nextFishX,y:nextFishY,vx:nextVx,vy:nextVy,targetX,targetY,angle,swimPhase:(state.fish.swimPhase||0)+0.045+Math.min(0.16,speed*0.011)+nextTurnAmount*0.025,depth:clampDepth(fishDepth),mouthPull:nextMouthPull,turnAmount:nextTurnAmount,turnVelocity:nextTurnVelocity,maxSpeed:state.fish.maxSpeed||3.1,arenaRadius,arenaLevel,wallHitCount,lastWallHitAt,breachOpen:keepBreachOpen,breachAngle:keepBreachOpen?state.fish.breachAngle:null,breachOpenedAt:keepBreachOpen?state.fish.breachOpenedAt:null,breachState:keepBreachOpen?"open":"closed",breachExpiresAt:keepBreachOpen?state.fish.breachExpiresAt:null,breachUsed:false,hasQuill:Boolean(state.fish.hasQuill),membraneSide:"inside"}};
 }
