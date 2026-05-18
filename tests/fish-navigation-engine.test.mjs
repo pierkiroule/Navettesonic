@@ -47,3 +47,35 @@ test('transition externe possible même avec vitesse radiale quasi nulle après 
   const next = tickFishEngine(state, { arenaRadius });
   assert.notEqual(next.currentArenaId, 'arena-1');
 });
+
+test("transition d'arène sans téléportation profonde: position d'arrivée reste proche du portail", () => {
+  const world = generateLabybulle(8);
+  resolveMembraneContact({ world, arenaId: "arena-1", x: 1200, y: 0, radius: 1200 });
+
+  const arenaRadius = 1200;
+  const outer = getMembraneRadiusForLevel(arenaRadius, 0);
+  const state = baseState(world, "arena-1", {
+    x: outer + 1,
+    y: 0,
+    vx: 0.1,
+    vy: 0.01,
+    targetX: outer + 12,
+    targetY: 20,
+    angle: 0,
+    depth: 1,
+    maxSpeed: 3.1,
+    arenaLevel: 0,
+    swimPhase: 0,
+    mouthPull: 0,
+    turnAmount: 0,
+    turnVelocity: 0,
+    wallHitCount: 0,
+    lastWallHitAt: 0,
+    hasQuill: false,
+  });
+
+  const next = tickFishEngine(state, { arenaRadius });
+  assert.notEqual(next.currentArenaId, "arena-1");
+  const arrivalRadius = Math.hypot(next.fish.x, next.fish.y);
+  assert.ok(arrivalRadius > outer - 150, `arrival too deep inside arena: r=${arrivalRadius}`);
+});
