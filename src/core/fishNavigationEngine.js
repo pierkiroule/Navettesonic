@@ -113,6 +113,18 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
   const transitionCooldownUntil = Number.isFinite(state?.fish?.arenaTransitionCooldownUntil) ? state.fish.arenaTransitionCooldownUntil : 0;
   const availablePortals=(activeWorld?.portals||[]).filter((p)=>p.fromArenaId===runtimeArenaId);
   const previousArenaId = state.fish?.previousArenaId || null;
+  const isImmediateReturnBlocked = (nextArenaId) => {
+    if (!nextArenaId) return false;
+    if (!(now < transitionCooldownUntil)) return false;
+    if (!(Boolean(previousArenaId) && nextArenaId === previousArenaId)) return false;
+    const speedNow = Math.hypot(nextVx, nextVy);
+    const explicitOpenBreachReturn =
+      Boolean(state.fish?.breachOpen) &&
+      Number.isFinite(state.fish?.breachExpiresAt) &&
+      now < state.fish.breachExpiresAt &&
+      speedNow >= 0.28;
+    return !explicitOpenBreachReturn;
+  };
   const blockImmediateReturn = now < transitionCooldownUntil && previousArenaId;
   const filteredPortals = blockImmediateReturn ? availablePortals.filter((p) => p.toArenaId !== previousArenaId) : availablePortals;
   let activePortal=filteredPortals.find((p)=>isNearOpening(radialAngle,getPortalOpeningAngle(activeWorld,p.fromArenaId,p.toArenaId),outerHalfSpan))||null;
@@ -142,7 +154,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
     breachExpiresAt: state.fish?.breachExpiresAt,
     now,
   });
-  if (!transitionLocked && traverseOpenPassage?.portal?.toArenaId) {
+  if (!transitionLocked && traverseOpenPassage?.portal?.toArenaId && !isImmediateReturnBlocked(traverseOpenPassage.portal.toArenaId)) {
     return buildArenaTransitionPatch({
       state,
       activeWorld,
@@ -167,7 +179,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
 
   // Priorité absolue: si le contact membrane résout une transition, on traverse
   // immédiatement (évite les boucles de rejet/glisse au bord).
-  if (contactPortal?.toArenaId) {
+  if (contactPortal?.toArenaId && !isImmediateReturnBlocked(contactPortal.toArenaId)) {
     return buildArenaTransitionPatch({
       state,
       activeWorld,
@@ -210,7 +222,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
   }
 
   const outwardThreshold = canUseOpenPassage ? 0.02 : 0.1;
-  const canTransitionOutward=!transitionLocked&&nearOuter&&activePortal&&nearOut&&radialDot>outwardThreshold;
+  const canTransitionOutward=!transitionLocked&&nearOuter&&activePortal&&nearOut&&radialDot>outwardThreshold&&!isImmediateReturnBlocked(activePortal?.toArenaId);
   if (canTransitionOutward) {
     return buildArenaTransitionPatch({
       state,
@@ -232,7 +244,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
     });
   }
 
-  if (!transitionLocked && nearInner && nearIn && radialDot < -0.1 && inwardPortal) {
+  if (!transitionLocked && nearInner && nearIn && radialDot < -0.1 && inwardPortal && !isImmediateReturnBlocked(inwardPortal.toArenaId)) {
     return buildArenaTransitionPatch({
       state,
       activeWorld,
