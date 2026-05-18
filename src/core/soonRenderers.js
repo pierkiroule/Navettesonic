@@ -26,6 +26,7 @@ export function drawScene(ctx, rect, time, refs) {
 
   enterWorld(ctx, rect, cameraRef, stateRef);
 
+  drawArenaWorldNetwork(ctx, current);
   drawArenaBoundary(ctx, arenaRef, time, current);
 
   if (!current.eyesClosed) {
@@ -75,6 +76,44 @@ export function drawScene(ctx, rect, time, refs) {
   }
 }
 
+
+
+function drawArenaWorldNetwork(ctx, current = {}) {
+  const world = current?.worldGraph;
+  const nodes = world?.nodes || [];
+  if (nodes.length < 2) return;
+  const currentArenaId = current?.currentArenaId || world?.startArenaId || nodes[0]?.id;
+  const centerNode = nodes.find((n) => n.id === currentArenaId) || nodes[0];
+  const center = centerNode?.absoluteCenter || { x: 0, y: 0 };
+  const toLocal = (abs) => ({ x: (abs?.x || 0) - (center?.x || 0), y: (abs?.y || 0) - (center?.y || 0) });
+  const nodeById = new Map(nodes.map((n) => [n.id, n]));
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(34,211,238,0.22)';
+  ctx.lineWidth = 22;
+  ctx.lineCap = 'round';
+  (world?.portals || []).forEach((portal) => {
+    const aNode = nodeById.get(portal.fromArenaId);
+    const bNode = nodeById.get(portal.toArenaId);
+    if (!aNode || !bNode) return;
+    const a = toLocal(aNode.absoluteCenter);
+    const b = toLocal(bNode.absoluteCenter);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  });
+
+  nodes.forEach((node) => {
+    const p = toLocal(node.absoluteCenter);
+    const isCurrent = node.id === currentArenaId;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, isCurrent ? 56 : 36, 0, Math.PI * 2);
+    ctx.fillStyle = isCurrent ? 'rgba(250,204,21,0.22)' : 'rgba(125,211,252,0.16)';
+    ctx.fill();
+  });
+  ctx.restore();
+}
 
 function drawArenaNetworkMap(ctx, rect, current = {}, arenaRef) {
   const world = current?.worldGraph;

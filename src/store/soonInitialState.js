@@ -27,7 +27,7 @@ export const defaultFish = {
 
 export const initialState = {
   mode: normalizeSoonMode(saved?.mode, SOON_MODE_COMPO),
-  bubbles: defaultPack.bubbles.map((bubble) => ({ ...bubble })),
+  bubbles: (saved?.arenaBubblesById?.[saved?.currentArenaId || labybulleWorld.startArenaId] || saved?.bubbles || defaultPack.bubbles).map((bubble) => ({ ...bubble })),
   fish: {
     ...defaultFish,
     ...(saved?.fish || {}),
@@ -45,4 +45,7 @@ export const initialState = {
   worldGraph: labybulleWorld,
   currentArenaId: saved?.currentArenaId || labybulleWorld.startArenaId,
   mazeByArena,
+  arenaBubblesById: saved?.arenaBubblesById || {
+    [saved?.currentArenaId || labybulleWorld.startArenaId]: (saved?.bubbles || defaultPack.bubbles).map((bubble) => ({ ...bubble })),
+  },
 };
