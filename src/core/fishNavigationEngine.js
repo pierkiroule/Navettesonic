@@ -47,15 +47,19 @@ function buildArenaTransitionPatch({
   const nextFishX = arrival.x;
   const nextFishY = arrival.y;
   const transitionAt = performance.now();
-  const settledTargetX = nextFishX + Math.cos(radialAngle) * 12;
-  const settledTargetY = nextFishY + Math.sin(radialAngle) * 12;
+  const inwardDx = -nextFishX;
+  const inwardDy = -nextFishY;
+  const inwardDistance = Math.hypot(inwardDx, inwardDy) || 1;
+  const inwardStep = Math.min(96, Math.max(24, inwardDistance * 0.12));
+  const settledTargetX = nextFishX + (inwardDx / inwardDistance) * inwardStep;
+  const settledTargetY = nextFishY + (inwardDy / inwardDistance) * inwardStep;
   return {
     circuitAutopilot,
     circuitSegmentIndex,
     circuitSegmentT,
     bubbles: separateBubblesByDepth(pushBubblesFromFish(state.bubbles, { x: nextFishX, y: nextFishY }, fishDepth)),
     currentArenaId: nextArenaId,
-    fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: nextVx * 0.35, vy: nextVy * 0.35, targetX: settledTargetX, targetY: settledTargetY, arenaRadius, arenaLevel: nextLevel, membraneSide: "inside", wallHitCount, lastWallHitAt, lastArenaTransitionAt: transitionAt, arenaTransitionCooldownUntil: transitionAt + ARENA_TRANSITION_COOLDOWN_MS, breachOpen: false, breachAngle: null, breachOpenedAt: null, breachState: "closed", breachExpiresAt: null, breachUsed: false, hasQuill: Boolean(state.fish.hasQuill) },
+    fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: nextVx * 0.18, vy: nextVy * 0.18, targetX: settledTargetX, targetY: settledTargetY, arenaRadius, arenaLevel: nextLevel, membraneSide: "inside", wallHitCount, lastWallHitAt, lastArenaTransitionAt: transitionAt, arenaTransitionCooldownUntil: transitionAt + ARENA_TRANSITION_COOLDOWN_MS, breachOpen: false, breachAngle: null, breachOpenedAt: null, breachState: "closed", breachExpiresAt: null, breachUsed: false, hasQuill: Boolean(state.fish.hasQuill) },
   };
 }
 
