@@ -70,7 +70,6 @@ function makeArenaNode({ id, type, parentId = null, childrenIds = [], centerOffs
       ? { x: absoluteCenter.x || 0, y: absoluteCenter.y || 0 }
       : { x: centerOffset.x || 0, y: centerOffset.y || 0 },
     hasSpawnedNeighbor: false,
-    generatedExit: null,
   };
 }
 
@@ -161,15 +160,6 @@ export function ensureExitForBorderTouch({
   const sourceNode = getNodeById(world, arenaId);
   if (!sourceNode) return null;
 
-  if (sourceNode.generatedExit?.toArenaId) {
-    return {
-      created: false,
-      fromArenaId: arenaId,
-      toArenaId: sourceNode.generatedExit.toArenaId,
-      reason: "already-spawned",
-    };
-  }
-
   const linkAngle = Number.isFinite(exitAngle) ? exitAngle : getPortalAnchor({ positionHint: borderHint, radius: 1 }).angle;
   const childId = makeChildArenaId(arenaId, world, linkAngle);
 
@@ -195,7 +185,6 @@ export function ensureExitForBorderTouch({
   world.nodes.push(childNode);
   sourceNode.childrenIds = [...(sourceNode.childrenIds || []), childId];
   sourceNode.hasSpawnedNeighbor = true;
-  sourceNode.generatedExit = { toArenaId: childId, borderHint };
 
   linkRoomsWithOppositeExits(sourceNode, childNode, linkAngle, world.portals, borderHint);
   return { created: true, fromArenaId: arenaId, toArenaId: childId };
@@ -345,8 +334,8 @@ export function resolveMembraneContact({
     return { action: "transition", portal: bestPortal, created: false, contactAngle };
   }
 
-  const roomIsNonGenerative = !Boolean(room.hasSpawnedNeighbor);
-  if (roomIsNonGenerative) {
+  const roomCanGenerateNeighbor = true;
+  if (roomCanGenerateNeighbor) {
     const borderHint = getBorderHintFromAngle(contactAngle);
     const result = ensureExitForBorderTouch({ world, arenaId, borderHint, exitAngle: contactAngle, nextType });
     const createdPortal = result?.toArenaId

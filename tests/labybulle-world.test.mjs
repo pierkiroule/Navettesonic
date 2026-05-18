@@ -30,7 +30,7 @@ test('premier contact bord dans une room sans sortie => crée exactement 1 nouve
   assert.ok(backward);
 });
 
-test('deuxième contact hors ouverture dans la même room => aucune nouvelle room', () => {
+test('deuxième contact hors ouverture dans la même room => crée une nouvelle room', () => {
   const world = generateLabybulle(7);
   resolveMembraneContact({ world, arenaId: 'arena-1', x: 1200, y: 0, radius: 1200 });
   const beforeNodes = world.nodes.length;
@@ -38,10 +38,10 @@ test('deuxième contact hors ouverture dans la même room => aucune nouvelle roo
 
   const result = resolveMembraneContact({ world, arenaId: 'arena-1', x: -1200, y: 0, radius: 1200 });
 
-  assert.equal(result.action, 'rebound');
-  assert.equal(result.created, false);
-  assert.equal(world.nodes.length, beforeNodes);
-  assert.equal(world.portals.length, beforePortals);
+  assert.equal(result.action, 'transition');
+  assert.equal(result.created, true);
+  assert.equal(world.nodes.length, beforeNodes + 1);
+  assert.equal(world.portals.length, beforePortals + 2);
 });
 
 test('contact aligné sur sortie existante => transition sans création', () => {
