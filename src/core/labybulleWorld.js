@@ -71,13 +71,27 @@ function makeArenaNode({ id, type, parentId = null, childrenIds = [], centerOffs
   };
 }
 
-function pushBidirectionalPortal(portals, fromArenaId, toArenaId, forwardHint, backwardHint) {
+function normalizeAngle(angle = 0) {
+  return Math.atan2(Math.sin(angle), Math.cos(angle));
+}
+
+function linkRoomsWithOppositeExits(roomA, roomB, angleA, portals, hintA = PORTAL_POSITIONS.CUSTOM) {
+  const fromArenaId = roomA?.id;
+  const toArenaId = roomB?.id;
+  if (!fromArenaId || !toArenaId || !Array.isArray(portals)) return;
+
+  const normalizedAngleA = normalizeAngle(Number.isFinite(angleA) ? angleA : 0);
+  const normalizedAngleB = normalizeAngle(normalizedAngleA + Math.PI);
+  const forwardHint = hintA || getBorderHintFromAngle(normalizedAngleA);
+  const backwardHint = invertHint(forwardHint);
   const passageWidth = DEFAULT_PORTAL_PASSAGE_WIDTH;
+
   portals.push({
     id: `${fromArenaId}__to__${toArenaId}`,
     fromArenaId,
     toArenaId,
     positionHint: forwardHint,
+    exitAngle: normalizedAngleA,
     bidirectional: true,
     passageWidth,
   });
@@ -87,6 +101,7 @@ function pushBidirectionalPortal(portals, fromArenaId, toArenaId, forwardHint, b
     fromArenaId: toArenaId,
     toArenaId: fromArenaId,
     positionHint: backwardHint,
+    exitAngle: normalizedAngleB,
     bidirectional: true,
     passageWidth,
   });
@@ -127,6 +142,7 @@ export function ensureExitForBorderTouch({
   world,
   arenaId,
   borderHint = PORTAL_POSITIONS.RIGHT,
+  exitAngle = null,
   nextType = ARENA_TYPES.ARENA,
 }) {
   if (!world || !arenaId) return null;
@@ -154,7 +170,8 @@ export function ensureExitForBorderTouch({
   sourceNode.hasSpawnedNeighbor = true;
   sourceNode.generatedExit = { toArenaId: childId, borderHint };
 
-  pushBidirectionalPortal(world.portals, arenaId, childId, borderHint, invertHint(borderHint));
+  const linkAngle = Number.isFinite(exitAngle) ? exitAngle : getPortalAnchor({ positionHint: borderHint, radius: 1 }).angle;
+  linkRoomsWithOppositeExits(sourceNode, childNode, linkAngle, world.portals, borderHint);
   return { created: true, fromArenaId: arenaId, toArenaId: childId };
 }
 
@@ -253,6 +270,7 @@ export function getPortalOpeningAngle(world, fromArenaId, toArenaId) {
     (item) => item.fromArenaId === fromArenaId && item.toArenaId === toArenaId
   );
   if (!portal) return null;
+  if (Number.isFinite(portal.exitAngle)) return normalizeAngle(portal.exitAngle);
   return getPortalAnchor({ positionHint: portal.positionHint, radius: 1 }).angle;
 }
 
@@ -302,7 +320,7 @@ export function resolveMembraneContact({
   const roomIsNonGenerative = !Boolean(room.hasSpawnedNeighbor);
   if (roomIsNonGenerative) {
     const borderHint = getBorderHintFromAngle(contactAngle);
-    const result = ensureExitForBorderTouch({ world, arenaId, borderHint, nextType });
+    const result = ensureExitForBorderTouch({ world, arenaId, borderHint, exitAngle: contactAngle, nextType });
     const createdPortal = result?.toArenaId
       ? (world?.portals || []).find((p) => p.fromArenaId === arenaId && p.toArenaId === result.toArenaId) || null
       : null;
