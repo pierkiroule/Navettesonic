@@ -116,6 +116,13 @@ function invertHint(hint) {
   return PORTAL_POSITIONS.CUSTOM;
 }
 
+function getBorderHintFromAngle(angle) {
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  if (Math.abs(c) >= Math.abs(s)) return c >= 0 ? PORTAL_POSITIONS.RIGHT : PORTAL_POSITIONS.LEFT;
+  return s >= 0 ? PORTAL_POSITIONS.BOTTOM : PORTAL_POSITIONS.TOP;
+}
+
 export function ensureExitForBorderTouch({
   world,
   arenaId,
@@ -252,6 +259,57 @@ export function getPortalOpeningAngle(world, fromArenaId, toArenaId) {
 export function getPortalOpeningHalfSpan({ radius = 1200, passageWidth = DEFAULT_PORTAL_PASSAGE_WIDTH }) {
   const safeRadius = Math.max(1, radius);
   return Math.min(Math.PI / 3, Math.max(0.12, (passageWidth / 2) / safeRadius));
+}
+
+export function resolveMembraneContact({
+  world,
+  arenaId,
+  x = 0,
+  y = 0,
+  radius = 1200,
+  angularToleranceDeg = 20,
+  nextType = ARENA_TYPES.ARENA,
+}) {
+  if (!world || !arenaId) return { action: "rebound", portal: null, contactAngle: 0 };
+  const room = getNodeById(world, arenaId);
+  if (!room) return { action: "rebound", portal: null, contactAngle: 0 };
+
+  const roomX = room?.centerOffset?.x || 0;
+  const roomY = room?.centerOffset?.y || 0;
+  const contactAngle = Math.atan2((y || 0) - roomY, (x || 0) - roomX);
+  const tolerance = Math.max(0, (Number.isFinite(angularToleranceDeg) ? angularToleranceDeg : 20) * (Math.PI / 180));
+  const halfSpan = getPortalOpeningHalfSpan({ radius });
+  const maxGap = Math.max(halfSpan, tolerance);
+  const angleDistance = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+  const portals = (world.portals || []).filter((portal) => portal.fromArenaId === arenaId);
+
+  let bestPortal = null;
+  let bestGap = Number.POSITIVE_INFINITY;
+  portals.forEach((portal) => {
+    const opening = getPortalOpeningAngle(world, portal.fromArenaId, portal.toArenaId);
+    if (!Number.isFinite(opening)) return;
+    const gap = Math.abs(angleDistance(contactAngle, opening));
+    if (gap <= maxGap && gap < bestGap) {
+      bestGap = gap;
+      bestPortal = portal;
+    }
+  });
+
+  if (bestPortal) {
+    return { action: "transition", portal: bestPortal, created: false, contactAngle };
+  }
+
+  const roomIsNonGenerative = !Boolean(room.hasSpawnedNeighbor);
+  if (roomIsNonGenerative) {
+    const borderHint = getBorderHintFromAngle(contactAngle);
+    const result = ensureExitForBorderTouch({ world, arenaId, borderHint, nextType });
+    const createdPortal = result?.toArenaId
+      ? (world?.portals || []).find((p) => p.fromArenaId === arenaId && p.toArenaId === result.toArenaId) || null
+      : null;
+    return { action: "transition", portal: createdPortal, created: Boolean(result?.created), contactAngle };
+  }
+
+  return { action: "rebound", portal: null, created: false, contactAngle };
 }
 
 export function resolvePortalAtPosition({ world, arenaId, x = 0, y = 0, radius = 1200, activationDistance = 78 }) {
