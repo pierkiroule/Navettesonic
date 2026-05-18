@@ -3,7 +3,7 @@ import { drawPoissonPlume } from "./poissonPlumeRenderer.js";
 import { drawCharacters } from "./characters/characterEngine.js";
 import { drawOdysseoPath } from "./odysseoPath.js";
 import { ARENA_INNER_BOUNDARY_INSET, MEMBRANE_LEVEL_MULTIPLIERS } from "./constants.js";
-import { getArenaTransitionIdsForLevel, getPortalOpeningAngle, getPortalOpeningHalfSpan } from "./labybulleWorld.js";
+import { getPortalOpeningAngle, getPortalOpeningHalfSpan } from "./labybulleWorld.js";
 import {
   drawFireflies,
   drawPlacedTriangles,
@@ -63,7 +63,7 @@ export function drawScene(ctx, rect, time, refs) {
     }
   }
 
-  drawFish(ctx, current.fish, time, current.worldGraph);
+  drawFish(ctx, current.fish, time, current.worldGraph, current.currentArenaId);
   drawQuill(ctx, current.fish, time);
 
   exitWorld(ctx);
@@ -151,14 +151,22 @@ export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
     innerRadius * (MEMBRANE_LEVEL_MULTIPLIERS[2] ?? 1),
   ];
   const worldGraph = current?.worldGraph;
+  const currentArenaId = current?.currentArenaId || worldGraph?.startArenaId || null;
+  const currentArenaPortals = currentArenaId
+    ? (worldGraph?.portals || []).filter((p) => p.fromArenaId === currentArenaId)
+    : [];
 
   rings.forEach((r, index) => {
     const isOuterWall = index === arenaLevel;
     const isInnerWall = index === arenaLevel - 1;
     const isActive = isOuterWall || isInnerWall;
-    const { fromArenaId, toArenaId } = getArenaTransitionIdsForLevel(index);
-    const opening = toArenaId
-      ? (getPortalOpeningAngle(worldGraph, fromArenaId, toArenaId) ?? (-Math.PI / 2))
+    const openingPortal = isOuterWall
+      ? currentArenaPortals[0] || null
+      : isInnerWall
+        ? currentArenaPortals.find((p) => p.toArenaId === worldGraph?.startArenaId) || null
+        : null;
+    const opening = openingPortal
+      ? getPortalOpeningAngle(worldGraph, openingPortal.fromArenaId, openingPortal.toArenaId)
       : null;
     const halfSpan = opening !== null ? getPortalOpeningHalfSpan({ radius: r }) : 0;
 
@@ -345,7 +353,7 @@ export function drawNestedDepositFigure(ctx, bubble, radius, deposits = [], time
 }
 
 
-export function drawFish(ctx, fish, time, worldGraph) {
+export function drawFish(ctx, fish, time, worldGraph, currentArenaId = null) {
   if (!fish) return;
 
   ctx.save();
@@ -371,17 +379,31 @@ export function drawFish(ctx, fish, time, worldGraph) {
       fishDistance + 1800
     );
 
-    const clipPath = new Path2D();
-    const { fromArenaId, toArenaId } = getArenaTransitionIdsForLevel(safeLevel);
-    const opening = getPortalOpeningAngle(worldGraph, fromArenaId, toArenaId) ?? (-Math.PI / 2);
-    const halfSpan = getPortalOpeningHalfSpan({ radius: membraneRadius });
-    if (effectiveSide === "inside") {
-      clipPath.arc(0, 0, membraneRadius + clipPadding, opening + halfSpan, opening - halfSpan + Math.PI * 2);
-      ctx.clip(clipPath);
-    } else {
-      clipPath.arc(0, 0, outerWorldRadius, 0, Math.PI * 2);
-      clipPath.arc(0, 0, membraneRadius - clipPadding * 0.4, opening + halfSpan, opening - halfSpan + Math.PI * 2);
-      ctx.clip(clipPath, "evenodd");
+    const activeArenaId = currentArenaId || worldGraph?.startArenaId || null;
+    const activePortals = activeArenaId
+      ? (worldGraph?.portals || []).filter((p) => p.fromArenaId === activeArenaId)
+      : [];
+    const radialAngle = Math.atan2(fish?.y || 0, fish?.x || 0);
+    const angleDistance = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+    const openingPortal = activePortals.reduce((best, portal) => {
+      const opening = getPortalOpeningAngle(worldGraph, portal.fromArenaId, portal.toArenaId);
+      if (!Number.isFinite(opening)) return best;
+      const gap = Math.abs(angleDistance(radialAngle, opening));
+      if (!best || gap < best.gap) return { portal, opening, gap };
+      return best;
+    }, null);
+    const opening = openingPortal?.opening ?? null;
+    if (opening !== null) {
+      const clipPath = new Path2D();
+      const halfSpan = getPortalOpeningHalfSpan({ radius: membraneRadius });
+      if (effectiveSide === "inside") {
+        clipPath.arc(0, 0, membraneRadius + clipPadding, opening + halfSpan, opening - halfSpan + Math.PI * 2);
+        ctx.clip(clipPath);
+      } else {
+        clipPath.arc(0, 0, outerWorldRadius, 0, Math.PI * 2);
+        clipPath.arc(0, 0, membraneRadius - clipPadding * 0.4, opening + halfSpan, opening - halfSpan + Math.PI * 2);
+        ctx.clip(clipPath, "evenodd");
+      }
     }
 
     ctx.globalAlpha = 1;
