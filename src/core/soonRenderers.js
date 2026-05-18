@@ -134,7 +134,7 @@ function drawArenaNetworkMap(ctx, rect, current = {}, arenaRef) {
   ctx.fillStyle = 'rgba(226,232,240,0.95)';
   ctx.font = '600 11px system-ui';
   ctx.textAlign = 'left';
-  ctx.fillText('Réseau d'arènes', ox + 12, oy + 18);
+  ctx.fillText("Réseau d'arènes", ox + 12, oy + 18);
   ctx.fillStyle = 'rgba(148,163,184,0.95)';
   ctx.font = '500 10px system-ui';
   ctx.fillText(`Nœuds: ${nodes.length}  Corridors: ${Math.floor((world?.portals || []).length / 2)}`, ox + 12, oy + 34);
