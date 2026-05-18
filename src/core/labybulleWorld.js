@@ -67,6 +67,7 @@ function makeArenaNode({ id, type, parentId = null, childrenIds = [], centerOffs
     childrenIds: [...childrenIds],
     centerOffset: { x: centerOffset.x || 0, y: centerOffset.y || 0 },
     hasSpawnedNeighbor: false,
+    generatedExit: null,
   };
 }
 
@@ -125,8 +126,13 @@ export function ensureExitForBorderTouch({
   const sourceNode = getNodeById(world, arenaId);
   if (!sourceNode) return null;
 
-  if (sourceNode.hasSpawnedNeighbor) {
-    return { created: false, fromArenaId: arenaId, toArenaId: null, reason: "already-spawned" };
+  if (sourceNode.generatedExit?.toArenaId) {
+    return {
+      created: false,
+      fromArenaId: arenaId,
+      toArenaId: sourceNode.generatedExit.toArenaId,
+      reason: "already-spawned",
+    };
   }
 
   const childId = makeChildArenaId(arenaId, world);
@@ -139,12 +145,16 @@ export function ensureExitForBorderTouch({
   world.nodes.push(childNode);
   sourceNode.childrenIds = [...(sourceNode.childrenIds || []), childId];
   sourceNode.hasSpawnedNeighbor = true;
+  sourceNode.generatedExit = { toArenaId: childId, borderHint };
 
   pushBidirectionalPortal(world.portals, arenaId, childId, borderHint, invertHint(borderHint));
   return { created: true, fromArenaId: arenaId, toArenaId: childId };
 }
 
 export function generateLabybulle(seed = 1) {
+  // Initialisation minimale:
+  // - un seul nœud de départ;
+  // - mutations du graphe via ensureExitForBorderTouch.
   const startArenaId = "arena-1";
   const nodes = [makeArenaNode({ id: startArenaId, type: ARENA_TYPES.ARENA })];
   const portals = [];
@@ -164,14 +174,6 @@ export function validateWorldGraph(world) {
   }
 
   const nodeById = new Map(world.nodes.map((node) => [node.id, node]));
-  const gigaNodes = world.nodes.filter((node) => node.type === ARENA_TYPES.GIGA);
-  const megaNodes = world.nodes.filter((node) => node.type === ARENA_TYPES.MEGA);
-  const arenaNodes = world.nodes.filter((node) => node.type === ARENA_TYPES.ARENA);
-
-  if (gigaNodes.length !== 1) errors.push(`attendu 1 GIGA, reçu ${gigaNodes.length}`);
-  if (megaNodes.length !== 1) errors.push(`attendu 1 MEGA, reçu ${megaNodes.length}`);
-  if (arenaNodes.length !== 1) errors.push(`attendu 1 ARENA, reçu ${arenaNodes.length}`);
-
   world.nodes.forEach((node) => {
     if (node.parentId && !nodeById.has(node.parentId)) {
       errors.push(`parent introuvable pour ${node.id}: ${node.parentId}`);
@@ -194,21 +196,9 @@ export function validateWorldGraph(world) {
   });
 
   world.nodes.forEach((node) => {
-    if (node.type === ARENA_TYPES.GIGA) return;
-    const offset = node.centerOffset || {};
-    if ((offset.x || 0) === 0 && (offset.y || 0) === 0) {
-      errors.push(`arena imbriquée centrée interdite: ${node.id}`);
+    if (!Object.values(ARENA_TYPES).includes(node.type)) {
+      errors.push(`type de node invalide: ${node.id} (${node.type})`);
     }
-  });
-
-  gigaNodes.forEach((giga) => {
-    const outbound = world.portals.filter((portal) => portal.fromArenaId === giga.id);
-    outbound.forEach((portal) => {
-      const target = nodeById.get(portal.toArenaId);
-      if (!target || target.type !== ARENA_TYPES.MEGA) {
-        errors.push(`sortie cosmos interdite depuis ${giga.id} via ${portal.id}`);
-      }
-    });
   });
 
   if (world.startArenaId && nodeById.has(world.startArenaId)) {
