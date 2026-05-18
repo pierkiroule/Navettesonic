@@ -107,7 +107,8 @@ export function tickRoseFishSchool(roseFish = [], fish = {}, options = {}) {
 
     const dist = Math.hypot(nx, ny);
     const radialAngle = Math.atan2(ny, nx);
-    const radialDot = ((Math.cos(radialAngle) * vx) + (Math.sin(radialAngle) * vy)) / (Math.hypot(vx, vy) || 0.0001);
+    const velocityMagnitude = Math.hypot(vx, vy);
+    const radialDot = ((Math.cos(radialAngle) * vx) + (Math.sin(radialAngle) * vy)) / (velocityMagnitude || 0.0001);
 
     const transit = canTransitLevel({ level, radialDistance: dist, radialAngle, radialDot, arenaRadius, worldGraph });
     if (transit !== 0) {
