@@ -177,3 +177,44 @@ test('maze: le centre et le couloir haut sont praticables', () => {
   assert.deepEqual(center, { x: 0, y: 0 });
   assert.ok(top.y < -500);
 });
+
+test("aucun chevauchement d'arènes dans le graphe", () => {
+  const world = generateLabybulle(21);
+  const radius = 1200;
+  const first = resolveMembraneContact({ world, arenaId: "arena-1-east", x: radius, y: 0, radius });
+  assert.equal(first.action, "transition");
+  const createdArenaId = first.portal?.toArenaId;
+  assert.ok(createdArenaId);
+
+  const nodes = world.nodes;
+  for (let i = 0; i < nodes.length; i += 1) {
+    for (let j = i + 1; j < nodes.length; j += 1) {
+      const a = nodes[i];
+      const b = nodes[j];
+      const dx = a.absoluteCenter.x - b.absoluteCenter.x;
+      const dy = a.absoluteCenter.y - b.absoluteCenter.y;
+      const distance = Math.hypot(dx, dy);
+      assert.ok(distance >= 2400, `${a.id} chevauche ${b.id}`);
+    }
+  }
+});
+
+test("une arène enfant créée est collée à son parent et avec un seul passage parent-enfant", () => {
+  const world = generateLabybulle(33);
+  const radius = 1200;
+  const result = resolveMembraneContact({ world, arenaId: "arena-1-east", x: radius, y: 0, radius });
+  assert.equal(result.action, "transition");
+  assert.equal(result.created, true);
+
+  const parentId = "arena-1-east";
+  const childId = result.portal.toArenaId;
+  const parent = world.nodes.find((n) => n.id === parentId);
+  const child = world.nodes.find((n) => n.id === childId);
+  const distance = Math.hypot(child.absoluteCenter.x - parent.absoluteCenter.x, child.absoluteCenter.y - parent.absoluteCenter.y);
+  assert.equal(distance, 2400);
+
+  const parentToChild = world.portals.filter((p) => p.fromArenaId === parentId && p.toArenaId === childId);
+  const childToParent = world.portals.filter((p) => p.fromArenaId === childId && p.toArenaId === parentId);
+  assert.equal(parentToChild.length, 1);
+  assert.equal(childToParent.length, 1);
+});

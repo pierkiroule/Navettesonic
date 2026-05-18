@@ -113,7 +113,7 @@ function getNodeById(world, id) {
   return (world?.nodes || []).find((node) => node.id === id) || null;
 }
 
-const ROOM_TOUCH_OVERLAP = 24;
+const ROOM_TOUCH_OVERLAP = 0;
 const DEFAULT_LAYOUT_BASE_RADIUS = 1200;
 
 function getNextArenaSequence(world) {
@@ -132,6 +132,21 @@ function makeChildArenaId(parentId, world, angle = 0) {
 function getAbsoluteCenter(node) {
   if (node?.absoluteCenter) return node.absoluteCenter;
   return { x: node?.centerOffset?.x || 0, y: node?.centerOffset?.y || 0 };
+}
+
+function getNodeLayoutRadius(node) {
+  return DEFAULT_LAYOUT_BASE_RADIUS * getArenaRadiusMultiplier(node?.type);
+}
+
+function hasArenaOverlap({ world, candidateCenter, candidateRadius, ignoreArenaIds = [] }) {
+  const ignored = new Set(ignoreArenaIds);
+  return (world?.nodes || []).some((node) => {
+    if (ignored.has(node.id)) return false;
+    const center = getAbsoluteCenter(node);
+    const radius = getNodeLayoutRadius(node);
+    const distance = Math.hypot(candidateCenter.x - center.x, candidateCenter.y - center.y);
+    return distance < (candidateRadius + radius);
+  });
 }
 
 function invertHint(hint) {
@@ -177,13 +192,16 @@ export function ensureExitForBorderTouch({
   const childId = makeChildArenaId(arenaId, world, linkAngle);
 
   const parentCenter = getAbsoluteCenter(sourceNode);
-  const parentRadius = DEFAULT_LAYOUT_BASE_RADIUS * getArenaRadiusMultiplier(sourceNode.type);
+  const parentRadius = getNodeLayoutRadius(sourceNode);
   const childRadius = DEFAULT_LAYOUT_BASE_RADIUS * getArenaRadiusMultiplier(nextType);
   const centerDistance = parentRadius + childRadius - ROOM_TOUCH_OVERLAP;
   const childAbsoluteCenter = {
     x: parentCenter.x + Math.cos(linkAngle) * centerDistance,
     y: parentCenter.y + Math.sin(linkAngle) * centerDistance,
   };
+  if (hasArenaOverlap({ world, candidateCenter: childAbsoluteCenter, candidateRadius: childRadius, ignoreArenaIds: [arenaId] })) {
+    return null;
+  }
 
   const childNode = makeArenaNode({
     id: childId,
@@ -381,6 +399,9 @@ export function resolveMembraneContact({
 
   const borderHint = getBorderHintFromAngle(contactAngle);
   const result = ensureExitForBorderTouch({ world, arenaId, borderHint, exitAngle: contactAngle, nextType });
+  if (!result) {
+    return { action: "rebound", portal: null, contactAngle };
+  }
   const createdPortal = result?.toArenaId
     ? (world?.portals || []).find((p) => p.fromArenaId === arenaId && p.toArenaId === result.toArenaId) || null
     : null;
