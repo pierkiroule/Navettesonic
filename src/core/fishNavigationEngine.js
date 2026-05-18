@@ -52,7 +52,8 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
     nextFishY = (nextFishY / d) * (innerNavRadius + 4);
   }
 
-  if (nearOuter && (nearOut||nearOutByContact) && radialDot > 0.1 && activePortal) {
+  const canTransitionOutward=nearOuter&&activePortal&&((nearOut&&radialDot>0.1)||nearOutByContact);
+  if (canTransitionOutward) {
     const nextArenaId = activePortal?.toArenaId || runtimeArenaId;
     const nextLevel = Math.max(0, Math.min(MAX_ARENA_LEVEL, getArenaLevelFromId(nextArenaId)));
     const arrival = getPortalArrivalPosition({
