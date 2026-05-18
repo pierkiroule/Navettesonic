@@ -2,15 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildMazeByArena, clampPointToMaze, generateLabybulle, validateWorldGraph, resolvePortalAtPosition, getPortalArrivalPosition, getArenaRadiusForNode, getPortalAnchor, getPortalOpeningHalfSpan, POISSON_PLUME_WIDTH, PORTAL_WIDTH_MULTIPLIER, resolveMembraneContact } from '../src/core/labybulleWorld.js';
 
-test('structure initiale: une seule room de départ ARENA', () => {
+test("structure initiale: réseau d'arènes contiguës autour de la room de départ", () => {
   const world = generateLabybulle(42);
-  assert.equal(world.nodes.length, 1);
+  assert.equal(world.nodes.length, 5);
   assert.equal(world.nodes[0].id, 'arena-1');
   assert.equal(world.nodes[0].type, 'ARENA');
-  assert.equal(world.portals.length, 0);
+  assert.equal(world.portals.length, 8);
 });
 
-test('premier contact bord dans une room sans sortie => crée exactement 1 nouvelle room + 2 exits liées', () => {
+test('premier contact bord aligné avec une sortie initiale => transition sans création', () => {
   const world = generateLabybulle(7);
   const beforeNodes = world.nodes.length;
   const beforePortals = world.portals.length;
@@ -18,19 +18,19 @@ test('premier contact bord dans une room sans sortie => crée exactement 1 nouve
   const result = resolveMembraneContact({ world, arenaId: 'arena-1', x: 1200, y: 0, radius: 1200 });
 
   assert.equal(result.action, 'transition');
-  assert.equal(result.created, true);
-  assert.equal(world.nodes.length, beforeNodes + 1);
-  assert.equal(world.portals.length, beforePortals + 2);
+  assert.equal(result.created, false);
+  assert.equal(world.nodes.length, beforeNodes);
+  assert.equal(world.portals.length, beforePortals);
 
-  const createdRoomId = result.portal?.toArenaId;
-  assert.ok(createdRoomId);
-  const forward = world.portals.find((p) => p.fromArenaId === 'arena-1' && p.toArenaId === createdRoomId);
-  const backward = world.portals.find((p) => p.fromArenaId === createdRoomId && p.toArenaId === 'arena-1');
+  const targetRoomId = result.portal?.toArenaId;
+  assert.ok(targetRoomId);
+  const forward = world.portals.find((p) => p.fromArenaId === 'arena-1' && p.toArenaId === targetRoomId);
+  const backward = world.portals.find((p) => p.fromArenaId === targetRoomId && p.toArenaId === 'arena-1');
   assert.ok(forward);
   assert.ok(backward);
 });
 
-test('deuxième contact hors ouverture dans la même room => crée une nouvelle room', () => {
+test('deuxième contact sur une autre sortie initiale => transition sans création', () => {
   const world = generateLabybulle(7);
   resolveMembraneContact({ world, arenaId: 'arena-1', x: 1200, y: 0, radius: 1200 });
   const beforeNodes = world.nodes.length;
@@ -39,9 +39,9 @@ test('deuxième contact hors ouverture dans la même room => crée une nouvelle 
   const result = resolveMembraneContact({ world, arenaId: 'arena-1', x: -1200, y: 0, radius: 1200 });
 
   assert.equal(result.action, 'transition');
-  assert.equal(result.created, true);
-  assert.equal(world.nodes.length, beforeNodes + 1);
-  assert.equal(world.portals.length, beforePortals + 2);
+  assert.equal(result.created, false);
+  assert.equal(world.nodes.length, beforeNodes);
+  assert.equal(world.portals.length, beforePortals);
 });
 
 test('contact aligné sur sortie existante => transition sans création', () => {
@@ -54,8 +54,8 @@ test('contact aligné sur sortie existante => transition sans création', () => 
   assert.equal(second.action, 'transition');
   assert.equal(second.created, false);
   assert.equal(second.portal?.toArenaId, createdRoomId);
-  assert.equal(world.nodes.length, 2);
-  assert.equal(world.portals.length, 2);
+  assert.equal(world.nodes.length, 5);
+  assert.equal(world.portals.length, 8);
 });
 
 

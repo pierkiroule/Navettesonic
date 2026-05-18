@@ -191,13 +191,13 @@ export function ensureExitForBorderTouch({
 }
 
 export function generateLabybulle(seed = 1) {
-  // Initialisation minimale:
-  // - un seul nœud de départ;
-  // - mutations du graphe via ensureExitForBorderTouch.
+  // Réseau initial: une arène centrale entourée de voisines contiguës.
+  // Ce noyau rend immédiatement visible un monde en "grappe d’arènes".
   const startArenaId = "arena-1";
-  const nodes = [makeArenaNode({ id: startArenaId, type: ARENA_TYPES.ARENA, absoluteCenter: { x: 0, y: 0 } })];
+  const centerNode = makeArenaNode({ id: startArenaId, type: ARENA_TYPES.ARENA, absoluteCenter: { x: 0, y: 0 } });
+  const nodes = [centerNode];
   const portals = [];
-  return {
+  const world = {
     seed,
     nodes,
     portals,
@@ -205,6 +205,36 @@ export function generateLabybulle(seed = 1) {
     startPosition: { x: 0, y: 0, hint: "CENTER" },
     meta: { nextArenaSeq: 1 },
   };
+
+  const neighbors = [
+    { suffix: "north", hint: PORTAL_POSITIONS.TOP, angle: -Math.PI / 2 },
+    { suffix: "east", hint: PORTAL_POSITIONS.RIGHT, angle: 0 },
+    { suffix: "south", hint: PORTAL_POSITIONS.BOTTOM, angle: Math.PI / 2 },
+    { suffix: "west", hint: PORTAL_POSITIONS.LEFT, angle: Math.PI },
+  ];
+
+  neighbors.forEach(({ suffix, hint, angle }) => {
+    const childId = `${startArenaId}-${suffix}`;
+    const centerDistance = (DEFAULT_LAYOUT_BASE_RADIUS * 2) - ROOM_TOUCH_OVERLAP;
+    const childAbsoluteCenter = {
+      x: Math.cos(angle) * centerDistance,
+      y: Math.sin(angle) * centerDistance,
+    };
+    const childNode = makeArenaNode({
+      id: childId,
+      type: ARENA_TYPES.ARENA,
+      parentId: startArenaId,
+      centerOffset: childAbsoluteCenter,
+      absoluteCenter: childAbsoluteCenter,
+    });
+
+    world.nodes.push(childNode);
+    centerNode.childrenIds = [...(centerNode.childrenIds || []), childId];
+    linkRoomsWithOppositeExits(centerNode, childNode, angle, world.portals, hint);
+  });
+
+  centerNode.hasSpawnedNeighbor = true;
+  return world;
 }
 
 export function validateWorldGraph(world) {
