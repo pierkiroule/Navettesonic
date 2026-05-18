@@ -1,46 +1,94 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildMazeByArena, clampPointToMaze, generateLabybulle, validateWorldGraph, resolvePortalAtPosition, getPortalArrivalPosition, getArenaRadiusForNode, getPortalAnchor, getPortalOpeningHalfSpan, POISSON_PLUME_WIDTH, PORTAL_WIDTH_MULTIPLIER } from '../src/core/labybulleWorld.js';
+import { buildMazeByArena, clampPointToMaze, generateLabybulle, validateWorldGraph, resolvePortalAtPosition, getPortalArrivalPosition, getArenaRadiusForNode, getPortalAnchor, getPortalOpeningHalfSpan, POISSON_PLUME_WIDTH, PORTAL_WIDTH_MULTIPLIER, resolveMembraneContact } from '../src/core/labybulleWorld.js';
 
-test('structure labybulle concentrique: 1 GIGA, 1 MEGA, 1 ARENA', () => {
+test('structure initiale: une seule room de départ ARENA', () => {
   const world = generateLabybulle(42);
-  const giga = world.nodes.filter((node) => node.type === 'GIGA');
-  const mega = world.nodes.filter((node) => node.type === 'MEGA');
-  const arena = world.nodes.filter((node) => node.type === 'ARENA');
-
-  assert.equal(giga.length, 1);
-  assert.equal(mega.length, 1);
-  assert.equal(arena.length, 1);
+  assert.equal(world.nodes.length, 1);
+  assert.equal(world.nodes[0].id, 'arena-1');
+  assert.equal(world.nodes[0].type, 'ARENA');
+  assert.equal(world.portals.length, 0);
 });
 
-test('tous les nœuds atteignables depuis start', () => {
+test('premier contact bord dans une room sans sortie => crée exactement 1 nouvelle room + 2 exits liées', () => {
   const world = generateLabybulle(7);
+  const beforeNodes = world.nodes.length;
+  const beforePortals = world.portals.length;
+
+  const result = resolveMembraneContact({ world, arenaId: 'arena-1', x: 1200, y: 0, radius: 1200 });
+
+  assert.equal(result.action, 'transition');
+  assert.equal(result.created, true);
+  assert.equal(world.nodes.length, beforeNodes + 1);
+  assert.equal(world.portals.length, beforePortals + 2);
+
+  const createdRoomId = result.portal?.toArenaId;
+  assert.ok(createdRoomId);
+  const forward = world.portals.find((p) => p.fromArenaId === 'arena-1' && p.toArenaId === createdRoomId);
+  const backward = world.portals.find((p) => p.fromArenaId === createdRoomId && p.toArenaId === 'arena-1');
+  assert.ok(forward);
+  assert.ok(backward);
+});
+
+test('deuxième contact hors ouverture dans la même room => aucune nouvelle room', () => {
+  const world = generateLabybulle(7);
+  resolveMembraneContact({ world, arenaId: 'arena-1', x: 1200, y: 0, radius: 1200 });
+  const beforeNodes = world.nodes.length;
+  const beforePortals = world.portals.length;
+
+  const result = resolveMembraneContact({ world, arenaId: 'arena-1', x: -1200, y: 0, radius: 1200 });
+
+  assert.equal(result.action, 'rebound');
+  assert.equal(result.created, false);
+  assert.equal(world.nodes.length, beforeNodes);
+  assert.equal(world.portals.length, beforePortals);
+});
+
+test('contact aligné sur sortie existante => transition sans création', () => {
+  const world = generateLabybulle(1);
+  const first = resolveMembraneContact({ world, arenaId: 'arena-1', x: 1200, y: 0, radius: 1200 });
+  const createdRoomId = first.portal.toArenaId;
+
+  const second = resolveMembraneContact({ world, arenaId: 'arena-1', x: 1200, y: 0, radius: 1200 });
+
+  assert.equal(second.action, 'transition');
+  assert.equal(second.created, false);
+  assert.equal(second.portal?.toArenaId, createdRoomId);
+  assert.equal(world.nodes.length, 2);
+  assert.equal(world.portals.length, 2);
+});
+
+test('room fille contient sortie retour opposée', () => {
+  const world = generateLabybulle(3);
+  const first = resolveMembraneContact({ world, arenaId: 'arena-1', x: 0, y: -1200, radius: 1200 });
+  const childId = first.portal.toArenaId;
+
+  const forward = world.portals.find((p) => p.fromArenaId === 'arena-1' && p.toArenaId === childId);
+  const backward = world.portals.find((p) => p.fromArenaId === childId && p.toArenaId === 'arena-1');
+
+  assert.equal(forward.positionHint, 'TOP');
+  assert.equal(backward.positionHint, 'BOTTOM');
+  assert.equal(backward.bidirectional, true);
+});
+
+test('tous les nœuds atteignables depuis start après génération d’une sortie', () => {
+  const world = generateLabybulle(7);
+  resolveMembraneContact({ world, arenaId: 'arena-1', x: 1200, y: 0, radius: 1200 });
   const errors = validateWorldGraph(world);
   assert.equal(errors.length, 0, errors.join('\n'));
 });
 
-test('aucun portail de GIGA vers extérieur cosmos', () => {
-  const world = generateLabybulle(7);
-  const giga = world.nodes.find((node) => node.type === 'GIGA');
-  const nodeById = new Map(world.nodes.map((node) => [node.id, node]));
-  const outbound = world.portals.filter((portal) => portal.fromArenaId === giga.id);
-
-  assert.ok(outbound.length > 0);
-  outbound.forEach((portal) => {
-    const target = nodeById.get(portal.toArenaId);
-    assert.equal(target?.type, 'MEGA');
-  });
-});
-
-test('déterminisme: même seed => même structure', () => {
+test('déterminisme: même seed + même premier contact => même structure et même placement', () => {
   const a = generateLabybulle(1337);
   const b = generateLabybulle(1337);
+  resolveMembraneContact({ world: a, arenaId: 'arena-1', x: 800, y: -800, radius: 1200 });
+  resolveMembraneContact({ world: b, arenaId: 'arena-1', x: 800, y: -800, radius: 1200 });
   assert.deepEqual(a, b);
 });
 
-
 test('détection de portail: proche du trou => transition possible', () => {
   const world = generateLabybulle(1);
+  resolveMembraneContact({ world, arenaId: 'arena-1', x: 1200, y: 0, radius: 1200 });
   const outgoing = world.portals.filter((p) => p.fromArenaId === 'arena-1');
   const anchor = getPortalAnchor({ positionHint: outgoing[0].positionHint, radius: 1200, index: 0, total: outgoing.length });
   const portal = resolvePortalAtPosition({
@@ -52,11 +100,11 @@ test('détection de portail: proche du trou => transition possible', () => {
   });
   assert.ok(portal);
   assert.equal(portal.fromArenaId, 'arena-1');
-  assert.equal(portal.toArenaId, 'mega-1');
 });
 
 test('règles passages: largeur = 2x poisson-plume et bidirectionnels', () => {
   const world = generateLabybulle(9);
+  resolveMembraneContact({ world, arenaId: 'arena-1', x: 1200, y: 0, radius: 1200 });
   const expected = POISSON_PLUME_WIDTH * PORTAL_WIDTH_MULTIPLIER;
   world.portals.forEach((portal) => {
     assert.equal(portal.passageWidth, expected);
@@ -72,54 +120,31 @@ test('ouverture contour: largeur géométrique alignée avec la largeur de passa
   assert.ok(Math.abs(openingWidth - expected) < 0.01);
 });
 
-test('règles imbriquées: centres asymétriques pour les arènes internes', () => {
-  const world = generateLabybulle(9);
-  const mega = world.nodes.find((n) => n.id === 'mega-1');
-  const arena = world.nodes.find((n) => n.id === 'arena-1');
-  assert.ok((mega.centerOffset.x !== 0) || (mega.centerOffset.y !== 0));
-  assert.ok((arena.centerOffset.x !== 0) || (arena.centerOffset.y !== 0));
-});
-
-
-test("arrivée portail: transition ARENA -> MEGA n'arrive pas au centre", () => {
-  const world = generateLabybulle(1);
-  const arrival = getPortalArrivalPosition({
-    world,
-    fromArenaId: 'arena-1',
-    toArenaId: 'mega-1',
-    radius: 1200,
-  });
-
-  assert.notDeepEqual(arrival, { x: 0, y: 0 });
-  assert.ok(Math.hypot(arrival.x, arrival.y) > 200);
-});
-
-
-test('rayon imbriqué: MEGA et GIGA sont plus vastes que ARENA', () => {
+test('rayon imbriqué: un enfant de type ARENA garde le rayon de base', () => {
   const world = generateLabybulle(3);
+  const first = resolveMembraneContact({ world, arenaId: 'arena-1', x: 1200, y: 0, radius: 1200 });
+  const childId = first.portal.toArenaId;
   const arenaRadius = getArenaRadiusForNode({ world, arenaId: 'arena-1', baseRadius: 1000 });
-  const megaRadius = getArenaRadiusForNode({ world, arenaId: 'mega-1', baseRadius: 1000 });
-  const gigaRadius = getArenaRadiusForNode({ world, arenaId: 'giga-1', baseRadius: 1000 });
+  const childRadius = getArenaRadiusForNode({ world, arenaId: childId, baseRadius: 1000 });
 
   assert.equal(arenaRadius, 1000);
-  assert.ok(megaRadius > arenaRadius);
-  assert.ok(gigaRadius > megaRadius);
+  assert.equal(childRadius, 1000);
 });
-
 
 test('arrivée conserve le côté du trou (labyrinthe simple)', () => {
   const world = generateLabybulle(1);
+  resolveMembraneContact({ world, arenaId: 'arena-1', x: 0, y: -1200, radius: 1200 });
+  const childId = world.portals.find((p) => p.fromArenaId === 'arena-1').toArenaId;
   const arrivalTop = getPortalArrivalPosition({
     world,
     fromArenaId: 'arena-1',
-    toArenaId: 'mega-1',
+    toArenaId: childId,
     radius: 1200,
     entryPositionHint: 'TOP',
   });
 
   assert.ok(arrivalTop.y < -700);
 });
-
 
 test('maze: le centre et le couloir haut sont praticables', () => {
   const world = generateLabybulle(1);
