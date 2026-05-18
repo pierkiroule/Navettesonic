@@ -334,17 +334,12 @@ export function resolveMembraneContact({
     return { action: "transition", portal: bestPortal, created: false, contactAngle };
   }
 
-  const roomCanGenerateNeighbor = true;
-  if (roomCanGenerateNeighbor) {
-    const borderHint = getBorderHintFromAngle(contactAngle);
-    const result = ensureExitForBorderTouch({ world, arenaId, borderHint, exitAngle: contactAngle, nextType });
-    const createdPortal = result?.toArenaId
-      ? (world?.portals || []).find((p) => p.fromArenaId === arenaId && p.toArenaId === result.toArenaId) || null
-      : null;
-    return { action: "transition", portal: createdPortal, created: Boolean(result?.created), contactAngle };
-  }
-
-  return { action: "rebound", portal: null, created: false, contactAngle };
+  const borderHint = getBorderHintFromAngle(contactAngle);
+  const result = ensureExitForBorderTouch({ world, arenaId, borderHint, exitAngle: contactAngle, nextType });
+  const createdPortal = result?.toArenaId
+    ? (world?.portals || []).find((p) => p.fromArenaId === arenaId && p.toArenaId === result.toArenaId) || null
+    : null;
+  return { action: "transition", portal: createdPortal, created: Boolean(result?.created), contactAngle };
 }
 
 export function resolvePortalAtPosition({ world, arenaId, x = 0, y = 0, radius = 1200, activationDistance = 78 }) {
