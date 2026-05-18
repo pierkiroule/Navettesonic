@@ -41,12 +41,18 @@ export function separateBubblesByDepth(bubbles = []) {
         if (clampDepth(a.depth) !== clampDepth(b.depth)) continue;
         const dx = (b.x || 0) - (a.x || 0);
         const dy = (b.y || 0) - (a.y || 0);
-        const d = Math.hypot(dx, dy) || 0.0001;
-        const overlap = (a.r || 0) + (b.r || 0) + 6 - d;
+        const rawDistance = Math.hypot(dx, dy);
+        const useFallbackAxis = rawDistance < 0.0001;
+        const nx = useFallbackAxis ? 1 : dx / rawDistance;
+        const ny = useFallbackAxis ? 0 : dy / rawDistance;
+        const d = useFallbackAxis ? 0.0001 : rawDistance;
+        const radiusA = getBubblePhysicsRadius(a);
+        const radiusB = getBubblePhysicsRadius(b);
+        const overlap = radiusA + radiusB + 6 - d;
         if (overlap <= 0) continue;
         const shift = overlap * 0.08;
-        const safeA = clampToCircle({ x: a.x - (dx / d) * shift, y: a.y - (dy / d) * shift }, DEFAULT_ARENA_RADIUS * 1.6);
-        const safeB = clampToCircle({ x: b.x + (dx / d) * shift, y: b.y + (dy / d) * shift }, DEFAULT_ARENA_RADIUS * 1.6);
+        const safeA = clampToCircle({ x: a.x - nx * shift, y: a.y - ny * shift }, DEFAULT_ARENA_RADIUS * 1.6);
+        const safeB = clampToCircle({ x: b.x + nx * shift, y: b.y + ny * shift }, DEFAULT_ARENA_RADIUS * 1.6);
         a.x = safeA.x; a.y = safeA.y; b.x = safeB.x; b.y = safeB.y;
       }
     }
