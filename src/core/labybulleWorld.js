@@ -308,10 +308,10 @@ export function resolveMembraneContact({
   const room = getNodeById(world, arenaId);
   if (!room) return { action: "rebound", portal: null, contactAngle: 0 };
 
-  const roomCenter = getAbsoluteCenter(room);
-  const roomX = roomCenter.x || 0;
-  const roomY = roomCenter.y || 0;
-  const contactAngle = Math.atan2((y || 0) - roomY, (x || 0) - roomX);
+  // Navigation positions are local to the active arena coordinates.
+  // Do not offset by absolute graph centers here, otherwise non-root arenas
+  // always resolve border contacts toward an unrelated global direction.
+  const contactAngle = Math.atan2(y || 0, x || 0);
   const tolerance = Math.max(0, (Number.isFinite(angularToleranceDeg) ? angularToleranceDeg : 20) * (Math.PI / 180));
   const halfSpan = getPortalOpeningHalfSpan({ radius });
   const maxGap = Math.max(halfSpan, tolerance);

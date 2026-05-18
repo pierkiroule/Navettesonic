@@ -58,6 +58,25 @@ test('contact aligné sur sortie existante => transition sans création', () => 
   assert.equal(world.portals.length, 2);
 });
 
+
+test('contact bord depuis une arène fille crée une nouvelle voisine (pas retour parent forcé)', () => {
+  const world = generateLabybulle(11);
+  const first = resolveMembraneContact({ world, arenaId: 'arena-1', x: 1200, y: 0, radius: 1200 });
+  const childId = first.portal.toArenaId;
+
+  const beforeNodes = world.nodes.length;
+  const beforePortals = world.portals.length;
+
+  const second = resolveMembraneContact({ world, arenaId: childId, x: 0, y: -1200, radius: 1200 });
+
+  assert.equal(second.action, 'transition');
+  assert.equal(second.created, true);
+  assert.ok(second.portal);
+  assert.notEqual(second.portal.toArenaId, 'arena-1');
+  assert.equal(world.nodes.length, beforeNodes + 1);
+  assert.equal(world.portals.length, beforePortals + 2);
+});
+
 test('room fille contient sortie retour opposée', () => {
   const world = generateLabybulle(3);
   const first = resolveMembraneContact({ world, arenaId: 'arena-1', x: 0, y: -1200, radius: 1200 });
