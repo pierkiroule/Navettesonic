@@ -142,6 +142,19 @@ function invertHint(hint) {
   return PORTAL_POSITIONS.CUSTOM;
 }
 
+export function invertPortalHint(hint) {
+  const inverted = invertHint(hint);
+  return inverted === PORTAL_POSITIONS.CUSTOM ? null : inverted;
+}
+
+export function getDestinationEntryHint({ world, fromArenaId, toArenaId, fallbackExitHint = null }) {
+  const reversePortal = (world?.portals || []).find(
+    (portal) => portal.fromArenaId === toArenaId && portal.toArenaId === fromArenaId
+  );
+  if (reversePortal?.positionHint) return reversePortal.positionHint;
+  return invertPortalHint(fallbackExitHint);
+}
+
 function getBorderHintFromAngle(angle) {
   const c = Math.cos(angle);
   const s = Math.sin(angle);
@@ -399,26 +412,18 @@ export function getPortalArrivalPosition({
 }) {
   if (!world || !toArenaId) return { x: 0, y: 0 };
 
-  // Règle labyrinthe simple: on conserve le même côté d'entrée/sortie quand possible.
-  if (entryPositionHint) {
-    const anchor = getPortalAnchor({ positionHint: entryPositionHint, radius, index: 0, total: 1 });
-    return {
-      x: anchor.x - Math.cos(anchor.angle) * inwardOffset,
-      y: anchor.y - Math.sin(anchor.angle) * inwardOffset,
-    };
-  }
-
   if (!fromArenaId) return { x: 0, y: 0 };
-  const destinationPortals = (world.portals || []).filter(
+  const reversePortal = (world.portals || []).find(
     (portal) => portal.fromArenaId === toArenaId && portal.toArenaId === fromArenaId
   );
-  const reversePortal = destinationPortals[0];
-  if (!reversePortal) return { x: 0, y: 0 };
 
   const outgoingFromDestination = (world.portals || []).filter((portal) => portal.fromArenaId === toArenaId);
-  const index = outgoingFromDestination.findIndex((portal) => portal.id === reversePortal.id);
+  const reverseHint = reversePortal?.positionHint || null;
+  const effectiveHint = reverseHint || entryPositionHint || null;
+  if (!effectiveHint) return { x: 0, y: 0 };
+  const index = reversePortal ? outgoingFromDestination.findIndex((portal) => portal.id === reversePortal.id) : -1;
   const anchor = getPortalAnchor({
-    positionHint: reversePortal.positionHint,
+    positionHint: effectiveHint,
     radius,
     index: Math.max(0, index),
     total: Math.max(1, outgoingFromDestination.length),

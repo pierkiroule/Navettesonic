@@ -150,19 +150,22 @@ test('rayon imbriqué: un enfant de type ARENA garde le rayon de base', () => {
   assert.equal(childRadius, 1000);
 });
 
-test('arrivée conserve le côté du trou (labyrinthe simple)', () => {
+test('arrivée utilise le portail inverse de destination (pas de wrap implicite)', () => {
   const world = generateLabybulle(1);
-  resolveMembraneContact({ world, arenaId: 'arena-1', x: 0, y: -1200, radius: 1200 });
-  const childId = world.portals.find((p) => p.fromArenaId === 'arena-1').toArenaId;
-  const arrivalTop = getPortalArrivalPosition({
+  resolveMembraneContact({ world, arenaId: 'arena-1', x: 0, y: -1200, radius: 1200 }); // sortie TOP
+  const forward = world.portals.find((p) => p.fromArenaId === 'arena-1' && p.positionHint === 'TOP');
+  const childId = forward.toArenaId;
+  const reverse = world.portals.find((p) => p.fromArenaId === childId && p.toArenaId === 'arena-1');
+  const arrival = getPortalArrivalPosition({
     world,
     fromArenaId: 'arena-1',
     toArenaId: childId,
     radius: 1200,
-    entryPositionHint: 'TOP',
+    entryPositionHint: 'TOP', // doit être ignoré au profit du portail inverse
   });
 
-  assert.ok(arrivalTop.y < -700);
+  assert.equal(reverse.positionHint, 'BOTTOM');
+  assert.ok(arrival.y > 700);
 });
 
 test('maze: le centre et le couloir haut sont praticables', () => {

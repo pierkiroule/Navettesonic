@@ -2,7 +2,7 @@ import { updateSnakeFishToTarget, createInitialSpine } from "./fishSnakeMotion.j
 import { clampToCircle } from "./geometry.js";
 import { getCircuitSpeedValue, smoothLoopPoint } from "./traceCircuit.js";
 import { getFishNavigableRadius, MEMBRANE_LEVEL_MULTIPLIERS } from "./constants.js";
-import { getArenaIdForLevel, getArenaLevelFromId, getPortalArrivalPosition, getPortalOpeningAngle, getPortalOpeningHalfSpan, resolveMembraneContact } from "./labybulleWorld.js";
+import { getArenaIdForLevel, getArenaLevelFromId, getDestinationEntryHint, getPortalArrivalPosition, getPortalOpeningAngle, getPortalOpeningHalfSpan, resolveMembraneContact } from "./labybulleWorld.js";
 import { DEFAULT_FISH_NAV_RADIUS, MAX_ARENA_LEVEL, DEFAULT_ARENA_RADIUS, labybulleWorld } from "../store/soonInitialState.js";
 import { clampDepth, pushBubblesFromFish, separateBubblesByDepth } from "./fishBubblePhysics.js";
 
@@ -65,17 +65,23 @@ function buildArenaTransitionPatch({
   circuitAutopilot,
   circuitSegmentIndex,
   circuitSegmentT,
-  entryPositionHint = null,
+  fallbackExitHint = null,
   inwardOffset = 140,
 }) {
   const nextLevel = Math.max(0, Math.min(MAX_ARENA_LEVEL, getArenaLevelFromId(nextArenaId)));
+  const destinationEntryHint = getDestinationEntryHint({
+    world: activeWorld,
+    fromArenaId: runtimeArenaId,
+    toArenaId: nextArenaId,
+    fallbackExitHint,
+  });
   const arrival = getPortalArrivalPosition({
     world: activeWorld,
     fromArenaId: runtimeArenaId,
     toArenaId: nextArenaId,
     radius: getMembraneRadiusForLevel(arenaRadius, nextLevel),
     inwardOffset,
-    entryPositionHint,
+    entryPositionHint: destinationEntryHint,
   });
   const nextFishX = arrival.x;
   const nextFishY = arrival.y;
@@ -148,7 +154,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
       circuitAutopilot,
       circuitSegmentIndex,
       circuitSegmentT,
-      entryPositionHint: traverseOpenPassage.portal.positionHint || null,
+      fallbackExitHint: traverseOpenPassage.portal.positionHint || null,
       inwardOffset: 140,
     });
   }
@@ -173,7 +179,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
       circuitAutopilot,
       circuitSegmentIndex,
       circuitSegmentT,
-      entryPositionHint: contactPortal.positionHint || null,
+      fallbackExitHint: contactPortal.positionHint || null,
       inwardOffset: 140,
     });
   }
@@ -217,7 +223,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
       circuitAutopilot,
       circuitSegmentIndex,
       circuitSegmentT,
-      entryPositionHint: activePortal.positionHint || null,
+      fallbackExitHint: activePortal.positionHint || null,
       inwardOffset: 140,
     });
   }
@@ -238,7 +244,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
       circuitAutopilot,
       circuitSegmentIndex,
       circuitSegmentT,
-      entryPositionHint: inwardPortal.positionHint || null,
+      fallbackExitHint: inwardPortal.positionHint || null,
       inwardOffset: 140,
     });
   }
