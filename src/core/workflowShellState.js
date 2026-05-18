@@ -11,7 +11,12 @@ export { normalizeWorkflowRoot } from "./uiState.js";
 export const WORKFLOW_ROOT_STORAGE_KEY = "soon.workflow.root";
 
 export function parseWorkflowFromHash(hash) {
-  const raw = String(hash || "").replace(/^#/, "").replace(/^\//, "").toLowerCase();
+  const raw = String(hash || "")
+    .replace(/^#/, "")
+    .replace(/^\//, "")
+    .split(/[?#]/, 1)[0]
+    .replace(/\/+$/, "")
+    .toLowerCase();
 
   if (raw === WORKFLOW_ROOT_NAVIGO) return { root: WORKFLOW_ROOT_NAVIGO, odysseoMode: ODYSSEO_MODE_TRACE };
   if (raw === WORKFLOW_ROOT_COMPO) return { root: WORKFLOW_ROOT_COMPO, odysseoMode: null };
