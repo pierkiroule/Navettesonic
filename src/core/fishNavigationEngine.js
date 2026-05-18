@@ -94,7 +94,9 @@ function buildArenaTransitionPatch({
     circuitAutopilot,
     circuitSegmentIndex,
     circuitSegmentT,
-    bubbles: separateBubblesByDepth(pushBubblesFromFish(state.bubbles, { x: nextFishX, y: nextFishY }, fishDepth)),
+    // Important: ne pas pousser/résoudre les bulles sur la frame de transition
+    // d'arène pour éviter l'émergence brusque d'une bulle (ex: "Drill") dans le passage.
+    bubbles: state.bubbles,
     currentArenaId: nextArenaId,
     fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: nextVx * 0.25, vy: nextVy * 0.25, targetX: settledTargetX, targetY: settledTargetY, arenaRadius, arenaLevel: nextLevel, membraneSide: "inside", wallHitCount, lastWallHitAt, lastArenaTransitionAt: transitionAt, arenaTransitionCooldownUntil: transitionAt + ARENA_TRANSITION_COOLDOWN_MS, previousArenaId: runtimeArenaId, breachOpen: Number.isFinite(returnOpeningAngle), breachAngle: Number.isFinite(returnOpeningAngle) ? returnOpeningAngle : null, breachOpenedAt: transitionAt, breachState: Number.isFinite(returnOpeningAngle) ? "open" : "closed", breachExpiresAt: transitionAt + ARENA_PASSAGE_OPEN_MS, breachUsed: false, hasQuill: Boolean(state.fish.hasQuill) },
   };
