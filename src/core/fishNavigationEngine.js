@@ -31,6 +31,32 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
   const membraneContact=(hitOuterBoundary||(nearOuter&&pushingOutward))?resolveMembraneContact({world:activeWorld,arenaId:runtimeArenaId,x:nextFishX,y:nextFishY,radius:outerNavRadius,angularToleranceDeg:20}):null;
   if(membraneContact?.action==="transition"&&membraneContact?.portal){activePortal=membraneContact.portal;}
   const nearOutByContact=membraneContact?.action==="transition"&&Boolean(membraneContact?.portal);
+
+  if (nearOutByContact && activePortal) {
+    const nextArenaId = activePortal?.toArenaId || runtimeArenaId;
+    const nextLevel = Math.max(0, Math.min(MAX_ARENA_LEVEL, getArenaLevelFromId(nextArenaId)));
+    const arrival = getPortalArrivalPosition({
+      world: activeWorld,
+      fromArenaId: runtimeArenaId,
+      toArenaId: nextArenaId,
+      radius: getMembraneRadiusForLevel(arenaRadius, nextLevel),
+      inwardOffset: 160,
+      entryPositionHint: activePortal.positionHint || null,
+    });
+    nextFishX = arrival.x;
+    nextFishY = arrival.y;
+    const settledTargetX = nextFishX + Math.cos(radialAngle) * 12;
+    const settledTargetY = nextFishY + Math.sin(radialAngle) * 12;
+    return {
+      circuitAutopilot,
+      circuitSegmentIndex,
+      circuitSegmentT,
+      bubbles: separateBubblesByDepth(pushBubblesFromFish(state.bubbles, { x: nextFishX, y: nextFishY }, fishDepth)),
+      currentArenaId: nextArenaId,
+      fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: nextVx * 0.35, vy: nextVy * 0.35, targetX: settledTargetX, targetY: settledTargetY, arenaRadius, arenaLevel: nextLevel, membraneSide: "inside", wallHitCount, lastWallHitAt, breachOpen: false, breachAngle: null, breachOpenedAt: null, breachState: "closed", breachExpiresAt: null, breachUsed: false, hasQuill: Boolean(state.fish.hasQuill) },
+    };
+  }
+
   if (nearOuter && !(nearOut||nearOutByContact) && pushingOutward) {
     const tx = -radialY;
     const ty = radialX;
@@ -52,7 +78,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
     nextFishY = (nextFishY / d) * (innerNavRadius + 4);
   }
 
-  const canTransitionOutward=nearOuter&&activePortal&&((nearOut&&radialDot>0.1)||nearOutByContact);
+  const canTransitionOutward=nearOuter&&activePortal&&nearOut&&radialDot>0.1;
   if (canTransitionOutward) {
     const nextArenaId = activePortal?.toArenaId || runtimeArenaId;
     const nextLevel = Math.max(0, Math.min(MAX_ARENA_LEVEL, getArenaLevelFromId(nextArenaId)));
