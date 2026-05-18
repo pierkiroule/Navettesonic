@@ -138,6 +138,26 @@ export function drawQuill(ctx, fish = {}, time = 0) {
 }
 
 
+
+function getPortalClosestToFish(worldGraph, portals, fish = {}) {
+  if (!Array.isArray(portals) || portals.length === 0) return null;
+  if (portals.length === 1) return portals[0];
+  const fishAngle = Math.atan2(fish?.y || 0, fish?.x || 0);
+  const angleDistance = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+  let best = portals[0];
+  let bestGap = Number.POSITIVE_INFINITY;
+  portals.forEach((portal) => {
+    const opening = getPortalOpeningAngle(worldGraph, portal.fromArenaId, portal.toArenaId);
+    if (!Number.isFinite(opening)) return;
+    const gap = Math.abs(angleDistance(fishAngle, opening));
+    if (gap < bestGap) {
+      best = portal;
+      bestGap = gap;
+    }
+  });
+  return best;
+}
+
 function drawArenaNetworkBackdrop(ctx, current = {}, baseRadius = 1200) {
   const worldGraph = current?.worldGraph;
   const activeArenaId = current?.currentArenaId || worldGraph?.startArenaId || null;
@@ -216,7 +236,7 @@ export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
     const isInnerWall = index === arenaLevel - 1;
     const isActive = isOuterWall || isInnerWall;
     const openingPortal = isOuterWall
-      ? currentArenaPortals[0] || null
+      ? getPortalClosestToFish(worldGraph, currentArenaPortals, current?.fish)
       : isInnerWall
         ? currentArenaPortals.find((p) => p.toArenaId === worldGraph?.startArenaId) || null
         : null;
