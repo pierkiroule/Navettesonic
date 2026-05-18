@@ -2,7 +2,7 @@ import { updateSnakeFishToTarget, createInitialSpine } from "./fishSnakeMotion.j
 import { clampToCircle } from "./geometry.js";
 import { getCircuitSpeedValue, smoothLoopPoint } from "./traceCircuit.js";
 import { getFishNavigableRadius, MEMBRANE_LEVEL_MULTIPLIERS } from "./constants.js";
-import { ensureExitForBorderTouch, getArenaIdForLevel, getPortalOpeningAngle, getPortalOpeningHalfSpan, PORTAL_POSITIONS } from "./labybulleWorld.js";
+import { getArenaIdForLevel, getPortalOpeningAngle, getPortalOpeningHalfSpan, resolveMembraneContact } from "./labybulleWorld.js";
 import { DEFAULT_FISH_NAV_RADIUS, MAX_ARENA_LEVEL, DEFAULT_ARENA_RADIUS, labybulleWorld } from "../store/soonInitialState.js";
 import { clampDepth, pushBubblesFromFish, separateBubblesByDepth } from "./fishBubblePhysics.js";
 
@@ -13,7 +13,6 @@ export const isNearOpening=(angle,openingAngle,openingHalfSpan)=>Number.isFinite
 export const getRuntimeFishNavRadius=(arenaRadius)=>Number.isFinite(arenaRadius)&&arenaRadius>0?getFishNavigableRadius(arenaRadius):DEFAULT_FISH_NAV_RADIUS;
 export const getFishMovementRadius=(arenaRadius)=>getRuntimeFishNavRadius(arenaRadius);
 export const getMembraneRadiusForLevel=(arenaRadius,arenaLevel=0)=>{const base=getRuntimeFishNavRadius(arenaRadius);const level=Math.max(0,Math.min(MAX_ARENA_LEVEL,Number.isFinite(arenaLevel)?arenaLevel:0));const mul=MEMBRANE_LEVEL_MULTIPLIERS[level]??MEMBRANE_LEVEL_MULTIPLIERS[0];return base*mul;};
-const getBorderHintFromAngle=(angle)=>{const c=Math.cos(angle),s=Math.sin(angle);if(Math.abs(c)>=Math.abs(s))return c>=0?PORTAL_POSITIONS.RIGHT:PORTAL_POSITIONS.LEFT;return s>=0?PORTAL_POSITIONS.BOTTOM:PORTAL_POSITIONS.TOP;};
 
 export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADIUS}={}) { /* trimmed by keeping exact logic moved */
   const fish = state.fish; let fishNavRadius=getFishMovementRadius(arenaRadius);
@@ -27,8 +26,10 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
   const radialDistance=Math.hypot(nextFishX,nextFishY), radialAngle=Math.atan2(nextFishY,nextFishX), radialX=Math.cos(radialAngle), radialY=Math.sin(radialAngle), radialDot=(radialX*nextVx+radialY*nextVy)/(Math.hypot(nextVx,nextVy)||0.0001); const outwardToId=arenaLevel<MAX_ARENA_LEVEL?getArenaIdForLevel(arenaLevel+1):null,inwardToId=arenaLevel>0?getArenaIdForLevel(arenaLevel-1):null; const activeWorld=state.worldGraph||labybulleWorld; const runtimeArenaId=state.currentArenaId||getArenaIdForLevel(arenaLevel); const outwardOpeningAngle=outwardToId?getPortalOpeningAngle(activeWorld,getArenaIdForLevel(arenaLevel),outwardToId):null; const inwardOpeningAngle=inwardToId?getPortalOpeningAngle(activeWorld,getArenaIdForLevel(arenaLevel),inwardToId):null; const outerHalfSpan=getPortalOpeningHalfSpan({radius:outerNavRadius}); const innerHalfSpan=innerNavRadius>0?getPortalOpeningHalfSpan({radius:innerNavRadius}):0;
   const availablePortals=(activeWorld?.portals||[]).filter((p)=>p.fromArenaId===runtimeArenaId); let activePortal=availablePortals.find((p)=>isNearOpening(radialAngle,getPortalOpeningAngle(activeWorld,p.fromArenaId,p.toArenaId),outerHalfSpan))||null;
   const nearOuter=Math.abs(radialDistance-outerNavRadius)<=120, nearInner=innerNavRadius>0&&Math.abs(radialDistance-innerNavRadius)<=120, nearOut=Boolean(activePortal)||isNearOpening(radialAngle,outwardOpeningAngle,outerHalfSpan), nearIn=innerNavRadius>0&&isNearOpening(radialAngle,inwardOpeningAngle,innerHalfSpan);
-  if(nearOuter&&!activePortal&&radialDot>0.1){const res=ensureExitForBorderTouch({world:activeWorld,arenaId:runtimeArenaId,borderHint:getBorderHintFromAngle(radialAngle)});if(res?.created){activePortal=(activeWorld?.portals||[]).find((p)=>p.fromArenaId===runtimeArenaId&&p.toArenaId===res.toArenaId)||null;}}
-  if (nearOuter && !nearOut && radialDot > 0.02) {
+  const membraneContact=nearOuter&&radialDot>0.1?resolveMembraneContact({world:activeWorld,arenaId:runtimeArenaId,x:nextFishX,y:nextFishY,radius:outerNavRadius,angularToleranceDeg:20}):null;
+  if(membraneContact?.action==="transition"&&membraneContact?.portal){activePortal=membraneContact.portal;}
+  const nearOutByContact=membraneContact?.action==="transition"&&Boolean(membraneContact?.portal);
+  if (nearOuter && !(nearOut||nearOutByContact) && radialDot > 0.02) {
     const tx = -radialY;
     const ty = radialX;
     const ts = nextVx * tx + nextVy * ty;
@@ -49,7 +50,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
     nextFishY = (nextFishY / d) * (innerNavRadius + 4);
   }
 
-  if (nearOuter && nearOut && radialDot > 0.1 && (arenaLevel < MAX_ARENA_LEVEL || activePortal)) {
+  if (nearOuter && (nearOut||nearOutByContact) && radialDot > 0.1 && (arenaLevel < MAX_ARENA_LEVEL || activePortal)) {
     const nextLevel = Math.min(MAX_ARENA_LEVEL, arenaLevel + 1);
     const nextArenaId = activePortal?.toArenaId || getArenaIdForLevel(nextLevel);
     nextFishX += radialX * 8;
