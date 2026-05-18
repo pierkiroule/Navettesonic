@@ -14,6 +14,45 @@ export const getRuntimeFishNavRadius=(arenaRadius)=>Number.isFinite(arenaRadius)
 export const getFishMovementRadius=(arenaRadius)=>getRuntimeFishNavRadius(arenaRadius);
 export const getMembraneRadiusForLevel=(arenaRadius,arenaLevel=0)=>{const base=getRuntimeFishNavRadius(arenaRadius);const level=Math.max(0,Math.min(MAX_ARENA_LEVEL,Number.isFinite(arenaLevel)?arenaLevel:0));const mul=MEMBRANE_LEVEL_MULTIPLIERS[level]??MEMBRANE_LEVEL_MULTIPLIERS[0];return base*mul;};
 
+
+function buildArenaTransitionPatch({
+  state,
+  activeWorld,
+  runtimeArenaId,
+  nextArenaId,
+  radialAngle,
+  nextVx,
+  nextVy,
+  fishDepth,
+  arenaRadius,
+  wallHitCount,
+  lastWallHitAt,
+  circuitAutopilot,
+  circuitSegmentIndex,
+  circuitSegmentT,
+}) {
+  const nextLevel = Math.max(0, Math.min(MAX_ARENA_LEVEL, getArenaLevelFromId(nextArenaId)));
+  const arrival = getPortalArrivalPosition({
+    world: activeWorld,
+    fromArenaId: runtimeArenaId,
+    toArenaId: nextArenaId,
+    radius: getMembraneRadiusForLevel(arenaRadius, nextLevel),
+    inwardOffset: 160,
+  });
+  const nextFishX = arrival.x;
+  const nextFishY = arrival.y;
+  const settledTargetX = nextFishX + Math.cos(radialAngle) * 12;
+  const settledTargetY = nextFishY + Math.sin(radialAngle) * 12;
+  return {
+    circuitAutopilot,
+    circuitSegmentIndex,
+    circuitSegmentT,
+    bubbles: separateBubblesByDepth(pushBubblesFromFish(state.bubbles, { x: nextFishX, y: nextFishY }, fishDepth)),
+    currentArenaId: nextArenaId,
+    fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: nextVx * 0.35, vy: nextVy * 0.35, targetX: settledTargetX, targetY: settledTargetY, arenaRadius, arenaLevel: nextLevel, membraneSide: "inside", wallHitCount, lastWallHitAt, breachOpen: false, breachAngle: null, breachOpenedAt: null, breachState: "closed", breachExpiresAt: null, breachUsed: false, hasQuill: Boolean(state.fish.hasQuill) },
+  };
+}
+
 export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADIUS}={}) { /* trimmed by keeping exact logic moved */
   const fish = state.fish; let fishNavRadius=getFishMovementRadius(arenaRadius);
   if (state.fishTrail?.length) { const result=updateSnakeFishToTarget({fish:{...state.fish,spine:state.fish.spine||createInitialSpine(state.fish.x||0,state.fish.y||0)},trail:state.fishTrail,arenaRadius:fishNavRadius,swimSpeed}); return { fish:result.fish, fishTrail:result.trail, bubbles:separateBubblesByDepth(pushBubblesFromFish(state.bubbles,result.fish,result.fish.depth))}; }
@@ -28,36 +67,31 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
   const inwardPortal=innerNavRadius>0?availablePortals.find((p)=>isNearOpening(radialAngle,getPortalOpeningAngle(activeWorld,p.fromArenaId,p.toArenaId),innerHalfSpan))||null:null;
   const nearOuter=Math.abs(radialDistance-outerNavRadius)<=120, nearInner=innerNavRadius>0&&Math.abs(radialDistance-innerNavRadius)<=120, nearOut=Boolean(activePortal), nearIn=Boolean(inwardPortal);
   const pushingOutward=radialDot>0.02;
-  const membraneContact=(hitOuterBoundary||(nearOuter&&pushingOutward))?resolveMembraneContact({world:activeWorld,arenaId:runtimeArenaId,x:nextFishX,y:nextFishY,radius:outerNavRadius,angularToleranceDeg:20}):null;
-  if(membraneContact?.action==="transition"&&membraneContact?.portal){activePortal=membraneContact.portal;}
-  const nearOutByContact=membraneContact?.action==="transition"&&Boolean(membraneContact?.portal);
+  const membraneContact=nearOuter?resolveMembraneContact({world:activeWorld,arenaId:runtimeArenaId,x:nextFishX,y:nextFishY,radius:outerNavRadius,angularToleranceDeg:20}):null;
+  const contactPortal=membraneContact?.action==="transition"?membraneContact?.portal||null:null;
 
-  if (nearOutByContact && activePortal) {
-    const nextArenaId = activePortal?.toArenaId || runtimeArenaId;
-    const nextLevel = Math.max(0, Math.min(MAX_ARENA_LEVEL, getArenaLevelFromId(nextArenaId)));
-    const arrival = getPortalArrivalPosition({
-      world: activeWorld,
-      fromArenaId: runtimeArenaId,
-      toArenaId: nextArenaId,
-      radius: getMembraneRadiusForLevel(arenaRadius, nextLevel),
-      inwardOffset: 160,
-      entryPositionHint: activePortal.positionHint || null,
-    });
-    nextFishX = arrival.x;
-    nextFishY = arrival.y;
-    const settledTargetX = nextFishX + Math.cos(radialAngle) * 12;
-    const settledTargetY = nextFishY + Math.sin(radialAngle) * 12;
-    return {
+  // Priorité absolue: si le contact membrane résout une transition, on traverse
+  // immédiatement (évite les boucles de rejet/glisse au bord).
+  if (contactPortal?.toArenaId) {
+    return buildArenaTransitionPatch({
+      state,
+      activeWorld,
+      runtimeArenaId,
+      nextArenaId: contactPortal.toArenaId,
+      radialAngle,
+      nextVx,
+      nextVy,
+      fishDepth,
+      arenaRadius,
+      wallHitCount,
+      lastWallHitAt,
       circuitAutopilot,
       circuitSegmentIndex,
       circuitSegmentT,
-      bubbles: separateBubblesByDepth(pushBubblesFromFish(state.bubbles, { x: nextFishX, y: nextFishY }, fishDepth)),
-      currentArenaId: nextArenaId,
-      fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: nextVx * 0.35, vy: nextVy * 0.35, targetX: settledTargetX, targetY: settledTargetY, arenaRadius, arenaLevel: nextLevel, membraneSide: "inside", wallHitCount, lastWallHitAt, breachOpen: false, breachAngle: null, breachOpenedAt: null, breachState: "closed", breachExpiresAt: null, breachUsed: false, hasQuill: Boolean(state.fish.hasQuill) },
-    };
+    });
   }
 
-  if (nearOuter && !(nearOut||nearOutByContact) && pushingOutward) {
+  if (nearOuter && !nearOut && pushingOutward) {
     const tx = -radialY;
     const ty = radialX;
     const ts = nextVx * tx + nextVy * ty;
@@ -80,53 +114,41 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
 
   const canTransitionOutward=nearOuter&&activePortal&&nearOut&&radialDot>0.1;
   if (canTransitionOutward) {
-    const nextArenaId = activePortal?.toArenaId || runtimeArenaId;
-    const nextLevel = Math.max(0, Math.min(MAX_ARENA_LEVEL, getArenaLevelFromId(nextArenaId)));
-    const arrival = getPortalArrivalPosition({
-      world: activeWorld,
-      fromArenaId: runtimeArenaId,
-      toArenaId: nextArenaId,
-      radius: getMembraneRadiusForLevel(arenaRadius, nextLevel),
-      inwardOffset: 160,
-      entryPositionHint: activePortal.positionHint || null,
-    });
-    nextFishX = arrival.x;
-    nextFishY = arrival.y;
-    const settledTargetX = nextFishX + Math.cos(radialAngle) * 12;
-    const settledTargetY = nextFishY + Math.sin(radialAngle) * 12;
-    return {
+    return buildArenaTransitionPatch({
+      state,
+      activeWorld,
+      runtimeArenaId,
+      nextArenaId: activePortal.toArenaId || runtimeArenaId,
+      radialAngle,
+      nextVx,
+      nextVy,
+      fishDepth,
+      arenaRadius,
+      wallHitCount,
+      lastWallHitAt,
       circuitAutopilot,
       circuitSegmentIndex,
       circuitSegmentT,
-      bubbles: separateBubblesByDepth(pushBubblesFromFish(state.bubbles, { x: nextFishX, y: nextFishY }, fishDepth)),
-      currentArenaId: nextArenaId,
-      fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: nextVx * 0.35, vy: nextVy * 0.35, targetX: settledTargetX, targetY: settledTargetY, arenaRadius, arenaLevel: nextLevel, membraneSide: "inside", wallHitCount, lastWallHitAt, breachOpen: false, breachAngle: null, breachOpenedAt: null, breachState: "closed", breachExpiresAt: null, breachUsed: false, hasQuill: Boolean(state.fish.hasQuill) },
-    };
+    });
   }
 
   if (nearInner && nearIn && radialDot < -0.1 && inwardPortal) {
-    const nextArenaId = inwardPortal.toArenaId;
-    const nextLevel = Math.max(0, Math.min(MAX_ARENA_LEVEL, getArenaLevelFromId(nextArenaId)));
-    const arrival = getPortalArrivalPosition({
-      world: activeWorld,
-      fromArenaId: runtimeArenaId,
-      toArenaId: nextArenaId,
-      radius: getMembraneRadiusForLevel(arenaRadius, nextLevel),
-      inwardOffset: 160,
-      entryPositionHint: inwardPortal.positionHint || null,
-    });
-    nextFishX = arrival.x;
-    nextFishY = arrival.y;
-    const settledTargetX = nextFishX - Math.cos(radialAngle) * 12;
-    const settledTargetY = nextFishY - Math.sin(radialAngle) * 12;
-    return {
+    return buildArenaTransitionPatch({
+      state,
+      activeWorld,
+      runtimeArenaId,
+      nextArenaId: inwardPortal.toArenaId,
+      radialAngle: radialAngle + Math.PI,
+      nextVx,
+      nextVy,
+      fishDepth,
+      arenaRadius,
+      wallHitCount,
+      lastWallHitAt,
       circuitAutopilot,
       circuitSegmentIndex,
       circuitSegmentT,
-      bubbles: separateBubblesByDepth(pushBubblesFromFish(state.bubbles, { x: nextFishX, y: nextFishY }, fishDepth)),
-      currentArenaId: nextArenaId,
-      fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: nextVx * 0.35, vy: nextVy * 0.35, targetX: settledTargetX, targetY: settledTargetY, arenaRadius, arenaLevel: nextLevel, membraneSide: "inside", wallHitCount, lastWallHitAt, breachOpen: false, breachAngle: null, breachOpenedAt: null, breachState: "closed", breachExpiresAt: null, breachUsed: false, hasQuill: Boolean(state.fish.hasQuill) },
-    };
+    });
   }
   const basePatch={circuitAutopilot,circuitSegmentIndex,circuitSegmentT,bubbles:separateBubblesByDepth(pushBubblesFromFish(state.bubbles,{x:nextFishX,y:nextFishY},fishDepth))};
   const speed=Math.hypot(limitedVx,limitedVy),moveAngle=speed>0.035?Math.atan2(limitedVy,limitedVx):currentAngle,angle=speed>0.035?lerpAngle(currentAngle,moveAngle,0.055+Math.min(0.055,speed*0.006)):currentAngle;
