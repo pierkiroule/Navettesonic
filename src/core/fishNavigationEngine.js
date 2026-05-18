@@ -15,6 +15,8 @@ export const getFishMovementRadius=(arenaRadius)=>getRuntimeFishNavRadius(arenaR
 export const getMembraneRadiusForLevel=(arenaRadius,arenaLevel=0)=>{const base=getRuntimeFishNavRadius(arenaRadius);const level=Math.max(0,Math.min(MAX_ARENA_LEVEL,Number.isFinite(arenaLevel)?arenaLevel:0));const mul=MEMBRANE_LEVEL_MULTIPLIERS[level]??MEMBRANE_LEVEL_MULTIPLIERS[0];return base*mul;};
 
 
+const ARENA_TRANSITION_COOLDOWN_MS = 220;
+
 function buildArenaTransitionPatch({
   state,
   activeWorld,
@@ -31,7 +33,7 @@ function buildArenaTransitionPatch({
   circuitSegmentIndex,
   circuitSegmentT,
   entryPositionHint = null,
-  inwardOffset = 10,
+  inwardOffset = 140,
 }) {
   const nextLevel = Math.max(0, Math.min(MAX_ARENA_LEVEL, getArenaLevelFromId(nextArenaId)));
   const arrival = getPortalArrivalPosition({
@@ -44,6 +46,7 @@ function buildArenaTransitionPatch({
   });
   const nextFishX = arrival.x;
   const nextFishY = arrival.y;
+  const transitionAt = performance.now();
   const settledTargetX = nextFishX + Math.cos(radialAngle) * 12;
   const settledTargetY = nextFishY + Math.sin(radialAngle) * 12;
   return {
@@ -52,7 +55,7 @@ function buildArenaTransitionPatch({
     circuitSegmentT,
     bubbles: separateBubblesByDepth(pushBubblesFromFish(state.bubbles, { x: nextFishX, y: nextFishY }, fishDepth)),
     currentArenaId: nextArenaId,
-    fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: nextVx * 0.92, vy: nextVy * 0.92, targetX: settledTargetX, targetY: settledTargetY, arenaRadius, arenaLevel: nextLevel, membraneSide: "inside", wallHitCount, lastWallHitAt, breachOpen: false, breachAngle: null, breachOpenedAt: null, breachState: "closed", breachExpiresAt: null, breachUsed: false, hasQuill: Boolean(state.fish.hasQuill) },
+    fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: nextVx * 0.35, vy: nextVy * 0.35, targetX: settledTargetX, targetY: settledTargetY, arenaRadius, arenaLevel: nextLevel, membraneSide: "inside", wallHitCount, lastWallHitAt, lastArenaTransitionAt: transitionAt, arenaTransitionCooldownUntil: transitionAt + ARENA_TRANSITION_COOLDOWN_MS, breachOpen: false, breachAngle: null, breachOpenedAt: null, breachState: "closed", breachExpiresAt: null, breachUsed: false, hasQuill: Boolean(state.fish.hasQuill) },
   };
 }
 
@@ -70,7 +73,9 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
   const inwardPortal=innerNavRadius>0?availablePortals.find((p)=>isNearOpening(radialAngle,getPortalOpeningAngle(activeWorld,p.fromArenaId,p.toArenaId),innerHalfSpan))||null:null;
   const nearOuter=Math.abs(radialDistance-outerNavRadius)<=120, nearInner=innerNavRadius>0&&Math.abs(radialDistance-innerNavRadius)<=120, nearOut=Boolean(activePortal), nearIn=Boolean(inwardPortal);
   const pushingOutward=radialDot>0.02;
-  const membraneContact=nearOuter?resolveMembraneContact({world:activeWorld,arenaId:runtimeArenaId,x:nextFishX,y:nextFishY,radius:outerNavRadius,angularToleranceDeg:20}):null;
+  const transitionCooldownUntil = Number.isFinite(state?.fish?.arenaTransitionCooldownUntil) ? state.fish.arenaTransitionCooldownUntil : 0;
+  const transitionLocked = now < transitionCooldownUntil;
+  const shouldResolveMembraneContact=(hitOuterBoundary||nearOuter||radialDistance>=outerNavRadius-8)&&!transitionLocked; const membraneContact=shouldResolveMembraneContact?resolveMembraneContact({world:activeWorld,arenaId:runtimeArenaId,x:nextFishX,y:nextFishY,radius:outerNavRadius,angularToleranceDeg:20}):null;
   const contactPortal=membraneContact?.action==="transition"?membraneContact?.portal||null:null;
 
   // Priorité absolue: si le contact membrane résout une transition, on traverse
@@ -92,7 +97,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
       circuitSegmentIndex,
       circuitSegmentT,
       entryPositionHint: contactPortal.positionHint || null,
-      inwardOffset: 10,
+      inwardOffset: 140,
     });
   }
 
@@ -117,7 +122,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
     nextFishY = (nextFishY / d) * (innerNavRadius + 4);
   }
 
-  const canTransitionOutward=nearOuter&&activePortal&&nearOut&&radialDot>0.1;
+  const canTransitionOutward=!transitionLocked&&nearOuter&&activePortal&&nearOut&&radialDot>0.1;
   if (canTransitionOutward) {
     return buildArenaTransitionPatch({
       state,
@@ -135,11 +140,11 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
       circuitSegmentIndex,
       circuitSegmentT,
       entryPositionHint: activePortal.positionHint || null,
-      inwardOffset: 10,
+      inwardOffset: 140,
     });
   }
 
-  if (nearInner && nearIn && radialDot < -0.1 && inwardPortal) {
+  if (!transitionLocked && nearInner && nearIn && radialDot < -0.1 && inwardPortal) {
     return buildArenaTransitionPatch({
       state,
       activeWorld,
@@ -156,7 +161,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
       circuitSegmentIndex,
       circuitSegmentT,
       entryPositionHint: inwardPortal.positionHint || null,
-      inwardOffset: 10,
+      inwardOffset: 140,
     });
   }
   const basePatch={circuitAutopilot,circuitSegmentIndex,circuitSegmentT,bubbles:separateBubblesByDepth(pushBubblesFromFish(state.bubbles,{x:nextFishX,y:nextFishY},fishDepth))};

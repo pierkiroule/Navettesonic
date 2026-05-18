@@ -3,7 +3,7 @@ import { drawPoissonPlume } from "./poissonPlumeRenderer.js";
 import { drawCharacters } from "./characters/characterEngine.js";
 import { drawOdysseoPath } from "./odysseoPath.js";
 import { ARENA_INNER_BOUNDARY_INSET, MEMBRANE_LEVEL_MULTIPLIERS } from "./constants.js";
-import { getPortalOpeningAngle, getPortalOpeningHalfSpan } from "./labybulleWorld.js";
+import { getArenaRadiusForNode, getPortalOpeningAngle, getPortalOpeningHalfSpan } from "./labybulleWorld.js";
 import {
   drawFireflies,
   drawPlacedTriangles,
@@ -137,8 +137,83 @@ export function drawQuill(ctx, fish = {}, time = 0) {
   ctx.restore();
 }
 
+
+
+function getPortalClosestToFish(worldGraph, portals, fish = {}) {
+  if (!Array.isArray(portals) || portals.length === 0) return null;
+  if (portals.length === 1) return portals[0];
+  const fishAngle = Math.atan2(fish?.y || 0, fish?.x || 0);
+  const angleDistance = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+  let best = portals[0];
+  let bestGap = Number.POSITIVE_INFINITY;
+  portals.forEach((portal) => {
+    const opening = getPortalOpeningAngle(worldGraph, portal.fromArenaId, portal.toArenaId);
+    if (!Number.isFinite(opening)) return;
+    const gap = Math.abs(angleDistance(fishAngle, opening));
+    if (gap < bestGap) {
+      best = portal;
+      bestGap = gap;
+    }
+  });
+  return best;
+}
+
+function drawArenaNetworkBackdrop(ctx, current = {}, baseRadius = 1200) {
+  const worldGraph = current?.worldGraph;
+  const activeArenaId = current?.currentArenaId || worldGraph?.startArenaId || null;
+  if (!worldGraph || !activeArenaId) return;
+
+  const nodes = worldGraph?.nodes || [];
+  const portals = worldGraph?.portals || [];
+  const activeNode = nodes.find((n) => n.id === activeArenaId);
+  if (!activeNode) return;
+
+  const activeCenter = activeNode.absoluteCenter || { x: 0, y: 0 };
+  ctx.save();
+  nodes.forEach((node) => {
+    if (node.id === activeArenaId) return;
+    const center = node.absoluteCenter || { x: 0, y: 0 };
+    const x = (center.x || 0) - (activeCenter.x || 0);
+    const y = (center.y || 0) - (activeCenter.y || 0);
+    const radius = getArenaRadiusForNode({ world: worldGraph, arenaId: node.id, baseRadius });
+
+    const portalToActive = portals.find((p) => p.fromArenaId === node.id && p.toArenaId === activeArenaId) || null;
+    const opening = portalToActive
+      ? getPortalOpeningAngle(worldGraph, portalToActive.fromArenaId, portalToActive.toArenaId)
+      : null;
+    const halfSpan = opening !== null ? getPortalOpeningHalfSpan({ radius }) : 0;
+
+    ctx.save();
+    ctx.translate(x, y);
+
+    ctx.beginPath();
+    if (opening !== null) {
+      ctx.arc(0, 0, radius, opening + halfSpan, opening - halfSpan + Math.PI * 2);
+    } else {
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    }
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.58)';
+    ctx.lineWidth = 4 * CONTOUR_WIDTH_MULTIPLIER;
+    ctx.stroke();
+
+    ctx.beginPath();
+    if (opening !== null) {
+      ctx.arc(0, 0, radius * 0.95, opening + halfSpan, opening - halfSpan + Math.PI * 2);
+    } else {
+      ctx.arc(0, 0, radius * 0.95, 0, Math.PI * 2);
+    }
+    ctx.strokeStyle = 'rgba(14, 116, 144, 0.48)';
+    ctx.lineWidth = 2 * CONTOUR_WIDTH_MULTIPLIER;
+    ctx.stroke();
+
+    ctx.restore();
+  });
+  ctx.restore();
+}
+
 export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
   const radius = arenaRef.current.radius;
+  drawArenaNetworkBackdrop(ctx, current, radius);
   const innerRadius = Math.max(0, radius - ARENA_INNER_BOUNDARY_INSET);
   const arenaLevel = Number.isFinite(current?.fish?.arenaLevel) ? current.fish.arenaLevel : 0;
   const pulse = Math.sin(time * 0.0018) * 0.5 + 0.5;
@@ -161,7 +236,7 @@ export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
     const isInnerWall = index === arenaLevel - 1;
     const isActive = isOuterWall || isInnerWall;
     const openingPortal = isOuterWall
-      ? currentArenaPortals[0] || null
+      ? getPortalClosestToFish(worldGraph, currentArenaPortals, current?.fish)
       : isInnerWall
         ? currentArenaPortals.find((p) => p.toArenaId === worldGraph?.startArenaId) || null
         : null;
