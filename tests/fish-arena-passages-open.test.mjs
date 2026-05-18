@@ -24,14 +24,17 @@ test('portail ouvert prioritaire: traverse sans rester clampé au bord', () => {
   const outer = getMembraneRadiusForLevel(arenaRadius, 0);
   const first = tickFishEngine(baseState(world, 'arena-1', { x: outer + 1, y: 0, vx: 0.12, vy: 0.02, targetX: outer + 24, targetY: 40, angle: 0, depth: 1, maxSpeed: 3.1, arenaLevel: 0, swimPhase: 0, mouthPull: 0, turnAmount: 0, turnVelocity: 0, wallHitCount: 0, lastWallHitAt: 0, hasQuill: false }), { arenaRadius });
   const returnedArenaId = first.currentArenaId;
+  const breachAngle = first.fish.breachAngle ?? 0;
+  const px = Math.cos(breachAngle) * (outer - 2);
+  const py = Math.sin(breachAngle) * (outer - 2);
   const back = tickFishEngine(baseState(world, returnedArenaId, {
     ...first.fish,
-    x: outer - 2,
-    y: 0,
-    vx: 0.3,
-    vy: 0.01,
-    targetX: outer + 80,
-    targetY: 24,
+    x: px,
+    y: py,
+    vx: Math.cos(breachAngle) * 0.3,
+    vy: Math.sin(breachAngle) * 0.3,
+    targetX: px + Math.cos(breachAngle) * 90,
+    targetY: py + Math.sin(breachAngle) * 90,
     breachOpen: true,
     breachUsed: false,
   }), { arenaRadius });

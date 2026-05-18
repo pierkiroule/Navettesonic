@@ -25,6 +25,7 @@ export function shouldTraverseOpenPassage({
   outerNavRadius,
   innerNavRadius,
   activePortal,
+  activePortalAligned,
   inwardPortal,
   breachOpen,
   breachAngle,
@@ -37,13 +38,13 @@ export function shouldTraverseOpenPassage({
   const outwardThreshold = openWindowActive ? 0.02 : 0.1;
   const inwardThreshold = -0.1;
 
-  if (nearOuter && activePortal && radialDot > outwardThreshold) {
+  if (nearOuter && activePortal && activePortalAligned && radialDot > outwardThreshold) {
     return { portal: activePortal, direction: "out" };
   }
   if (nearInner && inwardPortal && radialDot < inwardThreshold) {
     return { portal: inwardPortal, direction: "in" };
   }
-  if (openWindowActive && nearOuter && activePortal && Number.isFinite(breachAngle) && isNearOpening(radialAngle, breachAngle, getPortalOpeningHalfSpan({ radius: outerNavRadius }) * 1.9) && radialDot > 0.01) {
+  if (openWindowActive && nearOuter && activePortal && activePortalAligned && Number.isFinite(breachAngle) && isNearOpening(radialAngle, breachAngle, getPortalOpeningHalfSpan({ radius: outerNavRadius }) * 1.9) && radialDot > 0.01) {
     return { portal: activePortal, direction: "out" };
   }
   return null;
@@ -109,9 +110,10 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
     const breachHalfSpan = outerHalfSpan * 1.9;
     activePortal = availablePortals.find((p) => isNearOpening(state.fish.breachAngle, getPortalOpeningAngle(activeWorld, p.fromArenaId, p.toArenaId), breachHalfSpan)) || activePortal;
   }
+  const activePortalAligned = Boolean(activePortal) && isNearOpening(radialAngle, getPortalOpeningAngle(activeWorld, activePortal.fromArenaId, activePortal.toArenaId), outerHalfSpan * (breachOpen ? 1.9 : 1));
 
   const inwardPortal=innerNavRadius>0?availablePortals.find((p)=>isNearOpening(radialAngle,getPortalOpeningAngle(activeWorld,p.fromArenaId,p.toArenaId),innerHalfSpan))||null:null;
-  const nearOuter=Math.abs(radialDistance-outerNavRadius)<=120, nearInner=innerNavRadius>0&&Math.abs(radialDistance-innerNavRadius)<=120, nearOut=Boolean(activePortal), nearIn=Boolean(inwardPortal);
+  const nearOuter=Math.abs(radialDistance-outerNavRadius)<=120, nearInner=innerNavRadius>0&&Math.abs(radialDistance-innerNavRadius)<=120, nearOut=Boolean(activePortalAligned), nearIn=Boolean(inwardPortal);
   const pushingOutward=radialDot>0.02;
   const transitionCooldownUntil = Number.isFinite(state?.fish?.arenaTransitionCooldownUntil) ? state.fish.arenaTransitionCooldownUntil : 0;
   const canUseOpenPassage = breachOpen && nearOut;
@@ -123,6 +125,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
     outerNavRadius,
     innerNavRadius,
     activePortal,
+    activePortalAligned,
     inwardPortal,
     breachOpen,
     breachAngle: state.fish?.breachAngle,
