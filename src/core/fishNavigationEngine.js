@@ -48,12 +48,9 @@ function buildArenaTransitionPatch({
   const nextFishX = arrival.x;
   const nextFishY = arrival.y;
   const transitionAt = performance.now();
-  const inwardDx = -nextFishX;
-  const inwardDy = -nextFishY;
-  const inwardDistance = Math.hypot(inwardDx, inwardDy) || 1;
-  const inwardStep = Math.min(96, Math.max(24, inwardDistance * 0.12));
-  const settledTargetX = nextFishX + (inwardDx / inwardDistance) * inwardStep;
-  const settledTargetY = nextFishY + (inwardDy / inwardDistance) * inwardStep;
+  const settleStep = 24;
+  const settledTargetX = nextFishX + Math.cos(radialAngle) * settleStep;
+  const settledTargetY = nextFishY + Math.sin(radialAngle) * settleStep;
   const returnOpeningAngle = getPortalOpeningAngle(activeWorld, nextArenaId, runtimeArenaId);
   return {
     circuitAutopilot,
@@ -61,7 +58,7 @@ function buildArenaTransitionPatch({
     circuitSegmentT,
     bubbles: separateBubblesByDepth(pushBubblesFromFish(state.bubbles, { x: nextFishX, y: nextFishY }, fishDepth)),
     currentArenaId: nextArenaId,
-    fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: nextVx * 0.18, vy: nextVy * 0.18, targetX: settledTargetX, targetY: settledTargetY, arenaRadius, arenaLevel: nextLevel, membraneSide: "inside", wallHitCount, lastWallHitAt, lastArenaTransitionAt: transitionAt, arenaTransitionCooldownUntil: transitionAt + ARENA_TRANSITION_COOLDOWN_MS, breachOpen: Number.isFinite(returnOpeningAngle), breachAngle: Number.isFinite(returnOpeningAngle) ? returnOpeningAngle : null, breachOpenedAt: transitionAt, breachState: Number.isFinite(returnOpeningAngle) ? "open" : "closed", breachExpiresAt: transitionAt + ARENA_PASSAGE_OPEN_MS, breachUsed: false, hasQuill: Boolean(state.fish.hasQuill) },
+    fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: nextVx * 0.25, vy: nextVy * 0.25, targetX: settledTargetX, targetY: settledTargetY, arenaRadius, arenaLevel: nextLevel, membraneSide: "inside", wallHitCount, lastWallHitAt, lastArenaTransitionAt: transitionAt, arenaTransitionCooldownUntil: transitionAt + ARENA_TRANSITION_COOLDOWN_MS, breachOpen: Number.isFinite(returnOpeningAngle), breachAngle: Number.isFinite(returnOpeningAngle) ? returnOpeningAngle : null, breachOpenedAt: transitionAt, breachState: Number.isFinite(returnOpeningAngle) ? "open" : "closed", breachExpiresAt: transitionAt + ARENA_PASSAGE_OPEN_MS, breachUsed: false, hasQuill: Boolean(state.fish.hasQuill) },
   };
 }
 
