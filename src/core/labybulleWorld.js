@@ -60,7 +60,14 @@ function createSeededRandom(seed = 1) {
 }
 
 function makeArenaNode({ id, type, parentId = null, childrenIds = [], centerOffset = { x: 0, y: 0 } }) {
-  return { id, type, parentId, childrenIds: [...childrenIds], centerOffset: { x: centerOffset.x || 0, y: centerOffset.y || 0 } };
+  return {
+    id,
+    type,
+    parentId,
+    childrenIds: [...childrenIds],
+    centerOffset: { x: centerOffset.x || 0, y: centerOffset.y || 0 },
+    hasSpawnedNeighbor: false,
+  };
 }
 
 function pushBidirectionalPortal(portals, fromArenaId, toArenaId, forwardHint, backwardHint) {
@@ -84,34 +91,68 @@ function pushBidirectionalPortal(portals, fromArenaId, toArenaId, forwardHint, b
   });
 }
 
+function getNodeById(world, id) {
+  return (world?.nodes || []).find((node) => node.id === id) || null;
+}
+
+function makeChildArenaId(parentId, world) {
+  const base = `${parentId}-child`;
+  const existingIds = new Set((world?.nodes || []).map((node) => node.id));
+  let idx = 1;
+  let candidate = `${base}-${idx}`;
+  while (existingIds.has(candidate)) {
+    idx += 1;
+    candidate = `${base}-${idx}`;
+  }
+  return candidate;
+}
+
+function invertHint(hint) {
+  if (hint === PORTAL_POSITIONS.TOP) return PORTAL_POSITIONS.BOTTOM;
+  if (hint === PORTAL_POSITIONS.BOTTOM) return PORTAL_POSITIONS.TOP;
+  if (hint === PORTAL_POSITIONS.LEFT) return PORTAL_POSITIONS.RIGHT;
+  if (hint === PORTAL_POSITIONS.RIGHT) return PORTAL_POSITIONS.LEFT;
+  return PORTAL_POSITIONS.CUSTOM;
+}
+
+export function ensureExitForBorderTouch({
+  world,
+  arenaId,
+  borderHint = PORTAL_POSITIONS.RIGHT,
+  nextType = ARENA_TYPES.ARENA,
+}) {
+  if (!world || !arenaId) return null;
+  const sourceNode = getNodeById(world, arenaId);
+  if (!sourceNode) return null;
+
+  if (sourceNode.hasSpawnedNeighbor) {
+    return { created: false, fromArenaId: arenaId, toArenaId: null, reason: "already-spawned" };
+  }
+
+  const childId = makeChildArenaId(arenaId, world);
+  const childNode = makeArenaNode({
+    id: childId,
+    type: nextType,
+    parentId: arenaId,
+    centerOffset: { x: 0, y: 0 },
+  });
+  world.nodes.push(childNode);
+  sourceNode.childrenIds = [...(sourceNode.childrenIds || []), childId];
+  sourceNode.hasSpawnedNeighbor = true;
+
+  pushBidirectionalPortal(world.portals, arenaId, childId, borderHint, invertHint(borderHint));
+  return { created: true, fromArenaId: arenaId, toArenaId: childId };
+}
+
 export function generateLabybulle(seed = 1) {
-  const rand = createSeededRandom(seed);
-  const nodes = [];
+  const startArenaId = "arena-1";
+  const nodes = [makeArenaNode({ id: startArenaId, type: ARENA_TYPES.ARENA })];
   const portals = [];
-
-  const arenaId = "arena-1";
-  const megaId = "mega-1";
-  const gigaId = "giga-1";
-
-  const asymX = Math.round((rand() - 0.5) * 420);
-  const asymY = Math.round((rand() - 0.5) * 420);
-  nodes.push(makeArenaNode({ id: gigaId, type: ARENA_TYPES.GIGA, childrenIds: [megaId], centerOffset: { x: 0, y: 0 } }));
-  nodes.push(makeArenaNode({ id: megaId, type: ARENA_TYPES.MEGA, parentId: gigaId, childrenIds: [arenaId], centerOffset: { x: asymX, y: asymY } }));
-  nodes.push(makeArenaNode({ id: arenaId, type: ARENA_TYPES.ARENA, parentId: megaId, centerOffset: { x: Math.round(asymX * 0.5), y: Math.round(asymY * 0.5) } }));
-
-  const spin = Math.floor(rand() * 4);
-  const hints = [PORTAL_POSITIONS.TOP, PORTAL_POSITIONS.RIGHT, PORTAL_POSITIONS.BOTTOM, PORTAL_POSITIONS.LEFT];
-  const arenaToMega = hints[spin % hints.length];
-  const megaToGiga = hints[(spin + 1) % hints.length];
-
-  pushBidirectionalPortal(portals, arenaId, megaId, arenaToMega, arenaToMega);
-  pushBidirectionalPortal(portals, megaId, gigaId, megaToGiga, megaToGiga);
-
   return {
     seed,
     nodes,
     portals,
-    startArenaId: arenaId,
+    startArenaId,
     startPosition: { x: 0, y: 0, hint: "CENTER" },
   };
 }
