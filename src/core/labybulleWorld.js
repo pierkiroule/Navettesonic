@@ -59,13 +59,16 @@ function createSeededRandom(seed = 1) {
   };
 }
 
-function makeArenaNode({ id, type, parentId = null, childrenIds = [], centerOffset = { x: 0, y: 0 } }) {
+function makeArenaNode({ id, type, parentId = null, childrenIds = [], centerOffset = { x: 0, y: 0 }, absoluteCenter = null }) {
   return {
     id,
     type,
     parentId,
     childrenIds: [...childrenIds],
     centerOffset: { x: centerOffset.x || 0, y: centerOffset.y || 0 },
+    absoluteCenter: absoluteCenter
+      ? { x: absoluteCenter.x || 0, y: absoluteCenter.y || 0 }
+      : { x: centerOffset.x || 0, y: centerOffset.y || 0 },
     hasSpawnedNeighbor: false,
     generatedExit: null,
   };
@@ -111,16 +114,25 @@ function getNodeById(world, id) {
   return (world?.nodes || []).find((node) => node.id === id) || null;
 }
 
-function makeChildArenaId(parentId, world) {
-  const base = `${parentId}-child`;
-  const existingIds = new Set((world?.nodes || []).map((node) => node.id));
-  let idx = 1;
-  let candidate = `${base}-${idx}`;
-  while (existingIds.has(candidate)) {
-    idx += 1;
-    candidate = `${base}-${idx}`;
-  }
-  return candidate;
+const ROOM_TOUCH_OVERLAP = 24;
+const DEFAULT_LAYOUT_BASE_RADIUS = 1200;
+
+function getNextArenaSequence(world) {
+  const current = Number.isFinite(world?.meta?.nextArenaSeq) ? world.meta.nextArenaSeq : 1;
+  if (!world.meta) world.meta = {};
+  world.meta.nextArenaSeq = current + 1;
+  return current;
+}
+
+function makeChildArenaId(parentId, world, angle = 0) {
+  const seq = getNextArenaSequence(world);
+  const angleBucket = Math.round((normalizeAngle(angle) + Math.PI) * 1000);
+  return `${parentId}-child-${seq}-${angleBucket}`;
+}
+
+function getAbsoluteCenter(node) {
+  if (node?.absoluteCenter) return node.absoluteCenter;
+  return { x: node?.centerOffset?.x || 0, y: node?.centerOffset?.y || 0 };
 }
 
 function invertHint(hint) {
@@ -158,19 +170,33 @@ export function ensureExitForBorderTouch({
     };
   }
 
-  const childId = makeChildArenaId(arenaId, world);
+  const linkAngle = Number.isFinite(exitAngle) ? exitAngle : getPortalAnchor({ positionHint: borderHint, radius: 1 }).angle;
+  const childId = makeChildArenaId(arenaId, world, linkAngle);
+
+  const parentCenter = getAbsoluteCenter(sourceNode);
+  const parentRadius = DEFAULT_LAYOUT_BASE_RADIUS * getArenaRadiusMultiplier(sourceNode.type);
+  const childRadius = DEFAULT_LAYOUT_BASE_RADIUS * getArenaRadiusMultiplier(nextType);
+  const centerDistance = parentRadius + childRadius - ROOM_TOUCH_OVERLAP;
+  const childAbsoluteCenter = {
+    x: parentCenter.x + Math.cos(linkAngle) * centerDistance,
+    y: parentCenter.y + Math.sin(linkAngle) * centerDistance,
+  };
+
   const childNode = makeArenaNode({
     id: childId,
     type: nextType,
     parentId: arenaId,
-    centerOffset: { x: 0, y: 0 },
+    centerOffset: {
+      x: childAbsoluteCenter.x - parentCenter.x,
+      y: childAbsoluteCenter.y - parentCenter.y,
+    },
+    absoluteCenter: childAbsoluteCenter,
   });
   world.nodes.push(childNode);
   sourceNode.childrenIds = [...(sourceNode.childrenIds || []), childId];
   sourceNode.hasSpawnedNeighbor = true;
   sourceNode.generatedExit = { toArenaId: childId, borderHint };
 
-  const linkAngle = Number.isFinite(exitAngle) ? exitAngle : getPortalAnchor({ positionHint: borderHint, radius: 1 }).angle;
   linkRoomsWithOppositeExits(sourceNode, childNode, linkAngle, world.portals, borderHint);
   return { created: true, fromArenaId: arenaId, toArenaId: childId };
 }
@@ -180,7 +206,7 @@ export function generateLabybulle(seed = 1) {
   // - un seul nœud de départ;
   // - mutations du graphe via ensureExitForBorderTouch.
   const startArenaId = "arena-1";
-  const nodes = [makeArenaNode({ id: startArenaId, type: ARENA_TYPES.ARENA })];
+  const nodes = [makeArenaNode({ id: startArenaId, type: ARENA_TYPES.ARENA, absoluteCenter: { x: 0, y: 0 } })];
   const portals = [];
   return {
     seed,
@@ -188,6 +214,7 @@ export function generateLabybulle(seed = 1) {
     portals,
     startArenaId,
     startPosition: { x: 0, y: 0, hint: "CENTER" },
+    meta: { nextArenaSeq: 1 },
   };
 }
 
@@ -252,7 +279,7 @@ export function validateWorldGraph(world) {
 export function buildWorldDebugSnapshot(world) {
   return {
     startArenaId: world.startArenaId,
-    nodes: world.nodes.map((node) => ({ id: node.id, type: node.type, parentId: node.parentId, childrenIds: node.childrenIds })),
+    nodes: world.nodes.map((node) => ({ id: node.id, type: node.type, parentId: node.parentId, childrenIds: node.childrenIds, centerOffset: node.centerOffset, absoluteCenter: node.absoluteCenter })),
     portals: world.portals.map((portal) => ({ id: portal.id, from: portal.fromArenaId, to: portal.toArenaId, positionHint: portal.positionHint })),
   };
 }
@@ -292,8 +319,9 @@ export function resolveMembraneContact({
   const room = getNodeById(world, arenaId);
   if (!room) return { action: "rebound", portal: null, contactAngle: 0 };
 
-  const roomX = room?.centerOffset?.x || 0;
-  const roomY = room?.centerOffset?.y || 0;
+  const roomCenter = getAbsoluteCenter(room);
+  const roomX = roomCenter.x || 0;
+  const roomY = roomCenter.y || 0;
   const contactAngle = Math.atan2((y || 0) - roomY, (x || 0) - roomX);
   const tolerance = Math.max(0, (Number.isFinite(angularToleranceDeg) ? angularToleranceDeg : 20) * (Math.PI / 180));
   const halfSpan = getPortalOpeningHalfSpan({ radius });
