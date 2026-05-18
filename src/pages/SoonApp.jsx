@@ -43,7 +43,6 @@ export default function SoonApp({ onBack }) {
     mode,
     bubbles,
     fish,
-    roseFish,
     selectedBubbleId,
     traceCircuit,
     selectedBeaconId,
@@ -263,7 +262,6 @@ export default function SoonApp({ onBack }) {
         odysseoMode={odysseoMode}
         bubbles={bubbles}
         fish={fish}
-        roseFish={roseFish}
         selectedBubbleId={selectedBubbleId}
         traceCircuit={traceCircuit}
         odysseoPath={odysseoPath}

@@ -4,7 +4,6 @@ import { createSlalomCircuitFromBubbles } from "../core/traceCircuit.js";
 import { getFishNavigableRadius } from "../core/constants.js";
 import { SOON_MODE_COMPO, normalizeSoonMode } from "../core/uiState.js";
 import { buildMazeByArena, generateLabybulle, getArenaLevelFromId, validateWorldGraph } from "../core/labybulleWorld.js";
-import { createRoseFishSchool } from "../core/roseFishSchool.js";
 
 export const saved = loadState();
 export const labybulleWorld = generateLabybulle(saved?.labybulleSeed ?? 1);
@@ -46,5 +45,4 @@ export const initialState = {
   worldGraph: labybulleWorld,
   currentArenaId: saved?.currentArenaId || labybulleWorld.startArenaId,
   mazeByArena,
-  roseFish: createRoseFishSchool({ count: 10, center: { x: 0, y: 0 }, arenaLevel: 0 }),
 };
