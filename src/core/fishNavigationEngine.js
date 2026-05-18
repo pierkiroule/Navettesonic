@@ -70,7 +70,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
   const inwardPortal=innerNavRadius>0?availablePortals.find((p)=>isNearOpening(radialAngle,getPortalOpeningAngle(activeWorld,p.fromArenaId,p.toArenaId),innerHalfSpan))||null:null;
   const nearOuter=Math.abs(radialDistance-outerNavRadius)<=120, nearInner=innerNavRadius>0&&Math.abs(radialDistance-innerNavRadius)<=120, nearOut=Boolean(activePortal), nearIn=Boolean(inwardPortal);
   const pushingOutward=radialDot>0.02;
-  const membraneContact=nearOuter?resolveMembraneContact({world:activeWorld,arenaId:runtimeArenaId,x:nextFishX,y:nextFishY,radius:outerNavRadius,angularToleranceDeg:20}):null;
+  const shouldResolveMembraneContact=hitOuterBoundary||nearOuter||radialDistance>=outerNavRadius-8; const membraneContact=shouldResolveMembraneContact?resolveMembraneContact({world:activeWorld,arenaId:runtimeArenaId,x:nextFishX,y:nextFishY,radius:outerNavRadius,angularToleranceDeg:20}):null;
   const contactPortal=membraneContact?.action==="transition"?membraneContact?.portal||null:null;
 
   // Priorité absolue: si le contact membrane résout une transition, on traverse
