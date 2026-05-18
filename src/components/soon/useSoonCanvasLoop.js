@@ -31,13 +31,22 @@ export function useSoonCanvasLoop({
     let wasEditMode = false;
     const CAMERA_FOLLOW_SMOOTHING = 0.22;
     const CAMERA_MAX_STEP_PER_FRAME = 42;
-    let previousArenaId = null;
-    let previousFishPosition = null;
 
-    function smoothFollowCameraToFish(fish) {
-      if (!fish) return;
-      const targetX = Number.isFinite(fish.x) ? fish.x : 0;
-      const targetY = Number.isFinite(fish.y) ? fish.y : 0;
+    function getArenaWorldCenter(current = {}) {
+      const world = current.worldGraph;
+      const arenaId = current.currentArenaId || world?.startArenaId;
+      const node = (world?.nodes || []).find((item) => item.id === arenaId);
+      const center = node?.absoluteCenter || { x: 0, y: 0 };
+      return {
+        x: Number.isFinite(center.x) ? center.x : 0,
+        y: Number.isFinite(center.y) ? center.y : 0,
+      };
+    }
+
+    function smoothFollowCameraToFish(fishWorld) {
+      if (!fishWorld) return;
+      const targetX = Number.isFinite(fishWorld.x) ? fishWorld.x : 0;
+      const targetY = Number.isFinite(fishWorld.y) ? fishWorld.y : 0;
       const cam = cameraRef.current;
       const currentX = Number.isFinite(cam.x) ? cam.x : targetX;
       const currentY = Number.isFinite(cam.y) ? cam.y : targetY;
@@ -108,23 +117,16 @@ export function useSoonCanvasLoop({
 
       const next = stateRef.current || {};
       const nextFish = next.fish || null;
-      const nextArenaId = next.currentArenaId || null;
-      if (!isEditMode && nextFish && previousFishPosition && previousArenaId && nextArenaId && previousArenaId !== nextArenaId) {
-        const dxArena = (Number.isFinite(nextFish.x) ? nextFish.x : 0) - previousFishPosition.x;
-        const dyArena = (Number.isFinite(nextFish.y) ? nextFish.y : 0) - previousFishPosition.y;
-        cameraRef.current.x += dxArena;
-        cameraRef.current.y += dyArena;
-      }
+      const arenaCenter = getArenaWorldCenter(next);
+      const fishWorld = nextFish
+        ? {
+            x: arenaCenter.x + (Number.isFinite(nextFish.x) ? nextFish.x : 0),
+            y: arenaCenter.y + (Number.isFinite(nextFish.y) ? nextFish.y : 0),
+          }
+        : null;
       if (!isEditMode) {
-        smoothFollowCameraToFish(nextFish);
+        smoothFollowCameraToFish(fishWorld);
       }
-      if (nextFish) {
-        previousFishPosition = {
-          x: Number.isFinite(nextFish.x) ? nextFish.x : 0,
-          y: Number.isFinite(nextFish.y) ? nextFish.y : 0,
-        };
-      }
-      previousArenaId = nextArenaId;
 
       if (!isEditMode) {
         updateAmbientMix(next.bubbles || [], next.fish || null);
