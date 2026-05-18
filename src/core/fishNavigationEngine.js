@@ -31,7 +31,7 @@ function buildArenaTransitionPatch({
   circuitSegmentIndex,
   circuitSegmentT,
   entryPositionHint = null,
-  inwardOffset = 10,
+  inwardOffset = 140,
 }) {
   const nextLevel = Math.max(0, Math.min(MAX_ARENA_LEVEL, getArenaLevelFromId(nextArenaId)));
   const arrival = getPortalArrivalPosition({
@@ -92,7 +92,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
       circuitSegmentIndex,
       circuitSegmentT,
       entryPositionHint: contactPortal.positionHint || null,
-      inwardOffset: 10,
+      inwardOffset: 140,
     });
   }
 
@@ -135,7 +135,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
       circuitSegmentIndex,
       circuitSegmentT,
       entryPositionHint: activePortal.positionHint || null,
-      inwardOffset: 10,
+      inwardOffset: 140,
     });
   }
 
@@ -156,7 +156,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
       circuitSegmentIndex,
       circuitSegmentT,
       entryPositionHint: inwardPortal.positionHint || null,
-      inwardOffset: 10,
+      inwardOffset: 140,
     });
   }
   const basePatch={circuitAutopilot,circuitSegmentIndex,circuitSegmentT,bubbles:separateBubblesByDepth(pushBubblesFromFish(state.bubbles,{x:nextFishX,y:nextFishY},fishDepth))};
