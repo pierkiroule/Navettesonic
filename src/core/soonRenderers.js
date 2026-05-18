@@ -3,7 +3,7 @@ import { drawPoissonPlume } from "./poissonPlumeRenderer.js";
 import { drawCharacters } from "./characters/characterEngine.js";
 import { drawOdysseoPath } from "./odysseoPath.js";
 import { ARENA_INNER_BOUNDARY_INSET, MEMBRANE_LEVEL_MULTIPLIERS } from "./constants.js";
-import { getPortalOpeningAngle, getPortalOpeningHalfSpan } from "./labybulleWorld.js";
+import { getArenaRadiusForNode, getPortalOpeningAngle, getPortalOpeningHalfSpan } from "./labybulleWorld.js";
 import {
   drawFireflies,
   drawPlacedTriangles,
@@ -137,8 +137,43 @@ export function drawQuill(ctx, fish = {}, time = 0) {
   ctx.restore();
 }
 
+
+function drawArenaNetworkBackdrop(ctx, current = {}, baseRadius = 1200) {
+  const worldGraph = current?.worldGraph;
+  const activeArenaId = current?.currentArenaId || worldGraph?.startArenaId || null;
+  if (!worldGraph || !activeArenaId) return;
+
+  const nodes = worldGraph?.nodes || [];
+  const activeNode = nodes.find((n) => n.id === activeArenaId);
+  if (!activeNode) return;
+
+  const activeCenter = activeNode.absoluteCenter || { x: 0, y: 0 };
+  ctx.save();
+  nodes.forEach((node) => {
+    if (node.id === activeArenaId) return;
+    const center = node.absoluteCenter || { x: 0, y: 0 };
+    const x = (center.x || 0) - (activeCenter.x || 0);
+    const y = (center.y || 0) - (activeCenter.y || 0);
+    const radius = getArenaRadiusForNode({ world: worldGraph, arenaId: node.id, baseRadius });
+
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.2)';
+    ctx.lineWidth = 2 * CONTOUR_WIDTH_MULTIPLIER;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(x, y, radius * 0.95, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(14, 116, 144, 0.18)';
+    ctx.lineWidth = 1 * CONTOUR_WIDTH_MULTIPLIER;
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
 export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
   const radius = arenaRef.current.radius;
+  drawArenaNetworkBackdrop(ctx, current, radius);
   const innerRadius = Math.max(0, radius - ARENA_INNER_BOUNDARY_INSET);
   const arenaLevel = Number.isFinite(current?.fish?.arenaLevel) ? current.fish.arenaLevel : 0;
   const pulse = Math.sin(time * 0.0018) * 0.5 + 0.5;
