@@ -45,6 +45,7 @@ export default function SoonCanvas({
   onSetFishDepth,
   onCycleBubbleDepth,
   onOpenBubbleEditor,
+  onSwitchToBubbleEdit,
   onOpenBeaconEditor,
   onRecenterFish,
   bubblesEnabled = true,
@@ -325,6 +326,9 @@ export default function SoonCanvas({
           items={fishMenu?.type === "blob" ? [
             { id: "expi", label: "↑ Expi" },
             { id: "inspi", label: "↓ Inspi" },
+          ] : fishMenu?.type === "compo" ? [
+            { id: "depth", label: "Régler profondeur" },
+            { id: "edit-bubbles", label: "Éditer bulles sonores" },
           ] : [
             { id: "depth", label: "Profondeur" },
             { id: "bubbles", label: `Bulles ${bubblesEnabled ? "ON" : "OFF"}` },
@@ -335,6 +339,14 @@ export default function SoonCanvas({
           onSelect={(item) => {
             if (fishMenu?.type === "blob") {
               onBlobAction?.(item.id, fishMenu?.angle);
+              return;
+            }
+            if (fishMenu?.type === "compo") {
+              if (item.id === "depth") onSetFishDepth?.(((Math.round(fish?.depth || 1) % 3) + 1));
+              if (item.id === "edit-bubbles") {
+                if (fishMenu?.bubbleId) onOpenBubbleEditor?.(fishMenu.bubbleId);
+                onSwitchToBubbleEdit?.();
+              }
               return;
             }
             if (item.id === "depth") onSetFishDepth?.(((Math.round(fish?.depth || 1) % 3) + 1));

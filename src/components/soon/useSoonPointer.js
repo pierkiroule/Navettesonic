@@ -174,7 +174,18 @@ export function useSoonPointer({
 
     if (doubleTap) {
       clearLongPressTimer();
-      cycleFishDepth();
+
+      if (current.mode === "compo") {
+        const hitBubble = findBubbleAt(point);
+        onOpenFishContextMenu?.({
+          type: "compo",
+          screen: { x: event.clientX, y: event.clientY },
+          world: point,
+          bubbleId: hitBubble?.id || null,
+        });
+      } else {
+        cycleFishDepth();
+      }
 
       // reset pour éviter triple tap parasite
       pointerRef.current.lastTapAt = 0;

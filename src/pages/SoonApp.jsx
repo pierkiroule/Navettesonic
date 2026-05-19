@@ -176,6 +176,10 @@ export default function SoonApp({ onBack }) {
     setEditorOpenKey((value) => value + 1);
   };
 
+  const switchToBubbleEdit = () => {
+    setInteractionMode("edit");
+  };
+
   const handleExportImmersion = async () => {
     try {
       setExportStatus("Calcul de l’immersion...");
@@ -301,6 +305,7 @@ export default function SoonApp({ onBack }) {
           addOdysseoDepthMarker(x, y, selectedDepth);
         }}
         onOpenBubbleEditor={openBubbleEditor}
+        onSwitchToBubbleEdit={switchToBubbleEdit}
         onRecenterFish={handleRecenterFish}
         onCycleBubbleDepth={cycleBubbleDepth}
         bubblesEnabled={bubblesEnabled}
