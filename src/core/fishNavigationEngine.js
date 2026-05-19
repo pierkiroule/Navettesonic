@@ -8,7 +8,7 @@ import { clampDepth, pushBubblesFromFish, separateBubblesByDepth } from "./fishB
 import { getBlobRadiusAtAngle, updateBlobPhysics } from "./blobArena.js";
 
 export const FISH_CONTROL_TUNING={autopilot:{mouthOffset:32,maxSpeedFactor:1.05,accel:0.16,arrivalRadius:180,stopRadius:10},touch:{mouthOffset:24,maxSpeedFactor:1.2,accel:0.22,arrivalRadius:220,stopRadius:8}};
-const FISH_MEMBRANE_PADDING = 58;
+const FISH_MEMBRANE_PADDING = 86;
 const BUBBLE_MEMBRANE_MARGIN = 20;
 export const angleDistance=(a,b)=>Math.atan2(Math.sin(a-b),Math.cos(a-b));
 export const lerpAngle=(c,t,a)=>{let d=t-c;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;return c+d*a;};
