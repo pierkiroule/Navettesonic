@@ -488,18 +488,20 @@ export default function SoonApp({ onBack }) {
                 </label>
 
                 <label className="fish-slider-row horizontal" htmlFor="zoom-slider-horizontal">
-                  <span className="slider-label">🔍 Zoom</span>
-                  <input
-                    id="zoom-slider-horizontal"
-                    className="slim-horizontal-range"
-                    type="range"
-                    min="0"
-                    max="2"
-                    step="0.05"
-                    value={viewZoom}
-                    onChange={(event) => setViewZoom(Number(event.target.value))}
-                  />
-                  <span className="slider-value">{viewZoom.toFixed(1)}</span>
+                  <span className="slider-label slider-label-top">🔍 Zoom</span>
+                  <div className="fish-slider-horizontal-track">
+                    <input
+                      id="zoom-slider-horizontal"
+                      className="slim-horizontal-range"
+                      type="range"
+                      min="0"
+                      max="2"
+                      step="0.05"
+                      value={viewZoom}
+                      onChange={(event) => setViewZoom(Number(event.target.value))}
+                    />
+                    <span className="slider-value">{viewZoom.toFixed(1)}</span>
+                  </div>
                 </label>
 
                 <label className="fish-slider-column" htmlFor="speed-slider-vertical">
