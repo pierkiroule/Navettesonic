@@ -13,6 +13,7 @@ import {
 import {
   drawEcosystemWorld,
 } from "./ecosystemFx.js";
+import { getBlobRadiusAtAngle } from "./blobArena.js";
 
 const CONTOUR_WIDTH_MULTIPLIER = 3;
 
@@ -214,6 +215,10 @@ function drawArenaNetworkBackdrop(ctx, current = {}, baseRadius = 1200) {
 export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
   const radius = arenaRef.current.radius;
   drawArenaNetworkBackdrop(ctx, current, radius);
+  if (current?.arenaBlob?.points?.length) {
+    drawBlobArena(ctx, current.arenaBlob, time);
+    return;
+  }
   const innerRadius = Math.max(0, radius - ARENA_INNER_BOUNDARY_INSET);
   const arenaLevel = Number.isFinite(current?.fish?.arenaLevel) ? current.fish.arenaLevel : 0;
   const pulse = Math.sin(time * 0.0018) * 0.5 + 0.5;
@@ -273,6 +278,34 @@ export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
     }
   });
 
+  ctx.restore();
+}
+
+function drawBlobArena(ctx, blob, time = 0) {
+  const points = blob?.points || [];
+  if (points.length < 3) return;
+  const pulse = Math.sin(time * 0.0022) * 0.5 + 0.5;
+  const positions = points.map((point) => {
+    const radius = getBlobRadiusAtAngle(blob, point.angle);
+    return { x: Math.cos(point.angle) * radius, y: Math.sin(point.angle) * radius };
+  });
+  ctx.save();
+  ctx.beginPath();
+  const first = positions[0];
+  ctx.moveTo(first.x, first.y);
+  for (let i = 0; i < positions.length; i += 1) {
+    const current = positions[i];
+    const next = positions[(i + 1) % positions.length];
+    const midX = (current.x + next.x) * 0.5;
+    const midY = (current.y + next.y) * 0.5;
+    ctx.quadraticCurveTo(current.x, current.y, midX, midY);
+  }
+  ctx.closePath();
+  ctx.strokeStyle = `rgba(125, 211, 252, ${0.62 + pulse * 0.18})`;
+  ctx.shadowColor = "rgba(34,211,238,0.4)";
+  ctx.shadowBlur = 22;
+  ctx.lineWidth = 14;
+  ctx.stroke();
   ctx.restore();
 }
 

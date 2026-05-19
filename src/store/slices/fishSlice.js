@@ -3,6 +3,7 @@ import { tickFishEngine } from "../../core/fishNavigationEngine.js";
 import { clampDepth } from "../../core/fishBubblePhysics.js";
 import { startFishTrailAt, addFishTrailPoint } from "../../core/fishPathTrail.js";
 import { DEFAULT_ARENA_RADIUS } from "../soonInitialState.js";
+import { applyBlobAction } from "../../core/blobArena.js";
 
 export const createFishSlice=(set,get)=>({
 setFishTarget:(x,y)=>{if(get().circuitAutopilot)return;set((s)=>({fish:{...s.fish,targetX:x,targetY:y}}));},
@@ -21,4 +22,5 @@ const staged=loaded.map((b)=>({...b,x:(next?.fish?.x||0)+(b.x||0)*0.12,y:(next?.
 return{...next,bubbles:staged,arenaBubblesById:byArena,bubbleTransitionProgress:0,bubbleTransitionTarget:loaded,selectedBubbleId:null,selectedBeaconId:null};}),
 startFishTrailAt:(x,y)=>set(()=>({fishTrail:startFishTrailAt(x,y)})),
 addFishTrailPoint:(x,y)=>set((s)=>({fishTrail:addFishTrailPoint(s.fishTrail||[],x,y)})),
+applyBlobAction:(type,angle)=>set((s)=>({arenaBlob:applyBlobAction(s.arenaBlob,type,angle),gamePaused:false,pendingBlobAction:null})),
 });

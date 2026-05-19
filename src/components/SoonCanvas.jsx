@@ -44,6 +44,9 @@ export default function SoonCanvas({
   worldGraph,
   currentArenaId,
   mazeByArena,
+  gamePaused = false,
+  pendingBlobAction = null,
+  onBlobAction,
 }) {
   const canvasRef = useRef(null);
   const [semioseVideo, setSemioseVideo] = useState(null);
@@ -105,6 +108,8 @@ export default function SoonCanvas({
     worldGraph,
     currentArenaId,
     mazeByArena,
+    gamePaused,
+    pendingBlobAction,
   });
 
   useEffect(() => {
@@ -130,6 +135,8 @@ export default function SoonCanvas({
       worldGraph,
       currentArenaId,
       mazeByArena,
+      gamePaused,
+      pendingBlobAction,
     };
   }, [
     mode,
@@ -153,7 +160,23 @@ export default function SoonCanvas({
     worldGraph,
     currentArenaId,
     mazeByArena,
+    gamePaused,
+    pendingBlobAction,
   ]);
+
+  useEffect(() => {
+    if (!pendingBlobAction || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const current = stateRef.current || {};
+    const camera = cameraRef.current || { x: 0, y: 0 };
+    const arenaRadius = current.arenaRadius || arenaRef.current.radius || 1200;
+    const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 2.55);
+    const userZoom = fitZoom * (1 + (Number.isFinite(current.viewZoom) ? current.viewZoom : 0) * 1.55);
+    const screenX = rect.width * 0.5 + ((pendingBlobAction.worldX || 0) - camera.x) * userZoom;
+    const screenY = rect.height * 0.5 + ((pendingBlobAction.worldY || 0) - camera.y) * userZoom;
+    setFishMenu({ type: "blob", angle: pendingBlobAction.angle, screen: { x: screenX, y: screenY } });
+  }, [pendingBlobAction]);
 
   useSoonCanvasLoop({
     canvasRef,
@@ -269,7 +292,12 @@ export default function SoonCanvas({
           aria-label="Menu contextuel poisson"
           anchor={fishMenu.screen}
           onClose={() => setFishMenu(null)}
-          items={[
+          items={fishMenu?.type === "blob" ? [
+            { id: "inflate", label: "↑ Gonfler" },
+            { id: "dig", label: "→ Creuser" },
+            { id: "seal", label: "↓ Sceller" },
+            { id: "smooth", label: "← Lisser" },
+          ] : [
             { id: "depth", label: "Profondeur" },
             { id: "bubbles", label: `Bulles ${bubblesEnabled ? "ON" : "OFF"}` },
             { id: "intensity", label: "Intensité bulles" },
@@ -277,6 +305,10 @@ export default function SoonCanvas({
             { id: "reset", label: "Reset" },
           ]}
           onSelect={(item) => {
+            if (fishMenu?.type === "blob") {
+              onBlobAction?.(item.id, fishMenu?.angle);
+              return;
+            }
             if (item.id === "depth") onSetFishDepth?.(((Math.round(fish?.depth || 1) % 3) + 1));
             if (item.id === "bubbles") onToggleBubbles?.();
             if (item.id === "intensity") onSetBubblesIntensity?.(Math.min(2, (bubblesIntensity || 1) + 0.25));
