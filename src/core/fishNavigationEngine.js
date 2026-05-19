@@ -8,6 +8,8 @@ import { clampDepth, pushBubblesFromFish, separateBubblesByDepth } from "./fishB
 import { getBlobRadiusAtAngle, updateBlobPhysics } from "./blobArena.js";
 
 export const FISH_CONTROL_TUNING={autopilot:{mouthOffset:32,maxSpeedFactor:1.05,accel:0.16,arrivalRadius:180,stopRadius:10},touch:{mouthOffset:24,maxSpeedFactor:1.2,accel:0.22,arrivalRadius:220,stopRadius:8}};
+const FISH_MEMBRANE_PADDING = 86;
+const BUBBLE_MEMBRANE_MARGIN = 20;
 export const angleDistance=(a,b)=>Math.atan2(Math.sin(a-b),Math.cos(a-b));
 export const lerpAngle=(c,t,a)=>{let d=t-c;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;return c+d*a;};
 export const isNearOpening=(angle,openingAngle,openingHalfSpan)=>Number.isFinite(openingAngle)&&Math.abs(angleDistance(angle,openingAngle))<=openingHalfSpan;
@@ -119,14 +121,17 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
     return { ...entity, x: clamped.x, y: clamped.y };
   };
   const clampBubblesInsideBlob = (bubbles = []) =>
-    bubbles.map((bubble) => clampEntityInsideBlob(bubble, 26));
+    bubbles.map((bubble) => {
+      const bubbleRadius = Math.max(24, Number.isFinite(bubble?.r) ? bubble.r : 70);
+      return clampEntityInsideBlob(bubble, bubbleRadius + BUBBLE_MEMBRANE_MARGIN);
+    });
   const ensureInsideBlob = (fishLike) => {
     if (!arenaBlob) return fishLike;
     const fx = Number.isFinite(fishLike?.x) ? fishLike.x : 0;
     const fy = Number.isFinite(fishLike?.y) ? fishLike.y : 0;
     const a = Math.atan2(fy, fx);
     const r = getBlobRadiusAtAngle(arenaBlob, a);
-    const safe = Math.max(26, r - 42);
+    const safe = Math.max(26, r - FISH_MEMBRANE_PADDING);
     const d = Math.hypot(fx, fy);
     if (d <= safe) return fishLike;
     const c = clampToCircle({ x: fx, y: fy }, safe);
@@ -153,7 +158,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
     let nextFishY = state.fish.y + limitedVy;
     const radialAngle = Math.atan2(nextFishY, nextFishX);
     const localRadius = getBlobRadiusAtAngle(arenaBlob, radialAngle);
-    const fishRadius = 46;
+    const fishRadius = FISH_MEMBRANE_PADDING;
     const maxDistance = Math.max(40, localRadius - fishRadius);
     const rawDistance = Math.hypot(nextFishX, nextFishY);
     if (rawDistance >= maxDistance) {
@@ -340,7 +345,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
       inwardOffset: 84,
     });
   }
-  const fishRadius = 38;
+  const fishRadius = FISH_MEMBRANE_PADDING;
   const membraneContactRadius = localRadiusAtFish - fishRadius;
   if (arenaBlob && radialDistance >= membraneContactRadius) {
     return {
@@ -350,7 +355,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
       pendingBlobAction: { angle: radialAngle, worldX: nextFishX, worldY: nextFishY },
     };
   }
-  const basePatch={circuitAutopilot,circuitSegmentIndex,circuitSegmentT,bubbles:separateBubblesByDepth(pushBubblesFromFish(state.bubbles,{x:nextFishX,y:nextFishY},fishDepth)),arenaBlob};
+  const basePatch={circuitAutopilot,circuitSegmentIndex,circuitSegmentT,bubbles:clampBubblesInsideBlob(separateBubblesByDepth(pushBubblesFromFish(state.bubbles,{x:nextFishX,y:nextFishY},fishDepth))),arenaBlob};
   const speed=Math.hypot(limitedVx,limitedVy),moveAngle=speed>0.035?Math.atan2(limitedVy,limitedVx):currentAngle,angle=speed>0.035?lerpAngle(currentAngle,moveAngle,0.055+Math.min(0.055,speed*0.006)):currentAngle;
   const turnStrengthSigned=Math.max(-1,Math.min(1,((()=>{let d=moveAngle-currentAngle;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;return d;})())/1.15)); const nextMouthPull=(state.fish.mouthPull||0)+(pullNorm-(state.fish.mouthPull||0))*0.12; const targetTurnVelocity=turnStrengthSigned*(0.55+Math.min(0.45,speed*0.08)); const nextTurnVelocity=(state.fish.turnVelocity||0)+(targetTurnVelocity-(state.fish.turnVelocity||0))*0.18; const nextTurnAmount=(state.fish.turnAmount||0)+(nextTurnVelocity-(state.fish.turnAmount||0))*0.16;
   const keepBreachOpen = breachOpen && (nearOut || (Number.isFinite(state.fish?.breachAngle) && isNearOpening(radialAngle, state.fish.breachAngle, outerHalfSpan * 1.7)));
