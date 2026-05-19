@@ -15,6 +15,7 @@ import {
   ODYSSEO_MODE_TRACE,
   SOON_MODE_COMPO,
   SOON_MODE_RESO,
+  WORKFLOW_ROOT_COMPO,
   WORKFLOW_ROOT_NAVIGO,
   modeToWorkflowRoot,
   normalizeOdysseoMode,
