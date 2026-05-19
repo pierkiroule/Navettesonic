@@ -44,6 +44,7 @@ export default function SoonApp({ onBack }) {
   const [exportUrl, setExportUrl] = useState(null);
   const [bubblesEnabled, setBubblesEnabled] = useState(true);
   const [bubblesIntensity, setBubblesIntensity] = useState(1);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
   const nombriloAudioRef = useRef(null);
 
   const {
@@ -338,6 +339,42 @@ export default function SoonApp({ onBack }) {
         onToggleMembraneSide={toggleMembraneSide}
         onBlobAction={applyBlobAction}
       />
+
+
+      <button
+        type="button"
+        className="tutorial-btn"
+        onClick={() => setTutorialOpen(true)}
+        aria-label="Ouvrir le tutoriel des interactions"
+      >
+        Tuto•°
+      </button>
+
+      {tutorialOpen && (
+        <div className="tutorial-modal-backdrop" onClick={() => setTutorialOpen(false)}>
+          <div
+            className="tutorial-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Résumé des interactions"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="tutorial-modal-header">
+              <h3>Résumé des interactions</h3>
+              <button type="button" className="tutorial-close" onClick={() => setTutorialOpen(false)}>
+                ×
+              </button>
+            </header>
+            <ul>
+              <li><strong>Tap :</strong> nage vers le point visé.</li>
+              <li><strong>Double-tap :</strong> change la profondeur du poisson (1 → 2 → 3).</li>
+              <li><strong>Appui long :</strong> ouvre le menu contextuel du poisson.</li>
+              <li><strong>Mode Éditer :</strong> double-tap vide = créer une bulle, tap bulle = éditer.</li>
+              <li><strong>Navigo :</strong> Dessin pour tracer, Ancre pour poser la profondeur du parcours.</li>
+            </ul>
+          </div>
+        </div>
+      )}
 
       <div className={`cockpit ${isOdysseo ? "odysseo-cockpit" : ""}`}>
         <div className="cockpit-buttons">
