@@ -28,6 +28,7 @@ export function drawScene(ctx, rect, time, refs) {
   enterWorld(ctx, rect, cameraRef, stateRef);
 
   drawArenaBoundary(ctx, arenaRef, time, current);
+  drawArenaGuppies(ctx, time, current, arenaRef.current?.radius || 1200);
 
   if (!current.eyesClosed) {
     drawArenaNightSky(ctx, arenaRef, time);
@@ -73,6 +74,69 @@ export function drawScene(ctx, rect, time, refs) {
     drawCameraVignette(ctx, rect, current.fish);
     drawHud(ctx, rect, current, arenaRef);
   }
+}
+
+function drawGuppyTopView(ctx, x, y, angle, size = 1, sway = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.scale(size, size);
+
+  const bodyGrad = ctx.createRadialGradient(-4, -2, 1, 0, 0, 16);
+  bodyGrad.addColorStop(0, "rgba(255, 215, 240, 0.95)");
+  bodyGrad.addColorStop(0.55, "rgba(255, 139, 200, 0.88)");
+  bodyGrad.addColorStop(1, "rgba(240, 82, 166, 0.82)");
+
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 16, 9, 0, 0, Math.PI * 2);
+  ctx.fillStyle = bodyGrad;
+  ctx.fill();
+
+  const tailSwing = Math.sin(sway) * 3.4;
+  ctx.beginPath();
+  ctx.moveTo(-12, 0);
+  ctx.quadraticCurveTo(-23, -8 - tailSwing, -31, 0);
+  ctx.quadraticCurveTo(-23, 8 + tailSwing, -12, 0);
+  ctx.fillStyle = "rgba(255, 116, 196, 0.85)";
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.ellipse(6, -1, 2, 2, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(17, 24, 39, 0.65)";
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
+  const count = 14;
+  const hasBlob = Array.isArray(current?.arenaBlob?.points) && current.arenaBlob.points.length > 2;
+  const baseRadius = Math.max(120, arenaRadius - 80);
+
+  ctx.save();
+  ctx.globalCompositeOperation = "source-over";
+
+  for (let i = 0; i < count; i += 1) {
+    const seed = i * 71.13 + 9.7;
+    const drift = time * (0.00005 + (i % 5) * 0.000007);
+    const wave = Math.sin(time * 0.0008 + seed) * 0.45 + Math.sin(time * 0.00023 + seed * 2.1) * 0.22;
+    const angle = ((i / count) * Math.PI * 2 + drift + wave) % (Math.PI * 2);
+
+    const localBlobRadius = hasBlob
+      ? getBlobRadiusAtAngle(current.arenaBlob, angle)
+      : arenaRadius;
+    const offset = 42 + Math.sin(time * 0.0012 + seed * 3.1) * 18;
+    const radial = Math.max(80, Math.min(baseRadius, localBlobRadius - offset));
+    const x = Math.cos(angle) * radial;
+    const y = Math.sin(angle) * radial;
+
+    const tangent = angle + Math.PI / 2;
+    const jitter = Math.sin(time * 0.0017 + seed * 4.4) * 0.35;
+    const swimAngle = tangent + jitter;
+    const scale = 0.72 + (i % 4) * 0.08;
+    drawGuppyTopView(ctx, x, y, swimAngle, scale, time * 0.02 + seed);
+  }
+
+  ctx.restore();
 }
 
 export function drawOcean(ctx, rect, time, current) {
