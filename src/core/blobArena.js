@@ -85,6 +85,18 @@ function applyDelta(blob, deltaByPoint = []) {
   return blob;
 }
 
+function clampBlobToInitialRadius(blob) {
+  const points = blob?.points;
+  if (!Array.isArray(points) || points.length === 0) return blob;
+  points.forEach((point) => {
+    if (point.offset < 0) {
+      point.offset = 0;
+      if (point.velocity < 0) point.velocity *= 0.35;
+    }
+  });
+  return blob;
+}
+
 export function inflateBlobAtAngle(blob, angle, force = 120) {
   return applyGaussian(blob, angle, 0.46, (point, falloff) => {
     point.offset += force * falloff;
@@ -141,7 +153,9 @@ export function applyBlobAction(blob, type, angle) {
     // au lieu d'effacer/undo la dernière action.
     const delta = collectGaussianDelta(nextBlob, angle, 0.19, -320);
     nextBlob.actionStack = [...(nextBlob.actionStack || []), delta];
-    return applyDelta(nextBlob, delta);
+    applyDelta(nextBlob, delta);
+    // Limite inspi: ne jamais réduire sous le rayon initial (offset < 0).
+    return clampBlobToInitialRadius(nextBlob);
   }
   // Compat rétro si d'anciens appels restent en circulation.
   if (type === "inflate") return inflateBlobAtAngle(nextBlob, angle, 140);
