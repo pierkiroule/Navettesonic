@@ -110,7 +110,7 @@ function drawGuppyTopView(ctx, x, y, angle, size = 1, sway = 0) {
 function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
   const count = 14;
   const hasBlob = Array.isArray(current?.arenaBlob?.points) && current.arenaBlob.points.length > 2;
-  const baseRadius = Math.max(120, arenaRadius - 80);
+  const outerLimit = Math.max(220, arenaRadius + 260);
 
   ctx.save();
   ctx.globalCompositeOperation = "source-over";
@@ -124,8 +124,8 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
     const localBlobRadius = hasBlob
       ? getBlobRadiusAtAngle(current.arenaBlob, angle)
       : arenaRadius;
-    const offset = 42 + Math.sin(time * 0.0012 + seed * 3.1) * 18;
-    const radial = Math.max(80, Math.min(baseRadius, localBlobRadius - offset));
+    const offset = 46 + Math.sin(time * 0.0012 + seed * 3.1) * 22;
+    const radial = Math.max(120, Math.min(outerLimit, localBlobRadius + offset));
     const x = Math.cos(angle) * radial;
     const y = Math.sin(angle) * radial;
 
