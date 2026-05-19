@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSoonCanvasLoop } from "./soon/useSoonCanvasLoop.js";
 import { useSoonPointer } from "./soon/useSoonPointer.js";
+import RadialMenu from "./RadialMenu.jsx";
 
 export default function SoonCanvas({
   mode,
@@ -33,9 +34,21 @@ export default function SoonCanvas({
   onCycleBubbleDepth,
   onOpenBubbleEditor,
   onOpenBeaconEditor,
+  onRecenterFish,
+  bubblesEnabled = true,
+  bubblesIntensity = 1,
+  onToggleBubbles,
+  onSetBubblesIntensity,
+  onResetFishContext,
+  onToggleMembraneSide,
+  worldGraph,
+  currentArenaId,
+  mazeByArena,
 }) {
   const canvasRef = useRef(null);
   const [semioseVideo, setSemioseVideo] = useState(null);
+  const [arenaCenterScreen, setArenaCenterScreen] = useState({ x: 0, y: 0 });
+  const [fishMenu, setFishMenu] = useState(null);
 
   const cameraRef = useRef({
     x: 0,
@@ -76,7 +89,7 @@ export default function SoonCanvas({
     odysseoMode,
     bubbles,
     fish,
-    selectedBubbleId,
+      selectedBubbleId,
     traceCircuit,
     odysseoPath,
     odysseoDepthMarkers,
@@ -87,6 +100,11 @@ export default function SoonCanvas({
     viewZoom,
     visualLight,
     depth,
+    bubblesEnabled,
+    bubblesIntensity,
+    worldGraph,
+    currentArenaId,
+    mazeByArena,
   });
 
   useEffect(() => {
@@ -96,7 +114,7 @@ export default function SoonCanvas({
       odysseoMode,
       bubbles,
       fish,
-      selectedBubbleId,
+          selectedBubbleId,
       traceCircuit,
       odysseoPath,
       odysseoDepthMarkers,
@@ -107,6 +125,11 @@ export default function SoonCanvas({
       viewZoom,
       visualLight,
       depth,
+      bubblesEnabled,
+      bubblesIntensity,
+      worldGraph,
+      currentArenaId,
+      mazeByArena,
     };
   }, [
     mode,
@@ -114,7 +137,7 @@ export default function SoonCanvas({
     odysseoMode,
     bubbles,
     fish,
-    selectedBubbleId,
+      selectedBubbleId,
     traceCircuit,
     odysseoPath,
     odysseoDepthMarkers,
@@ -125,6 +148,11 @@ export default function SoonCanvas({
     viewZoom,
     visualLight,
     depth,
+    bubblesEnabled,
+    bubblesIntensity,
+    worldGraph,
+    currentArenaId,
+    mazeByArena,
   ]);
 
   useSoonCanvasLoop({
@@ -160,10 +188,45 @@ export default function SoonCanvas({
     onSetFishDepth,
     onCycleBubbleDepth,
     onOpenBubbleEditor,
+    onOpenFishContextMenu: setFishMenu,
     onOpenBeaconEditor,
   });
 
   useEffect(() => cleanupPointer, [cleanupPointer]);
+
+  useEffect(() => {
+    let frame = 0;
+
+    const updateArenaCenterScreen = () => {
+      const canvas = canvasRef.current;
+      const current = stateRef.current || {};
+      const camera = cameraRef.current || { x: 0, y: 0 };
+
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect();
+        const arenaRadius = current.arenaRadius || arenaRef.current.radius || 1200;
+        const viewZoom = Number.isFinite(current.viewZoom) ? current.viewZoom : 0;
+        const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 2.55);
+        const userZoom = fitZoom * (1 + viewZoom * 1.55);
+        const world = current.worldGraph;
+        const arenaId = current.currentArenaId || world?.startArenaId;
+        const arenaNode = (world?.nodes || []).find((node) => node.id === arenaId) || null;
+        const center = arenaNode?.absoluteCenter || { x: 0, y: 0 };
+        const arenaCenterX = Number.isFinite(center.x) ? center.x : 0;
+        const arenaCenterY = Number.isFinite(center.y) ? center.y : 0;
+
+        setArenaCenterScreen({
+          x: rect.width * 0.5 + (arenaCenterX - camera.x) * userZoom,
+          y: rect.height * 0.5 + (arenaCenterY - camera.y) * userZoom,
+        });
+      }
+
+      frame = requestAnimationFrame(updateArenaCenterScreen);
+    };
+
+    frame = requestAnimationFrame(updateArenaCenterScreen);
+    return () => cancelAnimationFrame(frame);
+  }, [arenaRef, cameraRef, canvasRef, stateRef]);
 
   return (
     <div className="soon-canvas-shell">
@@ -175,6 +238,16 @@ export default function SoonCanvas({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       />
+      <button
+        type="button"
+        className="arena-recenter-btn"
+        style={{ left: `${arenaCenterScreen.x}px`, top: `${arenaCenterScreen.y}px` }}
+        onClick={onRecenterFish}
+        aria-label={eyesClosed ? "Quitter écoute à l’aveugle" : "Activer écoute à l’aveugle"}
+        title={eyesClosed ? "👁️ Mode visible" : "👂 Mode écoute à l’aveugle"}
+      >
+        {eyesClosed ? "👁️" : "👂"}
+      </button>
       {semioseVideo?.url ? (
         <div
           key={semioseVideo.id}
@@ -190,6 +263,27 @@ export default function SoonCanvas({
             playsInline
           />
         </div>
+      ) : null}
+      {fishMenu && interactionMode === "swim" ? (
+        <RadialMenu
+          aria-label="Menu contextuel poisson"
+          anchor={fishMenu.screen}
+          onClose={() => setFishMenu(null)}
+          items={[
+            { id: "depth", label: "Profondeur" },
+            { id: "bubbles", label: `Bulles ${bubblesEnabled ? "ON" : "OFF"}` },
+            { id: "intensity", label: "Intensité bulles" },
+            { id: "membrane", label: fish?.membraneSide === "outside" ? "Aller intérieur" : "Aller extérieur" },
+            { id: "reset", label: "Reset" },
+          ]}
+          onSelect={(item) => {
+            if (item.id === "depth") onSetFishDepth?.(((Math.round(fish?.depth || 1) % 3) + 1));
+            if (item.id === "bubbles") onToggleBubbles?.();
+            if (item.id === "intensity") onSetBubblesIntensity?.(Math.min(2, (bubblesIntensity || 1) + 0.25));
+            if (item.id === "membrane") onToggleMembraneSide?.();
+            if (item.id === "reset") onResetFishContext?.();
+          }}
+        />
       ) : null}
     </div>
   );

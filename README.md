@@ -5,10 +5,10 @@
 L’hôte compose une arène avec des bulles sonores.  
 Il la publie.  
 Il partage un lien.  
-N’importe qui peut alors entrer dans cette arène et piloter un petit poisson rose pour écouter la composition à sa façon.
+N’importe qui peut alors entrer dans cette arène et piloter un poisson-plume pour écouter la composition à sa façon.
 
 > Composer. Publier. Partager mon arène.  
-> Entrer. Piloter son poisson rose. Écouter à sa façon.
+> Entrer. Piloter son poisson-plume. Écouter à sa façon.
 
 ---
 
@@ -35,7 +35,7 @@ Le visiteur peut :
 
 - ouvrir le lien ;
 - entrer dans l’arène ;
-- piloter son petit poisson rose ;
+- piloter son poisson-plume ;
 - explorer librement ;
 - écouter la composition selon sa position locale.
 
@@ -69,7 +69,7 @@ Composer mon arène
 ```txt
 Ouvrir le lien
 → Entrer dans l’arène
-→ Piloter le petit poisson rose
+→ Piloter le poisson-plume
 → Écouter à sa façon
 ```
 
@@ -184,7 +184,7 @@ Le modèle actuel est volontairement simple.
 - l’hôte partage un lien ;
 - un visiteur anonyme ouvre le lien ;
 - le visiteur charge l’arène publiée et ses bulles ;
-- le visiteur explore localement avec son poisson rose.
+- le visiteur explore localement avec son poisson-plume.
 
 ### Ce que le système ne fait pas
 
@@ -529,7 +529,7 @@ Objectifs :
 
 ## Phrase produit
 
-Soon•° permet de composer une arène sonore poétique et de la partager par lien. Chaque visiteur y pilote son petit poisson rose et écoute la composition à sa façon.
+Soon•° permet de composer une arène sonore poétique et de la partager par lien. Chaque visiteur y pilote son poisson-plume et écoute la composition à sa façon.
 
 
 ---

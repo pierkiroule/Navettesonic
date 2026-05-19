@@ -1,14 +1,33 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import SidePanel from "../components/SidePanel.jsx";
 import SoonCanvas from "../components/SoonCanvas.jsx";
+import WorkflowShell from "../components/WorkflowShell.jsx";
 import Profile from "./Profile.jsx";
 import { useSoonStore } from "../store/useSoonStore.js";
 import { renderImmersiveJourney } from "../core/immersiveExporter.js";
+import {
+  parseWorkflowFromHash,
+  persistWorkflowRoot,
+  readPersistedWorkflowRoot,
+  serializeWorkflowHash,
+} from "../core/workflowShellState.js";
+import {
+  ODYSSEO_MODE_TRACE,
+  SOON_MODE_COMPO,
+  SOON_MODE_RESO,
+  WORKFLOW_ROOT_NAVIGO,
+  modeToWorkflowRoot,
+  normalizeOdysseoMode,
+  workflowRootToMode,
+} from "../core/uiState.js";
+
+
+const NOMBRILO_ONE_SHOT_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/nombrilo/nombrilo.mp3";
 
 export default function SoonApp({ onBack }) {
   const [page, setPage] = useState("arena");
   const [interactionMode, setInteractionMode] = useState("swim");
-  const [odysseoMode, setOdysseoMode] = useState("trace");
+  const [odysseoMode, setOdysseoMode] = useState(ODYSSEO_MODE_TRACE);
   const [viewZoom, setViewZoom] = useState(0.5);
   const [swimSpeed, setSwimSpeed] = useState(0.3);
   const [isTravelPlaying, setIsTravelPlaying] = useState(false);
@@ -16,6 +35,9 @@ export default function SoonApp({ onBack }) {
   const [selectedDepth, setSelectedDepth] = useState(1);
   const [exportStatus, setExportStatus] = useState("");
   const [exportUrl, setExportUrl] = useState(null);
+  const [bubblesEnabled, setBubblesEnabled] = useState(true);
+  const [bubblesIntensity, setBubblesIntensity] = useState(1);
+  const nombriloAudioRef = useRef(null);
 
   const {
     mode,
@@ -26,6 +48,7 @@ export default function SoonApp({ onBack }) {
     selectedBeaconId,
     circuitAutopilot,
     eyesClosed,
+    toggleEyesClosed,
 
     odysseoPath,
     odysseoDepthMarkers,
@@ -38,6 +61,7 @@ export default function SoonApp({ onBack }) {
 
     setMode,
     setFishTarget,
+    recenterFish,
     tickFish,
     setFishDepth,
     selectBubble,
@@ -51,6 +75,10 @@ export default function SoonApp({ onBack }) {
     addPathPoint,
     updateBubble,
     deleteBubble,
+    worldGraph,
+    currentArenaId,
+    mazeByArena,
+    toggleMembraneSide,
   } = useSoonStore();
 
   const selectedBubble =
@@ -59,37 +87,63 @@ export default function SoonApp({ onBack }) {
   const selectedBeacon =
     traceCircuit.find((beacon) => beacon.id === selectedBeaconId) || null;
 
-  const isOdysseo = mode === "reso";
-  const isOdysseoTrace = isOdysseo && odysseoMode === "trace";
-  const isOdysseoTravel = isOdysseo && odysseoMode === "travel";
+  const isOdysseo = mode === SOON_MODE_RESO;
   const isEditMode = interactionMode === "edit";
 
 
   const flowStep = useMemo(() => {
-    if (mode === "compo") {
+    if (mode === SOON_MODE_COMPO) {
       return {
-        key: "compo",
+        key: SOON_MODE_COMPO,
         title: "Composer",
         tip: "Choisissez vos éléments et organisez votre scène.",
       };
     }
 
-    if (isOdysseoTrace) {
-      return {
-        key: "trace",
-        title: "Tracer",
-        tip: "Dessinez votre trajectoire avec la plume.",
-      };
-    }
-
     return {
-      key: "travel",
-      title: "Traverser",
-      tip: "Lancez le parcours et ajustez avec la boussole.",
+      key: WORKFLOW_ROOT_NAVIGO,
+      title: "Navigo",
+      tip: "Trace, ancre et lance la lecture du parcours depuis un seul espace.",
     };
-  }, [mode, isOdysseoTrace]);
+  }, [mode]);
 
   const [stepTipVisible, setStepTipVisible] = useState(false);
+
+  useEffect(() => {
+    const fromHash = parseWorkflowFromHash(window.location.hash);
+    const persistedRoot = readPersistedWorkflowRoot();
+
+    if (fromHash?.root === WORKFLOW_ROOT_NAVIGO) {
+      setMode(SOON_MODE_RESO);
+      setOdysseoMode(normalizeOdysseoMode(fromHash.odysseoMode));
+      return;
+    }
+
+    if (persistedRoot === WORKFLOW_ROOT_NAVIGO) {
+      setMode(SOON_MODE_RESO);
+      setOdysseoMode(ODYSSEO_MODE_TRACE);
+    }
+  }, [setMode]);
+
+  useEffect(() => {
+    const root = modeToWorkflowRoot(mode);
+    persistWorkflowRoot(root);
+    window.history.replaceState(null, "", serializeWorkflowHash(root, odysseoMode));
+  }, [mode, odysseoMode]);
+
+  const setWorkflowRoot = (root) => {
+    stopCircuitAutopilot();
+    setInteractionMode("swim");
+    setIsTravelPlaying(false);
+
+    if (root === WORKFLOW_ROOT_NAVIGO) {
+      setMode(SOON_MODE_RESO);
+      setOdysseoMode((current) => normalizeOdysseoMode(current));
+      return;
+    }
+
+    setMode(workflowRootToMode(root));
+  };
 
   useEffect(() => {
     setStepTipVisible(true);
@@ -100,12 +154,6 @@ export default function SoonApp({ onBack }) {
     return () => clearTimeout(timeoutId);
   }, [flowStep.key]);
 
-  useEffect(() => {
-    setMode("compo");
-    stopCircuitAutopilot();
-    setOdysseoMode("trace");
-    setInteractionMode("swim");
-  }, []);
 
   const toggleInteractionMode = () => {
     setInteractionMode((current) => {
@@ -155,6 +203,26 @@ export default function SoonApp({ onBack }) {
     setEditorOpenKey((value) => value + 1);
   };
 
+  const handleRecenterFish = () => {
+    stopCircuitAutopilot();
+
+    if (!nombriloAudioRef.current) {
+      nombriloAudioRef.current = new Audio(NOMBRILO_ONE_SHOT_URL);
+      nombriloAudioRef.current.preload = "auto";
+    }
+
+    try {
+      nombriloAudioRef.current.currentTime = 0;
+      void nombriloAudioRef.current.play();
+    } catch {
+      // ignore audio gesture failures silently
+    }
+
+    toggleEyesClosed();
+    recenterFish();
+  };
+
+
   if (page === "profile") {
     return <Profile onBack={() => setPage("arena")} />;
   }
@@ -171,57 +239,11 @@ export default function SoonApp({ onBack }) {
           <span>{flowStep.tip}</span>
         </div>
 
-        <div className="top-nav-flow" role="group" aria-label="Flow principal">
-          <span className="flow-progress-segment" aria-hidden="true" />
-
-          <button
-            type="button"
-            onClick={() => {
-              setMode("compo");
-              stopCircuitAutopilot();
-              setInteractionMode("swim");
-            }}
-            className={mode === "compo" ? "active" : ""}
-
-            aria-label="Composer"
-            title="Composer"
-          >
-            🎨
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              if (mode !== "reso") setMode("reso");
-              stopCircuitAutopilot();
-              setOdysseoMode("trace");
-              setInteractionMode("swim");
-              setIsTravelPlaying(false);
-            }}
-            className={isOdysseoTrace ? "active" : ""}
-
-            aria-label="Tracer"
-            title="Tracer"
-          >
-            🪶
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              if (mode !== "reso") setMode("reso");
-              stopCircuitAutopilot();
-              setOdysseoMode("travel");
-              setInteractionMode("swim");
-              setIsTravelPlaying(false);
-            }}
-            className={isOdysseoTravel ? "active" : ""}
-
-            aria-label="Traverser"
-            title="Traverser"
-          >
-            🧭
-          </button>
+        <div className="top-nav-flow">
+          <WorkflowShell
+            activeRoot={modeToWorkflowRoot(mode)}
+            onChangeRoot={setWorkflowRoot}
+          />
         </div>
 
         <button
@@ -236,7 +258,7 @@ export default function SoonApp({ onBack }) {
 
       <SoonCanvas
         mode={mode}
-        interactionMode={isOdysseoTrace ? "circuit" : interactionMode}
+        interactionMode={isOdysseo ? "circuit" : interactionMode}
         odysseoMode={odysseoMode}
         bubbles={bubbles}
         fish={fish}
@@ -249,18 +271,19 @@ export default function SoonApp({ onBack }) {
         circuitAutopilot={circuitAutopilot}
         eyesClosed={eyesClosed}
         viewZoom={viewZoom}
-        onFishTarget={setFishTarget}
-        onTickFish={() => {
-          if (isOdysseoTravel) {
+        onFishTarget={(x, y, arenaRadius) => setFishTarget(x, y, arenaRadius)}
+        onTickFish={({ arenaRadius } = {}) => {
+          if (isOdysseo) {
             if (isTravelPlaying) {
               tickOdysseoPath({ swimSpeed });
             }
             return;
           }
 
-          if (isEditMode || isOdysseoTrace) return;
+          if (isEditMode) return;
 
-          tickFish({ swimSpeed });
+          tickFish({ swimSpeed, arenaRadius });
+
         }}
         onSetFishDepth={setFishDepth}
         onSelectBubble={selectBubble}
@@ -274,79 +297,85 @@ export default function SoonApp({ onBack }) {
           addOdysseoDepthMarker(x, y, selectedDepth);
         }}
         onOpenBubbleEditor={openBubbleEditor}
+        onRecenterFish={handleRecenterFish}
         onCycleBubbleDepth={cycleBubbleDepth}
+        bubblesEnabled={bubblesEnabled}
+        bubblesIntensity={bubblesIntensity}
+        worldGraph={worldGraph}
+        currentArenaId={currentArenaId}
+        mazeByArena={mazeByArena}
+        onToggleBubbles={() => setBubblesEnabled((v) => !v)}
+        onSetBubblesIntensity={setBubblesIntensity}
+        onResetFishContext={() => { setBubblesEnabled(true); setBubblesIntensity(1); recenterFish(); }}
+        onToggleMembraneSide={toggleMembraneSide}
       />
 
       <div className={`cockpit ${isOdysseo ? "odysseo-cockpit" : ""}`}>
         <div className="cockpit-buttons">
           {isOdysseo ? (
             <div className="odysseo-tools">
-              {isOdysseoTravel && (
-                <div className="tool-row primary-tools">
-                  <button
-                    type="button"
-                    className={`bubble-btn mode-toggle ${isTravelPlaying ? "active" : ""}`}
-                    onClick={() => setIsTravelPlaying((current) => !current)}
-                    disabled={!odysseoPath || odysseoPath.length < 2}
-                    title={
-                      odysseoPath && odysseoPath.length >= 2
-                        ? isTravelPlaying
-                          ? "Mettre la traversée en pause"
-                          : "Lancer la traversée"
-                        : "Trace un parcours d’abord"
-                    }
-                  >
-                    {isTravelPlaying ? "⏸ Pause" : "▶ Play"}
-                  </button>
+              <div className="tool-row primary-tools">
+                <button
+                  type="button"
+                  className={`bubble-btn mode-toggle ${isTravelPlaying ? "active" : ""}`}
+                  onClick={() => setIsTravelPlaying((current) => !current)}
+                  disabled={!odysseoPath || odysseoPath.length < 2}
+                  title={
+                    odysseoPath && odysseoPath.length >= 2
+                      ? isTravelPlaying
+                        ? "Mettre la traversée en pause"
+                        : "Lancer la traversée"
+                      : "Trace un parcours d’abord"
+                  }
+                >
+                  {isTravelPlaying ? "⏸ Pause" : "▶ Play"}
+                </button>
 
-                  <button
-                    type="button"
-                    className="bubble-btn mode-toggle"
-                    onClick={handleExportImmersion}
-                    disabled={!odysseoPath || odysseoPath.length < 8}
-                    title={
-                      odysseoPath && odysseoPath.length >= 8
-                        ? "Générer l’immersion sonore"
-                        : "Trace un parcours d’abord"
-                    }
-                  >
-                    🎧 Générer
-                  </button>
-                </div>
-              )}
+                <button
+                  type="button"
+                  className="bubble-btn mode-toggle"
+                  onClick={handleExportImmersion}
+                  disabled={!odysseoPath || odysseoPath.length < 8}
+                  title={
+                    odysseoPath && odysseoPath.length >= 8
+                      ? "Générer l’immersion sonore"
+                      : "Trace un parcours d’abord"
+                  }
+                >
+                  🎧 Générer
+                </button>
+              </div>
 
-              {isOdysseoTrace && (
-                <div className="tool-row trace-tools">
-                  <button
-                    type="button"
-                    className={`bubble-btn tool-chip ${odysseoTool === "draw" ? "active" : ""}`}
-                    onClick={() => setOdysseoTool("draw")}
-                    title="Dessiner le trajet"
-                  >
-                    ✏️ Dessin
-                  </button>
+              <div className="tool-row trace-tools">
+                <button
+                  type="button"
+                  className={`bubble-btn tool-chip ${odysseoTool === "draw" ? "active" : ""}`}
+                  onClick={() => setOdysseoTool("draw")}
+                  title="Dessiner le trajet"
+                >
+                  ✏️ Dessin
+                </button>
 
-                  <button
-                    type="button"
-                    className={`bubble-btn tool-chip ${odysseoTool === "depth" ? "active" : ""}`}
-                    onClick={() => setOdysseoTool("depth")}
-                    title="Poser une ancre d’ambiance"
-                  >
-                    ⚓ Ancre
-                  </button>
+                <button
+                  type="button"
+                  className={`bubble-btn tool-chip ${odysseoTool === "depth" ? "active" : ""}`}
+                  onClick={() => setOdysseoTool("depth")}
+                  title="Poser une ancre d’ambiance"
+                >
+                  ⚓ Ancre
+                </button>
 
-                  <button
-                    type="button"
-                    className="bubble-btn tool-chip danger"
-                    onClick={clearOdysseoPath}
-                    title="Effacer le tracé"
-                  >
-                    🧽 Effacer
-                  </button>
-                </div>
-              )}
+                <button
+                  type="button"
+                  className="bubble-btn tool-chip danger"
+                  onClick={clearOdysseoPath}
+                  title="Effacer le tracé"
+                >
+                  🧽 Effacer
+                </button>
+              </div>
 
-              {isOdysseoTrace && odysseoTool === "depth" && (
+              {odysseoTool === "depth" && (
                 <div className="tool-row depth-tools">
                   {[1, 2, 3].map((depth) => (
                     <button
@@ -364,23 +393,54 @@ export default function SoonApp({ onBack }) {
                 </div>
               )}
             </div>
-          ) : (
-            <button
-              type="button"
-              className={`bubble-btn mode-toggle ${isEditMode ? "active" : ""}`}
-              onClick={toggleInteractionMode}
-              title={isEditMode ? "Passer en mode nager" : "Passer en mode éditer"}
-              aria-label={isEditMode ? "Mode éditer actif" : "Mode nager actif"}
-            >
-              {isEditMode ? "✏️" : "🐟"}
-            </button>
+                    ) : (
+            <div className="tool-row fish-tools">
+              <button
+                type="button"
+                className={`bubble-btn mode-toggle ${isEditMode ? "active" : ""}`}
+                onClick={toggleInteractionMode}
+                title={isEditMode ? "Passer en mode nager" : "Passer en mode éditer"}
+                aria-label={isEditMode ? "Mode éditer actif" : "Mode nager actif"}
+              >
+                {isEditMode ? "✏️" : "🐟"}
+              </button>
+              {!isEditMode && (
+                <>
+                  <button
+                    type="button"
+                    className={`bubble-btn tool-chip ${bubblesEnabled ? "active" : ""}`}
+                    onClick={() => setBubblesEnabled((value) => !value)}
+                    title="Activer / couper les bulles"
+                  >
+                    {bubblesEnabled ? "🫧 Bulles ON" : "🫧 Bulles OFF"}
+                  </button>
+                  <button
+                    type="button"
+                    className="bubble-btn tool-chip"
+                    onClick={() => setBubblesIntensity((value) => Math.min(2, value + 0.25))}
+                    title="Augmenter l’intensité des bulles"
+                  >
+                    🧪 Intensité {bubblesIntensity.toFixed(2)}
+                  </button>
+                  <button
+                    type="button"
+                    className="bubble-btn tool-chip"
+                    onClick={toggleMembraneSide}
+                    title="Basculer intérieur / extérieur"
+                  >
+                    {fish?.membraneSide === "outside" ? "🌌 Extérieur" : "🫧 Intérieur"}
+                  </button>
+                </>
+              )}
+            </div>
           )}
         </div>
 
         <div className="global-sliders">
-          <div className="global-slider">
-            <span>🔍</span>
+          <div className="global-slider zoom-slider">
+            <span className="slider-label">🔍 Zoom</span>
             <input
+              className="slim-vertical-range"
               type="range"
               min="0"
               max="2"
@@ -388,23 +448,22 @@ export default function SoonApp({ onBack }) {
               value={viewZoom}
               onChange={(event) => setViewZoom(Number(event.target.value))}
             />
-            <span>{viewZoom.toFixed(1)}</span>
+            <span className="slider-value">{viewZoom.toFixed(1)}</span>
           </div>
 
-          {isOdysseoTravel && (
-            <div className="global-slider odysseo-speed-slider">
-              <span>⚡</span>
-              <input
-                type="range"
-                min="0.3"
-                max="2"
-                step="0.05"
-                value={swimSpeed}
-                onChange={(event) => setSwimSpeed(Number(event.target.value))}
-              />
-              <span>{swimSpeed <= 0 ? "Arrêt" : `${swimSpeed.toFixed(2)}×`}</span>
-            </div>
-          )}
+          <div className="global-slider odysseo-speed-slider speed-slider">
+            <span className="slider-label">⚡ Vitesse</span>
+            <input
+              className="slim-vertical-range"
+              type="range"
+              min="0.3"
+              max="2"
+              step="0.05"
+              value={swimSpeed}
+              onChange={(event) => setSwimSpeed(Number(event.target.value))}
+            />
+            <span className="slider-value">{swimSpeed <= 0 ? "Arrêt" : `${swimSpeed.toFixed(2)}×`}</span>
+          </div>
         </div>
       </div>
 

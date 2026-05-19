@@ -1,3 +1,4 @@
+import { SOON_MODE_INTRO } from "../core/uiState.js";
 import { SOON_MODES } from "../core/soonModes.js";
 import { useSoonStore } from "../store/useSoonStore.js";
 
@@ -6,7 +7,7 @@ export default function ModeDock({ onIntro }) {
   const setMode = useSoonStore((state) => state.setMode);
 
   function handleModeClick(id) {
-    if (id === "intro") {
+    if (id === SOON_MODE_INTRO) {
       onIntro?.();
       return;
     }

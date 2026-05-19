@@ -1,4 +1,7 @@
 import { clampToCircle } from "./geometry.js";
+import { getFishNavigableRadius } from "./constants.js";
+
+const DEFAULT_FISH_NAV_RADIUS = getFishNavigableRadius(1200);
 
 export function createInitialSpine(x = 0, y = 0, count = 26, spacing = 7.2) {
   return Array.from({ length: count }, (_, i) => ({
@@ -31,9 +34,14 @@ export function updateSnakeFishToTarget({
   fish,
   targetX,
   targetY,
-  arenaRadius = 1200,
+  arenaRadius = DEFAULT_FISH_NAV_RADIUS,
   swimSpeed = 1,
 }) {
+  // Règle de navigation: rayon poisson = rayon interne d’arène (navigable radius).
+  const fishNavRadius =
+    Number.isFinite(arenaRadius) && arenaRadius > 0
+      ? arenaRadius
+      : DEFAULT_FISH_NAV_RADIUS;
   const spine = normalizeSpine(fish);
   const head = spine[0];
 
@@ -71,7 +79,7 @@ export function updateSnakeFishToTarget({
       x: head.x + vx,
       y: head.y + vy,
     },
-    arenaRadius * 1.7
+    fishNavRadius
   );
 
   spine[0] = safeHead;

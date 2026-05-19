@@ -86,9 +86,6 @@ export default function Home({ onEnter }) {
           Entrer dans Soon
         </button>
 
-        <p className="home-note">
-          Arène locale · Sons Soon · Traversée sensible
-        </p>
       </section>
     </main>
   );

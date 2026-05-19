@@ -2,6 +2,8 @@ import { distance, getBubbleVisualRadius } from "./geometry.js";
 import { drawPoissonPlume } from "./poissonPlumeRenderer.js";
 import { drawCharacters } from "./characters/characterEngine.js";
 import { drawOdysseoPath } from "./odysseoPath.js";
+import { ARENA_INNER_BOUNDARY_INSET, MEMBRANE_LEVEL_MULTIPLIERS } from "./constants.js";
+import { getArenaRadiusForNode, getPortalOpeningAngle, getPortalOpeningHalfSpan } from "./labybulleWorld.js";
 import {
   drawFireflies,
   drawPlacedTriangles,
@@ -11,6 +13,8 @@ import {
 import {
   drawEcosystemWorld,
 } from "./ecosystemFx.js";
+
+const CONTOUR_WIDTH_MULTIPLIER = 3;
 
 export function drawScene(ctx, rect, time, refs) {
   const { stateRef, arenaRef, cameraRef, enterWorld, exitWorld } = refs;
@@ -22,55 +26,52 @@ export function drawScene(ctx, rect, time, refs) {
 
   enterWorld(ctx, rect, cameraRef, stateRef);
 
-  drawArenaBoundary(ctx, arenaRef, time);
-  drawEcosystemWorld(ctx, current, time);
-  drawWorldParticles(ctx, arenaRef, time);
-
-  if (current.mode === "reso") {
-    drawOdysseoPath(
-      ctx,
-      current.odysseoPath || [],
-      current.odysseoDepthMarkers || [],
-      time
-    );
-  }
-  // drawFishTrail(ctx, current.fishTrail || [], time);
+  drawArenaBoundary(ctx, arenaRef, time, current);
 
   if (!current.eyesClosed) {
+    drawArenaNightSky(ctx, arenaRef, time);
+    drawEcosystemWorld(ctx, current, time);
+    drawWorldParticles(ctx, arenaRef, time);
+
     if (current.mode === "reso") {
-      // Ancien circuit à balises désactivé : Odysséo utilise odysseoPath.
+      drawOdysseoPath(
+        ctx,
+        current.odysseoPath || [],
+        current.odysseoDepthMarkers || [],
+        time
+      );
     }
 
-    drawBubbles(
-      ctx,
-      current.bubbles,
-      current.selectedBubbleId,
-      current.mode,
-      time,
-      current.interactionMode
-    );
-  } else {
-    drawEyesClosedEchoes(ctx, current.bubbles, current.fish, time);
+    if (current.bubblesEnabled !== false) {
+      drawBubbles(
+        ctx,
+        current.bubbles,
+        current.selectedBubbleId,
+        current.mode,
+        time,
+        current.interactionMode,
+        current.bubblesIntensity
+      );
+    }
+
+    drawPlacedTriangles(ctx, time);
+    drawFireflies(ctx, time);
+    drawResonanceBubbles(ctx, time);
+
+    if (current.interactionMode !== "edit") {
+      drawCharacters(ctx, time);
+    }
   }
 
-  drawPlacedTriangles(ctx, time);
-  drawFireflies(ctx, time);
-  // drawPlumeTrail(ctx);
-  drawResonanceBubbles(ctx, time);
-  if (current.interactionMode !== "edit") {
-    drawCharacters(ctx, time);
-
-drawFish(ctx, current.fish, time);
-  }
+  drawFish(ctx, current.fish, time, current.worldGraph, current.currentArenaId);
+  drawQuill(ctx, current.fish, time);
 
   exitWorld(ctx);
 
-  if (current.eyesClosed) {
-    drawEyesClosedVeil(ctx, rect, time);
+  if (!current.eyesClosed) {
+    drawCameraVignette(ctx, rect, current.fish);
+    drawHud(ctx, rect, current, arenaRef);
   }
-
-  drawCameraVignette(ctx, rect, current.fish);
-  drawHud(ctx, rect, current);
 }
 
 export function drawOcean(ctx, rect, time, current) {
@@ -102,32 +103,175 @@ export function drawDepthVeil() {
   return;
 }
 
-export function drawArenaBoundary(ctx, arenaRef, time) {
+function drawQuillShape(ctx) {
+  ctx.beginPath();
+  ctx.moveTo(0, -24);
+  ctx.quadraticCurveTo(10, -6, 0, 22);
+  ctx.quadraticCurveTo(-10, -6, 0, -24);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(0, 22);
+  ctx.lineTo(0, 32);
+  ctx.stroke();
+}
+
+export function drawQuill(ctx, fish = {}, time = 0) {
+  const hasQuill = Boolean(fish?.hasQuill);
+  ctx.save();
+  if (!hasQuill) {
+    const bob = Math.sin(time * 0.003) * 6;
+    ctx.translate(140, -60 + bob);
+    ctx.rotate(-0.25);
+  } else {
+    const angle = Number.isFinite(fish?.angle) ? fish.angle : -Math.PI / 2;
+    const mx = (fish?.x || 0) + Math.cos(angle) * 44;
+    const my = (fish?.y || 0) + Math.sin(angle) * 44;
+    ctx.translate(mx, my);
+    ctx.rotate(angle + Math.PI / 2);
+  }
+  ctx.fillStyle = "rgba(240,248,255,0.9)";
+  ctx.strokeStyle = "rgba(125,211,252,0.9)";
+  ctx.lineWidth = 2 * CONTOUR_WIDTH_MULTIPLIER;
+  drawQuillShape(ctx);
+  ctx.restore();
+}
+
+
+
+function getPortalClosestToFish(worldGraph, portals, fish = {}) {
+  if (!Array.isArray(portals) || portals.length === 0) return null;
+  if (portals.length === 1) return portals[0];
+  const fishAngle = Math.atan2(fish?.y || 0, fish?.x || 0);
+  const angleDistance = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+  let best = portals[0];
+  let bestGap = Number.POSITIVE_INFINITY;
+  portals.forEach((portal) => {
+    const opening = getPortalOpeningAngle(worldGraph, portal.fromArenaId, portal.toArenaId);
+    if (!Number.isFinite(opening)) return;
+    const gap = Math.abs(angleDistance(fishAngle, opening));
+    if (gap < bestGap) {
+      best = portal;
+      bestGap = gap;
+    }
+  });
+  return best;
+}
+
+function drawArenaNetworkBackdrop(ctx, current = {}, baseRadius = 1200) {
+  const worldGraph = current?.worldGraph;
+  const activeArenaId = current?.currentArenaId || worldGraph?.startArenaId || null;
+  if (!worldGraph || !activeArenaId) return;
+
+  const nodes = worldGraph?.nodes || [];
+  const portals = worldGraph?.portals || [];
+  const activeNode = nodes.find((n) => n.id === activeArenaId);
+  if (!activeNode) return;
+
+  const activeCenter = activeNode.absoluteCenter || { x: 0, y: 0 };
+  ctx.save();
+  nodes.forEach((node) => {
+    if (node.id === activeArenaId) return;
+    const center = node.absoluteCenter || { x: 0, y: 0 };
+    const x = (center.x || 0) - (activeCenter.x || 0);
+    const y = (center.y || 0) - (activeCenter.y || 0);
+    const radius = getArenaRadiusForNode({ world: worldGraph, arenaId: node.id, baseRadius });
+
+    const portalToActive = portals.find((p) => p.fromArenaId === node.id && p.toArenaId === activeArenaId) || null;
+    const opening = portalToActive
+      ? getPortalOpeningAngle(worldGraph, portalToActive.fromArenaId, portalToActive.toArenaId)
+      : null;
+    const halfSpan = opening !== null ? getPortalOpeningHalfSpan({ radius }) : 0;
+
+    ctx.save();
+    ctx.translate(x, y);
+
+    ctx.beginPath();
+    if (opening !== null) {
+      ctx.arc(0, 0, radius, opening + halfSpan, opening - halfSpan + Math.PI * 2);
+    } else {
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    }
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.58)';
+    ctx.lineWidth = 4 * CONTOUR_WIDTH_MULTIPLIER;
+    ctx.stroke();
+
+    ctx.beginPath();
+    if (opening !== null) {
+      ctx.arc(0, 0, radius * 0.95, opening + halfSpan, opening - halfSpan + Math.PI * 2);
+    } else {
+      ctx.arc(0, 0, radius * 0.95, 0, Math.PI * 2);
+    }
+    ctx.strokeStyle = 'rgba(14, 116, 144, 0.48)';
+    ctx.lineWidth = 2 * CONTOUR_WIDTH_MULTIPLIER;
+    ctx.stroke();
+
+    ctx.restore();
+  });
+  ctx.restore();
+}
+
+export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
   const radius = arenaRef.current.radius;
-  const pulse = Math.sin(time * 0.0012) * 8;
+  drawArenaNetworkBackdrop(ctx, current, radius);
+  const innerRadius = Math.max(0, radius - ARENA_INNER_BOUNDARY_INSET);
+  const arenaLevel = Number.isFinite(current?.fish?.arenaLevel) ? current.fish.arenaLevel : 0;
+  const pulse = Math.sin(time * 0.0018) * 0.5 + 0.5;
 
   ctx.save();
 
-  ctx.beginPath();
-  ctx.arc(0, 0, radius + pulse, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(125, 211, 252, 0.32)";
-  ctx.lineWidth = 8;
-  ctx.stroke();
+  const rings = [
+    innerRadius * (MEMBRANE_LEVEL_MULTIPLIERS[0] ?? 1),
+    innerRadius * (MEMBRANE_LEVEL_MULTIPLIERS[1] ?? 1),
+    innerRadius * (MEMBRANE_LEVEL_MULTIPLIERS[2] ?? 1),
+  ];
+  const worldGraph = current?.worldGraph;
+  const currentArenaId = current?.currentArenaId || worldGraph?.startArenaId || null;
+  const currentArenaPortals = currentArenaId
+    ? (worldGraph?.portals || []).filter((p) => p.fromArenaId === currentArenaId)
+    : [];
 
-  ctx.beginPath();
-  ctx.arc(0, 0, radius - 32 + pulse * 0.4, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
-  ctx.lineWidth = 2;
-  ctx.stroke();
+  rings.forEach((r, index) => {
+    const isOuterWall = index === arenaLevel;
+    const isInnerWall = index === arenaLevel - 1;
+    const isActive = isOuterWall || isInnerWall;
+    const openingPortal = isOuterWall
+      ? getPortalClosestToFish(worldGraph, currentArenaPortals, current?.fish)
+      : isInnerWall
+        ? currentArenaPortals.find((p) => p.toArenaId === worldGraph?.startArenaId) || null
+        : null;
+    const opening = openingPortal
+      ? getPortalOpeningAngle(worldGraph, openingPortal.fromArenaId, openingPortal.toArenaId)
+      : null;
+    const halfSpan = opening !== null ? getPortalOpeningHalfSpan({ radius: r }) : 0;
 
-  const halo = ctx.createRadialGradient(0, 0, radius * 0.72, 0, 0, radius);
-  halo.addColorStop(0, "rgba(0,0,0,0)");
-  halo.addColorStop(1, "rgba(14,165,233,0.12)");
+    ctx.beginPath();
+    if (opening !== null) {
+      ctx.arc(0, 0, r, opening + halfSpan, opening - halfSpan + Math.PI * 2);
+    } else {
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+    }
+    const activeAlpha = 0.55 + pulse * 0.3;
+    ctx.strokeStyle = isActive
+      ? `rgba(125, 211, 252, ${activeAlpha})`
+      : "rgba(15, 40, 70, 0.45)";
+    ctx.lineWidth = (isActive ? 5 : 2) * CONTOUR_WIDTH_MULTIPLIER;
+    ctx.stroke();
 
-  ctx.beginPath();
-  ctx.arc(0, 0, radius, 0, Math.PI * 2);
-  ctx.fillStyle = halo;
-  ctx.fill();
+    if (opening !== null && isActive) {
+      const glowX = Math.cos(opening) * r;
+      const glowY = Math.sin(opening) * r;
+      const glowRadius = r * halfSpan * 3.5;
+      const grad = ctx.createRadialGradient(glowX, glowY, 0, glowX, glowY, glowRadius);
+      const glowAlpha = 0.32 + pulse * 0.2;
+      grad.addColorStop(0, `rgba(34, 211, 238, ${glowAlpha})`);
+      grad.addColorStop(1, "rgba(34, 211, 238, 0)");
+      ctx.beginPath();
+      ctx.arc(glowX, glowY, glowRadius, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+  });
 
   ctx.restore();
 }
@@ -167,7 +311,7 @@ export function drawWorldParticles(ctx, arenaRef, time) {
 }
 
 
-export function drawBubbles(ctx, bubbles = [], selectedBubbleId, mode, time, interactionMode) {
+export function drawBubbles(ctx, bubbles = [], selectedBubbleId, mode, time, interactionMode, intensity = 1) {
   ctx.save();
 
   bubbles.forEach((bubble) => {
@@ -175,7 +319,8 @@ export function drawBubbles(ctx, bubbles = [], selectedBubbleId, mode, time, int
     const pulse = Math.sin(time * 0.003 + bubble.x * 0.01) * 5;
     const depth = Math.round(bubble.depth || 1);
     const radius = getBubbleVisualRadius(bubble);
-    const alpha = depth === 1 ? 0.58 : depth === 2 ? 0.46 : 0.32;
+    const alphaBase = depth === 1 ? 0.58 : depth === 2 ? 0.46 : 0.32;
+    const alpha = alphaBase * Math.max(0.2, Math.min(2, intensity));
 
     const glow = ctx.createRadialGradient(
       bubble.x,
@@ -219,48 +364,6 @@ export function drawBubbles(ctx, bubbles = [], selectedBubbleId, mode, time, int
     }
 
     drawNestedDepositFigure(ctx, bubble, radius, bubble.deposits || [], time);
-  });
-
-  ctx.restore();
-}
-
-export function drawEyesClosedEchoes(ctx, bubbles = [], fish, time) {
-  if (!fish) return;
-
-  ctx.save();
-
-  bubbles.forEach((bubble) => {
-    const d = distance(bubble, fish);
-    const strength = Math.max(0, 1 - d / 680);
-
-    if (strength <= 0.015) return;
-
-    const pulse = Math.sin(time * 0.004 + bubble.x * 0.01) * 10;
-    const radius = bubble.r * (0.8 + strength * 1.4) + pulse;
-
-    const glow = ctx.createRadialGradient(
-      bubble.x,
-      bubble.y,
-      radius * 0.1,
-      bubble.x,
-      bubble.y,
-      radius * 2.3
-    );
-
-    glow.addColorStop(0, `hsla(${bubble.hue}, 100%, 76%, ${0.05 + strength * 0.24})`);
-    glow.addColorStop(0.45, `hsla(${bubble.hue}, 100%, 62%, ${0.03 + strength * 0.14})`);
-    glow.addColorStop(1, `hsla(${bubble.hue}, 100%, 50%, 0)`);
-
-    ctx.beginPath();
-    ctx.arc(bubble.x, bubble.y, radius * 2.3, 0, Math.PI * 2);
-    ctx.fillStyle = glow;
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(bubble.x, bubble.y, radius, 0, Math.PI * 2);
-    ctx.strokeStyle = `hsla(${bubble.hue}, 100%, 82%, ${0.06 + strength * 0.34})`;
-    ctx.lineWidth = 1.5 + strength * 4;
-    ctx.stroke();
   });
 
   ctx.restore();
@@ -324,12 +427,60 @@ export function drawNestedDepositFigure(ctx, bubble, radius, deposits = [], time
   ctx.restore();
 }
 
-export function drawFish(ctx, fish, time) {
+
+export function drawFish(ctx, fish, time, worldGraph, currentArenaId = null) {
   if (!fish) return;
 
   ctx.save();
 
   try {
+    const arenaRadius = Number.isFinite(fish?.arenaRadius) ? fish.arenaRadius : 1200;
+    const innerRadius = Math.max(0, arenaRadius - ARENA_INNER_BOUNDARY_INSET);
+    const level = Number.isFinite(fish?.arenaLevel) ? fish.arenaLevel : 0;
+    const safeLevel = Math.max(0, Math.min(MEMBRANE_LEVEL_MULTIPLIERS.length - 1, level));
+    const membraneRadius = innerRadius * (MEMBRANE_LEVEL_MULTIPLIERS[safeLevel] ?? 1);
+    const membraneSide = fish?.membraneSide === "outside" ? "outside" : "inside";
+    const clipPadding = 70;
+    const fishDistance = Math.hypot(fish?.x || 0, fish?.y || 0);
+    // Sécurité anti-disparition: en transition de niveau, la side logique peut
+    // être en retard d'un frame. On se base aussi sur la position réelle.
+    const effectiveSide = fishDistance > membraneRadius + 16
+      ? "outside"
+      : fishDistance < membraneRadius - 16
+        ? "inside"
+        : membraneSide;
+    const outerWorldRadius = Math.max(
+      membraneRadius + 2200,
+      fishDistance + 1800
+    );
+
+    const activeArenaId = currentArenaId || worldGraph?.startArenaId || null;
+    const activePortals = activeArenaId
+      ? (worldGraph?.portals || []).filter((p) => p.fromArenaId === activeArenaId)
+      : [];
+    const radialAngle = Math.atan2(fish?.y || 0, fish?.x || 0);
+    const angleDistance = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+    const openingPortal = activePortals.reduce((best, portal) => {
+      const opening = getPortalOpeningAngle(worldGraph, portal.fromArenaId, portal.toArenaId);
+      if (!Number.isFinite(opening)) return best;
+      const gap = Math.abs(angleDistance(radialAngle, opening));
+      if (!best || gap < best.gap) return { portal, opening, gap };
+      return best;
+    }, null);
+    const opening = openingPortal?.opening ?? null;
+    if (opening !== null) {
+      const clipPath = new Path2D();
+      const halfSpan = getPortalOpeningHalfSpan({ radius: membraneRadius });
+      if (effectiveSide === "inside") {
+        clipPath.arc(0, 0, membraneRadius + clipPadding, opening + halfSpan, opening - halfSpan + Math.PI * 2);
+        ctx.clip(clipPath);
+      } else {
+        clipPath.arc(0, 0, outerWorldRadius, 0, Math.PI * 2);
+        clipPath.arc(0, 0, membraneRadius - clipPadding * 0.4, opening + halfSpan, opening - halfSpan + Math.PI * 2);
+        ctx.clip(clipPath, "evenodd");
+      }
+    }
+
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "source-over";
     ctx.shadowBlur = 0;
@@ -358,50 +509,6 @@ export function drawFish(ctx, fish, time) {
     ctx.shadowBlur = 0;
     ctx.restore();
   }
-}
-
-export function drawEyesClosedVeil(ctx, rect, time) {
-  const t = time * 0.001;
-  const breath = Math.sin(t * 0.7) * 0.5 + 0.5;
-
-  ctx.save();
-
-  ctx.fillStyle = "rgba(2, 6, 23, 0.46)";
-  ctx.fillRect(0, 0, rect.width, rect.height);
-
-  const mist = ctx.createRadialGradient(
-    rect.width * 0.5,
-    rect.height * 0.48,
-    Math.min(rect.width, rect.height) * 0.08,
-    rect.width * 0.5,
-    rect.height * 0.5,
-    Math.max(rect.width, rect.height) * 0.72
-  );
-
-  mist.addColorStop(0, `rgba(220, 235, 255, ${0.035 + breath * 0.025})`);
-  mist.addColorStop(0.45, "rgba(80, 110, 160, 0.035)");
-  mist.addColorStop(1, "rgba(2, 6, 23, 0.22)");
-
-  ctx.fillStyle = mist;
-  ctx.fillRect(0, 0, rect.width, rect.height);
-
-  const vignette = ctx.createRadialGradient(
-    rect.width * 0.5,
-    rect.height * 0.5,
-    Math.min(rect.width, rect.height) * 0.28,
-    rect.width * 0.5,
-    rect.height * 0.5,
-    Math.max(rect.width, rect.height) * 0.78
-  );
-
-  vignette.addColorStop(0, "rgba(0,0,0,0)");
-  vignette.addColorStop(0.65, "rgba(0,0,0,0.12)");
-  vignette.addColorStop(1, "rgba(0,0,0,0.52)");
-
-  ctx.fillStyle = vignette;
-  ctx.fillRect(0, 0, rect.width, rect.height);
-
-  ctx.restore();
 }
 
 export function drawCameraVignette(ctx, rect, fish) {
@@ -435,8 +542,10 @@ export function drawCameraVignette(ctx, rect, fish) {
   ctx.restore();
 }
 
-export function drawHud(ctx, rect, current) {
+export function drawHud(ctx, rect, current, arenaRef) {
+  void arenaRef;
   const fishDepth = Math.round(current?.fish?.depth || 1);
+  const arenaLevel = Number.isFinite(current?.fish?.arenaLevel) ? current.fish.arenaLevel : 0;
   const showDepth = current.mode === "compo" || current.mode === "reso";
 
   ctx.save();
@@ -456,6 +565,22 @@ export function drawHud(ctx, rect, current) {
     ctx.fillText(`P${fishDepth}`, rect.width - 58, 33);
   }
 
+  const dotR = 5;
+  const dotSpacing = 16;
+  const dotsTotal = 3;
+  const dotsWidth = (dotsTotal - 1) * dotSpacing;
+  const dotY = rect.height - 28;
+  const dotX0 = rect.width * 0.5 - dotsWidth * 0.5;
+  for (let i = 0; i < dotsTotal; i += 1) {
+    const active = i === arenaLevel;
+    ctx.beginPath();
+    ctx.arc(dotX0 + i * dotSpacing, dotY, dotR, 0, Math.PI * 2);
+    ctx.fillStyle = active
+      ? "rgba(125, 211, 252, 0.9)"
+      : "rgba(125, 211, 252, 0.22)";
+    ctx.fill();
+  }
+
   if (!current.eyesClosed) {
     ctx.restore();
     return;
@@ -465,7 +590,38 @@ export function drawHud(ctx, rect, current) {
   ctx.font = "500 18px Georgia";
   ctx.textAlign = "center";
 
-  ctx.fillText("Réso•° · suis le circuit", rect.width / 2, rect.height / 2 + 98);
+  ctx.restore();
+}
+
+
+export function drawArenaNightSky(ctx, arenaRef, time) {
+  const radius = arenaRef.current?.radius || 1200;
+
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+
+  // Ciel étoilé bleu nuit autour de l'arène.
+  for (let i = 0; i < 110; i += 1) {
+    const angle = (Math.PI * 2 * i) / 110;
+    const band = radius + 240 + (i % 7) * 70;
+    const x = Math.cos(angle + time * 0.00001) * band;
+    const y = Math.sin(angle + time * 0.00001) * band;
+    const alpha = 0.14 + (Math.sin(time * 0.0018 + i * 1.3) * 0.5 + 0.5) * 0.26;
+
+    ctx.beginPath();
+    ctx.arc(x, y, 1 + (i % 3) * 0.8, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(170, 210, 255, ${alpha})`;
+    ctx.fill();
+  }
+
+  // Voile bleu nuit diffus.
+  const veil = ctx.createRadialGradient(0, 0, radius * 0.9, 0, 0, radius * 2.1);
+  veil.addColorStop(0, "rgba(10, 24, 64, 0)");
+  veil.addColorStop(1, "rgba(16, 38, 86, 0.24)");
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * 2.1, 0, Math.PI * 2);
+  ctx.fillStyle = veil;
+  ctx.fill();
 
   ctx.restore();
 }

@@ -28,40 +28,74 @@ export function useSoonPointer({
   onAddOdysseoDepthMarker,
   onSetFishDepth,
   onOpenBubbleEditor,
+  onOpenFishContextMenu,
   onDepthToast,
 }) {
   const MOVE_CANCEL = 12;
   const DOUBLE_TAP_MS = 420;
   const DOUBLE_TAP_DIST = 72;
+  const LONG_PRESS_MS = 480;
 
   function getWorldFromEvent(event) {
     const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
+    if (!canvas) return { x: 0, y: 0 };
 
+    const rect = canvas.getBoundingClientRect();
+    const current = stateRef.current || {};
+    const viewZoom = Number.isFinite(current.viewZoom) ? current.viewZoom : 0;
+    const arenaRadius = current.arenaRadius || arenaRef.current.radius || 1200;
+
+    const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 2.55);
+    const finalZoom = fitZoom * (1 + viewZoom * 1.55);
+    const world = current.worldGraph;
+    const arenaId = current.currentArenaId || world?.startArenaId;
+    const arenaNode = (world?.nodes || []).find((node) => node.id === arenaId) || null;
+    const arenaCenter = arenaNode?.absoluteCenter || { x: 0, y: 0 };
+    const centerX = Number.isFinite(arenaCenter.x) ? arenaCenter.x : 0;
+    const centerY = Number.isFinite(arenaCenter.y) ? arenaCenter.y : 0;
+
+    const x = (event.clientX - rect.left - rect.width / 2) / finalZoom + cameraRef.current.x - centerX;
+    const y = (event.clientY - rect.top - rect.height / 2) / finalZoom + cameraRef.current.y - centerY;
+
+    return { x, y };
+  }
+
+  function getSafeWorldFromEvent(event, options = {}) {
+    const point = getWorldFromEvent(event);
+    const navigableRadius = Math.max(0, arenaRef.current.radius - 18);
     const viewZoom = Number.isFinite(stateRef.current?.viewZoom)
       ? stateRef.current.viewZoom
       : 0;
-    const arenaRadius = stateRef.current?.arenaRadius || arenaRef.current.radius || 1200;
-    const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 1.9);
-    const worldZoom = Math.max(0.001, fitZoom * (1 + viewZoom * 3.8));
-    const followBlend = Math.min(1, Math.max(0, viewZoom));
-    const camera = {
-      x: cameraRef.current.x * followBlend,
-      y: cameraRef.current.y * followBlend,
-      zoom: worldZoom,
-    };
 
-    return screenToWorld({
-      clientX: event.clientX,
-      clientY: event.clientY,
-      rect,
-      camera,
-    });
-  }
+    // Zoom-out max: si le doigt est proche du bord écran, on autorise un
+    // target directement au bord navigable pour atteindre toute l'arène.
+    if (options.swimEdgeBoost && viewZoom <= 0.02) {
+      const canvas = canvasRef.current;
+      const rect = canvas.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dxScreen = event.clientX - cx;
+      const dyScreen = event.clientY - cy;
+      const screenDist = Math.hypot(dxScreen, dyScreen);
+      const screenLimit = Math.min(rect.width, rect.height) * 0.5 * 0.96;
 
-  function getSafeWorldFromEvent(event) {
-    const point = getWorldFromEvent(event);
-    return clampToCircle(point, arenaRef.current.radius - 70);
+      if (screenDist >= screenLimit * 0.9 && screenDist > 0.0001) {
+        return {
+          x: (dxScreen / screenDist) * navigableRadius,
+          y: (dyScreen / screenDist) * navigableRadius,
+        };
+      }
+    }
+
+    if (stateRef.current?.interactionMode === "swim") {
+      return point;
+    }
+
+    if (stateRef.current?.fish?.outsideFreeSwim) {
+      return point;
+    }
+
+    return clampToCircle(point, navigableRadius);
   }
 
   function registerPointer(event) {
@@ -115,12 +149,31 @@ export function useSoonPointer({
     onDepthToast?.(nextDepth);
   }
 
+  function clearLongPressTimer() {
+    if (pointerRef.current.longPressTimer) {
+      clearTimeout(pointerRef.current.longPressTimer);
+      pointerRef.current.longPressTimer = null;
+    }
+  }
+
+  function armLongPress(event, point, current) {
+    clearLongPressTimer();
+    pointerRef.current.longPressStartPoint = point;
+    pointerRef.current.longPressTimer = setTimeout(() => {
+      const latest = stateRef.current || current;
+      if (latest.interactionMode !== "swim") return;
+      onOpenFishContextMenu?.({ screen: { x: event.clientX, y: event.clientY }, world: point });
+      pointerRef.current.longPressTimer = null;
+    }, LONG_PRESS_MS);
+  }
+
   function handleSwimPointerDown(event, point, current) {
     const doubleTap = isDoubleTapScreen(event, "swim");
 
     onSelectBubble?.(null);
 
     if (doubleTap) {
+      clearLongPressTimer();
       cycleFishDepth();
 
       // reset pour éviter triple tap parasite
@@ -134,7 +187,7 @@ export function useSoonPointer({
     rememberTapScreen(event, "swim");
 
     if (!current.circuitAutopilot) {
-      onFishTarget?.(point.x, point.y);
+      onFishTarget?.(point.x, point.y, arenaRef.current.radius);
     }
 
     if (current.mode === "reso") {
@@ -194,8 +247,18 @@ export function useSoonPointer({
     canvas.setPointerCapture(event.pointerId);
     registerPointer(event);
 
-    const point = getSafeWorldFromEvent(event);
+    const point = getSafeWorldFromEvent(event, { swimEdgeBoost: true });
     const current = stateRef.current;
+
+    if (current.mode === "compo" || current.mode === "reso") {
+      const r = arenaRef.current.radius || 1200;
+      const d = Math.hypot(point.x, point.y);
+
+      if (d >= r - 120) {
+        onFishTarget?.(point.x, point.y, r);
+        return;
+      }
+    }
     const isEditMode = current.interactionMode === "edit";
     const isCircuitMode = current.interactionMode === "circuit";
 
@@ -208,6 +271,7 @@ export function useSoonPointer({
     pointerRef.current.panStart = null;
     pointerRef.current.pinchDistance = null;
     pointerRef.current.startPoint = point;
+    armLongPress(event, point, current);
 
     if (isCircuitMode) {
       handleCircuitPointerDown(event, point, current);
@@ -228,7 +292,7 @@ export function useSoonPointer({
     const current = stateRef.current;
     const isEditMode = current.interactionMode === "edit";
     const isCircuitMode = current.interactionMode === "circuit";
-    const point = getSafeWorldFromEvent(event);
+    const point = getSafeWorldFromEvent(event, { swimEdgeBoost: false });
 
     if (!pointerRef.current.down && !(pointerRef.current.activePointers?.size > 0)) {
       return;
@@ -277,6 +341,7 @@ export function useSoonPointer({
     const start = pointerRef.current.startPoint;
     const moved =
       start && Math.hypot(start.x - point.x, start.y - point.y) > MOVE_CANCEL;
+    if (moved) clearLongPressTimer();
 
     if ((isEditMode || isCircuitMode) && pointerRef.current.dragBeaconId) {
       onMoveBeacon?.(pointerRef.current.dragBeaconId, point.x, point.y);
@@ -321,7 +386,7 @@ export function useSoonPointer({
     }
 
     if (!isEditMode) {
-      onFishTarget?.(point.x, point.y);
+      onFishTarget?.(point.x, point.y, arenaRef.current.radius);
 
       if (current.mode === "reso") {
         onAddPathPoint?.(point);
@@ -330,6 +395,7 @@ export function useSoonPointer({
   }
 
   function handlePointerUp(event) {
+    clearLongPressTimer();
     pointerRef.current.activePointers?.delete(event.pointerId);
 
     const stillActive = (pointerRef.current.activePointers?.size || 0) > 0;
@@ -352,6 +418,7 @@ export function useSoonPointer({
   }
 
   function cleanupPointer() {
+    clearLongPressTimer();
     pointerRef.current.activePointers?.clear();
   }
 

@@ -4,8 +4,11 @@ export function saveState(state) {
   const data = {
     mode: state.mode,
     bubbles: state.bubbles,
+    arenaBubblesById: state.arenaBubblesById,
     fish: state.fish,
     path: state.path,
+    currentArenaId: state.currentArenaId,
+    labybulleSeed: state.labybulleSeed,
   };
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));

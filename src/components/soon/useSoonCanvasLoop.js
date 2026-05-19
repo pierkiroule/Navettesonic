@@ -3,7 +3,6 @@ import {
   clampEditCamera,
   enterWorld,
   exitWorld,
-  followFishCamera,
   resetEditCamera,
   resizeCanvas,
   updateArena,
@@ -30,6 +29,39 @@ export function useSoonCanvasLoop({
   useEffect(() => {
     let frame = 0;
     let wasEditMode = false;
+    const CAMERA_FOLLOW_SMOOTHING = 0.22;
+    const CAMERA_MAX_STEP_PER_FRAME = 42;
+
+    function getArenaWorldCenter(current = {}) {
+      const world = current.worldGraph;
+      const arenaId = current.currentArenaId || world?.startArenaId;
+      const node = (world?.nodes || []).find((item) => item.id === arenaId);
+      const center = node?.absoluteCenter || { x: 0, y: 0 };
+      return {
+        x: Number.isFinite(center.x) ? center.x : 0,
+        y: Number.isFinite(center.y) ? center.y : 0,
+      };
+    }
+
+    function smoothFollowCameraToFish(fishWorld) {
+      if (!fishWorld) return;
+      const targetX = Number.isFinite(fishWorld.x) ? fishWorld.x : 0;
+      const targetY = Number.isFinite(fishWorld.y) ? fishWorld.y : 0;
+      const cam = cameraRef.current;
+      const currentX = Number.isFinite(cam.x) ? cam.x : targetX;
+      const currentY = Number.isFinite(cam.y) ? cam.y : targetY;
+      const dx = (targetX - currentX) * CAMERA_FOLLOW_SMOOTHING;
+      const dy = (targetY - currentY) * CAMERA_FOLLOW_SMOOTHING;
+      const step = Math.hypot(dx, dy);
+      if (step > CAMERA_MAX_STEP_PER_FRAME && step > 0) {
+        const ratio = CAMERA_MAX_STEP_PER_FRAME / step;
+        cam.x = currentX + dx * ratio;
+        cam.y = currentY + dy * ratio;
+        return;
+      }
+      cam.x = currentX + dx;
+      cam.y = currentY + dy;
+    }
 
     function loop() {
       const canvas = canvasRef.current;
@@ -50,26 +82,24 @@ export function useSoonCanvasLoop({
       const isEditMode = current.interactionMode === "edit";
 
       updateArena(arenaRef, rect);
+      const runtimeRadius = arenaRef.current.radius;
+      // Important: pas de changement d'échelle caméra/monde entre niveaux.
+      // On garde un rayon runtime constant pour éviter tout effet de dezoom.
+      arenaRef.current.radius = runtimeRadius;
+      stateRef.current = {
+        ...(stateRef.current || {}),
+        arenaRadius: runtimeRadius,
+      };
 
       if (current.mode === "reso" || current.mode === "compo") {
         cameraRef.current.zoom = 1;
-
-        const shouldFollowFish =
-          Number.isFinite(current.viewZoom) && current.viewZoom > 0.18;
-
-        if (shouldFollowFish && current.fish) {
-          followFishCamera(cameraRef, arenaRef, current.fish, rect);
-        } else {
-          cameraRef.current.x += (0 - cameraRef.current.x) * 0.08;
-          cameraRef.current.y += (0 - cameraRef.current.y) * 0.08;
-        }
       } else if (isEditMode) {
         if (!wasEditMode) {
           resetEditCamera(cameraRef, rect, arenaRef.current.radius);
         }
         clampEditCamera(cameraRef, rect, arenaRef.current.radius);
       } else {
-        followFishCamera(cameraRef, arenaRef, current.fish, rect);
+        cameraRef.current.zoom = 1;
       }
 
       wasEditMode = isEditMode;
@@ -82,10 +112,21 @@ export function useSoonCanvasLoop({
       const worldFx = getCharacterWorldEffects();
 
       if (!isEditMode) {
-        onTickFish?.();
+        onTickFish?.({ arenaRadius: arenaRef.current.radius });
       }
 
       const next = stateRef.current || {};
+      const nextFish = next.fish || null;
+      const arenaCenter = getArenaWorldCenter(next);
+      const fishWorld = nextFish
+        ? {
+            x: arenaCenter.x + (Number.isFinite(nextFish.x) ? nextFish.x : 0),
+            y: arenaCenter.y + (Number.isFinite(nextFish.y) ? nextFish.y : 0),
+          }
+        : null;
+      if (!isEditMode) {
+        smoothFollowCameraToFish(fishWorld);
+      }
 
       if (!isEditMode) {
         updateAmbientMix(next.bubbles || [], next.fish || null);
