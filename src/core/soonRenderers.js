@@ -14,8 +14,17 @@ import {
   drawEcosystemWorld,
 } from "./ecosystemFx.js";
 import { getBlobRadiusAtAngle } from "./blobArena.js";
+import { spawnFireflyFromSeed } from "./fireflyGame.js";
 
 const CONTOUR_WIDTH_MULTIPLIER = 3;
+const guppyRuntime = {
+  initialized: false,
+  fish: [],
+  pearls: [],
+  driftingSeeds: [],
+  cosmicStreaks: [],
+  nextCosmicSpawnAt: 0,
+};
 
 export function drawScene(ctx, rect, time, refs) {
   const { stateRef, arenaRef, cameraRef, enterWorld, exitWorld } = refs;
@@ -28,6 +37,7 @@ export function drawScene(ctx, rect, time, refs) {
   enterWorld(ctx, rect, cameraRef, stateRef);
 
   drawArenaBoundary(ctx, arenaRef, time, current);
+  drawArenaGuppies(ctx, time, current, arenaRef.current?.radius || 1200);
 
   if (!current.eyesClosed) {
     drawArenaNightSky(ctx, arenaRef, time);
@@ -73,6 +83,239 @@ export function drawScene(ctx, rect, time, refs) {
     drawCameraVignette(ctx, rect, current.fish);
     drawHud(ctx, rect, current, arenaRef);
   }
+}
+
+function drawGuppyTopView(ctx, x, y, angle, size = 1, sway = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.scale(size, size);
+
+  const bodyGrad = ctx.createRadialGradient(-4, -2, 1, 0, 0, 16);
+  bodyGrad.addColorStop(0, "rgba(255, 215, 240, 0.95)");
+  bodyGrad.addColorStop(0.55, "rgba(255, 139, 200, 0.88)");
+  bodyGrad.addColorStop(1, "rgba(240, 82, 166, 0.82)");
+
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 16, 9, 0, 0, Math.PI * 2);
+  ctx.fillStyle = bodyGrad;
+  ctx.fill();
+
+  const tailSwing = Math.sin(sway) * 3.4;
+  ctx.beginPath();
+  ctx.moveTo(-12, 0);
+  ctx.quadraticCurveTo(-23, -8 - tailSwing, -31, 0);
+  ctx.quadraticCurveTo(-23, 8 + tailSwing, -12, 0);
+  ctx.fillStyle = "rgba(255, 116, 196, 0.85)";
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.ellipse(6, -1, 2, 2, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(17, 24, 39, 0.65)";
+  ctx.fill();
+  ctx.restore();
+}
+
+function getArenaEdgeRadius(current, arenaRadius, angle) {
+  const hasBlob = Array.isArray(current?.arenaBlob?.points) && current.arenaBlob.points.length > 2;
+  return hasBlob ? getBlobRadiusAtAngle(current.arenaBlob, angle) : arenaRadius;
+}
+
+function ensureGuppyRuntime(current, arenaRadius) {
+  if (guppyRuntime.initialized) return;
+  guppyRuntime.initialized = true;
+  const count = 14;
+  for (let i = 0; i < count; i += 1) {
+    const a = (Math.PI * 2 * i) / count;
+    const edge = getArenaEdgeRadius(current, arenaRadius, a);
+    const r = Math.max(120, edge * (0.22 + Math.random() * 0.54));
+    guppyRuntime.fish.push({
+      id: `guppy-${i}`,
+      x: Math.cos(a) * r,
+      y: Math.sin(a) * r,
+      vx: Math.cos(a + Math.PI / 2) * 0.7,
+      vy: Math.sin(a + Math.PI / 2) * 0.7,
+      angle: a,
+      phase: Math.random() * Math.PI * 2,
+      carrier: i % 5 === 0,
+      carrying: false,
+      dropAt: 0,
+    });
+  }
+  // Important narratif: au départ aucune perle/graine sur la membrane.
+  // Elles arrivent uniquement via les étoiles filantes cosmiques.
+}
+
+function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
+  ensureGuppyRuntime(current, arenaRadius);
+  const now = performance.now();
+  const fish = guppyRuntime.fish;
+  const pearls = guppyRuntime.pearls;
+  const seeds = guppyRuntime.driftingSeeds;
+  const cosmicStreaks = guppyRuntime.cosmicStreaks;
+  const dt = 1;
+
+  if (now >= guppyRuntime.nextCosmicSpawnAt) {
+    const impactAngle = Math.random() * Math.PI * 2;
+    const edge = getArenaEdgeRadius(current, arenaRadius, impactAngle);
+    const spawnR = edge + 340 + Math.random() * 220;
+    // Impact sur membrane (pas de traversée de l'arène).
+    const targetX = Math.cos(impactAngle) * Math.max(84, edge + 4);
+    const targetY = Math.sin(impactAngle) * Math.max(84, edge + 4);
+    const fromX = Math.cos(impactAngle + (Math.random() - 0.5) * 0.5) * spawnR;
+    const fromY = Math.sin(impactAngle + (Math.random() - 0.5) * 0.5) * spawnR;
+    cosmicStreaks.push({
+      x: fromX,
+      y: fromY,
+      vx: (targetX - fromX) * 0.032,
+      vy: (targetY - fromY) * 0.032,
+      tx: targetX,
+      ty: targetY,
+      angle: impactAngle,
+      life: 0,
+      maxLife: 80 + Math.random() * 32,
+    });
+    guppyRuntime.nextCosmicSpawnAt = now + 1500 + Math.random() * 3000;
+  }
+
+  pearls.forEach((pearl) => {
+    if (!pearl.attached) return;
+    const edge = getArenaEdgeRadius(current, arenaRadius, pearl.angle);
+    pearl.x = Math.cos(pearl.angle) * Math.max(44, edge - 8);
+    pearl.y = Math.sin(pearl.angle) * Math.max(44, edge - 8);
+    pearl.angle += 0.0002;
+  });
+
+  fish.forEach((g) => {
+    const a = Math.atan2(g.y, g.x);
+    const edge = getArenaEdgeRadius(current, arenaRadius, a);
+    const navMax = Math.max(110, edge - 58);
+    const navMin = Math.max(70, edge * 0.16);
+
+    g.vx += (Math.random() - 0.5) * 0.06;
+    g.vy += (Math.random() - 0.5) * 0.06;
+    const speed = Math.hypot(g.vx, g.vy) || 1;
+    const targetSpeed = 0.9 + Math.sin(time * 0.001 + g.phase) * 0.24;
+    g.vx = (g.vx / speed) * targetSpeed;
+    g.vy = (g.vy / speed) * targetSpeed;
+    g.x += g.vx * dt;
+    g.y += g.vy * dt;
+
+    const d = Math.hypot(g.x, g.y);
+    if (d > navMax) {
+      const c = navMax / d;
+      g.x *= c; g.y *= c;
+      g.vx *= -0.35; g.vy *= -0.35;
+    } else if (d < navMin) {
+      const c = navMin / Math.max(0.001, d);
+      g.x *= c; g.y *= c;
+      g.vx += Math.cos(a) * 0.2;
+      g.vy += Math.sin(a) * 0.2;
+    }
+    g.angle = Math.atan2(g.vy, g.vx);
+
+    if (g.carrier && !g.carrying) {
+      const near = pearls.find((p) => p.attached && Math.hypot((p.x || 0) - g.x, (p.y || 0) - g.y) < 26);
+      if (near) {
+        near.attached = false;
+        g.carrying = true;
+        g.dropAt = now + 1400 + Math.random() * 3200;
+      }
+    }
+    if (g.carrier && g.carrying && now >= g.dropAt) {
+      g.carrying = false;
+      seeds.push({ x: g.x, y: g.y, vx: g.vx * 0.4, vy: g.vy * 0.4, bornAt: now, matureAt: now + 3000 + Math.random() * 3600, phase: Math.random() * Math.PI * 2 });
+    }
+  });
+
+  for (let i = seeds.length - 1; i >= 0; i -= 1) {
+    const s = seeds[i];
+    s.x += s.vx;
+    s.y += s.vy;
+    s.vx *= 0.987;
+    s.vy *= 0.987;
+    s.x += Math.sin(time * 0.002 + s.phase) * 0.12;
+    s.y += Math.cos(time * 0.002 + s.phase) * 0.12;
+    const a = Math.atan2(s.y, s.x);
+    const edge = getArenaEdgeRadius(current, arenaRadius, a);
+    const d = Math.hypot(s.x, s.y);
+    if (d > edge - 40) {
+      const c = (edge - 40) / Math.max(0.001, d);
+      s.x *= c; s.y *= c;
+      s.vx *= -0.2; s.vy *= -0.2;
+    }
+    if (now >= s.matureAt) {
+      spawnFireflyFromSeed(s.x, s.y);
+      seeds.splice(i, 1);
+    }
+  }
+
+  for (let i = cosmicStreaks.length - 1; i >= 0; i -= 1) {
+    const c = cosmicStreaks[i];
+    c.life += 1;
+    c.x += c.vx;
+    c.y += c.vy;
+    c.vx *= 0.988;
+    c.vy *= 0.988;
+    if (Math.hypot(c.tx - c.x, c.ty - c.y) < 8 || c.life >= c.maxLife) {
+      c.x = c.tx;
+      c.y = c.ty;
+      pearls.push({
+        id: `pearl-cosmic-${now}-${i}`,
+        angle: c.angle + (Math.random() - 0.5) * 0.04,
+        attached: true,
+        glow: Math.random() * Math.PI * 2,
+      });
+      cosmicStreaks.splice(i, 1);
+    }
+  }
+
+  ctx.save();
+  ctx.globalCompositeOperation = "source-over";
+
+  pearls.forEach((p, i) => {
+    if (!p.attached) return;
+    const pulse = Math.sin(time * 0.006 + p.glow + i) * 0.5 + 0.5;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 1.7 + pulse * 0.6, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${0.62 + pulse * 0.3})`;
+    ctx.fill();
+  });
+
+  seeds.forEach((s) => {
+    const pulse = Math.sin(time * 0.009 + s.phase) * 0.5 + 0.5;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, 2.1 + pulse * 1.1, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(245,250,255,${0.52 + pulse * 0.28})`;
+    ctx.fill();
+  });
+
+  cosmicStreaks.forEach((c) => {
+    const tailX = c.x - c.vx * 5.5;
+    const tailY = c.y - c.vy * 5.5;
+    ctx.beginPath();
+    ctx.moveTo(tailX, tailY);
+    ctx.lineTo(c.x, c.y);
+    ctx.strokeStyle = "rgba(255,255,255,0.75)";
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 2.2, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.95)";
+    ctx.fill();
+  });
+
+  fish.forEach((g, i) => {
+    drawGuppyTopView(ctx, g.x, g.y, g.angle, 0.72 + (i % 4) * 0.08, time * 0.02 + g.phase);
+    if (g.carrying) {
+      ctx.beginPath();
+      ctx.arc(g.x - Math.cos(g.angle) * 8, g.y - Math.sin(g.angle) * 8, 2.3, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.fill();
+    }
+  });
+
+  ctx.restore();
 }
 
 export function drawOcean(ctx, rect, time, current) {
@@ -285,8 +528,12 @@ function drawBlobArena(ctx, blob, time = 0) {
   const points = blob?.points || [];
   if (points.length < 3) return;
   const pulse = Math.sin(time * 0.0022) * 0.5 + 0.5;
+  const smoothing = 0.32;
   const positions = points.map((point) => {
-    const radius = getBlobRadiusAtAngle(blob, point.angle);
+    const radius = Math.max(
+      40,
+      getBlobRadiusAtAngle(blob, point.angle) - ARENA_INNER_BOUNDARY_INSET
+    );
     return { x: Math.cos(point.angle) * radius, y: Math.sin(point.angle) * radius };
   });
   ctx.save();
@@ -296,8 +543,8 @@ function drawBlobArena(ctx, blob, time = 0) {
   for (let i = 0; i < positions.length; i += 1) {
     const current = positions[i];
     const next = positions[(i + 1) % positions.length];
-    const midX = (current.x + next.x) * 0.5;
-    const midY = (current.y + next.y) * 0.5;
+    const midX = current.x + (next.x - current.x) * smoothing;
+    const midY = current.y + (next.y - current.y) * smoothing;
     ctx.quadraticCurveTo(current.x, current.y, midX, midY);
   }
   ctx.closePath();

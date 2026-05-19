@@ -106,6 +106,20 @@ function buildArenaTransitionPatch({
 export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADIUS}={}) { /* trimmed by keeping exact logic moved */
   const arenaBlob = state.arenaBlob || null;
   if (arenaBlob) updateBlobPhysics(arenaBlob);
+  const clampEntityInsideBlob = (entity, padding = 0) => {
+    if (!arenaBlob || !entity) return entity;
+    const ex = Number.isFinite(entity.x) ? entity.x : 0;
+    const ey = Number.isFinite(entity.y) ? entity.y : 0;
+    const a = Math.atan2(ey, ex);
+    const boundary = getBlobRadiusAtAngle(arenaBlob, a);
+    const safe = Math.max(16, boundary - Math.max(0, padding));
+    const d = Math.hypot(ex, ey);
+    if (d <= safe) return entity;
+    const clamped = clampToCircle({ x: ex, y: ey }, safe);
+    return { ...entity, x: clamped.x, y: clamped.y };
+  };
+  const clampBubblesInsideBlob = (bubbles = []) =>
+    bubbles.map((bubble) => clampEntityInsideBlob(bubble, 26));
   const ensureInsideBlob = (fishLike) => {
     if (!arenaBlob) return fishLike;
     const fx = Number.isFinite(fishLike?.x) ? fishLike.x : 0;
@@ -139,7 +153,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
     let nextFishY = state.fish.y + limitedVy;
     const radialAngle = Math.atan2(nextFishY, nextFishX);
     const localRadius = getBlobRadiusAtAngle(arenaBlob, radialAngle);
-    const fishRadius = 38;
+    const fishRadius = 46;
     const maxDistance = Math.max(40, localRadius - fishRadius);
     const rawDistance = Math.hypot(nextFishX, nextFishY);
     if (rawDistance >= maxDistance) {
@@ -153,7 +167,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
         return {
           arenaBlob,
           fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: limitedVx * 0.08, vy: limitedVy * 0.08, targetX: nextFishX, targetY: nextFishY },
-          bubbles: separateBubblesByDepth(pushBubblesFromFish(state.bubbles,{x:nextFishX,y:nextFishY},fishDepth)),
+          bubbles: clampBubblesInsideBlob(separateBubblesByDepth(pushBubblesFromFish(state.bubbles,{x:nextFishX,y:nextFishY},fishDepth))),
         };
       }
       return {
@@ -165,7 +179,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
     }
     const speed=Math.hypot(limitedVx,limitedVy),moveAngle=speed>0.035?Math.atan2(limitedVy,limitedVx):currentAngle,angle=speed>0.035?lerpAngle(currentAngle,moveAngle,0.055+Math.min(0.055,speed*0.006)):currentAngle;
     const turnStrengthSigned=Math.max(-1,Math.min(1,((()=>{let d=moveAngle-currentAngle;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;return d;})())/1.15)); const nextMouthPull=(state.fish.mouthPull||0)+(pullNorm-(state.fish.mouthPull||0))*0.12; const targetTurnVelocity=turnStrengthSigned*(0.55+Math.min(0.45,speed*0.08)); const nextTurnVelocity=(state.fish.turnVelocity||0)+(targetTurnVelocity-(state.fish.turnVelocity||0))*0.18; const nextTurnAmount=(state.fish.turnAmount||0)+(nextTurnVelocity-(state.fish.turnAmount||0))*0.16;
-    return { arenaBlob, fish:{...state.fish,x:nextFishX,y:nextFishY,vx:limitedVx,vy:limitedVy,targetX,targetY,angle,swimPhase:(state.fish.swimPhase||0)+0.045+Math.min(0.16,speed*0.011)+nextTurnAmount*0.025,depth:clampDepth(fishDepth),mouthPull:nextMouthPull,turnAmount:nextTurnAmount,turnVelocity:nextTurnVelocity,maxSpeed:state.fish.maxSpeed||3.1,arenaRadius,membraneSide:"inside"}, bubbles:separateBubblesByDepth(pushBubblesFromFish(state.bubbles,{x:nextFishX,y:nextFishY},fishDepth)) };
+    return { arenaBlob, fish:{...state.fish,x:nextFishX,y:nextFishY,vx:limitedVx,vy:limitedVy,targetX,targetY,angle,swimPhase:(state.fish.swimPhase||0)+0.045+Math.min(0.16,speed*0.011)+nextTurnAmount*0.025,depth:clampDepth(fishDepth),mouthPull:nextMouthPull,turnAmount:nextTurnAmount,turnVelocity:nextTurnVelocity,maxSpeed:state.fish.maxSpeed||3.1,arenaRadius,membraneSide:"inside"}, bubbles:clampBubblesInsideBlob(separateBubblesByDepth(pushBubblesFromFish(state.bubbles,{x:nextFishX,y:nextFishY},fishDepth))) };
   }
   const arenaLevel=Math.max(0,Math.min(MAX_ARENA_LEVEL,Number.isFinite(state.fish.arenaLevel)?state.fish.arenaLevel:0)); const outerNavRadius=getMembraneRadiusForLevel(arenaRadius,arenaLevel); const innerNavRadius=arenaLevel>0?getMembraneRadiusForLevel(arenaRadius,arenaLevel-1):0;
   let nextFishX=state.fish.x+limitedVx,nextFishY=state.fish.y+limitedVy,nextVx=limitedVx,nextVy=limitedVy; let wallHitCount=state.fish.wallHitCount||0,lastWallHitAt=state.fish.lastWallHitAt||0; const now=performance.now(), hitDelayPassed=now-lastWallHitAt>450;
