@@ -9,6 +9,7 @@ export function createArenaBlob(pointCount = 96, baseRadius = 1200) {
       offset: 0,
       velocity: 0,
     })),
+    actionStack: [],
   };
 }
 
@@ -30,7 +31,7 @@ export function getBlobRadiusAtAngle(blob, angle) {
   return baseRadius + a + (b - a) * localT;
 }
 
-export function updateBlobPhysics(blob, { smoothFactor = 0.018, damping = 0.92, maxOffset = 520 } = {}) {
+export function updateBlobPhysics(blob, { smoothFactor = 0.01, damping = 0.94, maxOffset = 1000000 } = {}) {
   const points = blob?.points;
   if (!Array.isArray(points) || points.length < 3) return blob;
   const nextOffsets = points.map((point, i) => {
@@ -57,6 +58,27 @@ function applyGaussian(blob, impactAngle, spread, mutate) {
     const delta = shortestAngularDistance(point.angle, impactAngle);
     const falloff = Math.exp(-((delta * delta) / (spread * spread)));
     mutate(point, falloff);
+  });
+  return blob;
+}
+
+function collectGaussianDelta(blob, impactAngle, spread, amplitude) {
+  const points = blob?.points;
+  if (!Array.isArray(points) || points.length === 0) return [];
+  return points.map((point) => {
+    const delta = shortestAngularDistance(point.angle, impactAngle);
+    const falloff = Math.exp(-((delta * delta) / (spread * spread)));
+    return amplitude * falloff;
+  });
+}
+
+function applyDelta(blob, deltaByPoint = []) {
+  const points = blob?.points;
+  if (!Array.isArray(points) || points.length === 0) return blob;
+  points.forEach((point, index) => {
+    const d = Number.isFinite(deltaByPoint[index]) ? deltaByPoint[index] : 0;
+    point.offset += d;
+    point.velocity += d * 0.035;
   });
   return blob;
 }
@@ -106,8 +128,18 @@ export function applyBlobAction(blob, type, angle) {
   // Nouveau set simplifié (2 actions UX):
   // - expiration: pousse vers l'extérieur
   // - inspiration: efface localement la poussée (retour vers 0)
-  if (type === "expiration") return inflateBlobAtAngle(nextBlob, angle, 155);
-  if (type === "inspiration") return sealBlobAtAngle(nextBlob, angle, 0.82);
+  if (type === "expiration") {
+    const delta = collectGaussianDelta(nextBlob, angle, 0.23, 300);
+    nextBlob.actionStack = [...(nextBlob.actionStack || []), delta];
+    return applyDelta(nextBlob, delta);
+  }
+  if (type === "inspiration") {
+    const stack = Array.isArray(nextBlob.actionStack) ? [...nextBlob.actionStack] : [];
+    const lastDelta = stack.pop();
+    nextBlob.actionStack = stack;
+    if (!lastDelta) return nextBlob;
+    return applyDelta(nextBlob, lastDelta.map((value) => -value));
+  }
   // Compat rétro si d'anciens appels restent en circulation.
   if (type === "inflate") return inflateBlobAtAngle(nextBlob, angle, 140);
   if (type === "dig") return digBlobAtAngle(nextBlob, angle, 130);
