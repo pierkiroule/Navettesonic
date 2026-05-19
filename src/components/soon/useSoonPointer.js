@@ -260,19 +260,45 @@ export function useSoonPointer({
 
     const point = getSafeWorldFromEvent(event, { swimEdgeBoost: true });
     const current = stateRef.current;
+    const isCompoDoubleTap =
+      current.mode === "compo" &&
+      (() => {
+        const now = Date.now();
+        const last = pointerRef.current.lastTapScreenPos;
+        const key = pointerRef.current.lastTapKey;
+        const keyOk = key === "compo-menu" || key === "swim";
+        return (
+          now - (pointerRef.current.lastTapAt || 0) < DOUBLE_TAP_MS &&
+          last &&
+          keyOk &&
+          Math.hypot(last.x - event.clientX, last.y - event.clientY) < DOUBLE_TAP_DIST
+        );
+      })();
+
+    if (current.mode === "compo" && !isCompoDoubleTap) {
+      rememberTapScreen(event, "compo-menu");
+    }
+
+    if (isCompoDoubleTap) {
+      const hitBubble = findBubbleAt(point);
+      onOpenFishContextMenu?.({
+        type: "compo",
+        screen: { x: event.clientX, y: event.clientY },
+        world: point,
+        bubbleId: hitBubble?.id || null,
+      });
+      pointerRef.current.lastTapAt = 0;
+      pointerRef.current.lastTapScreenPos = null;
+      pointerRef.current.lastTapKey = null;
+      return;
+    }
 
     if (current.mode === "compo" || current.mode === "reso") {
       const r = arenaRef.current.radius || 1200;
       const d = Math.hypot(point.x, point.y);
-      const allowDoubleTapMenu =
-        current.mode === "compo" &&
-        current.interactionMode === "swim" &&
-        isDoubleTapScreen(event, "swim");
+      const allowDoubleTapMenu = false;
 
       if (d >= r - 120 && !allowDoubleTapMenu) {
-        if (current.mode === "compo" && current.interactionMode === "swim") {
-          rememberTapScreen(event, "swim");
-        }
         onFishTarget?.(point.x, point.y, r);
         return;
       }
