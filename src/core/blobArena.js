@@ -128,12 +128,13 @@ export function applyBlobAction(blob, type, angle) {
   // Nouveau set simplifié (2 actions UX):
   // - expiration: pousse vers l'extérieur
   // - inspiration: efface localement la poussée (retour vers 0)
-  if (type === "expiration") {
+  const resolvedType = type === "expi" ? "expiration" : type === "inspi" ? "inspiration" : type;
+  if (resolvedType === "expiration") {
     const delta = collectGaussianDelta(nextBlob, angle, 0.19, 360);
     nextBlob.actionStack = [...(nextBlob.actionStack || []), delta];
     return applyDelta(nextBlob, delta);
   }
-  if (type === "inspiration") {
+  if (resolvedType === "inspiration") {
     // Nouveau comportement demandé: pousse vers l'intérieur (concave),
     // au lieu d'effacer/undo la dernière action.
     const delta = collectGaussianDelta(nextBlob, angle, 0.19, -320);

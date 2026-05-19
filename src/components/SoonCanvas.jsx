@@ -4,13 +4,13 @@ import { useSoonPointer } from "./soon/useSoonPointer.js";
 import RadialMenu from "./RadialMenu.jsx";
 
 function BlobContextMenu({ anchor, onSelect }) {
-  const baseStyle = { position: "absolute", left: `${anchor?.x || 0}px`, top: `${anchor?.y || 0}px`, transform: "translate(-50%, -50%)", zIndex: 24 };
-  const item = (x, y) => ({ position: "absolute", transform: `translate(${x}px, ${y}px)` });
+  const baseStyle = { position: "absolute", left: `${anchor?.x || 0}px`, top: `${anchor?.y || 0}px`, transform: "translate(-50%, -50%)", zIndex: 24, width: "220px", height: "220px", pointerEvents: "none" };
+  const item = (x, y) => ({ position: "absolute", transform: `translate(${x}px, ${y}px)`, pointerEvents: "auto", minWidth: "110px", borderRadius: "999px", border: "1px solid rgba(125,211,252,0.45)", background: "linear-gradient(180deg, rgba(15,23,42,0.95), rgba(2,6,23,0.9))", boxShadow: "0 8px 30px rgba(0,0,0,0.35), 0 0 0 1px rgba(34,211,238,0.18) inset", backdropFilter: "blur(8px)" });
   return (
     <div style={baseStyle}>
-      <button type="button" className="radial-menu-center" onClick={() => onSelect("inspiration")} aria-label="Inspiration">◎</button>
-      <button type="button" className="radial-menu-item is-active" style={item(0, -90)} onClick={() => onSelect("expiration")}>↑ Expiration</button>
-      <button type="button" className="radial-menu-item is-active" style={item(0, 90)} onClick={() => onSelect("inspiration")}>↓ Inspiration</button>
+      <div style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", width: 70, height: 70, borderRadius: "50%", background: "radial-gradient(circle, rgba(34,211,238,0.28), rgba(15,23,42,0.9))", border: "1px solid rgba(125,211,252,0.5)", boxShadow: "0 0 24px rgba(34,211,238,0.3)" }} />
+      <button type="button" className="radial-menu-item is-active" style={item(0, -92)} onClick={() => onSelect("expi")}>↑ Expi</button>
+      <button type="button" className="radial-menu-item is-active" style={item(0, 92)} onClick={() => onSelect("inspi")}>↓ Inspi</button>
     </div>
   );
 }
@@ -189,8 +189,13 @@ export default function SoonCanvas({
     const arenaRadius = current.arenaRadius || arenaRef.current.radius || 1200;
     const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 2.55);
     const userZoom = fitZoom * (1 + (Number.isFinite(current.viewZoom) ? current.viewZoom : 0) * 1.55);
-    const screenX = rect.width * 0.5 + ((pendingBlobAction.worldX || 0) - camera.x) * userZoom;
-    const screenY = rect.height * 0.5 + ((pendingBlobAction.worldY || 0) - camera.y) * userZoom;
+    const fishAngle = Number.isFinite(current?.fish?.angle) ? current.fish.angle : pendingBlobAction.angle || 0;
+    const fishX = Number.isFinite(current?.fish?.x) ? current.fish.x : (pendingBlobAction.worldX || 0);
+    const fishY = Number.isFinite(current?.fish?.y) ? current.fish.y : (pendingBlobAction.worldY || 0);
+    const mouthX = fishX + Math.cos(fishAngle) * 44;
+    const mouthY = fishY + Math.sin(fishAngle) * 44;
+    const screenX = rect.width * 0.5 + (mouthX - camera.x) * userZoom;
+    const screenY = rect.height * 0.5 + (mouthY - camera.y) * userZoom;
     setFishMenu({ type: "blob", angle: pendingBlobAction.angle, screen: { x: screenX, y: screenY } });
   }, [pendingBlobAction]);
 
@@ -318,8 +323,8 @@ export default function SoonCanvas({
           anchor={fishMenu.screen}
           onClose={() => setFishMenu(null)}
           items={fishMenu?.type === "blob" ? [
-            { id: "expiration", label: "↑ Expiration" },
-            { id: "inspiration", label: "↓ Inspiration" },
+            { id: "expi", label: "↑ Expi" },
+            { id: "inspi", label: "↓ Inspi" },
           ] : [
             { id: "depth", label: "Profondeur" },
             { id: "bubbles", label: `Bulles ${bubblesEnabled ? "ON" : "OFF"}` },
