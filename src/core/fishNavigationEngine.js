@@ -106,12 +106,25 @@ function buildArenaTransitionPatch({
 export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADIUS}={}) { /* trimmed by keeping exact logic moved */
   const arenaBlob = state.arenaBlob || null;
   if (arenaBlob) updateBlobPhysics(arenaBlob);
+  const ensureInsideBlob = (fishLike) => {
+    if (!arenaBlob) return fishLike;
+    const fx = Number.isFinite(fishLike?.x) ? fishLike.x : 0;
+    const fy = Number.isFinite(fishLike?.y) ? fishLike.y : 0;
+    const a = Math.atan2(fy, fx);
+    const r = getBlobRadiusAtAngle(arenaBlob, a);
+    const safe = Math.max(26, r - 42);
+    const d = Math.hypot(fx, fy);
+    if (d <= safe) return fishLike;
+    const c = clampToCircle({ x: fx, y: fy }, safe);
+    return { ...fishLike, x: c.x, y: c.y, targetX: c.x, targetY: c.y };
+  };
   if (state.gamePaused) {
+    const safeFish = ensureInsideBlob(state.fish);
     return {
       fish: {
-        ...state.fish,
-        vx: (state.fish.vx || 0) * 0.78,
-        vy: (state.fish.vy || 0) * 0.78,
+        ...safeFish,
+        vx: (safeFish.vx || 0) * 0.7,
+        vy: (safeFish.vy || 0) * 0.7,
       },
       arenaBlob,
     };
@@ -133,6 +146,16 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
       const clamped = clampToCircle({ x: nextFishX, y: nextFishY }, maxDistance);
       nextFishX = clamped.x;
       nextFishY = clamped.y;
+      const wasPendingAtSameAngle =
+        Boolean(state.pendingBlobAction) &&
+        Math.abs(angleDistance(state.pendingBlobAction.angle || 0, radialAngle)) < 0.08;
+      if (wasPendingAtSameAngle) {
+        return {
+          arenaBlob,
+          fish: { ...state.fish, x: nextFishX, y: nextFishY, vx: limitedVx * 0.08, vy: limitedVy * 0.08, targetX: nextFishX, targetY: nextFishY },
+          bubbles: separateBubblesByDepth(pushBubblesFromFish(state.bubbles,{x:nextFishX,y:nextFishY},fishDepth)),
+        };
+      }
       return {
         arenaBlob,
         gamePaused: true,
