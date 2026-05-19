@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { useSoonPointer } from '../src/components/soon/useSoonPointer.js';
 
 function createHarness() {
-  const calls = { fishTarget: 0, setDepth: 0, openMenu: 0 };
+  const calls = { fishTarget: 0, boostSpeed: 0, openMenu: 0 };
   const canvas = {
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
     setPointerCapture: () => {},
@@ -17,7 +17,7 @@ function createHarness() {
     pointerRef: { current: { activePointers: new Map() } },
     stateRef,
     onFishTarget: () => { calls.fishTarget += 1; },
-    onSetFishDepth: () => { calls.setDepth += 1; },
+    onBoostFishSpeed: () => { calls.boostSpeed += 1; },
     onOpenFishContextMenu: () => { calls.openMenu += 1; },
   });
   return { api, calls };
@@ -33,12 +33,12 @@ test('tap simple déclenche la nage', () => {
   assert.equal(calls.fishTarget, 1);
 });
 
-test('double tap conserve le comportement historique de profondeur', () => {
+test('double tap active le boost de vitesse', () => {
   const { api, calls } = createHarness();
   api.handlePointerDown(event(1, 500, 500));
   api.handlePointerUp(event(1, 500, 500));
   api.handlePointerDown(event(2, 502, 501));
-  assert.equal(calls.setDepth, 1);
+  assert.equal(calls.boostSpeed, 1);
 });
 
 test('long press ouvre le menu contextuel poisson', async () => {
@@ -55,15 +55,15 @@ test('double tap ne doit pas ouvrir le menu contextuel', async () => {
   api.handlePointerUp(event(1, 500, 500));
   api.handlePointerDown(event(2, 501, 500));
   await new Promise((r) => setTimeout(r, 520));
-  assert.equal(calls.setDepth, 1);
+  assert.equal(calls.boostSpeed, 1);
   assert.equal(calls.openMenu, 0);
 });
 
-test('long press ne doit pas déclencher de changement de profondeur', async () => {
+test('long press ne doit pas déclencher de boost vitesse', async () => {
   const { api, calls } = createHarness();
   api.handlePointerDown(event(1, 510, 505));
   await new Promise((r) => setTimeout(r, 520));
   api.handlePointerUp(event(1, 510, 505));
   assert.equal(calls.openMenu, 1);
-  assert.equal(calls.setDepth, 0);
+  assert.equal(calls.boostSpeed, 0);
 });

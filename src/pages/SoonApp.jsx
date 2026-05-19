@@ -46,6 +46,7 @@ export default function SoonApp({ onBack }) {
   const [bubblesIntensity, setBubblesIntensity] = useState(1);
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const nombriloAudioRef = useRef(null);
+  const speedBoostUntilRef = useRef(0);
 
   const {
     mode,
@@ -218,6 +219,10 @@ export default function SoonApp({ onBack }) {
     }
   };
 
+  const boostFishSpeed = () => {
+    speedBoostUntilRef.current = Date.now() + 1200;
+  };
+
   const cycleBubbleDepth = (id) => {
     const bubble = bubbles.find((item) => item.id === id);
     if (!bubble) return;
@@ -299,19 +304,21 @@ export default function SoonApp({ onBack }) {
         viewZoom={viewZoom}
         onFishTarget={(x, y, arenaRadius) => setFishTarget(x, y, arenaRadius)}
         onTickFish={({ arenaRadius } = {}) => {
+          const boosted = Date.now() < speedBoostUntilRef.current;
+          const effectiveSwimSpeed = boosted ? swimSpeed * 1.8 : swimSpeed;
           if (isOdysseo) {
             if (isTravelPlaying) {
-              tickOdysseoPath({ swimSpeed });
+              tickOdysseoPath({ swimSpeed: effectiveSwimSpeed });
             }
             return;
           }
 
           if (isEditMode) return;
 
-          tickFish({ swimSpeed, arenaRadius });
+          tickFish({ swimSpeed: effectiveSwimSpeed, arenaRadius });
 
         }}
-        onSetFishDepth={setFishDepth}
+        onBoostFishSpeed={boostFishSpeed}
         onSelectBubble={selectBubble}
         onSelectBeacon={selectBeacon}
         onMoveBeacon={moveBeacon}
@@ -367,7 +374,7 @@ export default function SoonApp({ onBack }) {
             </header>
             <ul>
               <li><strong>Tap :</strong> nage vers le point visé.</li>
-              <li><strong>Double-tap :</strong> change la profondeur du poisson (1 → 2 → 3).</li>
+              <li><strong>Double-tap :</strong> boost ponctuel de la vitesse du poisson-plume.</li>
               <li><strong>Appui long :</strong> ouvre le menu contextuel du poisson.</li>
               <li><strong>Mode Éditer :</strong> double-tap vide = créer une bulle, tap bulle = éditer.</li>
               <li><strong>Navigo :</strong> Dessin pour tracer, Ancre pour poser la profondeur du parcours.</li>
