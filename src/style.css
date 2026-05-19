@@ -2232,11 +2232,17 @@ button {
   gap: 10px;
 }
 
-.fish-sliders {
-  width: min(92vw, 360px);
-  display: flex;
+.fish-tools {
   flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
+}
+
+.fish-sliders {
+  width: min(92vw, 460px);
+  display: flex;
+  gap: 14px;
+  align-items: center;
   padding: 10px 12px;
   border-radius: 16px;
   background: rgba(15, 23, 42, 0.72);
@@ -2244,16 +2250,22 @@ button {
   backdrop-filter: blur(12px);
 }
 
-.fish-slider-row {
+.fish-slider-row.horizontal {
+  flex: 1;
   display: grid;
-  grid-template-columns: 88px minmax(0, 1fr) 48px;
-  align-items: center;
+  grid-template-columns: 1fr;
+  align-items: stretch;
   gap: 8px;
   color: rgba(226, 232, 240, 0.86);
 }
 
-.fish-slider-row.depth {
-  grid-template-columns: 88px minmax(0, 120px) 48px;
+.fish-slider-column {
+  width: 84px;
+  display: grid;
+  grid-template-rows: auto 86px auto;
+  justify-items: center;
+  gap: 7px;
+  color: rgba(226, 232, 240, 0.86);
 }
 
 .slider-label {
@@ -2265,9 +2277,25 @@ button {
 .slider-value {
   font-size: 0.62rem;
   opacity: 0.9;
-  text-align: right;
+  text-align: center;
 }
 
+
+.slider-label-top {
+  text-align: center;
+  margin-bottom: 2px;
+}
+
+.fish-slider-horizontal-track {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: 8px;
+}
+
+.fish-slider-horizontal-track .slider-value {
+  text-align: right;
+}
 .slim-horizontal-range {
   -webkit-appearance: none;
   appearance: none;
@@ -2277,13 +2305,15 @@ button {
   background: transparent;
 }
 
-.slim-horizontal-range::-webkit-slider-runnable-track {
+.slim-horizontal-range::-webkit-slider-runnable-track,
+.slim-vertical-range::-webkit-slider-runnable-track {
   height: 6px;
   border-radius: 999px;
   background: rgba(148, 163, 184, 0.45);
 }
 
-.slim-horizontal-range::-webkit-slider-thumb {
+.slim-horizontal-range::-webkit-slider-thumb,
+.slim-vertical-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 14px;
@@ -2294,13 +2324,15 @@ button {
   background: rgba(240, 249, 255, 0.92);
 }
 
-.slim-horizontal-range::-moz-range-track {
+.slim-horizontal-range::-moz-range-track,
+.slim-vertical-range::-moz-range-track {
   height: 6px;
   border-radius: 999px;
   background: rgba(148, 163, 184, 0.45);
 }
 
-.slim-horizontal-range::-moz-range-thumb {
+.slim-horizontal-range::-moz-range-thumb,
+.slim-vertical-range::-moz-range-thumb {
   width: 14px;
   height: 14px;
   border-radius: 999px;
@@ -2308,45 +2340,22 @@ button {
   background: rgba(240, 249, 255, 0.92);
 }
 
-.slim-horizontal-range.speed::-webkit-slider-thumb,
-.slim-horizontal-range.speed::-moz-range-thumb {
+.slim-vertical-range {
+  -webkit-appearance: slider-vertical;
+  appearance: slider-vertical;
+  writing-mode: bt-lr;
+  width: 14px;
+  height: 86px;
+  margin: 0;
+  background: transparent;
+}
+
+.slim-vertical-range.speed::-webkit-slider-thumb,
+.slim-vertical-range.speed::-moz-range-thumb {
   border-color: rgba(251, 113, 133, 0.6);
 }
 
-.slim-horizontal-range.depth {
-  max-width: 120px;
-}
-
-@media (max-width: 640px) {
-  .top-nav {
-    top: max(8px, env(safe-area-inset-top));
-    left: 8px;
-    right: 8px;
-  }
-
-  .top-nav-flow {
-    width: min(62vw, 250px);
-    gap: 18px;
-    padding: 8px 12px;
-    margin-top: 6px;
-  }
-
-  .top-nav-flow button,
-  .top-nav-icon {
-    width: 42px;
-    height: 42px;
-  }
-
-  .flow-step-tip {
-    top: 56px;
-    max-width: min(92vw, 320px);
-  }
-
-  .cockpit {
-    bottom: calc(10px + env(safe-area-inset-bottom));
-    padding-inline: 10px;
-  }
-
+@media (max-width: 768px) {
   .cockpit-buttons {
     width: 100%;
     justify-content: center;
@@ -2359,12 +2368,16 @@ button {
   }
 
   .fish-sliders {
-    width: min(96vw, 340px);
+    width: min(96vw, 390px);
+    gap: 10px;
   }
 
-  .fish-slider-row,
-  .fish-slider-row.depth {
-    grid-template-columns: 80px minmax(0, 1fr) 44px;
+  .fish-slider-column {
+    width: 74px;
+  }
+
+  .fish-slider-row.horizontal {
+    grid-template-columns: 1fr;
   }
 
   .odysseo-cockpit .mode-toggle {
@@ -2565,4 +2578,59 @@ button {
   background: rgba(15, 23, 42, 0.9);
   color: #e2e8f0;
   padding: 8px 10px;
+}
+
+.tutorial-btn {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 120;
+  border: 1px solid rgba(186, 230, 253, 0.35);
+  background: rgba(15, 23, 42, 0.86);
+  color: rgba(240, 249, 255, 0.95);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 0.72rem;
+}
+
+.tutorial-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.62);
+  z-index: 140;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.tutorial-modal {
+  width: min(92vw, 480px);
+  border-radius: 14px;
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  background: rgba(15, 23, 42, 0.95);
+  color: rgba(226, 232, 240, 0.95);
+  padding: 14px;
+}
+
+.tutorial-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.tutorial-close {
+  border: 0;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.95);
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.tutorial-modal ul {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 7px;
+  font-size: 0.86rem;
 }

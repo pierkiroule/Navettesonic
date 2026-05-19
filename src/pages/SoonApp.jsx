@@ -24,19 +24,27 @@ import {
 
 const NOMBRILO_ONE_SHOT_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/nombrilo/nombrilo.mp3";
 
+const SPEED_BY_LEVEL = {
+  1: 0.6,
+  2: 1.15,
+  3: 1.7,
+};
+
 export default function SoonApp({ onBack }) {
   const [page, setPage] = useState("arena");
   const [interactionMode, setInteractionMode] = useState("swim");
   const [odysseoMode, setOdysseoMode] = useState(ODYSSEO_MODE_TRACE);
-  const [viewZoom, setViewZoom] = useState(0.5);
-  const [swimSpeed, setSwimSpeed] = useState(0.3);
+  const [viewZoom, setViewZoom] = useState(1);
+  const [swimSpeed, setSwimSpeed] = useState(1.15);
+  const [swimSpeedLevel, setSwimSpeedLevel] = useState(2);
   const [isTravelPlaying, setIsTravelPlaying] = useState(false);
   const [editorOpenKey, setEditorOpenKey] = useState(0);
-  const [selectedDepth, setSelectedDepth] = useState(1);
+  const [selectedDepth, setSelectedDepth] = useState(2);
   const [exportStatus, setExportStatus] = useState("");
   const [exportUrl, setExportUrl] = useState(null);
   const [bubblesEnabled, setBubblesEnabled] = useState(true);
   const [bubblesIntensity, setBubblesIntensity] = useState(1);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
   const nombriloAudioRef = useRef(null);
 
   const {
@@ -93,6 +101,20 @@ export default function SoonApp({ onBack }) {
 
   const isOdysseo = mode === SOON_MODE_RESO;
   const isEditMode = interactionMode === "edit";
+
+  useEffect(() => {
+    const depth = Math.max(1, Math.min(3, Math.round(fish?.depth || 2)));
+    setSelectedDepth(depth);
+  }, [fish?.depth]);
+
+  useEffect(() => {
+    const closestLevel = [1, 2, 3].reduce((best, level) => (
+      Math.abs(SPEED_BY_LEVEL[level] - swimSpeed) < Math.abs(SPEED_BY_LEVEL[best] - swimSpeed)
+        ? level
+        : best
+    ), 2);
+    setSwimSpeedLevel(closestLevel);
+  }, [swimSpeed]);
 
 
   const flowStep = useMemo(() => {
@@ -318,6 +340,42 @@ export default function SoonApp({ onBack }) {
         onBlobAction={applyBlobAction}
       />
 
+
+      <button
+        type="button"
+        className="tutorial-btn"
+        onClick={() => setTutorialOpen(true)}
+        aria-label="Ouvrir le tutoriel des interactions"
+      >
+        Tuto•°
+      </button>
+
+      {tutorialOpen && (
+        <div className="tutorial-modal-backdrop" onClick={() => setTutorialOpen(false)}>
+          <div
+            className="tutorial-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Résumé des interactions"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="tutorial-modal-header">
+              <h3>Résumé des interactions</h3>
+              <button type="button" className="tutorial-close" onClick={() => setTutorialOpen(false)}>
+                ×
+              </button>
+            </header>
+            <ul>
+              <li><strong>Tap :</strong> nage vers le point visé.</li>
+              <li><strong>Double-tap :</strong> change la profondeur du poisson (1 → 2 → 3).</li>
+              <li><strong>Appui long :</strong> ouvre le menu contextuel du poisson.</li>
+              <li><strong>Mode Éditer :</strong> double-tap vide = créer une bulle, tap bulle = éditer.</li>
+              <li><strong>Navigo :</strong> Dessin pour tracer, Ancre pour poser la profondeur du parcours.</li>
+            </ul>
+          </div>
+        </div>
+      )}
+
       <div className={`cockpit ${isOdysseo ? "odysseo-cockpit" : ""}`}>
         <div className="cockpit-buttons">
           {isOdysseo ? (
@@ -413,50 +471,52 @@ export default function SoonApp({ onBack }) {
                 {isEditMode ? "✏️" : "🐟"}
               </button>
 
-              <div className="fish-sliders">
-                <label className="fish-slider-row" htmlFor="zoom-slider-horizontal">
-                  <span className="slider-label">🔍 Zoom</span>
-                  <input
-                    id="zoom-slider-horizontal"
-                    className="slim-horizontal-range"
-                    type="range"
-                    min="0"
-                    max="2"
-                    step="0.05"
-                    value={viewZoom}
-                    onChange={(event) => setViewZoom(Number(event.target.value))}
-                  />
-                  <span className="slider-value">{viewZoom.toFixed(1)}</span>
-                </label>
-
-                <label className="fish-slider-row" htmlFor="speed-slider-horizontal">
-                  <span className="slider-label">⚡ Vitesse</span>
-                  <input
-                    id="speed-slider-horizontal"
-                    className="slim-horizontal-range speed"
-                    type="range"
-                    min="0.3"
-                    max="2"
-                    step="0.05"
-                    value={swimSpeed}
-                    onChange={(event) => setSwimSpeed(Number(event.target.value))}
-                  />
-                  <span className="slider-value">{swimSpeed <= 0 ? "Arrêt" : `${swimSpeed.toFixed(2)}×`}</span>
-                </label>
-
-                <label className="fish-slider-row depth" htmlFor="depth-slider-horizontal">
+              <div className="fish-sliders fish-sliders-layout">
+                <label className="fish-slider-column" htmlFor="depth-slider-vertical">
                   <span className="slider-label">🌊 Profondeur</span>
                   <input
-                    id="depth-slider-horizontal"
-                    className="slim-horizontal-range depth"
+                    id="depth-slider-vertical"
+                    className="slim-vertical-range depth"
                     type="range"
                     min="1"
                     max="3"
                     step="1"
                     value={selectedDepth}
-                    onChange={(event) => setSelectedDepth(Number(event.target.value))}
+                    onChange={(event) => { const depth = Number(event.target.value); setSelectedDepth(depth); setFishDepth(depth); }}
                   />
                   <span className="slider-value">{selectedDepth}</span>
+                </label>
+
+                <label className="fish-slider-row horizontal" htmlFor="zoom-slider-horizontal">
+                  <span className="slider-label slider-label-top">🔍 Zoom</span>
+                  <div className="fish-slider-horizontal-track">
+                    <input
+                      id="zoom-slider-horizontal"
+                      className="slim-horizontal-range"
+                      type="range"
+                      min="0"
+                      max="2"
+                      step="0.05"
+                      value={viewZoom}
+                      onChange={(event) => setViewZoom(Number(event.target.value))}
+                    />
+                    <span className="slider-value">{viewZoom.toFixed(1)}</span>
+                  </div>
+                </label>
+
+                <label className="fish-slider-column" htmlFor="speed-slider-vertical">
+                  <span className="slider-label">⚡ Vitesse</span>
+                  <input
+                    id="speed-slider-vertical"
+                    className="slim-vertical-range speed"
+                    type="range"
+                    min="1"
+                    max="3"
+                    step="1"
+                    value={swimSpeedLevel}
+                    onChange={(event) => { const level = Number(event.target.value); setSwimSpeedLevel(level); setSwimSpeed(SPEED_BY_LEVEL[level]); }}
+                  />
+                  <span className="slider-value">{swimSpeedLevel}</span>
                 </label>
               </div>
             </div>

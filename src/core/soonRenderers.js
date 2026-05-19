@@ -824,26 +824,9 @@ export function drawCameraVignette(ctx, rect, fish) {
 
 export function drawHud(ctx, rect, current, arenaRef) {
   void arenaRef;
-  const fishDepth = Math.round(current?.fish?.depth || 1);
   const arenaLevel = Number.isFinite(current?.fish?.arenaLevel) ? current.fish.arenaLevel : 0;
-  const showDepth = current.mode === "compo" || current.mode === "reso";
 
   ctx.save();
-
-  if (showDepth) {
-    ctx.fillStyle = "rgba(2, 6, 23, 0.66)";
-    ctx.strokeStyle = "rgba(186, 230, 253, 0.42)";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.roundRect(rect.width - 90, 18, 64, 30, 14);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = "rgba(226, 232, 240, 0.9)";
-    ctx.font = "700 12px system-ui";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(`P${fishDepth}`, rect.width - 58, 33);
-  }
 
   const dotR = 5;
   const dotSpacing = 16;
