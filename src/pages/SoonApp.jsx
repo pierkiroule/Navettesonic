@@ -31,7 +31,9 @@ const SPEED_BY_LEVEL = {
 };
 
 export default function SoonApp({ onBack }) {
+  const WORKFLOW_ROOT_TUTO = "tuto";
   const [page, setPage] = useState("arena");
+  const [activeRoot, setActiveRoot] = useState(WORKFLOW_ROOT_TUTO);
   const [interactionMode, setInteractionMode] = useState("swim");
   const [odysseoMode, setOdysseoMode] = useState(ODYSSEO_MODE_TRACE);
   const [viewZoom, setViewZoom] = useState(1);
@@ -44,7 +46,6 @@ export default function SoonApp({ onBack }) {
   const [exportUrl, setExportUrl] = useState(null);
   const [bubblesEnabled, setBubblesEnabled] = useState(true);
   const [bubblesIntensity, setBubblesIntensity] = useState(1);
-  const [tutorialOpen, setTutorialOpen] = useState(false);
   const nombriloAudioRef = useRef(null);
   const speedBoostUntilRef = useRef(0);
 
@@ -141,15 +142,19 @@ export default function SoonApp({ onBack }) {
     const persistedRoot = readPersistedWorkflowRoot();
 
     if (fromHash?.root === WORKFLOW_ROOT_NAVIGO) {
+      setActiveRoot(WORKFLOW_ROOT_NAVIGO);
       setMode(SOON_MODE_RESO);
       setOdysseoMode(normalizeOdysseoMode(fromHash.odysseoMode));
       return;
     }
 
     if (persistedRoot === WORKFLOW_ROOT_NAVIGO) {
+      setActiveRoot(WORKFLOW_ROOT_NAVIGO);
       setMode(SOON_MODE_RESO);
       setOdysseoMode(ODYSSEO_MODE_TRACE);
+      return;
     }
+    setActiveRoot(WORKFLOW_ROOT_COMPO);
   }, [setMode]);
 
   useEffect(() => {
@@ -159,6 +164,12 @@ export default function SoonApp({ onBack }) {
   }, [mode, odysseoMode]);
 
   const setWorkflowRoot = (root) => {
+    setActiveRoot(root);
+
+    if (root === WORKFLOW_ROOT_TUTO) {
+      return;
+    }
+
     stopCircuitAutopilot();
     setInteractionMode("swim");
     setIsTravelPlaying(false);
@@ -272,7 +283,7 @@ export default function SoonApp({ onBack }) {
 
         <div className="top-nav-flow">
           <WorkflowShell
-            activeRoot={modeToWorkflowRoot(mode)}
+            activeRoot={activeRoot}
             onChangeRoot={setWorkflowRoot}
           />
         </div>
@@ -348,39 +359,43 @@ export default function SoonApp({ onBack }) {
       />
 
 
-      <button
-        type="button"
-        className="tutorial-btn"
-        onClick={() => setTutorialOpen(true)}
-        aria-label="Ouvrir le tutoriel des interactions"
-      >
-        Tuto•°
-      </button>
-
-      {tutorialOpen && (
-        <div className="tutorial-modal-backdrop" onClick={() => setTutorialOpen(false)}>
-          <div
-            className="tutorial-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Résumé des interactions"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <header className="tutorial-modal-header">
-              <h3>Résumé des interactions</h3>
-              <button type="button" className="tutorial-close" onClick={() => setTutorialOpen(false)}>
-                ×
-              </button>
-            </header>
-            <ul>
-              <li><strong>Tap :</strong> nage vers le point visé.</li>
-              <li><strong>Double-tap :</strong> boost ponctuel de la vitesse du poisson-plume.</li>
-              <li><strong>Appui long :</strong> ouvre le menu contextuel du poisson.</li>
-              <li><strong>Mode Éditer :</strong> double-tap vide = créer une bulle, tap bulle = éditer.</li>
-              <li><strong>Navigo :</strong> Dessin pour tracer, Ancre pour poser la profondeur du parcours.</li>
-            </ul>
+      {activeRoot === WORKFLOW_ROOT_TUTO && (
+        <section className="tutorial-panel" aria-label="Tutoriel Soon">
+          <h3>Tuto Soon•° — concept, principe et fonctionnement</h3>
+          <p>
+            Soon est un atelier d’exploration sonore en 2 modes : <strong>Compo</strong> pour créer la matière
+            et <strong>Navigo</strong> pour écrire puis jouer un parcours d’écoute.
+          </p>
+          <div className="tutorial-grid">
+            <article>
+              <h4>Principe global</h4>
+              <ul>
+                <li><strong>Tap :</strong> le poisson-plume nage vers la zone visée.</li>
+                <li><strong>Double-tap :</strong> active un boost court de vitesse.</li>
+                <li><strong>Appui long :</strong> ouvre le menu radial contextuel.</li>
+                <li><strong>Recentrer :</strong> remet le poisson au centre et relance ton orientation.</li>
+              </ul>
+            </article>
+            <article>
+              <h4>Mode Compo — construire la scène</h4>
+              <ul>
+                <li><strong>Mode Nager :</strong> tu explores, écoutes et positionnes ton attention.</li>
+                <li><strong>Mode Éditer :</strong> double-tap vide pour créer une bulle, tap bulle pour la modifier.</li>
+                <li><strong>Menu bulle :</strong> ajuste position, profondeur, contenu et présence dans l’espace.</li>
+                <li><strong>Objectif :</strong> fabriquer une cartographie sonore vivante et expressive.</li>
+              </ul>
+            </article>
+            <article>
+              <h4>Mode Navigo — tracer puis jouer</h4>
+              <ul>
+                <li><strong>Outil Dessin ✏️ :</strong> trace le trajet d’écoute.</li>
+                <li><strong>Outil Ancre ⚓ :</strong> place des jalons de profondeur (1, 2, 3).</li>
+                <li><strong>Play / Pause :</strong> lance ou arrête la traversée du parcours.</li>
+                <li><strong>Effacer 🧽 :</strong> nettoie le tracé pour recommencer un nouveau voyage.</li>
+              </ul>
+            </article>
           </div>
-        </div>
+        </section>
       )}
 
       <div className={`cockpit ${isOdysseo ? "odysseo-cockpit" : ""}`}>
