@@ -223,14 +223,15 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
       const toX = g.x - Math.cos(g.angle) * 6;
       const toY = g.y - Math.sin(g.angle) * 6;
       seeds.push({
-        x: fromX,
-        y: fromY,
+        x: near.x + Math.cos(near.angle || 0) * 18,
+        y: near.y + Math.sin(near.angle || 0) * 18,
         vx: (toX - fromX) * 0.08,
         vy: (toY - fromY) * 0.08,
         bornAt: now,
         matureAt: now + 3000 + Math.random() * 3600,
         phase: Math.random() * Math.PI * 2,
         inhalingUntil: now + 480,
+        inhalingBy: g.id,
       });
       for (let j = 0; j < 9; j += 1) {
         pinkSmoke.push({
@@ -265,7 +266,7 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
         s.vx += nx * (0.3 + push * 0.5) + (g.vx || 0) * 0.1;
         s.vy += ny * (0.3 + push * 0.5) + (g.vy || 0) * 0.1;
       }
-      if (now < (s.inhalingUntil || 0)) {
+      if (now < (s.inhalingUntil || 0) && s.inhalingBy === g.id) {
         s.vx += (g.x - s.x) * 0.018;
         s.vy += (g.y - s.y) * 0.018;
       }
