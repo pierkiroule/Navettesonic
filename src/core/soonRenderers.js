@@ -350,7 +350,10 @@ function drawBlobArena(ctx, blob, time = 0) {
   if (points.length < 3) return;
   const pulse = Math.sin(time * 0.0022) * 0.5 + 0.5;
   const positions = points.map((point) => {
-    const radius = getBlobRadiusAtAngle(blob, point.angle);
+    const radius = Math.max(
+      40,
+      getBlobRadiusAtAngle(blob, point.angle) - ARENA_INNER_BOUNDARY_INSET
+    );
     return { x: Math.cos(point.angle) * radius, y: Math.sin(point.angle) * radius };
   });
   ctx.save();
