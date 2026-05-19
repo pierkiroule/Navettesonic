@@ -142,11 +142,8 @@ function ensureGuppyRuntime(current, arenaRadius) {
       dropAt: 0,
     });
   }
-  const pearls = 44;
-  for (let i = 0; i < pearls; i += 1) {
-    const a = (Math.PI * 2 * i) / pearls;
-    guppyRuntime.pearls.push({ id: `pearl-${i}`, angle: a, attached: true, glow: Math.random() * Math.PI * 2 });
-  }
+  // Important narratif: au départ aucune perle/graine sur la membrane.
+  // Elles arrivent uniquement via les étoiles filantes cosmiques.
 }
 
 function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
@@ -162,20 +159,21 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
     const impactAngle = Math.random() * Math.PI * 2;
     const edge = getArenaEdgeRadius(current, arenaRadius, impactAngle);
     const spawnR = edge + 340 + Math.random() * 220;
-    const targetX = Math.cos(impactAngle) * Math.max(80, edge - 8);
-    const targetY = Math.sin(impactAngle) * Math.max(80, edge - 8);
+    // Impact sur membrane (pas de traversée de l'arène).
+    const targetX = Math.cos(impactAngle) * Math.max(84, edge + 4);
+    const targetY = Math.sin(impactAngle) * Math.max(84, edge + 4);
     const fromX = Math.cos(impactAngle + (Math.random() - 0.5) * 0.5) * spawnR;
     const fromY = Math.sin(impactAngle + (Math.random() - 0.5) * 0.5) * spawnR;
     cosmicStreaks.push({
       x: fromX,
       y: fromY,
-      vx: (targetX - fromX) * 0.06,
-      vy: (targetY - fromY) * 0.06,
+      vx: (targetX - fromX) * 0.072,
+      vy: (targetY - fromY) * 0.072,
       tx: targetX,
       ty: targetY,
       angle: impactAngle,
       life: 0,
-      maxLife: 42 + Math.random() * 20,
+      maxLife: 26 + Math.random() * 14,
     });
     guppyRuntime.nextCosmicSpawnAt = now + 1500 + Math.random() * 3000;
   }
