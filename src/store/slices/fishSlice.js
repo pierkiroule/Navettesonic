@@ -15,6 +15,17 @@ function randomBucketSample() {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+function keepBubbleOffMembrane(bubble, blob) {
+  const bx = Number.isFinite(bubble?.x) ? bubble.x : 0;
+  const by = Number.isFinite(bubble?.y) ? bubble.y : 0;
+  const bubbleRadius = Math.max(24, Number.isFinite(bubble?.r) ? bubble.r : 70);
+  const angle = Math.atan2(by, bx);
+  const membraneRadius = getBlobRadiusAtAngle(blob, angle);
+  const safeRadius = Math.max(36, membraneRadius - bubbleRadius - 18);
+  const clamped = clampToCircle({ x: bx, y: by }, safeRadius);
+  return { ...bubble, x: clamped.x, y: clamped.y };
+}
+
 export const createFishSlice=(set,get)=>({
 setFishTarget:(x,y)=>{if(get().circuitAutopilot)return;set((s)=>({fish:{...s.fish,targetX:x,targetY:y}}));},
 recenterFish:()=>set((s)=>{const f=s.fish||{};const dx=-(f.x||0),dy=-(f.y||0),d=Math.hypot(dx,dy)||1,slow=Math.min(1,d/280)*0.85;return{circuitAutopilot:false,fish:{...f,targetX:0,targetY:0,vx:(dx/d)*slow,vy:(dy/d)*slow},circuitSegmentIndex:0,circuitSegmentT:0};}),
@@ -36,6 +47,7 @@ applyBlobAction:(type,angle)=>set((s)=>{const nextBlob=applyBlobAction(s.arenaBl
 let nextBubbles=s.bubbles||[];
 if(type==="inspi"){const centerRepulse=Math.max(300,basePush*6.2);nx-=Math.cos(fishAngle)*centerRepulse;ny-=Math.sin(fishAngle)*centerRepulse;const fishSafeRadius=Math.max(30,maxDistance-280);const pushed=clampToCircle({x:nx,y:ny},fishSafeRadius);nx=pushed.x;ny=pushed.y;const spawnAngle=Number.isFinite(angle)?angle:Math.atan2(s.fish?.y||0,s.fish?.x||1);const bubbleSafeRadius=Math.max(70,maxDistance-380);const spawn=clampToCircle({x:Math.cos(spawnAngle)*bubbleSafeRadius,y:Math.sin(spawnAngle)*bubbleSafeRadius},bubbleSafeRadius);const picked=randomBucketSample();nextBubbles=[...nextBubbles,{id:makeId("bubble"),label:picked?.name||"Bulle sonore",x:spawn.x,y:spawn.y,r:70+Math.random()*16,hue:Math.floor(160+Math.random()*170),depth:clampDepth(s.fish?.depth||1),sampleId:picked?.id||"tone-water"}];}
 if(type==="expi"&&nextBubbles.length){const fishX=s.fish?.x||0;const fishY=s.fish?.y||0;let nearestIndex=0;let nearestDistance=Infinity;nextBubbles.forEach((bubble,index)=>{const d=Math.hypot((bubble?.x||0)-fishX,(bubble?.y||0)-fishY);if(d<nearestDistance){nearestDistance=d;nearestIndex=index;}});nextBubbles=nextBubbles.filter((_,index)=>index!==nearestIndex);}
+nextBubbles=nextBubbles.map((bubble)=>keepBubbleOffMembrane(bubble,nextBlob));
 const velocityDamping=type==="inspi"?0.12:0.35;
 return{arenaBlob:nextBlob,gamePaused:false,pendingBlobAction:null,bubbles:nextBubbles,fish:{...(s.fish||{}),x:nx,y:ny,targetX:nx,targetY:ny,vx:(s.fish?.vx||0)*velocityDamping,vy:(s.fish?.vy||0)*velocityDamping}};}),
 });
