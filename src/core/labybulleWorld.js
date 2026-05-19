@@ -115,6 +115,10 @@ function getNodeById(world, id) {
 
 const ROOM_TOUCH_OVERLAP = 0;
 const DEFAULT_LAYOUT_BASE_RADIUS = 1200;
+const MEMBRANE_SEGMENT_COUNT = 256;
+const MEMBRANE_IMPACT_AMPLITUDE = 14;
+const MEMBRANE_IMPACT_SIGMA = 0.17;
+const MEMBRANE_MAX_EXTRA_RADIUS = 640;
 
 function getNextArenaSequence(world) {
   const current = Number.isFinite(world?.meta?.nextArenaSeq) ? world.meta.nextArenaSeq : 1;
@@ -155,6 +159,46 @@ function invertHint(hint) {
   if (hint === PORTAL_POSITIONS.LEFT) return PORTAL_POSITIONS.RIGHT;
   if (hint === PORTAL_POSITIONS.RIGHT) return PORTAL_POSITIONS.LEFT;
   return PORTAL_POSITIONS.CUSTOM;
+}
+
+function getAngularDistance(a = 0, b = 0) {
+  return Math.atan2(Math.sin(a - b), Math.cos(a - b));
+}
+
+function getArenaMembraneStore(world) {
+  if (!world.meta) world.meta = {};
+  if (!world.meta.membraneDeformations) world.meta.membraneDeformations = {};
+  return world.meta.membraneDeformations;
+}
+
+function getArenaMembraneSamples(world, arenaId) {
+  const store = getArenaMembraneStore(world);
+  if (!Array.isArray(store[arenaId]) || store[arenaId].length !== MEMBRANE_SEGMENT_COUNT) {
+    store[arenaId] = Array.from({ length: MEMBRANE_SEGMENT_COUNT }, () => 0);
+  }
+  return store[arenaId];
+}
+
+export function getArenaMembraneRadiusAtAngle({ world, arenaId, radius = 1200, angle = 0 }) {
+  const samples = getArenaMembraneSamples(world, arenaId);
+  const safeAngle = normalizeAngle(angle);
+  const normalized = (safeAngle + Math.PI) / (Math.PI * 2);
+  const floatIndex = normalized * MEMBRANE_SEGMENT_COUNT;
+  const i0 = Math.floor(floatIndex) % MEMBRANE_SEGMENT_COUNT;
+  const i1 = (i0 + 1) % MEMBRANE_SEGMENT_COUNT;
+  const t = floatIndex - Math.floor(floatIndex);
+  const localOffset = ((samples[i0] || 0) * (1 - t)) + ((samples[i1] || 0) * t);
+  return Math.max(0, radius + localOffset);
+}
+
+export function deformArenaMembraneAtImpact({ world, arenaId, impactAngle = 0, amplitude = MEMBRANE_IMPACT_AMPLITUDE, sigma = MEMBRANE_IMPACT_SIGMA }) {
+  const samples = getArenaMembraneSamples(world, arenaId);
+  for (let i = 0; i < MEMBRANE_SEGMENT_COUNT; i += 1) {
+    const theta = ((i / MEMBRANE_SEGMENT_COUNT) * Math.PI * 2) - Math.PI;
+    const gap = getAngularDistance(theta, impactAngle);
+    const influence = Math.exp(-(gap * gap) / (2 * sigma * sigma));
+    samples[i] = Math.min(MEMBRANE_MAX_EXTRA_RADIUS, (samples[i] || 0) + (amplitude * influence));
+  }
 }
 
 export function invertPortalHint(hint) {
@@ -400,6 +444,7 @@ export function resolveMembraneContact({
   const borderHint = getBorderHintFromAngle(contactAngle);
   const result = ensureExitForBorderTouch({ world, arenaId, borderHint, exitAngle: contactAngle, nextType });
   if (!result) {
+    deformArenaMembraneAtImpact({ world, arenaId, impactAngle: contactAngle });
     return { action: "rebound", portal: null, contactAngle };
   }
   const createdPortal = result?.toArenaId
