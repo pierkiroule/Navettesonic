@@ -198,6 +198,18 @@ export default function SoonCanvas({
     setFishMenu({ type: "blob", angle: pendingBlobAction.angle, screen: { x: screenX, y: screenY } });
   }, [pendingBlobAction]);
 
+  useEffect(() => {
+    if (!fishMenu || fishMenu.type !== "blob") return;
+    const fishX = Number.isFinite(fish?.x) ? fish.x : 0;
+    const fishY = Number.isFinite(fish?.y) ? fish.y : 0;
+    const fishDistance = Math.hypot(fishX, fishY);
+    const arenaRadius = stateRef.current?.arenaRadius || arenaRef.current.radius || 1200;
+    const borderThreshold = Math.max(80, arenaRadius - 180);
+    if (fishDistance < borderThreshold) {
+      setFishMenu(null);
+    }
+  }, [fishMenu, fish?.x, fish?.y]);
+
   useSoonCanvasLoop({
     canvasRef,
     cameraRef,
