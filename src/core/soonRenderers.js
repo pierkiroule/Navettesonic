@@ -349,6 +349,7 @@ function drawBlobArena(ctx, blob, time = 0) {
   const points = blob?.points || [];
   if (points.length < 3) return;
   const pulse = Math.sin(time * 0.0022) * 0.5 + 0.5;
+  const smoothing = 0.32;
   const positions = points.map((point) => {
     const radius = Math.max(
       40,
@@ -363,8 +364,8 @@ function drawBlobArena(ctx, blob, time = 0) {
   for (let i = 0; i < positions.length; i += 1) {
     const current = positions[i];
     const next = positions[(i + 1) % positions.length];
-    const midX = (current.x + next.x) * 0.5;
-    const midY = (current.y + next.y) * 0.5;
+    const midX = current.x + (next.x - current.x) * smoothing;
+    const midY = current.y + (next.y - current.y) * smoothing;
     ctx.quadraticCurveTo(current.x, current.y, midX, midY);
   }
   ctx.closePath();
