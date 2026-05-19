@@ -9,7 +9,19 @@ export function updateBubbleAudioTriggers(current, activeBubbleAudioRef) {
   const fish = current.fish;
   const bubbles = current.bubbles || [];
 
-  if (!fish || !bubbles.length) return;
+  if (!fish || !bubbles.length) {
+    activeBubbleAudioRef.current.forEach((bubbleId) => stopBubbleSound(bubbleId));
+    activeBubbleAudioRef.current = new Set();
+    updateAmbientMix({ near: false });
+    return;
+  }
+
+  if (Number.isFinite(current.bubbleTransitionProgress) && current.bubbleTransitionProgress < 1) {
+    activeBubbleAudioRef.current.forEach((bubbleId) => stopBubbleSound(bubbleId));
+    activeBubbleAudioRef.current = new Set();
+    updateAmbientMix({ near: false });
+    return;
+  }
 
   const activeNow = new Set();
 
