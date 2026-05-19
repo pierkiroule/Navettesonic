@@ -31,7 +31,7 @@ export function getBlobRadiusAtAngle(blob, angle) {
   return baseRadius + a + (b - a) * localT;
 }
 
-export function updateBlobPhysics(blob, { smoothFactor = 0.004, damping = 0.992, maxOffset = 1000000 } = {}) {
+export function updateBlobPhysics(blob, { smoothFactor = 0, damping = 1, maxOffset = 1000000 } = {}) {
   const points = blob?.points;
   if (!Array.isArray(points) || points.length < 3) return blob;
   const nextOffsets = points.map((point, i) => {
