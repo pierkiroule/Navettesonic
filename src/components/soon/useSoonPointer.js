@@ -264,8 +264,15 @@ export function useSoonPointer({
     if (current.mode === "compo" || current.mode === "reso") {
       const r = arenaRef.current.radius || 1200;
       const d = Math.hypot(point.x, point.y);
+      const allowDoubleTapMenu =
+        current.mode === "compo" &&
+        current.interactionMode === "swim" &&
+        isDoubleTapScreen(event, "swim");
 
-      if (d >= r - 120) {
+      if (d >= r - 120 && !allowDoubleTapMenu) {
+        if (current.mode === "compo" && current.interactionMode === "swim") {
+          rememberTapScreen(event, "swim");
+        }
         onFishTarget?.(point.x, point.y, r);
         return;
       }

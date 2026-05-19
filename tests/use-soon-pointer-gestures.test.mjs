@@ -42,6 +42,14 @@ test('double tap en compo ouvre le menu contextuel circulaire', () => {
   assert.equal(calls.setDepth, 0);
 });
 
+test('double tap en compo près du bord ouvre aussi le menu contextuel', () => {
+  const { api, calls } = createHarness({ mode: 'compo' });
+  api.handlePointerDown(event(1, 980, 500));
+  api.handlePointerUp(event(1, 980, 500));
+  api.handlePointerDown(event(2, 982, 500));
+  assert.equal(calls.openMenu, 1);
+});
+
 test('long press ouvre le menu contextuel poisson', async () => {
   const { api, calls } = createHarness();
   api.handlePointerDown(event(1, 510, 505));
