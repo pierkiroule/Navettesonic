@@ -63,6 +63,7 @@ export default function SoonApp({ onBack }) {
     setFishTarget,
     recenterFish,
     tickFish,
+    applyBlobAction,
     setFishDepth,
     selectBubble,
     selectBeacon,
@@ -79,6 +80,9 @@ export default function SoonApp({ onBack }) {
     currentArenaId,
     mazeByArena,
     toggleMembraneSide,
+    gamePaused,
+    pendingBlobAction,
+    arenaBlob,
   } = useSoonStore();
 
   const selectedBubble =
@@ -304,10 +308,14 @@ export default function SoonApp({ onBack }) {
         worldGraph={worldGraph}
         currentArenaId={currentArenaId}
         mazeByArena={mazeByArena}
+        gamePaused={gamePaused}
+        pendingBlobAction={pendingBlobAction}
+        arenaBlob={arenaBlob}
         onToggleBubbles={() => setBubblesEnabled((v) => !v)}
         onSetBubblesIntensity={setBubblesIntensity}
         onResetFishContext={() => { setBubblesEnabled(true); setBubblesIntensity(1); recenterFish(); }}
         onToggleMembraneSide={toggleMembraneSide}
+        onBlobAction={applyBlobAction}
       />
 
       <div className={`cockpit ${isOdysseo ? "odysseo-cockpit" : ""}`}>

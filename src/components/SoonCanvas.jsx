@@ -3,6 +3,18 @@ import { useSoonCanvasLoop } from "./soon/useSoonCanvasLoop.js";
 import { useSoonPointer } from "./soon/useSoonPointer.js";
 import RadialMenu from "./RadialMenu.jsx";
 
+function BlobContextMenu({ anchor, onSelect }) {
+  const baseStyle = { position: "absolute", left: `${anchor?.x || 0}px`, top: `${anchor?.y || 0}px`, transform: "translate(-50%, -50%)", zIndex: 24, width: "220px", height: "220px", pointerEvents: "none" };
+  const item = (x, y) => ({ position: "absolute", transform: `translate(${x}px, ${y}px)`, pointerEvents: "auto", minWidth: "110px", borderRadius: "999px", border: "1px solid rgba(125,211,252,0.45)", background: "linear-gradient(180deg, rgba(15,23,42,0.95), rgba(2,6,23,0.9))", boxShadow: "0 8px 30px rgba(0,0,0,0.35), 0 0 0 1px rgba(34,211,238,0.18) inset", backdropFilter: "blur(8px)" });
+  return (
+    <div style={baseStyle}>
+      <div style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", width: 70, height: 70, borderRadius: "50%", background: "radial-gradient(circle, rgba(34,211,238,0.28), rgba(15,23,42,0.9))", border: "1px solid rgba(125,211,252,0.5)", boxShadow: "0 0 24px rgba(34,211,238,0.3)" }} />
+      <button type="button" className="radial-menu-item is-active" style={item(0, -92)} onClick={() => onSelect("expi")}>↑ Expi</button>
+      <button type="button" className="radial-menu-item is-active" style={item(0, 92)} onClick={() => onSelect("inspi")}>↓ Inspi</button>
+    </div>
+  );
+}
+
 export default function SoonCanvas({
   mode,
   interactionMode = "swim",
@@ -44,6 +56,10 @@ export default function SoonCanvas({
   worldGraph,
   currentArenaId,
   mazeByArena,
+  arenaBlob,
+  gamePaused = false,
+  pendingBlobAction = null,
+  onBlobAction,
 }) {
   const canvasRef = useRef(null);
   const [semioseVideo, setSemioseVideo] = useState(null);
@@ -105,6 +121,9 @@ export default function SoonCanvas({
     worldGraph,
     currentArenaId,
     mazeByArena,
+    arenaBlob,
+    gamePaused,
+    pendingBlobAction,
   });
 
   useEffect(() => {
@@ -130,6 +149,9 @@ export default function SoonCanvas({
       worldGraph,
       currentArenaId,
       mazeByArena,
+      arenaBlob,
+      gamePaused,
+      pendingBlobAction,
     };
   }, [
     mode,
@@ -153,7 +175,29 @@ export default function SoonCanvas({
     worldGraph,
     currentArenaId,
     mazeByArena,
+    arenaBlob,
+    gamePaused,
+    pendingBlobAction,
   ]);
+
+  useEffect(() => {
+    if (!pendingBlobAction || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const current = stateRef.current || {};
+    const camera = cameraRef.current || { x: 0, y: 0 };
+    const arenaRadius = current.arenaRadius || arenaRef.current.radius || 1200;
+    const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 2.55);
+    const userZoom = fitZoom * (1 + (Number.isFinite(current.viewZoom) ? current.viewZoom : 0) * 1.55);
+    const fishAngle = Number.isFinite(current?.fish?.angle) ? current.fish.angle : pendingBlobAction.angle || 0;
+    const fishX = Number.isFinite(current?.fish?.x) ? current.fish.x : (pendingBlobAction.worldX || 0);
+    const fishY = Number.isFinite(current?.fish?.y) ? current.fish.y : (pendingBlobAction.worldY || 0);
+    const mouthX = fishX + Math.cos(fishAngle) * 44;
+    const mouthY = fishY + Math.sin(fishAngle) * 44;
+    const screenX = rect.width * 0.5 + (mouthX - camera.x) * userZoom;
+    const screenY = rect.height * 0.5 + (mouthY - camera.y) * userZoom;
+    setFishMenu({ type: "blob", angle: pendingBlobAction.angle, screen: { x: screenX, y: screenY } });
+  }, [pendingBlobAction]);
 
   useSoonCanvasLoop({
     canvasRef,
@@ -264,12 +308,24 @@ export default function SoonCanvas({
           />
         </div>
       ) : null}
-      {fishMenu && interactionMode === "swim" ? (
+      {fishMenu && interactionMode === "swim" && fishMenu?.type === "blob" ? (
+        <BlobContextMenu
+          anchor={fishMenu.screen}
+          onSelect={(action) => {
+            onBlobAction?.(action, fishMenu?.angle);
+            setFishMenu(null);
+          }}
+        />
+      ) : null}
+      {fishMenu && interactionMode === "swim" && fishMenu?.type !== "blob" ? (
         <RadialMenu
           aria-label="Menu contextuel poisson"
           anchor={fishMenu.screen}
           onClose={() => setFishMenu(null)}
-          items={[
+          items={fishMenu?.type === "blob" ? [
+            { id: "expi", label: "↑ Expi" },
+            { id: "inspi", label: "↓ Inspi" },
+          ] : [
             { id: "depth", label: "Profondeur" },
             { id: "bubbles", label: `Bulles ${bubblesEnabled ? "ON" : "OFF"}` },
             { id: "intensity", label: "Intensité bulles" },
@@ -277,6 +333,10 @@ export default function SoonCanvas({
             { id: "reset", label: "Reset" },
           ]}
           onSelect={(item) => {
+            if (fishMenu?.type === "blob") {
+              onBlobAction?.(item.id, fishMenu?.angle);
+              return;
+            }
             if (item.id === "depth") onSetFishDepth?.(((Math.round(fish?.depth || 1) % 3) + 1));
             if (item.id === "bubbles") onToggleBubbles?.();
             if (item.id === "intensity") onSetBubblesIntensity?.(Math.min(2, (bubblesIntensity || 1) + 0.25));

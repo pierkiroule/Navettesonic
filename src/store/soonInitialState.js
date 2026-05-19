@@ -4,6 +4,7 @@ import { createSlalomCircuitFromBubbles } from "../core/traceCircuit.js";
 import { getFishNavigableRadius } from "../core/constants.js";
 import { SOON_MODE_COMPO, normalizeSoonMode } from "../core/uiState.js";
 import { buildMazeByArena, generateLabybulle, getArenaLevelFromId, validateWorldGraph } from "../core/labybulleWorld.js";
+import { createArenaBlob } from "../core/blobArena.js";
 
 export const saved = loadState();
 export const labybulleWorld = generateLabybulle(saved?.labybulleSeed ?? 1);
@@ -48,4 +49,7 @@ export const initialState = {
   arenaBubblesById: saved?.arenaBubblesById || {
     [saved?.currentArenaId || labybulleWorld.startArenaId]: (saved?.bubbles || defaultPack.bubbles).map((bubble) => ({ ...bubble })),
   },
+  arenaBlob: createArenaBlob(96, DEFAULT_ARENA_RADIUS),
+  gamePaused: false,
+  pendingBlobAction: null,
 };
