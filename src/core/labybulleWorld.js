@@ -23,7 +23,7 @@ const ARENA_RADIUS_MULTIPLIER = Object.freeze({
 export const POISSON_PLUME_WIDTH = 52;
 export const PORTAL_WIDTH_MULTIPLIER = 8;
 export const DEFAULT_PORTAL_PASSAGE_WIDTH = POISSON_PLUME_WIDTH * PORTAL_WIDTH_MULTIPLIER;
-export const ARENA_ID_BY_LEVEL = Object.freeze(["arena-1", "mega-1", "giga-1"]);
+export const ARENA_ID_BY_LEVEL = Object.freeze(["arena-1", "arena-1", "arena-1"]);
 
 export function getArenaIdForLevel(level = 0) {
   const safeLevel = Math.max(0, Math.min(ARENA_ID_BY_LEVEL.length - 1, Number.isFinite(level) ? level : 0));
@@ -37,8 +37,6 @@ export function getArenaLevelFromId(arenaId = "") {
 
 export function getArenaTransitionIdsForLevel(level = 0) {
   const fromArenaId = getArenaIdForLevel(level);
-  if (level <= 0) return { fromArenaId, toArenaId: getArenaIdForLevel(1) };
-  if (level === 1) return { fromArenaId, toArenaId: getArenaIdForLevel(2) };
   return { fromArenaId, toArenaId: null };
 }
 
@@ -73,80 +71,8 @@ function makeArenaNode({ id, type, parentId = null, childrenIds = [], centerOffs
   };
 }
 
-function normalizeAngle(angle = 0) {
-  return Math.atan2(Math.sin(angle), Math.cos(angle));
-}
-
-function linkRoomsWithOppositeExits(roomA, roomB, angleA, portals, hintA = PORTAL_POSITIONS.CUSTOM) {
-  const fromArenaId = roomA?.id;
-  const toArenaId = roomB?.id;
-  if (!fromArenaId || !toArenaId || !Array.isArray(portals)) return;
-
-  const normalizedAngleA = normalizeAngle(Number.isFinite(angleA) ? angleA : 0);
-  const normalizedAngleB = normalizeAngle(normalizedAngleA + Math.PI);
-  const forwardHint = hintA || getBorderHintFromAngle(normalizedAngleA);
-  const backwardHint = invertHint(forwardHint);
-  const passageWidth = DEFAULT_PORTAL_PASSAGE_WIDTH;
-
-  portals.push({
-    id: `${fromArenaId}__to__${toArenaId}`,
-    fromArenaId,
-    toArenaId,
-    positionHint: forwardHint,
-    exitAngle: normalizedAngleA,
-    bidirectional: true,
-    passageWidth,
-  });
-
-  portals.push({
-    id: `${toArenaId}__to__${fromArenaId}`,
-    fromArenaId: toArenaId,
-    toArenaId: fromArenaId,
-    positionHint: backwardHint,
-    exitAngle: normalizedAngleB,
-    bidirectional: true,
-    passageWidth,
-  });
-}
-
 function getNodeById(world, id) {
   return (world?.nodes || []).find((node) => node.id === id) || null;
-}
-
-const ROOM_TOUCH_OVERLAP = 0;
-const DEFAULT_LAYOUT_BASE_RADIUS = 1200;
-
-function getNextArenaSequence(world) {
-  const current = Number.isFinite(world?.meta?.nextArenaSeq) ? world.meta.nextArenaSeq : 1;
-  if (!world.meta) world.meta = {};
-  world.meta.nextArenaSeq = current + 1;
-  return current;
-}
-
-function makeChildArenaId(parentId, world, angle = 0) {
-  const seq = getNextArenaSequence(world);
-  const angleBucket = Math.round((normalizeAngle(angle) + Math.PI) * 1000);
-  return `${parentId}-child-${seq}-${angleBucket}`;
-}
-
-function getAbsoluteCenter(node) {
-  if (node?.absoluteCenter) return node.absoluteCenter;
-  return { x: node?.centerOffset?.x || 0, y: node?.centerOffset?.y || 0 };
-}
-
-function getNodeLayoutRadius(node) {
-  return DEFAULT_LAYOUT_BASE_RADIUS * getArenaRadiusMultiplier(node?.type);
-}
-
-function hasArenaOverlap({ world, candidateCenter, candidateRadius, ignoreArenaIds = [] }) {
-  const ignored = new Set(ignoreArenaIds);
-  return (world?.nodes || []).some((node) => {
-    if (ignored.has(node.id)) return false;
-    const center = getAbsoluteCenter(node);
-    const radius = getNodeLayoutRadius(node);
-    const distance = Math.hypot(candidateCenter.x - center.x, candidateCenter.y - center.y);
-    return distance < (candidateRadius + radius);
-  });
 }
 
 function invertHint(hint) {
@@ -177,97 +103,17 @@ function getBorderHintFromAngle(angle) {
   return s >= 0 ? PORTAL_POSITIONS.BOTTOM : PORTAL_POSITIONS.TOP;
 }
 
-export function ensureExitForBorderTouch({
-  world,
-  arenaId,
-  borderHint = PORTAL_POSITIONS.RIGHT,
-  exitAngle = null,
-  nextType = ARENA_TYPES.ARENA,
-}) {
-  if (!world || !arenaId) return null;
-  const sourceNode = getNodeById(world, arenaId);
-  if (!sourceNode) return null;
-
-  const linkAngle = Number.isFinite(exitAngle) ? exitAngle : getPortalAnchor({ positionHint: borderHint, radius: 1 }).angle;
-  const childId = makeChildArenaId(arenaId, world, linkAngle);
-
-  const parentCenter = getAbsoluteCenter(sourceNode);
-  const parentRadius = getNodeLayoutRadius(sourceNode);
-  const childRadius = DEFAULT_LAYOUT_BASE_RADIUS * getArenaRadiusMultiplier(nextType);
-  const centerDistance = parentRadius + childRadius - ROOM_TOUCH_OVERLAP;
-  const childAbsoluteCenter = {
-    x: parentCenter.x + Math.cos(linkAngle) * centerDistance,
-    y: parentCenter.y + Math.sin(linkAngle) * centerDistance,
-  };
-  if (hasArenaOverlap({ world, candidateCenter: childAbsoluteCenter, candidateRadius: childRadius, ignoreArenaIds: [arenaId] })) {
-    return null;
-  }
-
-  const childNode = makeArenaNode({
-    id: childId,
-    type: nextType,
-    parentId: arenaId,
-    centerOffset: {
-      x: childAbsoluteCenter.x - parentCenter.x,
-      y: childAbsoluteCenter.y - parentCenter.y,
-    },
-    absoluteCenter: childAbsoluteCenter,
-  });
-  world.nodes.push(childNode);
-  sourceNode.childrenIds = [...(sourceNode.childrenIds || []), childId];
-  sourceNode.hasSpawnedNeighbor = true;
-
-  linkRoomsWithOppositeExits(sourceNode, childNode, linkAngle, world.portals, borderHint);
-  return { created: true, fromArenaId: arenaId, toArenaId: childId };
-}
-
 export function generateLabybulle(seed = 1) {
-  // Réseau initial: une arène centrale entourée de voisines contiguës.
-  // Ce noyau rend immédiatement visible un monde en "grappe d’arènes".
   const startArenaId = "arena-1";
   const centerNode = makeArenaNode({ id: startArenaId, type: ARENA_TYPES.ARENA, absoluteCenter: { x: 0, y: 0 } });
-  const nodes = [centerNode];
-  const portals = [];
-  const world = {
+  return {
     seed,
-    nodes,
-    portals,
+    nodes: [centerNode],
+    portals: [],
     startArenaId,
     startPosition: { x: 0, y: 0, hint: "CENTER" },
     meta: { nextArenaSeq: 1 },
   };
-
-  const neighbors = [
-    { suffix: "north", hint: PORTAL_POSITIONS.TOP, angle: -Math.PI / 2 },
-    { suffix: "east", hint: PORTAL_POSITIONS.RIGHT, angle: 0 },
-    { suffix: "south", hint: PORTAL_POSITIONS.BOTTOM, angle: Math.PI / 2 },
-    { suffix: "west", hint: PORTAL_POSITIONS.LEFT, angle: Math.PI },
-  ];
-
-  neighbors.forEach(({ suffix, hint, angle }) => {
-    const childId = `${startArenaId}-${suffix}`;
-    const parentRadius = DEFAULT_LAYOUT_BASE_RADIUS * getArenaRadiusMultiplier(centerNode.type);
-    const childRadius = DEFAULT_LAYOUT_BASE_RADIUS * getArenaRadiusMultiplier(ARENA_TYPES.ARENA);
-    const centerDistance = parentRadius + childRadius;
-    const childAbsoluteCenter = {
-      x: Math.cos(angle) * centerDistance,
-      y: Math.sin(angle) * centerDistance,
-    };
-    const childNode = makeArenaNode({
-      id: childId,
-      type: ARENA_TYPES.ARENA,
-      parentId: startArenaId,
-      centerOffset: childAbsoluteCenter,
-      absoluteCenter: childAbsoluteCenter,
-    });
-
-    world.nodes.push(childNode);
-    centerNode.childrenIds = [...(centerNode.childrenIds || []), childId];
-    linkRoomsWithOppositeExits(centerNode, childNode, angle, world.portals, hint);
-  });
-
-  centerNode.hasSpawnedNeighbor = true;
-  return world;
 }
 
 export function validateWorldGraph(world) {
@@ -363,49 +209,12 @@ export function resolveMembraneContact({
   arenaId,
   x = 0,
   y = 0,
-  radius = 1200,
-  angularToleranceDeg = 20,
-  nextType = ARENA_TYPES.ARENA,
 }) {
-  if (!world || !arenaId) return { action: "rebound", portal: null, contactAngle: 0 };
-  const room = getNodeById(world, arenaId);
-  if (!room) return { action: "rebound", portal: null, contactAngle: 0 };
-
-  // Navigation positions are local to the active arena coordinates.
-  // Do not offset by absolute graph centers here, otherwise non-root arenas
-  // always resolve border contacts toward an unrelated global direction.
+  if (!world || !arenaId || !getNodeById(world, arenaId)) {
+    return { action: "rebound", portal: null, contactAngle: 0 };
+  }
   const contactAngle = Math.atan2(y || 0, x || 0);
-  const tolerance = Math.max(0, (Number.isFinite(angularToleranceDeg) ? angularToleranceDeg : 20) * (Math.PI / 180));
-  const halfSpan = getPortalOpeningHalfSpan({ radius });
-  const maxGap = Math.max(halfSpan, tolerance);
-  const angleDistance = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
-  const portals = (world.portals || []).filter((portal) => portal.fromArenaId === arenaId);
-
-  let bestPortal = null;
-  let bestGap = Number.POSITIVE_INFINITY;
-  portals.forEach((portal) => {
-    const opening = getPortalOpeningAngle(world, portal.fromArenaId, portal.toArenaId);
-    if (!Number.isFinite(opening)) return;
-    const gap = Math.abs(angleDistance(contactAngle, opening));
-    if (gap <= maxGap && gap < bestGap) {
-      bestGap = gap;
-      bestPortal = portal;
-    }
-  });
-
-  if (bestPortal) {
-    return { action: "transition", portal: bestPortal, created: false, contactAngle };
-  }
-
-  const borderHint = getBorderHintFromAngle(contactAngle);
-  const result = ensureExitForBorderTouch({ world, arenaId, borderHint, exitAngle: contactAngle, nextType });
-  if (!result) {
-    return { action: "rebound", portal: null, contactAngle };
-  }
-  const createdPortal = result?.toArenaId
-    ? (world?.portals || []).find((p) => p.fromArenaId === arenaId && p.toArenaId === result.toArenaId) || null
-    : null;
-  return { action: "transition", portal: createdPortal, created: Boolean(result?.created), contactAngle };
+  return { action: "rebound", portal: null, contactAngle };
 }
 
 export function resolvePortalAtPosition({ world, arenaId, x = 0, y = 0, radius = 1200, activationDistance = 78 }) {

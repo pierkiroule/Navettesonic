@@ -1,52 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { tickFishEngine, getMembraneRadiusForLevel } from '../src/core/fishNavigationEngine.js';
-import { generateLabybulle, resolveMembraneContact } from '../src/core/labybulleWorld.js';
+import { generateLabybulle } from '../src/core/labybulleWorld.js';
+import { tickFishEngine } from '../src/core/fishNavigationEngine.js';
+import { getMembraneRadiusForLevel } from '../src/core/fishNavigationEngine.js';
 
-function baseState(world, currentArenaId, fish) {
+function baseState(worldGraph) {
+  const arenaRadius = 1200;
+  const outer = getMembraneRadiusForLevel(arenaRadius, 0);
   return {
-    worldGraph: world,
-    currentArenaId,
-    fish,
-    fishTrail: [],
-    bubbles: [],
-    circuitAutopilot: false,
-    circuitSegmentIndex: 0,
-    circuitSegmentT: 0,
-    traceCircuit: [],
+    worldGraph,
+    currentArenaId: 'arena-1',
+    fish: { x: outer + 1, y: 0, vx: 0.08, vy: 0.01, targetX: outer + 40, targetY: 60, angle: 0, depth: 1, maxSpeed: 3.1, arenaLevel: 0 },
   };
 }
 
-test('après transition d’arène, le poisson ne re-bascule pas immédiatement', () => {
-  const world = generateLabybulle(7);
-  resolveMembraneContact({ world, arenaId: 'arena-1', x: 1200, y: 0, radius: 1200 });
-
-  const arenaRadius = 1200;
-  const outer = getMembraneRadiusForLevel(arenaRadius, 0);
-
-  const initial = baseState(world, 'arena-1', {
-    x: outer + 1,
-    y: 0,
-    vx: 0.05,
-    vy: 0.01,
-    targetX: outer + 16,
-    targetY: 30,
-    angle: 0,
-    depth: 1,
-    maxSpeed: 3.1,
-    arenaLevel: 0,
-    swimPhase: 0,
-    mouthPull: 0,
-    turnAmount: 0,
-    turnVelocity: 0,
-    wallHitCount: 0,
-    lastWallHitAt: 0,
-    hasQuill: false,
-  });
-
-  const transitioned = tickFishEngine(initial, { arenaRadius });
-  assert.notEqual(transitioned.currentArenaId, 'arena-1');
-
-  const settled = tickFishEngine({ ...initial, ...transitioned, worldGraph: world }, { arenaRadius });
-  assert.equal(settled.currentArenaId, transitioned.currentArenaId);
+test('sans passages, le poisson reste dans la même arène', () => {
+  const world = generateLabybulle(1);
+  const next = tickFishEngine(baseState(world), { arenaRadius: 1200 });
+  assert.equal(next.currentArenaId, 'arena-1');
 });
