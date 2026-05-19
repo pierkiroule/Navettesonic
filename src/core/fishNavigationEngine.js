@@ -176,15 +176,15 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
       inwardOffset: 84,
     });
   }
-  const shouldResolveMembraneContact=(hitOuterBoundary||nearOuter||radialDistance>=outerNavRadius-8)&&!transitionLocked; const membraneContact=shouldResolveMembraneContact?resolveMembraneContact({world:activeWorld,arenaId:runtimeArenaId,x:nextFishX,y:nextFishY,radius:outerNavRadius,angularToleranceDeg:20}):null;
+  const shouldResolveMembraneContact=(hitOuterBoundary||nearOuter||radialDistance>=outerNavRadius-8)&&!transitionLocked; const membraneContact=shouldResolveMembraneContact?resolveMembraneContact({world:activeWorld,arenaId:runtimeArenaId,x:nextFishX,y:nextFishY,radius:outerNavRadius,angularToleranceDeg:20,allowDig:Boolean(state?.fish?.hasQuill)}):null;
   const contactPortal=membraneContact?.action==="transition"?membraneContact?.portal||null:null;
 
   // Priorité absolue: si le contact membrane résout une transition, on traverse
   // immédiatement (évite les boucles de rejet/glisse au bord).
   if (contactPortal?.toArenaId && !isImmediateReturnBlocked(contactPortal.toArenaId)) {
-    return buildArenaTransitionPatch({
+    const transitionPatch = buildArenaTransitionPatch({
       state,
-      activeWorld,
+      activeWorld: membraneContact?.world || activeWorld,
       runtimeArenaId,
       nextArenaId: contactPortal.toArenaId,
       radialAngle,
@@ -200,6 +200,8 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
       fallbackExitHint: contactPortal.positionHint || null,
       inwardOffset: 84,
     });
+    if (membraneContact?.world) transitionPatch.worldGraph = membraneContact.world;
+    return transitionPatch;
   }
 
   if (nearOuter && !nearOut && pushingOutward) {

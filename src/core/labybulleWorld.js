@@ -199,6 +199,10 @@ export function getPortalOpeningAngle(world, fromArenaId, toArenaId) {
   return getPortalAnchor({ positionHint: portal.positionHint, radius: 1 }).angle;
 }
 
+function normalizeAngle(angle = 0) {
+  return Math.atan2(Math.sin(angle), Math.cos(angle));
+}
+
 export function getPortalOpeningHalfSpan({ radius = 1200, passageWidth = DEFAULT_PORTAL_PASSAGE_WIDTH }) {
   const safeRadius = Math.max(1, radius);
   return Math.min(Math.PI / 3, Math.max(0.12, (passageWidth / 2) / safeRadius));
@@ -209,11 +213,36 @@ export function resolveMembraneContact({
   arenaId,
   x = 0,
   y = 0,
+  allowDig = false,
 }) {
   if (!world || !arenaId || !getNodeById(world, arenaId)) {
     return { action: "rebound", portal: null, contactAngle: 0 };
   }
   const contactAngle = Math.atan2(y || 0, x || 0);
+  if (allowDig) {
+    const fromNode = getNodeById(world, arenaId);
+    const nextSeq = Math.max(1, Number(world?.meta?.nextArenaSeq) || 1) + 1;
+    const newArenaId = `arena-${nextSeq}`;
+    const hint = getBorderHintFromAngle(contactAngle);
+    const centerDistance = 2200;
+    const newCenter = {
+      x: (fromNode?.absoluteCenter?.x || 0) + Math.cos(contactAngle) * centerDistance,
+      y: (fromNode?.absoluteCenter?.y || 0) + Math.sin(contactAngle) * centerDistance,
+    };
+    const newNode = makeArenaNode({ id: newArenaId, type: ARENA_TYPES.ARENA, parentId: arenaId, absoluteCenter: newCenter });
+    const fromPortalId = `${arenaId}__${newArenaId}`;
+    const toPortalId = `${newArenaId}__${arenaId}`;
+    const toHint = invertPortalHint(hint) || PORTAL_POSITIONS.CUSTOM;
+    const forwardPortal = { id: fromPortalId, fromArenaId: arenaId, toArenaId: newArenaId, positionHint: hint, bidirectional: true, passageWidth: DEFAULT_PORTAL_PASSAGE_WIDTH, exitAngle: contactAngle };
+    const backwardPortal = { id: toPortalId, fromArenaId: newArenaId, toArenaId: arenaId, positionHint: toHint, bidirectional: true, passageWidth: DEFAULT_PORTAL_PASSAGE_WIDTH, exitAngle: normalizeAngle(contactAngle + Math.PI) };
+    const nextWorld = {
+      ...world,
+      nodes: [...(world.nodes || []), newNode],
+      portals: [...(world.portals || []), forwardPortal, backwardPortal],
+      meta: { ...(world.meta || {}), nextArenaSeq: nextSeq },
+    };
+    return { action: "transition", portal: forwardPortal, world: nextWorld, contactAngle };
+  }
   return { action: "rebound", portal: null, contactAngle };
 }
 
