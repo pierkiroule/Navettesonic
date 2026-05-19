@@ -22,6 +22,7 @@ const guppyRuntime = {
   fish: [],
   pearls: [],
   driftingSeeds: [],
+  pinkSmoke: [],
   cosmicStreaks: [],
   nextCosmicSpawnAt: 0,
 };
@@ -137,9 +138,6 @@ function ensureGuppyRuntime(current, arenaRadius) {
       vy: Math.sin(a + Math.PI / 2) * 0.7,
       angle: a,
       phase: Math.random() * Math.PI * 2,
-      carrier: i % 5 === 0,
-      carrying: false,
-      dropAt: 0,
     });
   }
   // Important narratif: au départ aucune perle/graine sur la membrane.
@@ -152,6 +150,7 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
   const fish = guppyRuntime.fish;
   const pearls = guppyRuntime.pearls;
   const seeds = guppyRuntime.driftingSeeds;
+  const pinkSmoke = guppyRuntime.pinkSmoke;
   const cosmicStreaks = guppyRuntime.cosmicStreaks;
   const dt = 1;
 
@@ -214,17 +213,36 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
     }
     g.angle = Math.atan2(g.vy, g.vx);
 
-    if (g.carrier && !g.carrying) {
-      const near = pearls.find((p) => p.attached && Math.hypot((p.x || 0) - g.x, (p.y || 0) - g.y) < 26);
-      if (near) {
-        near.attached = false;
-        g.carrying = true;
-        g.dropAt = now + 1400 + Math.random() * 3200;
+    const mouthX = g.x + Math.cos(g.angle) * 11;
+    const mouthY = g.y + Math.sin(g.angle) * 11;
+    const near = pearls.find((p) => p.attached && Math.hypot((p.x || 0) - mouthX, (p.y || 0) - mouthY) < 34);
+    if (near) {
+      near.attached = false;
+      const fromX = near.x + Math.cos(near.angle || 0) * 10;
+      const fromY = near.y + Math.sin(near.angle || 0) * 10;
+      const toX = g.x - Math.cos(g.angle) * 6;
+      const toY = g.y - Math.sin(g.angle) * 6;
+      seeds.push({
+        x: fromX,
+        y: fromY,
+        vx: (toX - fromX) * 0.08,
+        vy: (toY - fromY) * 0.08,
+        bornAt: now,
+        matureAt: now + 3000 + Math.random() * 3600,
+        phase: Math.random() * Math.PI * 2,
+        inhalingUntil: now + 480,
+      });
+      for (let j = 0; j < 9; j += 1) {
+        pinkSmoke.push({
+          x: fromX,
+          y: fromY,
+          vx: (Math.random() - 0.5) * 0.8,
+          vy: (Math.random() - 0.5) * 0.8,
+          bornAt: now,
+          life: 450 + Math.random() * 350,
+          r: 1.4 + Math.random() * 2.3,
+        });
       }
-    }
-    if (g.carrier && g.carrying && now >= g.dropAt) {
-      g.carrying = false;
-      seeds.push({ x: g.x, y: g.y, vx: g.vx * 0.4, vy: g.vy * 0.4, bornAt: now, matureAt: now + 3000 + Math.random() * 3600, phase: Math.random() * Math.PI * 2 });
     }
   });
 
@@ -236,6 +254,22 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
     s.vy *= 0.987;
     s.x += Math.sin(time * 0.002 + s.phase) * 0.12;
     s.y += Math.cos(time * 0.002 + s.phase) * 0.12;
+    fish.forEach((g) => {
+      const mouthX = g.x + Math.cos(g.angle) * 11;
+      const mouthY = g.y + Math.sin(g.angle) * 11;
+      const dHead = Math.hypot(s.x - mouthX, s.y - mouthY);
+      if (dHead < 34) {
+        const push = (34 - dHead) / 34;
+        const nx = (s.x - mouthX) / Math.max(0.001, dHead);
+        const ny = (s.y - mouthY) / Math.max(0.001, dHead);
+        s.vx += nx * (0.3 + push * 0.5) + (g.vx || 0) * 0.1;
+        s.vy += ny * (0.3 + push * 0.5) + (g.vy || 0) * 0.1;
+      }
+      if (now < (s.inhalingUntil || 0)) {
+        s.vx += (g.x - s.x) * 0.018;
+        s.vy += (g.y - s.y) * 0.018;
+      }
+    });
     const a = Math.atan2(s.y, s.x);
     const edge = getArenaEdgeRadius(current, arenaRadius, a);
     const d = Math.hypot(s.x, s.y);
@@ -248,6 +282,15 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
       spawnFireflyFromSeed(s.x, s.y);
       seeds.splice(i, 1);
     }
+  }
+  for (let i = pinkSmoke.length - 1; i >= 0; i -= 1) {
+    const p = pinkSmoke[i];
+    const age = now - p.bornAt;
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vx *= 0.97;
+    p.vy *= 0.97;
+    if (age >= p.life) pinkSmoke.splice(i, 1);
   }
 
   for (let i = cosmicStreaks.length - 1; i >= 0; i -= 1) {
@@ -289,6 +332,14 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
     ctx.fillStyle = `rgba(245,250,255,${0.52 + pulse * 0.28})`;
     ctx.fill();
   });
+  pinkSmoke.forEach((p) => {
+    const age = now - p.bornAt;
+    const k = Math.max(0, 1 - age / p.life);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r * (1 + (1 - k) * 2), 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,150,210,${k * 0.45})`;
+    ctx.fill();
+  });
 
   cosmicStreaks.forEach((c) => {
     const tailX = c.x - c.vx * 5.5;
@@ -307,12 +358,6 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
 
   fish.forEach((g, i) => {
     drawGuppyTopView(ctx, g.x, g.y, g.angle, 0.72 + (i % 4) * 0.08, time * 0.02 + g.phase);
-    if (g.carrying) {
-      ctx.beginPath();
-      ctx.arc(g.x - Math.cos(g.angle) * 8, g.y - Math.sin(g.angle) * 8, 2.3, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255,255,255,0.9)";
-      ctx.fill();
-    }
   });
 
   ctx.restore();
