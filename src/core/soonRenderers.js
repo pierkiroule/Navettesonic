@@ -167,13 +167,13 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
     cosmicStreaks.push({
       x: fromX,
       y: fromY,
-      vx: (targetX - fromX) * 0.072,
-      vy: (targetY - fromY) * 0.072,
+      vx: (targetX - fromX) * 0.032,
+      vy: (targetY - fromY) * 0.032,
       tx: targetX,
       ty: targetY,
       angle: impactAngle,
       life: 0,
-      maxLife: 26 + Math.random() * 14,
+      maxLife: 80 + Math.random() * 32,
     });
     guppyRuntime.nextCosmicSpawnAt = now + 1500 + Math.random() * 3000;
   }
@@ -255,9 +255,11 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
     c.life += 1;
     c.x += c.vx;
     c.y += c.vy;
-    c.vx *= 0.994;
-    c.vy *= 0.994;
-    if (Math.hypot(c.tx - c.x, c.ty - c.y) < 18 || c.life >= c.maxLife) {
+    c.vx *= 0.988;
+    c.vy *= 0.988;
+    if (Math.hypot(c.tx - c.x, c.ty - c.y) < 8 || c.life >= c.maxLife) {
+      c.x = c.tx;
+      c.y = c.ty;
       pearls.push({
         id: `pearl-cosmic-${now}-${i}`,
         angle: c.angle + (Math.random() - 0.5) * 0.04,
