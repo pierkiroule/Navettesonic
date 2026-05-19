@@ -31,7 +31,7 @@ export function getBlobRadiusAtAngle(blob, angle) {
   return baseRadius + a + (b - a) * localT;
 }
 
-export function updateBlobPhysics(blob, { smoothFactor = 0.01, damping = 0.94, maxOffset = 1000000 } = {}) {
+export function updateBlobPhysics(blob, { smoothFactor = 0.0, damping = 0.985, maxOffset = 1000000 } = {}) {
   const points = blob?.points;
   if (!Array.isArray(points) || points.length < 3) return blob;
   const nextOffsets = points.map((point, i) => {
@@ -129,16 +129,16 @@ export function applyBlobAction(blob, type, angle) {
   // - expiration: pousse vers l'extérieur
   // - inspiration: efface localement la poussée (retour vers 0)
   if (type === "expiration") {
-    const delta = collectGaussianDelta(nextBlob, angle, 0.23, 300);
+    const delta = collectGaussianDelta(nextBlob, angle, 0.19, 360);
     nextBlob.actionStack = [...(nextBlob.actionStack || []), delta];
     return applyDelta(nextBlob, delta);
   }
   if (type === "inspiration") {
-    const stack = Array.isArray(nextBlob.actionStack) ? [...nextBlob.actionStack] : [];
-    const lastDelta = stack.pop();
-    nextBlob.actionStack = stack;
-    if (!lastDelta) return nextBlob;
-    return applyDelta(nextBlob, lastDelta.map((value) => -value));
+    // Nouveau comportement demandé: pousse vers l'intérieur (concave),
+    // au lieu d'effacer/undo la dernière action.
+    const delta = collectGaussianDelta(nextBlob, angle, 0.19, -320);
+    nextBlob.actionStack = [...(nextBlob.actionStack || []), delta];
+    return applyDelta(nextBlob, delta);
   }
   // Compat rétro si d'anciens appels restent en circulation.
   if (type === "inflate") return inflateBlobAtAngle(nextBlob, angle, 140);
