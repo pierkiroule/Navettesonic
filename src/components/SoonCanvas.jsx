@@ -44,6 +44,7 @@ export default function SoonCanvas({
   worldGraph,
   currentArenaId,
   mazeByArena,
+  arenaBlob,
   gamePaused = false,
   pendingBlobAction = null,
   onBlobAction,
@@ -108,6 +109,7 @@ export default function SoonCanvas({
     worldGraph,
     currentArenaId,
     mazeByArena,
+    arenaBlob,
     gamePaused,
     pendingBlobAction,
   });
@@ -135,6 +137,7 @@ export default function SoonCanvas({
       worldGraph,
       currentArenaId,
       mazeByArena,
+      arenaBlob,
       gamePaused,
       pendingBlobAction,
     };
@@ -160,6 +163,7 @@ export default function SoonCanvas({
     worldGraph,
     currentArenaId,
     mazeByArena,
+    arenaBlob,
     gamePaused,
     pendingBlobAction,
   ]);

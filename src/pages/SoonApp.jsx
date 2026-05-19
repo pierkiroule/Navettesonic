@@ -82,6 +82,7 @@ export default function SoonApp({ onBack }) {
     toggleMembraneSide,
     gamePaused,
     pendingBlobAction,
+    arenaBlob,
   } = useSoonStore();
 
   const selectedBubble =
@@ -309,6 +310,7 @@ export default function SoonApp({ onBack }) {
         mazeByArena={mazeByArena}
         gamePaused={gamePaused}
         pendingBlobAction={pendingBlobAction}
+        arenaBlob={arenaBlob}
         onToggleBubbles={() => setBubblesEnabled((v) => !v)}
         onSetBubblesIntensity={setBubblesIntensity}
         onResetFishContext={() => { setBubblesEnabled(true); setBubblesIntensity(1); recenterFish(); }}
