@@ -2,7 +2,6 @@ import {
   clampToCircle,
   distance,
   getBubbleHitRadius,
-  normalizeDepth,
   screenToWorld,
 } from "../../core/geometry.js";
 import {
@@ -26,7 +25,7 @@ export function useSoonPointer({
   onAddPathPoint,
   onAddOdysseoPathPoint,
   onAddOdysseoDepthMarker,
-  onSetFishDepth,
+  onBoostFishSpeed,
   onOpenBubbleEditor,
   onOpenFishContextMenu,
   onDepthToast,
@@ -141,14 +140,6 @@ export function useSoonPointer({
     };
   }
 
-  function cycleFishDepth() {
-    const currentDepth = normalizeDepth(stateRef.current.fish?.depth);
-    const nextDepth = currentDepth >= 3 ? 1 : currentDepth + 1;
-
-    onSetFishDepth?.(nextDepth);
-    onDepthToast?.(nextDepth);
-  }
-
   function clearLongPressTimer() {
     if (pointerRef.current.longPressTimer) {
       clearTimeout(pointerRef.current.longPressTimer);
@@ -174,7 +165,7 @@ export function useSoonPointer({
 
     if (doubleTap) {
       clearLongPressTimer();
-      cycleFishDepth();
+      onBoostFishSpeed?.();
 
       // reset pour éviter triple tap parasite
       pointerRef.current.lastTapAt = 0;
