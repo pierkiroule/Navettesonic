@@ -103,6 +103,12 @@ export function applyBlobAction(blob, type, angle) {
     ...blob,
     points: blob.points.map((point) => ({ ...point })),
   };
+  // Nouveau set simplifié (2 actions UX):
+  // - expiration: pousse vers l'extérieur
+  // - inspiration: efface localement la poussée (retour vers 0)
+  if (type === "expiration") return inflateBlobAtAngle(nextBlob, angle, 155);
+  if (type === "inspiration") return sealBlobAtAngle(nextBlob, angle, 0.82);
+  // Compat rétro si d'anciens appels restent en circulation.
   if (type === "inflate") return inflateBlobAtAngle(nextBlob, angle, 140);
   if (type === "dig") return digBlobAtAngle(nextBlob, angle, 130);
   if (type === "smooth") return smoothBlobAtAngle(nextBlob, angle, 0.55);

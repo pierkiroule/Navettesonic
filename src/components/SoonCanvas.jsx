@@ -8,11 +8,9 @@ function BlobContextMenu({ anchor, onSelect }) {
   const item = (x, y) => ({ position: "absolute", transform: `translate(${x}px, ${y}px)` });
   return (
     <div style={baseStyle}>
-      <button type="button" className="radial-menu-center" onClick={() => onSelect("seal")} aria-label="Sceller">◎</button>
-      <button type="button" className="radial-menu-item is-active" style={item(0, -88)} onClick={() => onSelect("inflate")}>↑ Gonfler</button>
-      <button type="button" className="radial-menu-item is-active" style={item(88, 0)} onClick={() => onSelect("dig")}>→ Creuser</button>
-      <button type="button" className="radial-menu-item is-active" style={item(0, 88)} onClick={() => onSelect("seal")}>↓ Sceller</button>
-      <button type="button" className="radial-menu-item is-active" style={item(-88, 0)} onClick={() => onSelect("smooth")}>← Lisser</button>
+      <button type="button" className="radial-menu-center" onClick={() => onSelect("inspiration")} aria-label="Inspiration">◎</button>
+      <button type="button" className="radial-menu-item is-active" style={item(0, -90)} onClick={() => onSelect("expiration")}>↑ Expiration</button>
+      <button type="button" className="radial-menu-item is-active" style={item(0, 90)} onClick={() => onSelect("inspiration")}>↓ Inspiration</button>
     </div>
   );
 }
@@ -320,10 +318,8 @@ export default function SoonCanvas({
           anchor={fishMenu.screen}
           onClose={() => setFishMenu(null)}
           items={fishMenu?.type === "blob" ? [
-            { id: "inflate", label: "↑ Gonfler" },
-            { id: "dig", label: "→ Creuser" },
-            { id: "seal", label: "↓ Sceller" },
-            { id: "smooth", label: "← Lisser" },
+            { id: "expiration", label: "↑ Expiration" },
+            { id: "inspiration", label: "↓ Inspiration" },
           ] : [
             { id: "depth", label: "Profondeur" },
             { id: "bubbles", label: `Bulles ${bubblesEnabled ? "ON" : "OFF"}` },
