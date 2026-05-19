@@ -30,7 +30,7 @@ export function getBlobRadiusAtAngle(blob, angle) {
   return baseRadius + a + (b - a) * localT;
 }
 
-export function updateBlobPhysics(blob, { smoothFactor = 0.09, damping = 0.9, maxOffset = 420 } = {}) {
+export function updateBlobPhysics(blob, { smoothFactor = 0.018, damping = 0.92, maxOffset = 520 } = {}) {
   const points = blob?.points;
   if (!Array.isArray(points) || points.length < 3) return blob;
   const nextOffsets = points.map((point, i) => {
@@ -64,12 +64,14 @@ function applyGaussian(blob, impactAngle, spread, mutate) {
 export function inflateBlobAtAngle(blob, angle, force = 120) {
   return applyGaussian(blob, angle, 0.46, (point, falloff) => {
     point.offset += force * falloff;
+    point.velocity += force * falloff * 0.025;
   });
 }
 
 export function digBlobAtAngle(blob, angle, force = 120) {
   return applyGaussian(blob, angle, 0.42, (point, falloff) => {
     point.offset -= force * falloff;
+    point.velocity -= force * falloff * 0.025;
   });
 }
 
@@ -83,7 +85,7 @@ export function smoothBlobAtAngle(blob, angle, amount = 0.4) {
     const average = (prev.offset + point.offset + next.offset) / 3;
     const blend = amount * falloff;
     point.offset = point.offset + (average - point.offset) * blend;
-    point.velocity *= 0.75;
+    point.velocity *= 0.55;
   });
 }
 
