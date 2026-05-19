@@ -2232,11 +2232,17 @@ button {
   gap: 10px;
 }
 
-.fish-sliders {
-  width: min(92vw, 360px);
-  display: flex;
+.fish-tools {
   flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
+}
+
+.fish-sliders {
+  width: min(92vw, 420px);
+  display: flex;
+  gap: 14px;
+  align-items: center;
   padding: 10px 12px;
   border-radius: 16px;
   background: rgba(15, 23, 42, 0.72);
@@ -2244,16 +2250,22 @@ button {
   backdrop-filter: blur(12px);
 }
 
-.fish-slider-row {
+.fish-slider-row.horizontal {
+  flex: 1;
   display: grid;
-  grid-template-columns: 88px minmax(0, 1fr) 48px;
+  grid-template-columns: 66px minmax(0, 1fr) 40px;
   align-items: center;
   gap: 8px;
   color: rgba(226, 232, 240, 0.86);
 }
 
-.fish-slider-row.depth {
-  grid-template-columns: 88px minmax(0, 120px) 48px;
+.fish-slider-column {
+  width: 84px;
+  display: grid;
+  grid-template-rows: auto 110px auto;
+  justify-items: center;
+  gap: 7px;
+  color: rgba(226, 232, 240, 0.86);
 }
 
 .slider-label {
@@ -2265,7 +2277,7 @@ button {
 .slider-value {
   font-size: 0.62rem;
   opacity: 0.9;
-  text-align: right;
+  text-align: center;
 }
 
 .slim-horizontal-range {
@@ -2277,13 +2289,15 @@ button {
   background: transparent;
 }
 
-.slim-horizontal-range::-webkit-slider-runnable-track {
+.slim-horizontal-range::-webkit-slider-runnable-track,
+.slim-vertical-range::-webkit-slider-runnable-track {
   height: 6px;
   border-radius: 999px;
   background: rgba(148, 163, 184, 0.45);
 }
 
-.slim-horizontal-range::-webkit-slider-thumb {
+.slim-horizontal-range::-webkit-slider-thumb,
+.slim-vertical-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 14px;
@@ -2294,13 +2308,15 @@ button {
   background: rgba(240, 249, 255, 0.92);
 }
 
-.slim-horizontal-range::-moz-range-track {
+.slim-horizontal-range::-moz-range-track,
+.slim-vertical-range::-moz-range-track {
   height: 6px;
   border-radius: 999px;
   background: rgba(148, 163, 184, 0.45);
 }
 
-.slim-horizontal-range::-moz-range-thumb {
+.slim-horizontal-range::-moz-range-thumb,
+.slim-vertical-range::-moz-range-thumb {
   width: 14px;
   height: 14px;
   border-radius: 999px;
@@ -2308,45 +2324,22 @@ button {
   background: rgba(240, 249, 255, 0.92);
 }
 
-.slim-horizontal-range.speed::-webkit-slider-thumb,
-.slim-horizontal-range.speed::-moz-range-thumb {
+.slim-vertical-range {
+  -webkit-appearance: slider-vertical;
+  appearance: slider-vertical;
+  writing-mode: bt-lr;
+  width: 14px;
+  height: 110px;
+  margin: 0;
+  background: transparent;
+}
+
+.slim-vertical-range.speed::-webkit-slider-thumb,
+.slim-vertical-range.speed::-moz-range-thumb {
   border-color: rgba(251, 113, 133, 0.6);
 }
 
-.slim-horizontal-range.depth {
-  max-width: 120px;
-}
-
-@media (max-width: 640px) {
-  .top-nav {
-    top: max(8px, env(safe-area-inset-top));
-    left: 8px;
-    right: 8px;
-  }
-
-  .top-nav-flow {
-    width: min(62vw, 250px);
-    gap: 18px;
-    padding: 8px 12px;
-    margin-top: 6px;
-  }
-
-  .top-nav-flow button,
-  .top-nav-icon {
-    width: 42px;
-    height: 42px;
-  }
-
-  .flow-step-tip {
-    top: 56px;
-    max-width: min(92vw, 320px);
-  }
-
-  .cockpit {
-    bottom: calc(10px + env(safe-area-inset-bottom));
-    padding-inline: 10px;
-  }
-
+@media (max-width: 768px) {
   .cockpit-buttons {
     width: 100%;
     justify-content: center;
@@ -2359,12 +2352,16 @@ button {
   }
 
   .fish-sliders {
-    width: min(96vw, 340px);
+    width: min(96vw, 360px);
+    gap: 10px;
   }
 
-  .fish-slider-row,
-  .fish-slider-row.depth {
-    grid-template-columns: 80px minmax(0, 1fr) 44px;
+  .fish-slider-column {
+    width: 74px;
+  }
+
+  .fish-slider-row.horizontal {
+    grid-template-columns: 56px minmax(0, 1fr) 36px;
   }
 
   .odysseo-cockpit .mode-toggle {
