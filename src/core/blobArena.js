@@ -31,7 +31,7 @@ export function getBlobRadiusAtAngle(blob, angle) {
   return baseRadius + a + (b - a) * localT;
 }
 
-export function updateBlobPhysics(blob, { smoothFactor = 0.006, damping = 0.986, maxOffset = 900 } = {}) {
+export function updateBlobPhysics(blob, { smoothFactor = 0.004, damping = 0.99, maxOffset = 1000000 } = {}) {
   const points = blob?.points;
   if (!Array.isArray(points) || points.length < 3) return blob;
   const nextOffsets = points.map((point, i) => {
@@ -77,8 +77,10 @@ function applyDelta(blob, deltaByPoint = []) {
   if (!Array.isArray(points) || points.length === 0) return blob;
   points.forEach((point, index) => {
     const d = Number.isFinite(deltaByPoint[index]) ? deltaByPoint[index] : 0;
-    point.offset += d;
-    point.velocity += d * 0.035;
+    const progressiveResistance = 1 / (1 + Math.abs(point.offset) / 2600);
+    const applied = d * progressiveResistance;
+    point.offset += applied;
+    point.velocity += applied * 0.03;
   });
   return blob;
 }
