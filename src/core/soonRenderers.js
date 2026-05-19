@@ -110,7 +110,8 @@ function drawGuppyTopView(ctx, x, y, angle, size = 1, sway = 0) {
 function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
   const count = 14;
   const hasBlob = Array.isArray(current?.arenaBlob?.points) && current.arenaBlob.points.length > 2;
-  const outerLimit = Math.max(220, arenaRadius + 260);
+  const outerLimit = Math.max(260, arenaRadius + 300);
+  const guppyHalfLength = 16;
   const points = current?.arenaBlob?.points || [];
   const blobStep = hasBlob ? (Math.PI * 2) / points.length : 0;
 
@@ -136,11 +137,15 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
       const vb = Number.isFinite(points[nextIndex]?.velocity) ? points[nextIndex].velocity : 0;
       boundaryVelocity = va + (vb - va) * localT;
     }
-    const offset = 46 + Math.sin(time * 0.0012 + seed * 3.1) * 22;
+    const offset = 68 + Math.sin(time * 0.0012 + seed * 3.1) * 18;
     // Décalage synchrone au contour: quand le blob "expire" (vitesse positive),
     // les guppys sont poussés un peu plus vers l'extérieur immédiatement.
-    const contourPush = Math.max(-26, Math.min(38, boundaryVelocity * 2.4));
-    const radial = Math.max(120, Math.min(outerLimit, localBlobRadius + offset + contourPush));
+    const contourPush = Math.max(-18, Math.min(34, boundaryVelocity * 2.2));
+    const safeOutsideMin = localBlobRadius + guppyHalfLength + 14;
+    const radial = Math.max(
+      safeOutsideMin,
+      Math.min(outerLimit, localBlobRadius + offset + contourPush)
+    );
     const x = Math.cos(angle) * radial;
     const y = Math.sin(angle) * radial;
 
