@@ -22,5 +22,5 @@ const staged=loaded.map((b)=>({...b,x:(next?.fish?.x||0)+(b.x||0)*0.12,y:(next?.
 return{...next,bubbles:staged,arenaBubblesById:byArena,bubbleTransitionProgress:0,bubbleTransitionTarget:loaded,selectedBubbleId:null,selectedBeaconId:null};}),
 startFishTrailAt:(x,y)=>set(()=>({fishTrail:startFishTrailAt(x,y)})),
 addFishTrailPoint:(x,y)=>set((s)=>({fishTrail:addFishTrailPoint(s.fishTrail||[],x,y)})),
-applyBlobAction:(type,angle)=>set((s)=>({arenaBlob:applyBlobAction(s.arenaBlob,type,angle),gamePaused:false,pendingBlobAction:null})),
+applyBlobAction:(type,angle)=>set((s)=>{const inward=Math.max(18,Math.min(46,(s.fish?.maxSpeed||3.1)*8));const nx=(s.fish?.x||0)-Math.cos(angle||0)*inward;const ny=(s.fish?.y||0)-Math.sin(angle||0)*inward;return{arenaBlob:applyBlobAction(s.arenaBlob,type,angle),gamePaused:false,pendingBlobAction:null,fish:{...(s.fish||{}),x:nx,y:ny,targetX:nx,targetY:ny,vx:(s.fish?.vx||0)*0.45,vy:(s.fish?.vy||0)*0.45}};}),
 });

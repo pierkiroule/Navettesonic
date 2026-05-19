@@ -96,9 +96,14 @@ export function sealBlobAtAngle(blob, angle, amount = 0.5) {
 }
 
 export function applyBlobAction(blob, type, angle) {
-  if (type === "inflate") return inflateBlobAtAngle(blob, angle, 140);
-  if (type === "dig") return digBlobAtAngle(blob, angle, 130);
-  if (type === "smooth") return smoothBlobAtAngle(blob, angle, 0.55);
-  if (type === "seal") return sealBlobAtAngle(blob, angle, 0.65);
-  return blob;
+  if (!blob?.points?.length) return blob;
+  const nextBlob = {
+    ...blob,
+    points: blob.points.map((point) => ({ ...point })),
+  };
+  if (type === "inflate") return inflateBlobAtAngle(nextBlob, angle, 140);
+  if (type === "dig") return digBlobAtAngle(nextBlob, angle, 130);
+  if (type === "smooth") return smoothBlobAtAngle(nextBlob, angle, 0.55);
+  if (type === "seal") return sealBlobAtAngle(nextBlob, angle, 0.65);
+  return nextBlob;
 }

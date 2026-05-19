@@ -3,6 +3,20 @@ import { useSoonCanvasLoop } from "./soon/useSoonCanvasLoop.js";
 import { useSoonPointer } from "./soon/useSoonPointer.js";
 import RadialMenu from "./RadialMenu.jsx";
 
+function BlobContextMenu({ anchor, onSelect }) {
+  const baseStyle = { position: "absolute", left: `${anchor?.x || 0}px`, top: `${anchor?.y || 0}px`, transform: "translate(-50%, -50%)", zIndex: 24 };
+  const item = (x, y) => ({ position: "absolute", transform: `translate(${x}px, ${y}px)` });
+  return (
+    <div style={baseStyle}>
+      <button type="button" className="radial-menu-center" onClick={() => onSelect("seal")} aria-label="Sceller">◎</button>
+      <button type="button" className="radial-menu-item is-active" style={item(0, -88)} onClick={() => onSelect("inflate")}>↑ Gonfler</button>
+      <button type="button" className="radial-menu-item is-active" style={item(88, 0)} onClick={() => onSelect("dig")}>→ Creuser</button>
+      <button type="button" className="radial-menu-item is-active" style={item(0, 88)} onClick={() => onSelect("seal")}>↓ Sceller</button>
+      <button type="button" className="radial-menu-item is-active" style={item(-88, 0)} onClick={() => onSelect("smooth")}>← Lisser</button>
+    </div>
+  );
+}
+
 export default function SoonCanvas({
   mode,
   interactionMode = "swim",
@@ -291,7 +305,16 @@ export default function SoonCanvas({
           />
         </div>
       ) : null}
-      {fishMenu && interactionMode === "swim" ? (
+      {fishMenu && interactionMode === "swim" && fishMenu?.type === "blob" ? (
+        <BlobContextMenu
+          anchor={fishMenu.screen}
+          onSelect={(action) => {
+            onBlobAction?.(action, fishMenu?.angle);
+            setFishMenu(null);
+          }}
+        />
+      ) : null}
+      {fishMenu && interactionMode === "swim" && fishMenu?.type !== "blob" ? (
         <RadialMenu
           aria-label="Menu contextuel poisson"
           anchor={fishMenu.screen}
