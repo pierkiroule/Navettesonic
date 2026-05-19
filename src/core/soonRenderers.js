@@ -22,6 +22,8 @@ const guppyRuntime = {
   fish: [],
   pearls: [],
   driftingSeeds: [],
+  cosmicStreaks: [],
+  nextCosmicSpawnAt: 0,
 };
 
 export function drawScene(ctx, rect, time, refs) {
@@ -153,7 +155,30 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
   const fish = guppyRuntime.fish;
   const pearls = guppyRuntime.pearls;
   const seeds = guppyRuntime.driftingSeeds;
+  const cosmicStreaks = guppyRuntime.cosmicStreaks;
   const dt = 1;
+
+  if (now >= guppyRuntime.nextCosmicSpawnAt) {
+    const impactAngle = Math.random() * Math.PI * 2;
+    const edge = getArenaEdgeRadius(current, arenaRadius, impactAngle);
+    const spawnR = edge + 340 + Math.random() * 220;
+    const targetX = Math.cos(impactAngle) * Math.max(80, edge - 8);
+    const targetY = Math.sin(impactAngle) * Math.max(80, edge - 8);
+    const fromX = Math.cos(impactAngle + (Math.random() - 0.5) * 0.5) * spawnR;
+    const fromY = Math.sin(impactAngle + (Math.random() - 0.5) * 0.5) * spawnR;
+    cosmicStreaks.push({
+      x: fromX,
+      y: fromY,
+      vx: (targetX - fromX) * 0.06,
+      vy: (targetY - fromY) * 0.06,
+      tx: targetX,
+      ty: targetY,
+      angle: impactAngle,
+      life: 0,
+      maxLife: 42 + Math.random() * 20,
+    });
+    guppyRuntime.nextCosmicSpawnAt = now + 1500 + Math.random() * 3000;
+  }
 
   pearls.forEach((pearl) => {
     if (!pearl.attached) return;
@@ -227,6 +252,24 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
     }
   }
 
+  for (let i = cosmicStreaks.length - 1; i >= 0; i -= 1) {
+    const c = cosmicStreaks[i];
+    c.life += 1;
+    c.x += c.vx;
+    c.y += c.vy;
+    c.vx *= 0.994;
+    c.vy *= 0.994;
+    if (Math.hypot(c.tx - c.x, c.ty - c.y) < 18 || c.life >= c.maxLife) {
+      pearls.push({
+        id: `pearl-cosmic-${now}-${i}`,
+        angle: c.angle + (Math.random() - 0.5) * 0.04,
+        attached: true,
+        glow: Math.random() * Math.PI * 2,
+      });
+      cosmicStreaks.splice(i, 1);
+    }
+  }
+
   ctx.save();
   ctx.globalCompositeOperation = "source-over";
 
@@ -244,6 +287,21 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
     ctx.beginPath();
     ctx.arc(s.x, s.y, 2.1 + pulse * 1.1, 0, Math.PI * 2);
     ctx.fillStyle = `rgba(245,250,255,${0.52 + pulse * 0.28})`;
+    ctx.fill();
+  });
+
+  cosmicStreaks.forEach((c) => {
+    const tailX = c.x - c.vx * 5.5;
+    const tailY = c.y - c.vy * 5.5;
+    ctx.beginPath();
+    ctx.moveTo(tailX, tailY);
+    ctx.lineTo(c.x, c.y);
+    ctx.strokeStyle = "rgba(255,255,255,0.75)";
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 2.2, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.95)";
     ctx.fill();
   });
 
