@@ -412,38 +412,55 @@ export default function SoonApp({ onBack }) {
               >
                 {isEditMode ? "✏️" : "🐟"}
               </button>
+
+              <div className="fish-sliders">
+                <label className="fish-slider-row" htmlFor="zoom-slider-horizontal">
+                  <span className="slider-label">🔍 Zoom</span>
+                  <input
+                    id="zoom-slider-horizontal"
+                    className="slim-horizontal-range"
+                    type="range"
+                    min="0"
+                    max="2"
+                    step="0.05"
+                    value={viewZoom}
+                    onChange={(event) => setViewZoom(Number(event.target.value))}
+                  />
+                  <span className="slider-value">{viewZoom.toFixed(1)}</span>
+                </label>
+
+                <label className="fish-slider-row" htmlFor="speed-slider-horizontal">
+                  <span className="slider-label">⚡ Vitesse</span>
+                  <input
+                    id="speed-slider-horizontal"
+                    className="slim-horizontal-range speed"
+                    type="range"
+                    min="0.3"
+                    max="2"
+                    step="0.05"
+                    value={swimSpeed}
+                    onChange={(event) => setSwimSpeed(Number(event.target.value))}
+                  />
+                  <span className="slider-value">{swimSpeed <= 0 ? "Arrêt" : `${swimSpeed.toFixed(2)}×`}</span>
+                </label>
+
+                <label className="fish-slider-row depth" htmlFor="depth-slider-horizontal">
+                  <span className="slider-label">🌊 Profondeur</span>
+                  <input
+                    id="depth-slider-horizontal"
+                    className="slim-horizontal-range depth"
+                    type="range"
+                    min="1"
+                    max="3"
+                    step="1"
+                    value={selectedDepth}
+                    onChange={(event) => setSelectedDepth(Number(event.target.value))}
+                  />
+                  <span className="slider-value">{selectedDepth}</span>
+                </label>
+              </div>
             </div>
           )}
-        </div>
-
-        <div className="global-sliders">
-          <div className="global-slider zoom-slider">
-            <span className="slider-label">🔍 Zoom</span>
-            <input
-              className="slim-vertical-range"
-              type="range"
-              min="0"
-              max="2"
-              step="0.05"
-              value={viewZoom}
-              onChange={(event) => setViewZoom(Number(event.target.value))}
-            />
-            <span className="slider-value">{viewZoom.toFixed(1)}</span>
-          </div>
-
-          <div className="global-slider odysseo-speed-slider speed-slider">
-            <span className="slider-label">⚡ Vitesse</span>
-            <input
-              className="slim-vertical-range"
-              type="range"
-              min="0.3"
-              max="2"
-              step="0.05"
-              value={swimSpeed}
-              onChange={(event) => setSwimSpeed(Number(event.target.value))}
-            />
-            <span className="slider-value">{swimSpeed <= 0 ? "Arrêt" : `${swimSpeed.toFixed(2)}×`}</span>
-          </div>
         </div>
       </div>
 
