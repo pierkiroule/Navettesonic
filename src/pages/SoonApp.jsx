@@ -412,34 +412,6 @@ export default function SoonApp({ onBack }) {
               >
                 {isEditMode ? "✏️" : "🐟"}
               </button>
-              {!isEditMode && (
-                <>
-                  <button
-                    type="button"
-                    className={`bubble-btn tool-chip ${bubblesEnabled ? "active" : ""}`}
-                    onClick={() => setBubblesEnabled((value) => !value)}
-                    title="Activer / couper les bulles"
-                  >
-                    {bubblesEnabled ? "🫧 Bulles ON" : "🫧 Bulles OFF"}
-                  </button>
-                  <button
-                    type="button"
-                    className="bubble-btn tool-chip"
-                    onClick={() => setBubblesIntensity((value) => Math.min(2, value + 0.25))}
-                    title="Augmenter l’intensité des bulles"
-                  >
-                    🧪 Intensité {bubblesIntensity.toFixed(2)}
-                  </button>
-                  <button
-                    type="button"
-                    className="bubble-btn tool-chip"
-                    onClick={toggleMembraneSide}
-                    title="Basculer intérieur / extérieur"
-                  >
-                    {fish?.membraneSide === "outside" ? "🌌 Extérieur" : "🫧 Intérieur"}
-                  </button>
-                </>
-              )}
             </div>
           )}
         </div>
