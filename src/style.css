@@ -2534,6 +2534,42 @@ button {
   gap: 8px;
 }
 
+.fish-blob-context-menu {
+  position: fixed;
+  transform: translate(-50%, -100%);
+  width: 124px;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  overflow: hidden;
+  z-index: 40;
+  border: 1px solid rgba(125, 211, 252, 0.45);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.38), 0 0 0 1px rgba(34, 211, 238, 0.15) inset;
+  backdrop-filter: blur(8px);
+}
+
+.fish-blob-half {
+  width: 100%;
+  height: 50%;
+  border: none;
+  color: #e2e8f0;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.fish-blob-half-top {
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.28), rgba(15, 23, 42, 0.92));
+  border-bottom: 1px solid rgba(125, 211, 252, 0.35);
+}
+
+.fish-blob-half-bottom {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(167, 139, 250, 0.24));
+}
+
+.fish-blob-half:active,
+.fish-blob-half:hover {
+  filter: brightness(1.12);
+}
+
 .fish-radial-menu {
   position: fixed;
   transform: translate(-50%, -50%);
