@@ -1,6 +1,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { sampleLibrary } from "../data/defaultPack.js";
+import { getRuntimeSupabaseSamples, setRuntimeSupabaseSamples } from "../data/runtimeSoundLibrary.js";
 import { listSoundBubbles } from "../services/supabaseSoundService.js";
 
 function clampDepth(value) {
@@ -16,13 +17,14 @@ function getDepthLabel(depth) {
 }
 
 export default function BubbleEditor({ bubble, onUpdate, onDelete }) {
-  const [bucketSamples, setBucketSamples] = useState([]);
+  const [bucketSamples, setBucketSamples] = useState(() => getRuntimeSupabaseSamples());
 
   useEffect(() => {
     let mounted = true;
     void listSoundBubbles().then((items) => {
       if (!mounted) return;
-      setBucketSamples(items || []);
+      setRuntimeSupabaseSamples(items || []);
+      setBucketSamples(getRuntimeSupabaseSamples());
     });
     return () => {
       mounted = false;
