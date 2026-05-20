@@ -183,6 +183,27 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
     pearl.x = Math.cos(pearl.angle) * Math.max(44, edge - 8);
     pearl.y = Math.sin(pearl.angle) * Math.max(44, edge - 8);
     pearl.angle += 0.0002;
+    const attachedAge = now - (pearl.attachedAt || now);
+    if (attachedAge > 1200) {
+      pearl.attached = false;
+      const nx = Math.cos(pearl.angle);
+      const ny = Math.sin(pearl.angle);
+      const inwardSpeed = 0.18 + Math.random() * 0.18;
+      seeds.push({
+        x: pearl.x - nx * 20,
+        y: pearl.y - ny * 20,
+        vx: -nx * inwardSpeed + (Math.random() - 0.5) * 0.05,
+        vy: -ny * inwardSpeed + (Math.random() - 0.5) * 0.05,
+        bornAt: now,
+        phase: Math.random() * Math.PI * 2,
+        state: "inhaled", // membrane | inhaled
+        inhalingUntil: now + 2200,
+        inhalingBy: "membrane",
+        headHits: 0,
+        headHitsTarget: 7 + Math.floor(Math.random() * 3),
+        lastHeadHitAt: 0,
+      });
+    }
   });
 
   fish.forEach((g) => {
@@ -217,34 +238,15 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
     const mouthY = g.y + Math.sin(g.angle) * 11;
     const near = pearls.find((p) => p.attached && Math.hypot((p.x || 0) - mouthX, (p.y || 0) - mouthY) < 34);
     if (near) {
-      near.attached = false;
-      const fromX = near.x + Math.cos(near.angle || 0) * 10;
-      const fromY = near.y + Math.sin(near.angle || 0) * 10;
-      const toX = g.x - Math.cos(g.angle) * 6;
-      const toY = g.y - Math.sin(g.angle) * 6;
-      seeds.push({
-        x: near.x + Math.cos(near.angle || 0) * 18,
-        y: near.y + Math.sin(near.angle || 0) * 18,
-        vx: (toX - fromX) * 0.08,
-        vy: (toY - fromY) * 0.08,
-        bornAt: now,
-        phase: Math.random() * Math.PI * 2,
-        state: "inhaled", // membrane | inhaled
-        inhalingUntil: now + 480,
-        inhalingBy: g.id,
-        headHits: 0,
-        headHitsTarget: 7 + Math.floor(Math.random() * 3),
-        lastHeadHitAt: 0,
-      });
-      for (let j = 0; j < 9; j += 1) {
+      for (let j = 0; j < 3; j += 1) {
         pinkSmoke.push({
-          x: fromX,
-          y: fromY,
-          vx: (Math.random() - 0.5) * 0.8,
-          vy: (Math.random() - 0.5) * 0.8,
+          x: mouthX,
+          y: mouthY,
+          vx: (Math.random() - 0.5) * 0.35,
+          vy: (Math.random() - 0.5) * 0.35,
           bornAt: now,
-          life: 450 + Math.random() * 350,
-          r: 1.4 + Math.random() * 2.3,
+          life: 220 + Math.random() * 180,
+          r: 0.8 + Math.random() * 1.2,
         });
       }
     }
@@ -273,7 +275,10 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
           s.lastHeadHitAt = now;
         }
       }
-      if (now < (s.inhalingUntil || 0) && s.inhalingBy === g.id) {
+      if (now < (s.inhalingUntil || 0) && s.inhalingBy === "membrane") {
+        s.vx *= 0.996;
+        s.vy *= 0.996;
+      } else if (now < (s.inhalingUntil || 0) && s.inhalingBy === g.id) {
         s.vx += (g.x - s.x) * 0.018;
         s.vy += (g.y - s.y) * 0.018;
       }
@@ -315,6 +320,7 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
         id: `pearl-cosmic-${now}-${i}`,
         angle: c.angle + (Math.random() - 0.5) * 0.04,
         attached: true,
+        attachedAt: now,
         glow: Math.random() * Math.PI * 2,
       });
       cosmicStreaks.splice(i, 1);
