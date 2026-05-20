@@ -228,10 +228,11 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
         vx: (toX - fromX) * 0.08,
         vy: (toY - fromY) * 0.08,
         bornAt: now,
-        matureAt: now + 3000 + Math.random() * 3600,
         phase: Math.random() * Math.PI * 2,
         inhalingUntil: now + 480,
         inhalingBy: g.id,
+        headHits: 0,
+        lastHeadHitAt: 0,
       });
       for (let j = 0; j < 9; j += 1) {
         pinkSmoke.push({
@@ -265,6 +266,10 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
         const ny = (s.y - mouthY) / Math.max(0.001, dHead);
         s.vx += nx * (0.3 + push * 0.5) + (g.vx || 0) * 0.1;
         s.vy += ny * (0.3 + push * 0.5) + (g.vy || 0) * 0.1;
+        if (push > 0.28 && now - (s.lastHeadHitAt || 0) > 120) {
+          s.headHits = (s.headHits || 0) + 1;
+          s.lastHeadHitAt = now;
+        }
       }
       if (now < (s.inhalingUntil || 0) && s.inhalingBy === g.id) {
         s.vx += (g.x - s.x) * 0.018;
@@ -279,7 +284,7 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
       s.x *= c; s.y *= c;
       s.vx *= -0.2; s.vy *= -0.2;
     }
-    if (now >= s.matureAt) {
+    if ((s.headHits || 0) >= 5) {
       spawnFireflyFromSeed(s.x, s.y);
       seeds.splice(i, 1);
     }

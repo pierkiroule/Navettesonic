@@ -546,37 +546,6 @@ function hasCompleteHaikuTriangle() {
   );
 }
 
-function drawMinimalSymbol(ctx, symbol, x, y, size, color) {
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = Math.max(1, size * 0.18);
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-
-  if (symbol === "circle") {
-    ctx.beginPath();
-    ctx.arc(x, y, size * 0.42, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-
-  if (symbol === "square") {
-    ctx.beginPath();
-    ctx.rect(x - size * 0.38, y - size * 0.38, size * 0.76, size * 0.76);
-    ctx.stroke();
-  }
-
-  if (symbol === "triangle") {
-    ctx.beginPath();
-    ctx.moveTo(x, y - size * 0.46);
-    ctx.lineTo(x + size * 0.42, y + size * 0.34);
-    ctx.lineTo(x - size * 0.42, y + size * 0.34);
-    ctx.closePath();
-    ctx.stroke();
-  }
-
-  ctx.restore();
-}
-
 function getTrianglePoints() {
   const attached = getAttachedFirefliesSorted();
   if (attached.length < 3) return [];
@@ -993,16 +962,6 @@ export function drawFireflies(ctx, time) {
     ctx.fillStyle = "rgba(255, 255, 255, 0.58)";
     ctx.fill();
 
-    if (firefly.attached) {
-      drawMinimalSymbol(
-        ctx,
-        type.symbol,
-        firefly.x,
-        firefly.y,
-        r * 0.9,
-        "rgba(15, 23, 42, 0.58)"
-      );
-    }
   });
 
   ctx.restore();
@@ -1129,14 +1088,6 @@ export function drawPlacedTriangles(ctx, time) {
       ctx.fillStyle = `hsla(${type.hue}, 50%, 78%, 0.82)`;
       ctx.fill();
 
-      drawMinimalSymbol(
-        ctx,
-        type.symbol,
-        point.x,
-        point.y,
-        8.4,
-        "rgba(15, 23, 42, 0.62)"
-      );
     });
 
     ctx.beginPath();
