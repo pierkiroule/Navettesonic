@@ -1,95 +1,22 @@
-import { createClient } from "@supabase/supabase-js";
-import { sampleLibrary } from "../data/defaultPack.js";
-
-const SUPABASE_URL = "https://qyffktrggapfzlmmlerq.supabase.co";
-const SUPABASE_ANON_KEY = import.meta?.env?.VITE_SUPABASE_ANON_KEY || "";
-
-const BUCKET = "Soonbucket";
-const FOLDER = "bulles";
-
 const PUBLIC_BASE =
-  `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${FOLDER}`;
+  "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles";
 
-export const fallbackSoundBubbles = [
-  {
-    id: "baladhaikua",
-    name: "Balade haïkuatique",
-    file: "Baladhaikua.mp3",
-    url: `${PUBLIC_BASE}/Baladhaikua.mp3`,
-    source: "fallback",
-  },
-];
+const BUCKET_BUBBLE_COUNT = 26;
 
-function normalizeFileName(name = "") {
-  return name.replace(/\.[^/.]+$/, "");
+function buildBucketBubble(index) {
+  const name = `Bulle_${String(index).padStart(3, "0")}`;
+  const file = `${name}.mp3`;
+  return {
+    id: name.toLowerCase(),
+    name,
+    file,
+    url: `${PUBLIC_BASE}/${file}`,
+    source: "bucket",
+  };
 }
 
-function fromLibraryFallback() {
-  return sampleLibrary
-    .filter((sample) => sample?.kind === "file" && typeof sample.url === "string")
-    .map((sample) => ({
-      id: String(sample.id || "").toLowerCase(),
-      name: sample.name || normalizeFileName(sample.id || "Bulle"),
-      file: `${sample.id}.mp3`,
-      url: sample.url,
-      source: "sample-library",
-    }));
-}
-
-function mergeUniqueById(items = []) {
-  const byId = new Map();
-  items.forEach((item) => {
-    const id = String(item?.id || "").trim().toLowerCase();
-    if (!id) return;
-    if (!byId.has(id)) byId.set(id, { ...item, id });
-  });
-  return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base" }));
-}
+const BUCKET_BUBBLES = Array.from({ length: BUCKET_BUBBLE_COUNT }, (_, i) => buildBucketBubble(i + 1));
 
 export async function listSoundBubbles() {
-  if (!SUPABASE_ANON_KEY) {
-    console.warn("[Soon] VITE_SUPABASE_ANON_KEY absente. Fallback statique utilisé.");
-    return mergeUniqueById([...fromLibraryFallback(), ...fallbackSoundBubbles]);
-  }
-
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-  const allFiles = [];
-  let offset = 0;
-  const limit = 100;
-
-  while (true) {
-    const { data, error } = await supabase.storage
-      .from(BUCKET)
-      .list(FOLDER, {
-        limit,
-        offset,
-        sortBy: {
-          column: "name",
-          order: "asc",
-        },
-      });
-
-    if (error) {
-      console.warn("[Soon] Impossible de lister les bulles Supabase", error);
-      return mergeUniqueById([...fromLibraryFallback(), ...fallbackSoundBubbles]);
-    }
-
-    const chunk = data || [];
-    allFiles.push(...chunk);
-    if (chunk.length < limit) break;
-    offset += limit;
-  }
-
-  const files = allFiles
-    .filter((file) => file.name.toLowerCase().endsWith(".mp3"))
-    .map((file) => ({
-      id: file.name.replace(/\.[^/.]+$/, "").toLowerCase(),
-      name: file.name.replace(/\.[^/.]+$/, ""),
-      file: file.name,
-      url: `${PUBLIC_BASE}/${encodeURIComponent(file.name)}`,
-      source: "supabase",
-    }));
-
-  return mergeUniqueById([...files, ...fromLibraryFallback(), ...fallbackSoundBubbles]);
+  return BUCKET_BUBBLES;
 }

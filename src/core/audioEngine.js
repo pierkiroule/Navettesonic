@@ -1,26 +1,28 @@
-import { sampleLibrary } from "../data/defaultPack.js";
+import { listSoundBubbles } from "../services/supabaseSoundService.js";
 
 const SUPABASE_BUBBLES_BASE =
   "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles";
 
-function resolveSample(bubble) {
+let bucketFileSet = null;
+
+async function getBucketFileSet() {
+  if (bucketFileSet) return bucketFileSet;
+  const items = await listSoundBubbles();
+  bucketFileSet = new Set((items || []).map((item) => item.file));
+  return bucketFileSet;
+}
+
+async function resolveSample(bubble) {
   const id = bubble?.sampleId || "";
-  const fromLibrary = sampleLibrary.find((item) => item.id === id);
-  if (fromLibrary) return fromLibrary;
-
-  if (id.startsWith("supabase:")) {
-    const file = id.slice("supabase:".length);
-    if (file) {
-      return {
-        id,
-        name: file.replace(/\.[^/.]+$/, ""),
-        kind: "file",
-        url: `${SUPABASE_BUBBLES_BASE}/${encodeURIComponent(file)}`,
-      };
-    }
-  }
-
-  return sampleLibrary[0];
+  const requestedFile = id.startsWith("supabase:") ? id.slice("supabase:".length) : "";
+  const bucketFiles = await getBucketFileSet();
+  const file = bucketFiles.has(requestedFile) ? requestedFile : "Bulle_001.mp3";
+  return {
+    id: `supabase:${file}`,
+    name: file.replace(/\.[^/.]+$/, ""),
+    kind: "file",
+    url: `${SUPABASE_BUBBLES_BASE}/${encodeURIComponent(file)}`,
+  };
 }
 
 let audioCtx = null;
@@ -79,35 +81,6 @@ function stopActiveSound(bubbleId) {
   activeSounds.delete(bubbleId);
 }
 
-function playToneBubble(ctx, bubble, sample) {
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  const filter = ctx.createBiquadFilter();
-
-  const depth = bubble.depth || 1;
-
-  osc.type = sample.type || "sine";
-  osc.frequency.value = sample.frequency || 220;
-
-  filter.type = "lowpass";
-  filter.frequency.value = 900 + depth * 480;
-
-  gain.gain.value = 0.001;
-
-  osc.connect(filter);
-  filter.connect(gain);
-  gain.connect(masterGain);
-
-  osc.start();
-
-  gain.gain.exponentialRampToValueAtTime(0.08, ctx.currentTime + 0.12);
-
-  activeSounds.set(bubble.id, {
-    gain,
-    stop: (when) => osc.stop(when),
-  });
-}
-
 async function playFileBubble(ctx, bubble, sample) {
   const buffer = await loadAudioBuffer(sample.url);
 
@@ -146,18 +119,8 @@ export async function playBubbleSound(bubble) {
 
   stopActiveSound(bubble.id);
 
-  const sample = resolveSample(bubble);
-
-  if (sample.kind === "file" && sample.url) {
-    try {
-      await playFileBubble(ctx, bubble, sample);
-      return;
-    } catch (error) {
-      console.warn("[Soon] lecture fichier audio impossible, fallback tone", error);
-    }
-  }
-
-  playToneBubble(ctx, bubble, sample);
+  const sample = await resolveSample(bubble);
+  await playFileBubble(ctx, bubble, sample);
 }
 
 export function stopBubbleSound(bubbleId) {
