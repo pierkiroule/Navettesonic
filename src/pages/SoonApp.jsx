@@ -363,7 +363,7 @@ export default function SoonApp({ onBack }) {
         }}
         onOpenBubbleEditor={openBubbleEditor}
         onRecenterFish={handleOpenBubbleBuckets}
-        onCenterBubbleTouch={handleOpenBubbleBuckets}
+        onCenterBubbleTouch={toggleEyesClosed}
         onCycleBubbleDepth={cycleBubbleDepth}
         bubblesEnabled={bubblesEnabled}
         bubblesIntensity={bubblesIntensity}
@@ -536,12 +536,12 @@ export default function SoonApp({ onBack }) {
                 <label className="fish-slider-row horizontal" htmlFor="zoom-slider-horizontal">
                   <button
                     type="button"
-                    className={`bubble-btn mode-toggle ear-toggle ${eyesClosed ? "active" : ""}`}
-                    onClick={toggleEyesClosed}
-                    title={eyesClosed ? "Désactiver le mode aveugle" : "Activer le mode aveugle"}
-                    aria-label={eyesClosed ? "Mode aveugle actif" : "Mode aveugle inactif"}
+                    className="bubble-btn mode-toggle"
+                    onClick={handleOpenBubbleBuckets}
+                    title="🫧 Déclenchement tactile"
+                    aria-label="Ouvrir l’éditeur des bulles sonores"
                   >
-                    👂
+                    🫧
                   </button>
                   <span className="slider-label slider-label-top">🔍 Zoom</span>
                   <div className="fish-slider-horizontal-track">
