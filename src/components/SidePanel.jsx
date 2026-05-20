@@ -76,6 +76,13 @@ export default function SidePanel({
                 Sélectionne une bulle pour la régler. Le poisson-plume peut
                 récolter les lucioles avec sa traîne.
               </p>
+              <ul>
+                <li>Le poisson-plume peut pousser légèrement les poissons-roses.</li>
+                <li>
+                  Les poissons-roses sont attirés par les graines et peuvent les
+                  pousser légèrement vers le centre.
+                </li>
+              </ul>
             </section>
           )}
 
