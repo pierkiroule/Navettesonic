@@ -3,6 +3,7 @@ import SidePanel from "../components/SidePanel.jsx";
 import SoonCanvas from "../components/SoonCanvas.jsx";
 import WorkflowShell from "../components/WorkflowShell.jsx";
 import Profile from "./Profile.jsx";
+import BubbleBucketsMenu from "../components/BubbleBucketsMenu.jsx";
 import { useSoonStore } from "../store/useSoonStore.js";
 import { renderImmersiveJourney } from "../core/immersiveExporter.js";
 import {
@@ -22,8 +23,6 @@ import {
   workflowRootToMode,
 } from "../core/uiState.js";
 
-
-const NOMBRILO_ONE_SHOT_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/nombrilo/nombrilo.mp3";
 
 const SPEED_BY_LEVEL = {
   1: 0.6,
@@ -47,7 +46,7 @@ export default function SoonApp({ onBack }) {
   const [exportUrl, setExportUrl] = useState(null);
   const [bubblesEnabled, setBubblesEnabled] = useState(true);
   const [bubblesIntensity, setBubblesIntensity] = useState(1);
-  const nombriloAudioRef = useRef(null);
+  const [bubbleBucketsOpen, setBubbleBucketsOpen] = useState(false);
   const speedBoostUntilRef = useRef(0);
 
   const {
@@ -59,7 +58,6 @@ export default function SoonApp({ onBack }) {
     selectedBeaconId,
     circuitAutopilot,
     eyesClosed,
-    toggleEyesClosed,
 
     odysseoPath,
     odysseoDepthMarkers,
@@ -246,23 +244,42 @@ export default function SoonApp({ onBack }) {
     setEditorOpenKey((value) => value + 1);
   };
 
-  const handleRecenterFish = () => {
+  const handleOpenBubbleBuckets = () => {
     stopCircuitAutopilot();
+    setBubbleBucketsOpen(true);
+  };
 
-    if (!nombriloAudioRef.current) {
-      nombriloAudioRef.current = new Audio(NOMBRILO_ONE_SHOT_URL);
-      nombriloAudioRef.current.preload = "auto";
-    }
+  const handleApplyBubbleBuckets = (payload = []) => {
+    const activeBySample = new Map(bubbles.map((bubble) => [bubble.sampleId, bubble]));
 
-    try {
-      nombriloAudioRef.current.currentTime = 0;
-      void nombriloAudioRef.current.play();
-    } catch {
-      // ignore audio gesture failures silently
-    }
+    payload.forEach(({ item, draft, placement }) => {
+      const existing = activeBySample.get(item.id);
 
-    toggleEyesClosed();
-    recenterFish();
+      if (!draft?.checked) {
+        if (existing) deleteBubble(existing.id);
+        return;
+      }
+
+      if (existing) {
+        updateBubble(existing.id, {
+          label: draft.label || item.name,
+          r: Number(draft.r) || existing.r || 72,
+          hue: Number(draft.hue) || existing.hue || 190,
+        });
+        return;
+      }
+
+      addBubble(placement.x, placement.y);
+      const nextBubble = (useSoonStore.getState().bubbles || []).slice(-1)[0];
+      if (!nextBubble) return;
+      updateBubble(nextBubble.id, {
+        sampleId: item.id,
+        label: draft.label || item.name,
+        r: Number(draft.r) || 72,
+        hue: Number(draft.hue) || 190,
+        depth: selectedDepth,
+      });
+    });
   };
 
 
@@ -342,7 +359,7 @@ export default function SoonApp({ onBack }) {
           addOdysseoDepthMarker(x, y, selectedDepth);
         }}
         onOpenBubbleEditor={openBubbleEditor}
-        onRecenterFish={handleRecenterFish}
+        onRecenterFish={handleOpenBubbleBuckets}
         onCycleBubbleDepth={cycleBubbleDepth}
         bubblesEnabled={bubblesEnabled}
         bubblesIntensity={bubblesIntensity}
@@ -557,6 +574,13 @@ export default function SoonApp({ onBack }) {
           )}
         </div>
       )}
+
+      <BubbleBucketsMenu
+        open={bubbleBucketsOpen}
+        bubbles={bubbles}
+        onClose={() => setBubbleBucketsOpen(false)}
+        onValidate={handleApplyBubbleBuckets}
+      />
 
       <SidePanel
         mode={mode}
