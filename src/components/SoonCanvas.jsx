@@ -200,6 +200,17 @@ export default function SoonCanvas({
 
   useEffect(() => {
     if (!fishMenu || fishMenu.type !== "blob") return;
+    if (!pendingBlobAction) {
+      setFishMenu(null);
+      return;
+    }
+    const menuAngle = Number.isFinite(fishMenu?.angle) ? fishMenu.angle : 0;
+    const actionAngle = Number.isFinite(pendingBlobAction?.angle) ? pendingBlobAction.angle : 0;
+    const angleDiff = Math.atan2(Math.sin(menuAngle - actionAngle), Math.cos(menuAngle - actionAngle));
+    if (Math.abs(angleDiff) > 0.08) {
+      setFishMenu(null);
+      return;
+    }
     const fishX = Number.isFinite(fish?.x) ? fish.x : 0;
     const fishY = Number.isFinite(fish?.y) ? fish.y : 0;
     const fishDistance = Math.hypot(fishX, fishY);
@@ -208,7 +219,7 @@ export default function SoonCanvas({
     if (fishDistance < borderThreshold) {
       setFishMenu(null);
     }
-  }, [fishMenu, fish?.x, fish?.y]);
+  }, [fishMenu, fish?.x, fish?.y, pendingBlobAction]);
 
   useSoonCanvasLoop({
     canvasRef,
