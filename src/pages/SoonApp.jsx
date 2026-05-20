@@ -265,6 +265,7 @@ export default function SoonApp({ onBack }) {
           label: draft.label || item.name,
           r: Number(draft.r) || existing.r || 72,
           hue: Number(draft.hue) || existing.hue || 190,
+          depth: Number(draft.depth) || existing.depth || selectedDepth,
         });
         return;
       }
@@ -277,7 +278,7 @@ export default function SoonApp({ onBack }) {
         label: draft.label || item.name,
         r: Number(draft.r) || 72,
         hue: Number(draft.hue) || 190,
-        depth: selectedDepth,
+        depth: Number(draft.depth) || selectedDepth,
       });
     });
   };
