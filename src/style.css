@@ -2227,27 +2227,29 @@ button {
 }
 
 .fish-tools {
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 10px;
-}
-
-.fish-tools {
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 0;
 }
 
 .fish-sliders {
-  width: min(92vw, 460px);
+  width: min(92vw, 500px);
   display: flex;
-  gap: 14px;
+  gap: 10px;
   align-items: center;
-  padding: 10px 12px;
-  border-radius: 16px;
+  padding: 8px 10px;
+  border-radius: 14px;
   background: rgba(15, 23, 42, 0.72);
   border: 1px solid rgba(125, 211, 252, 0.22);
   backdrop-filter: blur(12px);
+}
+
+.fish-sliders .ear-toggle {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  font-size: 1.2rem;
 }
 
 .fish-slider-row.horizontal {
@@ -2260,22 +2262,22 @@ button {
 }
 
 .fish-slider-column {
-  width: 84px;
+  width: 68px;
   display: grid;
-  grid-template-rows: auto 86px auto;
+  grid-template-rows: auto 72px auto;
   justify-items: center;
-  gap: 7px;
+  gap: 5px;
   color: rgba(226, 232, 240, 0.86);
 }
 
 .slider-label {
   white-space: nowrap;
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   letter-spacing: 0.02em;
 }
 
 .slider-value {
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   opacity: 0.9;
   text-align: center;
 }
@@ -2290,7 +2292,7 @@ button {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 40px;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .fish-slider-horizontal-track .slider-value {
@@ -2345,7 +2347,7 @@ button {
   appearance: slider-vertical;
   writing-mode: bt-lr;
   width: 14px;
-  height: 86px;
+  height: 72px;
   margin: 0;
   background: transparent;
 }
@@ -2368,12 +2370,20 @@ button {
   }
 
   .fish-sliders {
-    width: min(96vw, 390px);
-    gap: 10px;
+    width: min(97vw, 390px);
+    gap: 8px;
+    padding: 7px 8px;
   }
 
   .fish-slider-column {
-    width: 74px;
+    width: 60px;
+    grid-template-rows: auto 64px auto;
+  }
+
+  .fish-sliders .ear-toggle {
+    width: 36px;
+    height: 36px;
+    font-size: 1.05rem;
   }
 
   .fish-slider-row.horizontal {

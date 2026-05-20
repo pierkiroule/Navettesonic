@@ -502,18 +502,18 @@ export default function SoonApp({ onBack }) {
               )}
             </div>
                     ) : (
-            <div className="tool-row fish-tools">
-              <button
-                type="button"
-                className={`bubble-btn mode-toggle ${eyesClosed ? "active" : ""}`}
-                onClick={toggleEyesClosed}
-                title={eyesClosed ? "Désactiver le mode aveugle" : "Activer le mode aveugle"}
-                aria-label={eyesClosed ? "Mode aveugle actif" : "Mode aveugle inactif"}
-              >
-                👂
-              </button>
-
+          <div className="tool-row fish-tools">
               <div className="fish-sliders fish-sliders-layout">
+                <button
+                  type="button"
+                  className={`bubble-btn mode-toggle ear-toggle ${eyesClosed ? "active" : ""}`}
+                  onClick={toggleEyesClosed}
+                  title={eyesClosed ? "Désactiver le mode aveugle" : "Activer le mode aveugle"}
+                  aria-label={eyesClosed ? "Mode aveugle actif" : "Mode aveugle inactif"}
+                >
+                  👂
+                </button>
+
                 <label className="fish-slider-column" htmlFor="depth-slider-vertical">
                   <span className="slider-label">🌊 Profondeur</span>
                   <input
