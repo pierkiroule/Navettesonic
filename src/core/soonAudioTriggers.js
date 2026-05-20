@@ -2,6 +2,7 @@ import {
   playBubbleSound,
   stopBubbleSound,
   updateAmbientMix,
+  getDetectionScale,
 } from "./audioEngine.js";
 import { getBubbleAudioRadius, sameDepth } from "./geometry.js";
 
@@ -20,7 +21,7 @@ export function updateBubbleAudioTriggers(current, activeBubbleAudioRef) {
     const dy = (bubble.y || 0) - (fish.y || 0);
     const d = Math.hypot(dx, dy);
 
-    const triggerRadius = getBubbleAudioRadius(bubble);
+    const triggerRadius = getBubbleAudioRadius(bubble) * getDetectionScale();
     const isNear = d <= triggerRadius;
 
     if (!isNear) return;

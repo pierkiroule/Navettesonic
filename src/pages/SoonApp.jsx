@@ -378,6 +378,7 @@ export default function SoonApp({ onBack }) {
         onResetFishContext={() => { setBubblesEnabled(true); setBubblesIntensity(1); recenterFish(); }}
         onToggleMembraneSide={toggleMembraneSide}
         onBlobAction={applyBlobAction}
+        onSetFishDepth={setFishDepth}
       />
 
 
