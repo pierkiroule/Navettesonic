@@ -310,9 +310,9 @@ export default function SoonCanvas({
         style={{ left: `${arenaCenterScreen.x}px`, top: `${arenaCenterScreen.y}px` }}
         onClick={onRecenterFish}
         aria-label="Ouvrir l’éditeur des bulles sonores"
-        title="👂 Ouvrir l’éditeur des bulles sonores"
+        title="🫧 Ouvrir l’éditeur des bulles sonores"
       >
-        👂
+        🫧
       </button>
       {semioseVideo?.url ? (
         <div

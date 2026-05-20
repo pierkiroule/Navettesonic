@@ -54,22 +54,34 @@ export async function listSoundBubbles() {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  const { data, error } = await supabase.storage
-    .from(BUCKET)
-    .list(FOLDER, {
-      limit: 100,
-      sortBy: {
-        column: "name",
-        order: "asc",
-      },
-    });
+  const allFiles = [];
+  let offset = 0;
+  const limit = 100;
 
-  if (error) {
-    console.warn("[Soon] Impossible de lister les bulles Supabase", error);
-    return mergeUniqueById([...fromLibraryFallback(), ...fallbackSoundBubbles]);
+  while (true) {
+    const { data, error } = await supabase.storage
+      .from(BUCKET)
+      .list(FOLDER, {
+        limit,
+        offset,
+        sortBy: {
+          column: "name",
+          order: "asc",
+        },
+      });
+
+    if (error) {
+      console.warn("[Soon] Impossible de lister les bulles Supabase", error);
+      return mergeUniqueById([...fromLibraryFallback(), ...fallbackSoundBubbles]);
+    }
+
+    const chunk = data || [];
+    allFiles.push(...chunk);
+    if (chunk.length < limit) break;
+    offset += limit;
   }
 
-  const files = (data || [])
+  const files = allFiles
     .filter((file) => file.name.toLowerCase().endsWith(".mp3"))
     .map((file) => ({
       id: file.name.replace(/\.[^/.]+$/, "").toLowerCase(),

@@ -20,6 +20,11 @@ export default function BubbleBucketsMenu({ bubbles = [], open = false, onClose,
   const [draftById, setDraftById] = useState({});
 
   useEffect(() => {
+    if (open) return;
+    setDraftById({});
+  }, [open]);
+
+  useEffect(() => {
     if (!open) return;
     let cancelled = false;
 
@@ -35,18 +40,21 @@ export default function BubbleBucketsMenu({ bubbles = [], open = false, onClose,
 
   useEffect(() => {
     if (!open) return;
-    const next = {};
-    bucketItems.forEach((item) => {
-      const existing = bubbles.find((bubble) => bubble.sampleId === item.id);
-      next[item.id] = {
-        checked: Boolean(existing),
-        label: existing?.label || item.name,
-        r: Number(existing?.r) || 72,
-        hue: normalizeHue(existing?.hue, 190),
-        depth: Number(existing?.depth) || 2,
-      };
+    setDraftById((current) => {
+      const next = { ...current };
+      bucketItems.forEach((item) => {
+        if (next[item.id]) return;
+        const existing = bubbles.find((bubble) => bubble.sampleId === item.id);
+        next[item.id] = {
+          checked: Boolean(existing),
+          label: existing?.label || item.name,
+          r: Number(existing?.r) || 72,
+          hue: normalizeHue(existing?.hue, 190),
+          depth: Number(existing?.depth) || 2,
+        };
+      });
+      return next;
     });
-    setDraftById(next);
   }, [open, bucketItems, bubbles]);
 
   const selectedCount = useMemo(
