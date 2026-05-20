@@ -225,6 +225,24 @@ button {
   outline: 2px solid rgba(125, 211, 252, 0.9);
   outline-offset: 2px;
 }
+
+.ear-activation-text {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 34px);
+  transform: translateX(-50%);
+  z-index: 14;
+  pointer-events: none;
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(186, 230, 253, 0.35);
+  background: rgba(2, 6, 23, 0.62);
+  color: rgba(236, 254, 255, 0.96);
+  font-size: 0.74rem;
+  letter-spacing: 0.01em;
+  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.45), 0 0 22px rgba(34, 211, 238, 0.2);
+  backdrop-filter: blur(4px);
+}
 .semiose-video-bubble {
   position: absolute;
   left: 50%;
@@ -662,6 +680,13 @@ button {
 
 .soon-app.eyes-closed .soon-topbar {
   opacity: 0.36;
+}
+
+
+.soon-app.eyes-closed .cockpit,
+.soon-app.eyes-closed .fish-sliders {
+  opacity: 1;
+  visibility: visible;
 }
 
 .placeholder-orb {
@@ -1763,7 +1788,7 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  z-index: 10;
+  z-index: 40;
 }
 
 /* BOUTONS RONDS */
