@@ -13,7 +13,7 @@ export const defaultPack = {
       r: 72,
       hue: 190,
       depth: 1,
-      sampleId: "baladhaikua",
+      sampleId: "supabase:Bulle_001.mp3",
     },
   ],
 };

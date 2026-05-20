@@ -1,6 +1,5 @@
 
 import { useEffect, useMemo, useState } from "react";
-import { sampleLibrary } from "../data/defaultPack.js";
 import { getRuntimeSupabaseSamples, setRuntimeSupabaseSamples } from "../data/runtimeSoundLibrary.js";
 import { listSoundBubbles } from "../services/supabaseSoundService.js";
 
@@ -40,9 +39,7 @@ export default function BubbleEditor({ bubble, onUpdate, onDelete }) {
     [bucketSamples]
   );
 
-  const sampleOptions = dynamicSamples.length
-    ? dynamicSamples
-    : sampleLibrary.map((sample) => ({ id: sample.id, name: sample.name }));
+  const sampleOptions = dynamicSamples;
 
   if (!bubble) {
     return (

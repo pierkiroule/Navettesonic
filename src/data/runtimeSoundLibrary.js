@@ -1,4 +1,3 @@
-import { sampleLibrary } from "./defaultPack.js";
 import { listSoundBubbles } from "../services/supabaseSoundService.js";
 
 const runtimeSupabaseSamples = [];
@@ -22,9 +21,7 @@ export function getRuntimeSupabaseSamples() {
 }
 
 export function getPlayableSamples() {
-  const dynamic = getRuntimeSupabaseSamples();
-  if (dynamic.length) return dynamic;
-  return sampleLibrary.slice();
+  return getRuntimeSupabaseSamples();
 }
 
 export function ensureRuntimeSupabaseSamplesLoaded() {
