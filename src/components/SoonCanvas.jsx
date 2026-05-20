@@ -311,11 +311,11 @@ export default function SoonCanvas({
         className="arena-recenter-btn"
         style={{ left: `${arenaCenterScreen.x}px`, top: `${arenaCenterScreen.y}px` }}
         aria-label={eyesClosed ? "Mode aveugle actif" : "Mode aveugle inactif"}
-        title="🫧 Centre Soon"
+        title="👂 Toggle au passage de Soon"
         aria-disabled="true"
         disabled
       >
-        🫧
+        👂
       </button>
       {semioseVideo?.url ? (
         <div
