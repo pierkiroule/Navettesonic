@@ -136,7 +136,7 @@ const FIREFLY_TYPES = [
     label: "Morphose",
     symbol: "circle",
     voiceKind: "sensorialite",
-    hue: 326,
+    hue: 142,
   },
   {
     id: "semiose",
