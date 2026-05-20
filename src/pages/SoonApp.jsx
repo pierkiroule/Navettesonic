@@ -58,6 +58,7 @@ export default function SoonApp({ onBack }) {
     selectedBeaconId,
     circuitAutopilot,
     eyesClosed,
+    toggleEyesClosed,
 
     odysseoPath,
     odysseoDepthMarkers,
@@ -504,12 +505,12 @@ export default function SoonApp({ onBack }) {
             <div className="tool-row fish-tools">
               <button
                 type="button"
-                className={`bubble-btn mode-toggle ${isEditMode ? "active" : ""}`}
-                onClick={toggleInteractionMode}
-                title={isEditMode ? "Passer en mode nager" : "Passer en mode éditer"}
-                aria-label={isEditMode ? "Mode éditer actif" : "Mode nager actif"}
+                className={`bubble-btn mode-toggle ${eyesClosed ? "active" : ""}`}
+                onClick={toggleEyesClosed}
+                title={eyesClosed ? "Désactiver le mode aveugle" : "Activer le mode aveugle"}
+                aria-label={eyesClosed ? "Mode aveugle actif" : "Mode aveugle inactif"}
               >
-                {isEditMode ? "✏️" : "🐟"}
+                👂
               </button>
 
               <div className="fish-sliders fish-sliders-layout">
