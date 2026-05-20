@@ -92,14 +92,12 @@ function drawGuppyTopView(ctx, x, y, angle, size = 1, sway = 0) {
   ctx.rotate(angle);
   ctx.scale(size, size);
 
-  const bodyGrad = ctx.createRadialGradient(-4, -2, 1, 0, 0, 16);
-  bodyGrad.addColorStop(0, "rgba(255, 215, 240, 0.95)");
-  bodyGrad.addColorStop(0.55, "rgba(255, 139, 200, 0.88)");
-  bodyGrad.addColorStop(1, "rgba(240, 82, 166, 0.82)");
+  const bodyPink = "rgba(255, 118, 196, 0.96)";
+  const finPink = "rgba(255, 118, 196, 0.92)";
 
   ctx.beginPath();
   ctx.ellipse(0, 0, 16, 9, 0, 0, Math.PI * 2);
-  ctx.fillStyle = bodyGrad;
+  ctx.fillStyle = bodyPink;
   ctx.fill();
 
   const tailSwing = Math.sin(sway) * 3.4;
@@ -107,12 +105,12 @@ function drawGuppyTopView(ctx, x, y, angle, size = 1, sway = 0) {
   ctx.moveTo(-12, 0);
   ctx.quadraticCurveTo(-23, -8 - tailSwing, -31, 0);
   ctx.quadraticCurveTo(-23, 8 + tailSwing, -12, 0);
-  ctx.fillStyle = "rgba(255, 116, 196, 0.85)";
+  ctx.fillStyle = finPink;
   ctx.fill();
 
   ctx.beginPath();
   ctx.ellipse(6, -1, 2, 2, 0, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(17, 24, 39, 0.65)";
+  ctx.fillStyle = "rgba(255, 235, 246, 0.78)";
   ctx.fill();
   ctx.restore();
 }
