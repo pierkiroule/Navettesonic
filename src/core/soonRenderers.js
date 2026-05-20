@@ -289,6 +289,20 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
       s.x *= c; s.y *= c;
       s.vx *= -0.2; s.vy *= -0.2;
     }
+    const plumeFish = current?.fish || null;
+    if (plumeFish) {
+      const fishAngle = Number.isFinite(plumeFish.angle) ? plumeFish.angle : Math.atan2(plumeFish.vy || 0, plumeFish.vx || 0);
+      const fishMouthX = (plumeFish.x || 0) + Math.cos(fishAngle) * 24;
+      const fishMouthY = (plumeFish.y || 0) + Math.sin(fishAngle) * 24;
+      const dPlume = Math.hypot(s.x - fishMouthX, s.y - fishMouthY);
+      if (dPlume < 96) {
+        const push = (96 - dPlume) / 96;
+        const nx = (s.x - fishMouthX) / Math.max(0.001, dPlume);
+        const ny = (s.y - fishMouthY) / Math.max(0.001, dPlume);
+        s.vx += nx * (0.2 + push * 0.55) + (plumeFish.vx || 0) * 0.11;
+        s.vy += ny * (0.2 + push * 0.55) + (plumeFish.vy || 0) * 0.11;
+      }
+    }
     if ((s.headHits || 0) >= (s.headHitsTarget || 7)) {
       spawnFireflyFromSeed(s.x, s.y);
       seeds.splice(i, 1);
