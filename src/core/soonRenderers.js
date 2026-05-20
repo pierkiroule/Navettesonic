@@ -333,9 +333,11 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
 
   seeds.forEach((s) => {
     const pulse = Math.sin(time * 0.009 + s.phase) * 0.5 + 0.5;
+    const hitProgress = Math.max(0, Math.min(1, (s.headHits || 0) / 5));
+    const hue = 318 - hitProgress * 34 + Math.sin((s.phase || 0) * 1.7) * 8;
     ctx.beginPath();
     ctx.arc(s.x, s.y, 2.1 + pulse * 1.1, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(245,250,255,${0.52 + pulse * 0.28})`;
+    ctx.fillStyle = `hsla(${hue}, 88%, ${74 + hitProgress * 12}%, ${0.56 + pulse * 0.24})`;
     ctx.fill();
   });
   pinkSmoke.forEach((p) => {
