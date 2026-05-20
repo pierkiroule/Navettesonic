@@ -49,6 +49,7 @@ export default function SoonCanvas({
   onOpenBubbleEditor,
   onOpenBeaconEditor,
   onRecenterFish,
+  onCenterBubbleTouch,
   bubblesEnabled = true,
   bubblesIntensity = 1,
   onToggleBubbles,
@@ -229,6 +230,7 @@ export default function SoonCanvas({
     activeBubbleAudioRef,
     onTickFish,
     onSemioseVideoTrigger: setSemioseVideo,
+    onCenterBubbleTouch,
   });
 
   const {

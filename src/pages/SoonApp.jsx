@@ -363,6 +363,7 @@ export default function SoonApp({ onBack }) {
         }}
         onOpenBubbleEditor={openBubbleEditor}
         onRecenterFish={handleOpenBubbleBuckets}
+        onCenterBubbleTouch={handleOpenBubbleBuckets}
         onCycleBubbleDepth={cycleBubbleDepth}
         bubblesEnabled={bubblesEnabled}
         bubblesIntensity={bubblesIntensity}

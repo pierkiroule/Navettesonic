@@ -25,12 +25,16 @@ export function useSoonCanvasLoop({
   activeBubbleAudioRef,
   onTickFish,
   onSemioseVideoTrigger,
+  onCenterBubbleTouch,
 }) {
   useEffect(() => {
     let frame = 0;
     let wasEditMode = false;
     const CAMERA_FOLLOW_SMOOTHING = 0.22;
     const CAMERA_MAX_STEP_PER_FRAME = 42;
+    const CENTER_BUBBLE_TOUCH_RADIUS = 58;
+    const CENTER_BUBBLE_TOUCH_COOLDOWN_MS = 1000;
+    let lastCenterBubbleTouchAt = 0;
 
     function getArenaWorldCenter(current = {}) {
       const world = current.worldGraph;
@@ -117,6 +121,19 @@ export function useSoonCanvasLoop({
 
       const next = stateRef.current || {};
       const nextFish = next.fish || null;
+      if (!isEditMode && nextFish) {
+        const fishX = Number.isFinite(nextFish.x) ? nextFish.x : 0;
+        const fishY = Number.isFinite(nextFish.y) ? nextFish.y : 0;
+        const fishToCenterDistance = Math.hypot(fishX, fishY);
+        const now = Date.now();
+        if (
+          fishToCenterDistance <= CENTER_BUBBLE_TOUCH_RADIUS &&
+          now - lastCenterBubbleTouchAt > CENTER_BUBBLE_TOUCH_COOLDOWN_MS
+        ) {
+          lastCenterBubbleTouchAt = now;
+          onCenterBubbleTouch?.();
+        }
+      }
       const arenaCenter = getArenaWorldCenter(next);
       const fishWorld = nextFish
         ? {
@@ -216,5 +233,6 @@ export function useSoonCanvasLoop({
     activeBubbleAudioRef,
     onTickFish,
     onSemioseVideoTrigger,
+    onCenterBubbleTouch,
   ]);
 }
