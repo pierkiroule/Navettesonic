@@ -334,13 +334,36 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
   });
 
   seeds.forEach((s) => {
-    const pulse = Math.sin(time * 0.009 + s.phase) * 0.5 + 0.5;
     const hitProgress = Math.max(0, Math.min(1, (s.headHits || 0) / Math.max(1, s.headHitsTarget || 7)));
-    const hue = 318 - hitProgress * 34 + Math.sin((s.phase || 0) * 1.7) * 8;
-    const growth = 2.2 + hitProgress * 2.8;
+    const pulseSpeed = 0.006 + hitProgress * 0.028;
+    const pulse = Math.sin(time * pulseSpeed + (s.phase || 0) * 2.4) * 0.5 + 0.5;
+    const coreR = 2 + hitProgress * 2.2;
+    const haloR = coreR * (2.2 + pulse * (1.6 + hitProgress * 1.4));
+    const outerHaloR = haloR * (1.15 + pulse * 0.35);
+    const rayCount = 5;
+    const starOuter = coreR * (1.25 + pulse * 0.18);
+    const starInner = starOuter * 0.46;
+
+    const halo = ctx.createRadialGradient(s.x, s.y, coreR * 0.2, s.x, s.y, outerHaloR);
+    halo.addColorStop(0, `rgba(255, 232, 178, ${0.38 + pulse * 0.2})`);
+    halo.addColorStop(0.38, `rgba(255, 206, 116, ${0.22 + pulse * 0.14})`);
+    halo.addColorStop(1, "rgba(255, 180, 96, 0)");
     ctx.beginPath();
-    ctx.arc(s.x, s.y, growth + pulse * (1 + hitProgress * 0.8), 0, Math.PI * 2);
-    ctx.fillStyle = `hsla(${hue}, 88%, ${74 + hitProgress * 12}%, ${0.56 + pulse * 0.24})`;
+    ctx.arc(s.x, s.y, outerHaloR, 0, Math.PI * 2);
+    ctx.fillStyle = halo;
+    ctx.fill();
+
+    ctx.beginPath();
+    for (let i = 0; i < rayCount * 2; i += 1) {
+      const a = (Math.PI * i) / rayCount - Math.PI / 2 + pulse * 0.08;
+      const rr = i % 2 === 0 ? starOuter : starInner;
+      const px = s.x + Math.cos(a) * rr;
+      const py = s.y + Math.sin(a) * rr;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fillStyle = "rgba(8, 10, 14, 0.92)";
     ctx.fill();
   });
   pinkSmoke.forEach((p) => {
