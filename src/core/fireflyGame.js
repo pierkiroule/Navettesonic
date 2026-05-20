@@ -34,26 +34,15 @@ let spawnClock = 1;
 let progressiveSpawnLock = false;
 let completeTriangleSince = 0;
 let fireflyVoiceQueue = Promise.resolve();
-let pendingSemioseVideoTrigger = null;
 
 
 const FIREFLY_VOICE_BASE_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/sooncut";
 const MORPHOSE_VOICE_BASE_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/morphose";
 const FIREFLY_VOICE_RANGE_BY_TYPE = {
   morphose: [1, 13],
-  semiose: [21, 40],
-  ontose: [41, 53],
+  semiose: [1, 26],
+  ontose: [27, 53],
 };
-const SEMIOSE_VIDEO_BASE_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/semiose";
-const SEMIOSE_VIDEO_RANGE = [1, 12];
-
-function pickSemioseVideoUrl() {
-  const [start, end] = SEMIOSE_VIDEO_RANGE;
-  const index = Math.floor(rand(start, end + 1));
-  const padded = String(index).padStart(3, "0");
-  return `${SEMIOSE_VIDEO_BASE_URL}/semio_${padded}.mp4`;
-}
-
 function pickFireflySampleIndex(typeId) {
   const [start, end] = FIREFLY_VOICE_RANGE_BY_TYPE[typeId] || FIREFLY_VOICE_RANGE_BY_TYPE.morphose;
   return Math.floor(rand(start, end + 1));
@@ -382,23 +371,13 @@ function attachSingleFireflyToTail(fish, firefly, now) {
   firefly.vy *= 0.25;
 
   normalizeAttachedOrders();
-  if (firefly.typeId === "semiose") {
-    pendingSemioseVideoTrigger = {
-      id: makeId("semiose-video"),
-      url: pickSemioseVideoUrl(),
-      triggeredAt: now,
-    };
-  } else {
-    void queueFireflyVoicePlayback(() => playFireflyCollectVoice(firefly));
-  }
+  void queueFireflyVoicePlayback(() => playFireflyCollectVoice(firefly));
 
   return true;
 }
 
 export function consumeSemioseVideoTrigger() {
-  const trigger = pendingSemioseVideoTrigger;
-  pendingSemioseVideoTrigger = null;
-  return trigger;
+  return null;
 }
 
 function updateAttachedFirefly(firefly, fish) {

@@ -6,11 +6,14 @@ import { DEFAULT_ARENA_RADIUS } from "../soonInitialState.js";
 import { applyBlobAction } from "../../core/blobArena.js";
 import { getBlobRadiusAtAngle } from "../../core/blobArena.js";
 import { clampToCircle, makeId } from "../../core/geometry.js";
-import { sampleLibrary } from "../../data/defaultPack.js";
+import { ensureRuntimeSupabaseSamplesLoaded, getPlayableSamples } from "../../data/runtimeSoundLibrary.js";
+
+void ensureRuntimeSupabaseSamplesLoaded();
 
 function randomBucketSample() {
-  const fileSamples = sampleLibrary.filter((sample) => sample?.kind === "file");
-  const pool = fileSamples.length ? fileSamples : sampleLibrary;
+  const allSamples = getPlayableSamples();
+  const fileSamples = allSamples.filter((sample) => sample?.kind === "file");
+  const pool = fileSamples.length ? fileSamples : allSamples;
   if (!pool.length) return { id: "tone-water", name: "Bulle sonore" };
   return pool[Math.floor(Math.random() * pool.length)];
 }
