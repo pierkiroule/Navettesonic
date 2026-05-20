@@ -229,9 +229,11 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
         vy: (toY - fromY) * 0.08,
         bornAt: now,
         phase: Math.random() * Math.PI * 2,
+        state: "inhaled", // membrane | inhaled
         inhalingUntil: now + 480,
         inhalingBy: g.id,
         headHits: 0,
+        headHitsTarget: 7 + Math.floor(Math.random() * 3),
         lastHeadHitAt: 0,
       });
       for (let j = 0; j < 9; j += 1) {
@@ -284,7 +286,7 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
       s.x *= c; s.y *= c;
       s.vx *= -0.2; s.vy *= -0.2;
     }
-    if ((s.headHits || 0) >= 5) {
+    if ((s.headHits || 0) >= (s.headHitsTarget || 7)) {
       spawnFireflyFromSeed(s.x, s.y);
       seeds.splice(i, 1);
     }
@@ -326,17 +328,18 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
     if (!p.attached) return;
     const pulse = Math.sin(time * 0.006 + p.glow + i) * 0.5 + 0.5;
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 1.7 + pulse * 0.6, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255,255,255,${0.62 + pulse * 0.3})`;
+    ctx.arc(p.x, p.y, 2 + pulse * 0.8, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${300 + pulse * 20}, 88%, 82%, ${0.65 + pulse * 0.24})`;
     ctx.fill();
   });
 
   seeds.forEach((s) => {
     const pulse = Math.sin(time * 0.009 + s.phase) * 0.5 + 0.5;
-    const hitProgress = Math.max(0, Math.min(1, (s.headHits || 0) / 5));
+    const hitProgress = Math.max(0, Math.min(1, (s.headHits || 0) / Math.max(1, s.headHitsTarget || 7)));
     const hue = 318 - hitProgress * 34 + Math.sin((s.phase || 0) * 1.7) * 8;
+    const growth = 2.2 + hitProgress * 2.8;
     ctx.beginPath();
-    ctx.arc(s.x, s.y, 2.1 + pulse * 1.1, 0, Math.PI * 2);
+    ctx.arc(s.x, s.y, growth + pulse * (1 + hitProgress * 0.8), 0, Math.PI * 2);
     ctx.fillStyle = `hsla(${hue}, 88%, ${74 + hitProgress * 12}%, ${0.56 + pulse * 0.24})`;
     ctx.fill();
   });
