@@ -380,37 +380,49 @@ export default function SoonApp({ onBack }) {
 
       {activeRoot === WORKFLOW_ROOT_TUTO && (
         <section className="tutorial-panel" aria-label="Tutoriel Soon">
-          <h3>Tuto Soon•° — concept, principe et fonctionnement</h3>
+          <h3>Tuto•° — prise en main simple et pro</h3>
           <p>
-            Soon est un atelier d’exploration sonore en 2 modes : <strong>Compo</strong> pour créer la matière
-            et <strong>Navigo</strong> pour écrire puis jouer un parcours d’écoute.
+            Bienvenue dans Soon•°. Tu vas créer un écho-système sonore en 2 étapes :
+            <strong> Compo </strong>(tu construis), puis <strong>Navigo</strong> (tu fais voyager l’écoute).
           </p>
           <div className="tutorial-grid">
             <article>
-              <h4>Principe global</h4>
+              <h4>Étape 1 — Se déplacer</h4>
               <ul>
                 <li><strong>Tap :</strong> le poisson-plume nage vers la zone visée.</li>
                 <li><strong>Double-tap :</strong> active un boost court de vitesse.</li>
                 <li><strong>Appui long :</strong> ouvre le menu radial contextuel.</li>
                 <li><strong>Recentrer :</strong> remet le poisson au centre et relance ton orientation.</li>
               </ul>
+              <p><strong>Validation :</strong> Je sais me déplacer librement.</p>
             </article>
             <article>
-              <h4>Mode Compo — construire la scène</h4>
+              <h4>Étape 2 — Créer et régler les bulles (Compo)</h4>
               <ul>
-                <li><strong>Mode Nager :</strong> tu explores, écoutes et positionnes ton attention.</li>
-                <li><strong>Mode Éditer :</strong> double-tap vide pour créer une bulle, tap bulle pour la modifier.</li>
-                <li><strong>Menu bulle :</strong> ajuste position, profondeur, contenu et présence dans l’espace.</li>
-                <li><strong>Objectif :</strong> fabriquer une cartographie sonore vivante et expressive.</li>
+                <li><strong>Mode Éditer :</strong> double-tap vide pour créer 1 bulle.</li>
+                <li><strong>Tap bulle :</strong> ouvre les réglages de ta bulle sonore.</li>
+                <li><strong>Profondeur :</strong> règle P1/P2/P3 pour donner du relief.</li>
+                <li><strong>Mission :</strong> crée 3 bulles avec des profondeurs différentes.</li>
               </ul>
+              <p><strong>Validation :</strong> J’entends les variations selon la position et la profondeur.</p>
             </article>
             <article>
-              <h4>Mode Navigo — tracer puis jouer</h4>
+              <h4>Étape 3 — Tracer et jouer (Navigo)</h4>
               <ul>
                 <li><strong>Outil Dessin ✏️ :</strong> trace le trajet d’écoute.</li>
                 <li><strong>Outil Ancre ⚓ :</strong> place des jalons de profondeur (1, 2, 3).</li>
                 <li><strong>Play / Pause :</strong> lance ou arrête la traversée du parcours.</li>
                 <li><strong>Effacer 🧽 :</strong> nettoie le tracé pour recommencer un nouveau voyage.</li>
+              </ul>
+              <p><strong>Validation :</strong> J’ai joué mon premier parcours d’écoute.</p>
+            </article>
+            <article>
+              <h4>Tips pro (optionnel)</h4>
+              <ul>
+                <li><strong>3 à 5 bulles max</strong> pour garder une scène lisible.</li>
+                <li><strong>Contrastes clairs</strong> : profondeur, taille, rôle.</li>
+                <li><strong>Récit d’écoute</strong> : entrée → tension → relâchement.</li>
+                <li><strong>Itération courte</strong> : 1 modif = 1 réécoute.</li>
               </ul>
             </article>
           </div>
