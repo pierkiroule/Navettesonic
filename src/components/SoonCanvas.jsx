@@ -310,9 +310,10 @@ export default function SoonCanvas({
         type="button"
         className="arena-recenter-btn"
         style={{ left: `${arenaCenterScreen.x}px`, top: `${arenaCenterScreen.y}px` }}
-        onClick={onRecenterFish}
         aria-label="Ouvrir l’éditeur des bulles sonores"
-        title="🫧 Ouvrir l’éditeur des bulles sonores"
+        title="🫧 Déclenchement tactile désactivé"
+        aria-disabled="true"
+        disabled
       >
         🫧
       </button>

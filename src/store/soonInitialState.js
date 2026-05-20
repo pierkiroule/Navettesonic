@@ -19,7 +19,7 @@ export const DEFAULT_FISH_NAV_RADIUS = getFishNavigableRadius(DEFAULT_ARENA_RADI
 export const MAX_ARENA_LEVEL = 2;
 
 export const defaultFish = {
-  x: 0, y: 0, vx: 0, vy: 0, targetX: 0, targetY: -120, angle: -Math.PI / 2,
+  x: 0, y: -180, vx: 0, vy: 0, targetX: 0, targetY: -180, angle: -Math.PI / 2,
   swimPhase: 0, maxTrail: 90, maxSpeed: 3.1, depth: 1, mouthPull: 0,
   turnAmount: 0, turnVelocity: 0, arenaLevel: 0, wallHitCount: 0, lastWallHitAt: 0,
   breachOpen: false, breachAngle: null, breachOpenedAt: null, breachState: "closed",
