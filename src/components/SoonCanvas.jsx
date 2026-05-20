@@ -309,10 +309,10 @@ export default function SoonCanvas({
         className="arena-recenter-btn"
         style={{ left: `${arenaCenterScreen.x}px`, top: `${arenaCenterScreen.y}px` }}
         onClick={onRecenterFish}
-        aria-label={eyesClosed ? "Quitter écoute à l’aveugle" : "Activer écoute à l’aveugle"}
-        title={eyesClosed ? "👁️ Mode visible" : "👂 Mode écoute à l’aveugle"}
+        aria-label="Ouvrir l’éditeur des bulles sonores"
+        title="👂 Ouvrir l’éditeur des bulles sonores"
       >
-        {eyesClosed ? "👁️" : "👂"}
+        👂
       </button>
       {semioseVideo?.url ? (
         <div
