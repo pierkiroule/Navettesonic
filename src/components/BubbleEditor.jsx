@@ -1,5 +1,7 @@
 
+import { useEffect, useMemo, useState } from "react";
 import { sampleLibrary } from "../data/defaultPack.js";
+import { listSoundBubbles } from "../services/supabaseSoundService.js";
 
 function clampDepth(value) {
   return Math.max(1, Math.min(3, Math.round(Number(value) || 1)));
@@ -14,6 +16,32 @@ function getDepthLabel(depth) {
 }
 
 export default function BubbleEditor({ bubble, onUpdate, onDelete }) {
+  const [bucketSamples, setBucketSamples] = useState([]);
+
+  useEffect(() => {
+    let mounted = true;
+    void listSoundBubbles().then((items) => {
+      if (!mounted) return;
+      setBucketSamples(items || []);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const dynamicSamples = useMemo(
+    () =>
+      bucketSamples.map((item) => ({
+        id: `supabase:${item.file}`,
+        name: item.name,
+      })),
+    [bucketSamples]
+  );
+
+  const sampleOptions = dynamicSamples.length
+    ? dynamicSamples
+    : sampleLibrary.map((sample) => ({ id: sample.id, name: sample.name }));
+
   if (!bubble) {
     return (
       <section className="bubble-editor empty">
@@ -56,10 +84,10 @@ export default function BubbleEditor({ bubble, onUpdate, onDelete }) {
       <label>
         <span>Son</span>
         <select
-          value={bubble.sampleId || sampleLibrary[0]?.id || ""}
+          value={bubble.sampleId || sampleOptions[0]?.id || ""}
           onChange={(event) => onUpdate({ sampleId: event.target.value })}
         >
-          {sampleLibrary.map((sample) => (
+          {sampleOptions.map((sample) => (
             <option key={sample.id} value={sample.id}>
               {sample.name}
             </option>
