@@ -49,7 +49,7 @@ export default function SoonCanvas({
   onOpenBubbleEditor,
   onOpenBeaconEditor,
   onRecenterFish,
-  onCenterBubbleTouch,
+  onToggleEyesClosed,
   bubblesEnabled = true,
   bubblesIntensity = 1,
   onToggleBubbles,
@@ -230,7 +230,6 @@ export default function SoonCanvas({
     activeBubbleAudioRef,
     onTickFish,
     onSemioseVideoTrigger: setSemioseVideo,
-    onCenterBubbleTouch,
   });
 
   const {
@@ -261,6 +260,22 @@ export default function SoonCanvas({
   });
 
   useEffect(() => cleanupPointer, [cleanupPointer]);
+
+  const earToggleTapRef = useRef({
+    lastTapAt: 0,
+  });
+
+  const handleEarButtonPointerDown = (event) => {
+    if (event.pointerType && event.pointerType !== "touch") return;
+    const now = Date.now();
+    const interval = now - (earToggleTapRef.current.lastTapAt || 0);
+    earToggleTapRef.current.lastTapAt = now;
+    if (interval > 0 && interval <= 320) {
+      event.preventDefault();
+      onToggleEyesClosed?.();
+      earToggleTapRef.current.lastTapAt = 0;
+    }
+  };
 
   useEffect(() => {
     let frame = 0;
@@ -308,12 +323,11 @@ export default function SoonCanvas({
       />
       <button
         type="button"
-        className="arena-recenter-btn"
+        className={`arena-recenter-btn ${eyesClosed ? "is-active" : ""}`}
         style={{ left: `${arenaCenterScreen.x}px`, top: `${arenaCenterScreen.y}px` }}
         aria-label={eyesClosed ? "Mode aveugle actif" : "Mode aveugle inactif"}
-        title="👂 Toggle au passage de Soon"
-        aria-disabled="true"
-        disabled
+        title="Double-tap tactile : activer/désactiver l’écoute"
+        onPointerDown={handleEarButtonPointerDown}
       >
         👂
       </button>
