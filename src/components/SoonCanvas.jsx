@@ -68,6 +68,7 @@ export default function SoonCanvas({
   const [semioseVideo, setSemioseVideo] = useState(null);
   const [arenaCenterScreen, setArenaCenterScreen] = useState({ x: 0, y: 0 });
   const [fishMenu, setFishMenu] = useState(null);
+  const [earActivationText, setEarActivationText] = useState("");
 
   const cameraRef = useRef({
     x: 0,
@@ -261,6 +262,18 @@ export default function SoonCanvas({
 
   useEffect(() => cleanupPointer, [cleanupPointer]);
 
+  const previousEyesClosedRef = useRef(eyesClosed);
+  useEffect(() => {
+    const wasClosed = previousEyesClosedRef.current;
+    previousEyesClosedRef.current = eyesClosed;
+    if (eyesClosed && !wasClosed) {
+      setEarActivationText("Oser le silence des yeux pour ouvrir les écoutilles 👂");
+      const timeoutId = setTimeout(() => setEarActivationText(""), 2800);
+      return () => clearTimeout(timeoutId);
+    }
+    return undefined;
+  }, [eyesClosed]);
+
   const earToggleTapRef = useRef({
     lastTapAt: 0,
   });
@@ -331,6 +344,11 @@ export default function SoonCanvas({
       >
         👂
       </button>
+      {earActivationText ? (
+        <div className="ear-activation-text" role="status" aria-live="polite">
+          {earActivationText}
+        </div>
+      ) : null}
       {semioseVideo?.url ? (
         <div
           key={semioseVideo.id}
