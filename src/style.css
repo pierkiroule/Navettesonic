@@ -2240,7 +2240,7 @@ button {
   align-items: center;
   padding: 8px 10px;
   border-radius: 14px;
-  background: rgba(15, 23, 42, 0.72);
+  background: rgba(15, 23, 42, 0.8);
   border: 1px solid rgba(125, 211, 252, 0.22);
   backdrop-filter: blur(12px);
 }
@@ -2250,6 +2250,8 @@ button {
   height: 40px;
   flex: 0 0 auto;
   font-size: 1.2rem;
+  margin-inline: auto;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.36);
 }
 
 .fish-slider-row.horizontal {
@@ -2257,7 +2259,7 @@ button {
   display: grid;
   grid-template-columns: 1fr;
   align-items: stretch;
-  gap: 8px;
+  gap: 5px;
   color: rgba(226, 232, 240, 0.86);
 }
 
@@ -2293,6 +2295,31 @@ button {
   grid-template-columns: minmax(0, 1fr) 40px;
   align-items: center;
   gap: 6px;
+}
+
+.fish-cockpit-fold-toggle {
+  width: 32px;
+  height: 32px;
+  font-size: 0.95rem;
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.fish-sliders.folded {
+  width: min(72vw, 240px);
+  justify-content: center;
+  gap: 8px;
+}
+
+.fish-sliders.folded .fish-slider-column,
+.fish-sliders.folded .fish-slider-horizontal-track,
+.fish-sliders.folded .slider-label-top {
+  display: none;
+}
+
+.fish-sliders.folded .fish-slider-row.horizontal {
+  flex: 0 1 auto;
+  display: flex;
+  align-items: center;
 }
 
 .fish-slider-horizontal-track .slider-value {
