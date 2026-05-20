@@ -47,6 +47,7 @@ export default function SoonApp({ onBack }) {
   const [bubblesEnabled, setBubblesEnabled] = useState(true);
   const [bubblesIntensity, setBubblesIntensity] = useState(1);
   const [bubbleBucketsOpen, setBubbleBucketsOpen] = useState(false);
+  const [fishCockpitFolded, setFishCockpitFolded] = useState(false);
   const speedBoostUntilRef = useRef(0);
 
   const {
@@ -58,6 +59,7 @@ export default function SoonApp({ onBack }) {
     selectedBeaconId,
     circuitAutopilot,
     eyesClosed,
+    toggleEyesClosed,
 
     odysseoPath,
     odysseoDepthMarkers,
@@ -501,18 +503,8 @@ export default function SoonApp({ onBack }) {
               )}
             </div>
                     ) : (
-            <div className="tool-row fish-tools">
-              <button
-                type="button"
-                className={`bubble-btn mode-toggle ${isEditMode ? "active" : ""}`}
-                onClick={toggleInteractionMode}
-                title={isEditMode ? "Passer en mode nager" : "Passer en mode éditer"}
-                aria-label={isEditMode ? "Mode éditer actif" : "Mode nager actif"}
-              >
-                {isEditMode ? "✏️" : "🐟"}
-              </button>
-
-              <div className="fish-sliders fish-sliders-layout">
+          <div className="tool-row fish-tools">
+              <div className={`fish-sliders fish-sliders-layout ${fishCockpitFolded ? "folded" : ""}`}>
                 <label className="fish-slider-column" htmlFor="depth-slider-vertical">
                   <span className="slider-label">🌊 Profondeur</span>
                   <input
@@ -529,6 +521,15 @@ export default function SoonApp({ onBack }) {
                 </label>
 
                 <label className="fish-slider-row horizontal" htmlFor="zoom-slider-horizontal">
+                  <button
+                    type="button"
+                    className={`bubble-btn mode-toggle ear-toggle ${eyesClosed ? "active" : ""}`}
+                    onClick={toggleEyesClosed}
+                    title={eyesClosed ? "Désactiver le mode aveugle" : "Activer le mode aveugle"}
+                    aria-label={eyesClosed ? "Mode aveugle actif" : "Mode aveugle inactif"}
+                  >
+                    👂
+                  </button>
                   <span className="slider-label slider-label-top">🔍 Zoom</span>
                   <div className="fish-slider-horizontal-track">
                     <input
@@ -559,6 +560,16 @@ export default function SoonApp({ onBack }) {
                   />
                   <span className="slider-value">{swimSpeedLevel}</span>
                 </label>
+
+                <button
+                  type="button"
+                  className="bubble-btn fish-cockpit-fold-toggle"
+                  onClick={() => setFishCockpitFolded((value) => !value)}
+                  aria-label={fishCockpitFolded ? "Déplier le mini cockpit" : "Replier le mini cockpit"}
+                  title={fishCockpitFolded ? "Déplier" : "Replier"}
+                >
+                  {fishCockpitFolded ? "▾" : "▴"}
+                </button>
               </div>
             </div>
           )}

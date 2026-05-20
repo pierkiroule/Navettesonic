@@ -2227,27 +2227,31 @@ button {
 }
 
 .fish-tools {
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 10px;
-}
-
-.fish-tools {
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 0;
 }
 
 .fish-sliders {
-  width: min(92vw, 460px);
+  width: min(92vw, 500px);
   display: flex;
-  gap: 14px;
+  gap: 10px;
   align-items: center;
-  padding: 10px 12px;
-  border-radius: 16px;
-  background: rgba(15, 23, 42, 0.72);
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.8);
   border: 1px solid rgba(125, 211, 252, 0.22);
   backdrop-filter: blur(12px);
+}
+
+.fish-sliders .ear-toggle {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  font-size: 1.2rem;
+  margin-inline: auto;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.36);
 }
 
 .fish-slider-row.horizontal {
@@ -2255,27 +2259,27 @@ button {
   display: grid;
   grid-template-columns: 1fr;
   align-items: stretch;
-  gap: 8px;
+  gap: 5px;
   color: rgba(226, 232, 240, 0.86);
 }
 
 .fish-slider-column {
-  width: 84px;
+  width: 68px;
   display: grid;
-  grid-template-rows: auto 86px auto;
+  grid-template-rows: auto 72px auto;
   justify-items: center;
-  gap: 7px;
+  gap: 5px;
   color: rgba(226, 232, 240, 0.86);
 }
 
 .slider-label {
   white-space: nowrap;
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   letter-spacing: 0.02em;
 }
 
 .slider-value {
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   opacity: 0.9;
   text-align: center;
 }
@@ -2290,7 +2294,32 @@ button {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 40px;
   align-items: center;
+  gap: 6px;
+}
+
+.fish-cockpit-fold-toggle {
+  width: 32px;
+  height: 32px;
+  font-size: 0.95rem;
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.fish-sliders.folded {
+  width: min(72vw, 240px);
+  justify-content: center;
   gap: 8px;
+}
+
+.fish-sliders.folded .fish-slider-column,
+.fish-sliders.folded .fish-slider-horizontal-track,
+.fish-sliders.folded .slider-label-top {
+  display: none;
+}
+
+.fish-sliders.folded .fish-slider-row.horizontal {
+  flex: 0 1 auto;
+  display: flex;
+  align-items: center;
 }
 
 .fish-slider-horizontal-track .slider-value {
@@ -2345,7 +2374,7 @@ button {
   appearance: slider-vertical;
   writing-mode: bt-lr;
   width: 14px;
-  height: 86px;
+  height: 72px;
   margin: 0;
   background: transparent;
 }
@@ -2368,12 +2397,20 @@ button {
   }
 
   .fish-sliders {
-    width: min(96vw, 390px);
-    gap: 10px;
+    width: min(97vw, 390px);
+    gap: 8px;
+    padding: 7px 8px;
   }
 
   .fish-slider-column {
-    width: 74px;
+    width: 60px;
+    grid-template-rows: auto 64px auto;
+  }
+
+  .fish-sliders .ear-toggle {
+    width: 36px;
+    height: 36px;
+    font-size: 1.05rem;
   }
 
   .fish-slider-row.horizontal {
