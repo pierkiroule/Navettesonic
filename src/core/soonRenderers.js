@@ -37,7 +37,9 @@ export function drawScene(ctx, rect, time, refs) {
 
   enterWorld(ctx, rect, cameraRef, stateRef);
 
-  drawArenaBoundary(ctx, arenaRef, time, current);
+  if (!current.eyesClosed) {
+    drawArenaBoundary(ctx, arenaRef, time, current);
+  }
   drawArenaGuppies(ctx, time, current, arenaRef.current?.radius || 1200);
 
   if (!current.eyesClosed) {
@@ -76,7 +78,7 @@ export function drawScene(ctx, rect, time, refs) {
   }
 
   drawFish(ctx, current.fish, time, current.worldGraph, current.currentArenaId);
-  drawQuill(ctx, current.fish, time);
+  if (!current.eyesClosed) drawQuill(ctx, current.fish, time);
 
   exitWorld(ctx);
 
@@ -94,6 +96,18 @@ function drawGuppyTopView(ctx, x, y, angle, size = 1, sway = 0) {
 
   const bodyPink = "rgba(255, 118, 196, 0.96)";
   const finPink = "rgba(255, 118, 196, 0.92)";
+
+  const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, 36);
+  halo.addColorStop(0, "rgba(255, 120, 198, 0.28)");
+  halo.addColorStop(0.5, "rgba(255, 120, 198, 0.14)");
+  halo.addColorStop(1, "rgba(255, 120, 198, 0)");
+  ctx.beginPath();
+  ctx.arc(0, 0, 36, 0, Math.PI * 2);
+  ctx.fillStyle = halo;
+  ctx.fill();
+
+  ctx.shadowColor = "rgba(255, 120, 198, 0.7)";
+  ctx.shadowBlur = 12;
 
   ctx.beginPath();
   ctx.ellipse(0, 0, 16, 9, 0, 0, Math.PI * 2);
@@ -896,7 +910,8 @@ export function drawFish(ctx, fish, time, worldGraph, currentArenaId = null) {
 
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "source-over";
-    ctx.shadowBlur = 0;
+    ctx.shadowColor = "rgba(120, 248, 255, 0.88)";
+    ctx.shadowBlur = 26;
 
     drawPoissonPlume(ctx, fish, {
       time,
