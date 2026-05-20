@@ -1,6 +1,8 @@
 import { sampleLibrary } from "./defaultPack.js";
+import { listSoundBubbles } from "../services/supabaseSoundService.js";
 
 const runtimeSupabaseSamples = [];
+let runtimeLoadPromise = null;
 
 export function setRuntimeSupabaseSamples(items = []) {
   runtimeSupabaseSamples.length = 0;
@@ -23,4 +25,21 @@ export function getPlayableSamples() {
   const dynamic = getRuntimeSupabaseSamples();
   if (dynamic.length) return dynamic;
   return sampleLibrary.slice();
+}
+
+export function ensureRuntimeSupabaseSamplesLoaded() {
+  if (runtimeSupabaseSamples.length) return Promise.resolve(getRuntimeSupabaseSamples());
+  if (runtimeLoadPromise) return runtimeLoadPromise;
+
+  runtimeLoadPromise = listSoundBubbles()
+    .then((items) => {
+      setRuntimeSupabaseSamples(items || []);
+      return getRuntimeSupabaseSamples();
+    })
+    .catch(() => getRuntimeSupabaseSamples())
+    .finally(() => {
+      runtimeLoadPromise = null;
+    });
+
+  return runtimeLoadPromise;
 }

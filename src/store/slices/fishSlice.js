@@ -6,7 +6,9 @@ import { DEFAULT_ARENA_RADIUS } from "../soonInitialState.js";
 import { applyBlobAction } from "../../core/blobArena.js";
 import { getBlobRadiusAtAngle } from "../../core/blobArena.js";
 import { clampToCircle, makeId } from "../../core/geometry.js";
-import { getPlayableSamples } from "../../data/runtimeSoundLibrary.js";
+import { ensureRuntimeSupabaseSamplesLoaded, getPlayableSamples } from "../../data/runtimeSoundLibrary.js";
+
+void ensureRuntimeSupabaseSamplesLoaded();
 
 function randomBucketSample() {
   const allSamples = getPlayableSamples();
