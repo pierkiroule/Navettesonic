@@ -1,5 +1,28 @@
 import { sampleLibrary } from "../data/defaultPack.js";
 
+const SUPABASE_BUBBLES_BASE =
+  "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles";
+
+function resolveSample(bubble) {
+  const id = bubble?.sampleId || "";
+  const fromLibrary = sampleLibrary.find((item) => item.id === id);
+  if (fromLibrary) return fromLibrary;
+
+  if (id.startsWith("supabase:")) {
+    const file = id.slice("supabase:".length);
+    if (file) {
+      return {
+        id,
+        name: file.replace(/\.[^/.]+$/, ""),
+        kind: "file",
+        url: `${SUPABASE_BUBBLES_BASE}/${encodeURIComponent(file)}`,
+      };
+    }
+  }
+
+  return sampleLibrary[0];
+}
+
 let audioCtx = null;
 let masterGain = null;
 
@@ -123,9 +146,7 @@ export async function playBubbleSound(bubble) {
 
   stopActiveSound(bubble.id);
 
-  const sample =
-    sampleLibrary.find((item) => item.id === bubble.sampleId) ||
-    sampleLibrary[0];
+  const sample = resolveSample(bubble);
 
   if (sample.kind === "file" && sample.url) {
     try {
