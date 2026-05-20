@@ -5,15 +5,7 @@ import { startFishTrailAt, addFishTrailPoint } from "../../core/fishPathTrail.js
 import { DEFAULT_ARENA_RADIUS } from "../soonInitialState.js";
 import { applyBlobAction } from "../../core/blobArena.js";
 import { getBlobRadiusAtAngle } from "../../core/blobArena.js";
-import { clampToCircle, makeId } from "../../core/geometry.js";
-import { sampleLibrary } from "../../data/defaultPack.js";
-
-function randomBucketSample() {
-  const fileSamples = sampleLibrary.filter((sample) => sample?.kind === "file");
-  const pool = fileSamples.length ? fileSamples : sampleLibrary;
-  if (!pool.length) return { id: "tone-water", name: "Bulle sonore" };
-  return pool[Math.floor(Math.random() * pool.length)];
-}
+import { clampToCircle } from "../../core/geometry.js";
 
 function keepBubbleOffMembrane(bubble, blob) {
   const bx = Number.isFinite(bubble?.x) ? bubble.x : 0;
@@ -45,7 +37,7 @@ startFishTrailAt:(x,y)=>set(()=>({fishTrail:startFishTrailAt(x,y)})),
 addFishTrailPoint:(x,y)=>set((s)=>({fishTrail:addFishTrailPoint(s.fishTrail||[],x,y)})),
 applyBlobAction:(type,angle)=>set((s)=>{const nextBlob=applyBlobAction(s.arenaBlob,type,angle);const fishAngle=Number.isFinite(angle)?angle:Math.atan2(s.fish?.y||0,s.fish?.x||0);const basePush=Math.max(18,Math.min(46,(s.fish?.maxSpeed||3.1)*8));let nx=(s.fish?.x||0)-Math.cos(fishAngle)*basePush;let ny=(s.fish?.y||0)-Math.sin(fishAngle)*basePush;const newAngle=Math.atan2(ny,nx);const localRadius=getBlobRadiusAtAngle(nextBlob,newAngle);const fishRadius=46;const maxDistance=Math.max(28,localRadius-fishRadius-4);const distance=Math.hypot(nx,ny);if(distance>maxDistance){const clamped=clampToCircle({x:nx,y:ny},maxDistance);nx=clamped.x;ny=clamped.y;}
 let nextBubbles=s.bubbles||[];
-if(type==="inspi"){const centerRepulse=Math.max(300,basePush*6.2);nx-=Math.cos(fishAngle)*centerRepulse;ny-=Math.sin(fishAngle)*centerRepulse;const fishSafeRadius=Math.max(30,maxDistance-280);const pushed=clampToCircle({x:nx,y:ny},fishSafeRadius);nx=pushed.x;ny=pushed.y;const spawnAngle=Number.isFinite(angle)?angle:Math.atan2(s.fish?.y||0,s.fish?.x||1);const bubbleSafeRadius=Math.max(70,maxDistance-380);const spawn=clampToCircle({x:Math.cos(spawnAngle)*bubbleSafeRadius,y:Math.sin(spawnAngle)*bubbleSafeRadius},bubbleSafeRadius);const picked=randomBucketSample();nextBubbles=[...nextBubbles,{id:makeId("bubble"),label:picked?.name||"Bulle sonore",x:spawn.x,y:spawn.y,r:70+Math.random()*16,hue:Math.floor(160+Math.random()*170),depth:clampDepth(s.fish?.depth||1),sampleId:picked?.id||"tone-water"}];}
+if(type==="inspi"){const centerRepulse=Math.max(300,basePush*6.2);nx-=Math.cos(fishAngle)*centerRepulse;ny-=Math.sin(fishAngle)*centerRepulse;const fishSafeRadius=Math.max(30,maxDistance-280);const pushed=clampToCircle({x:nx,y:ny},fishSafeRadius);nx=pushed.x;ny=pushed.y;}
 
 nextBubbles=nextBubbles.map((bubble)=>keepBubbleOffMembrane(bubble,nextBlob));
 const velocityDamping=type==="inspi"?0.12:0.35;

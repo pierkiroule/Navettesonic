@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { sampleLibrary } from "../data/defaultPack.js";
 
 const SUPABASE_URL = "https://qyffktrggapfzlmmlerq.supabase.co";
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
@@ -19,10 +20,36 @@ export const fallbackSoundBubbles = [
   },
 ];
 
+function normalizeFileName(name = "") {
+  return name.replace(/\.[^/.]+$/, "");
+}
+
+function fromLibraryFallback() {
+  return sampleLibrary
+    .filter((sample) => sample?.kind === "file" && typeof sample.url === "string")
+    .map((sample) => ({
+      id: String(sample.id || "").toLowerCase(),
+      name: sample.name || normalizeFileName(sample.id || "Bulle"),
+      file: `${sample.id}.mp3`,
+      url: sample.url,
+      source: "sample-library",
+    }));
+}
+
+function mergeUniqueById(items = []) {
+  const byId = new Map();
+  items.forEach((item) => {
+    const id = String(item?.id || "").trim().toLowerCase();
+    if (!id) return;
+    if (!byId.has(id)) byId.set(id, { ...item, id });
+  });
+  return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base" }));
+}
+
 export async function listSoundBubbles() {
   if (!SUPABASE_ANON_KEY) {
     console.warn("[Soon] VITE_SUPABASE_ANON_KEY absente. Fallback statique utilisé.");
-    return fallbackSoundBubbles;
+    return mergeUniqueById([...fromLibraryFallback(), ...fallbackSoundBubbles]);
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -39,7 +66,7 @@ export async function listSoundBubbles() {
 
   if (error) {
     console.warn("[Soon] Impossible de lister les bulles Supabase", error);
-    return fallbackSoundBubbles;
+    return mergeUniqueById([...fromLibraryFallback(), ...fallbackSoundBubbles]);
   }
 
   const files = (data || [])
@@ -52,5 +79,5 @@ export async function listSoundBubbles() {
       source: "supabase",
     }));
 
-  return files.length ? files : fallbackSoundBubbles;
+  return mergeUniqueById([...files, ...fromLibraryFallback(), ...fallbackSoundBubbles]);
 }
