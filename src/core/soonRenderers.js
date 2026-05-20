@@ -204,11 +204,45 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
     }
   });
 
+  const plumeFish = current?.fish || null;
   fish.forEach((g) => {
     const a = Math.atan2(g.y, g.x);
     const edge = getArenaEdgeRadius(current, arenaRadius, a);
     const navMax = Math.max(110, edge - 58);
     const navMin = Math.max(70, edge * 0.16);
+
+    // Les poissons-roses sont attirés par la graine la plus proche.
+    let nearestSeed = null;
+    let nearestSeedDistance = Infinity;
+    for (let i = 0; i < seeds.length; i += 1) {
+      const seed = seeds[i];
+      const d = Math.hypot((seed.x || 0) - (g.x || 0), (seed.y || 0) - (g.y || 0));
+      if (d < nearestSeedDistance) {
+        nearestSeedDistance = d;
+        nearestSeed = seed;
+      }
+    }
+    if (nearestSeed && nearestSeedDistance < 220) {
+      const weight = (220 - nearestSeedDistance) / 220;
+      const tx = ((nearestSeed.x || 0) - (g.x || 0)) / Math.max(0.001, nearestSeedDistance);
+      const ty = ((nearestSeed.y || 0) - (g.y || 0)) / Math.max(0.001, nearestSeedDistance);
+      g.vx += tx * (0.035 + weight * 0.07);
+      g.vy += ty * (0.035 + weight * 0.07);
+    }
+
+    // Le poisson-plume peut pousser légèrement les poissons-roses.
+    if (plumeFish) {
+      const dxPlume = (g.x || 0) - (plumeFish.x || 0);
+      const dyPlume = (g.y || 0) - (plumeFish.y || 0);
+      const dPlume = Math.hypot(dxPlume, dyPlume);
+      if (dPlume < 88) {
+        const push = (88 - dPlume) / 88;
+        const nx = dxPlume / Math.max(0.001, dPlume);
+        const ny = dyPlume / Math.max(0.001, dPlume);
+        g.vx += nx * (0.04 + push * 0.1) + (plumeFish.vx || 0) * 0.04;
+        g.vy += ny * (0.04 + push * 0.1) + (plumeFish.vy || 0) * 0.04;
+      }
+    }
 
     g.vx += (Math.random() - 0.5) * 0.06;
     g.vy += (Math.random() - 0.5) * 0.06;
@@ -266,8 +300,11 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
         const push = (34 - dHead) / 34;
         const nx = (s.x - mouthX) / Math.max(0.001, dHead);
         const ny = (s.y - mouthY) / Math.max(0.001, dHead);
-        s.vx += nx * (0.3 + push * 0.5) + (g.vx || 0) * 0.1;
-        s.vy += ny * (0.3 + push * 0.5) + (g.vy || 0) * 0.1;
+        const seedDist = Math.hypot(s.x, s.y);
+        const centerX = -((s.x || 0) / Math.max(0.001, seedDist));
+        const centerY = -((s.y || 0) / Math.max(0.001, seedDist));
+        s.vx += nx * (0.25 + push * 0.42) + (g.vx || 0) * 0.08 + centerX * (0.03 + push * 0.07);
+        s.vy += ny * (0.25 + push * 0.42) + (g.vy || 0) * 0.08 + centerY * (0.03 + push * 0.07);
         if (push > 0.28 && now - (s.lastHeadHitAt || 0) > 120) {
           s.headHits = (s.headHits || 0) + 1;
           s.lastHeadHitAt = now;
@@ -289,7 +326,6 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
       s.x *= c; s.y *= c;
       s.vx *= -0.2; s.vy *= -0.2;
     }
-    const plumeFish = current?.fish || null;
     if (plumeFish) {
       const fishAngle = Number.isFinite(plumeFish.angle) ? plumeFish.angle : Math.atan2(plumeFish.vy || 0, plumeFish.vx || 0);
       const fishMouthX = (plumeFish.x || 0) + Math.cos(fishAngle) * 24;
