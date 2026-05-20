@@ -35,7 +35,7 @@ export function useSoonCanvasLoop({
     const CENTER_BUBBLE_TOUCH_RADIUS = 58;
     const CENTER_BUBBLE_TOUCH_COOLDOWN_MS = 1000;
     let lastCenterBubbleTouchAt = 0;
-    let centerBubbleTriggerArmed = false;
+    let wasInsideCenterBubble = false;
 
     function getArenaWorldCenter(current = {}) {
       const world = current.worldGraph;
@@ -127,17 +127,16 @@ export function useSoonCanvasLoop({
         const fishY = Number.isFinite(nextFish.y) ? nextFish.y : 0;
         const fishToCenterDistance = Math.hypot(fishX, fishY);
         const now = Date.now();
-        if (fishToCenterDistance > CENTER_BUBBLE_TOUCH_RADIUS + 16) {
-          centerBubbleTriggerArmed = true;
-        }
+        const insideCenterBubble = fishToCenterDistance <= CENTER_BUBBLE_TOUCH_RADIUS;
         if (
-          centerBubbleTriggerArmed &&
-          fishToCenterDistance <= CENTER_BUBBLE_TOUCH_RADIUS &&
+          insideCenterBubble &&
+          !wasInsideCenterBubble &&
           now - lastCenterBubbleTouchAt > CENTER_BUBBLE_TOUCH_COOLDOWN_MS
         ) {
           lastCenterBubbleTouchAt = now;
           onCenterBubbleTouch?.();
         }
+        wasInsideCenterBubble = insideCenterBubble;
       }
       const arenaCenter = getArenaWorldCenter(next);
       const fishWorld = nextFish
