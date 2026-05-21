@@ -2783,3 +2783,31 @@ button {
 .fish-sensitivity-slider input[type="range"] {
   width: 100%;
 }
+
+.bubble-buckets-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bubble-mixer-panel {
+  margin: 10px 0 8px;
+  padding: 10px;
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.5);
+  display: grid;
+  gap: 8px;
+}
+
+.bubble-mixer-row {
+  display: grid;
+  grid-template-columns: minmax(80px, 1fr) 2fr auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.bubble-mixer-row input[type="range"] {
+  width: 100%;
+}

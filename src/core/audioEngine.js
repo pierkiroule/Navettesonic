@@ -194,7 +194,8 @@ export function updateBubbleSpatialMix(fish, bubbles = []) {
     const distGain = Math.max(0, Math.min(1, 1 - d / hearRadius));
     const depthDiff = Math.abs((Math.round(bubble.depth || 2)) - fishDepth);
     const depthPenalty = Math.max(0.12, 1 - depthDiff * 0.38 * audioTuning.depthSeparation);
-    const targetGain = 0.001 + Math.pow(distGain, 1.55) * depthPenalty * (0.15 + audioTuning.sensitivity * 0.15);
+    const bubbleResonance = Math.max(0, Math.min(1, Number.isFinite(Number(bubble?.resonance)) ? Number(bubble.resonance) : 0.75));
+    const targetGain = 0.001 + Math.pow(distGain, 1.55) * depthPenalty * (0.08 + bubbleResonance * 0.14 + audioTuning.sensitivity * 0.12);
     const pan = Math.max(-0.95, Math.min(0.95, dx / 300));
     current.gain.gain.setTargetAtTime(targetGain, ctx.currentTime, 0.09);
     current.panner.pan.setTargetAtTime(pan, ctx.currentTime, 0.07);
