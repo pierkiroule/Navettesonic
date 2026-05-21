@@ -268,6 +268,7 @@ export default function SoonApp({ onBack }) {
           r: Number(draft.r) || existing.r || 72,
           hue: Number(draft.hue) || existing.hue || 190,
           depth: Number(draft.depth) || existing.depth || selectedDepth,
+          resonance: Number.isFinite(Number(draft.resonance)) ? Number(draft.resonance) : (existing.resonance ?? 0.75),
         });
         return;
       }
@@ -281,6 +282,7 @@ export default function SoonApp({ onBack }) {
         r: Number(draft.r) || 72,
         hue: Number(draft.hue) || 190,
         depth: Number(draft.depth) || selectedDepth,
+        resonance: Number.isFinite(Number(draft.resonance)) ? Number(draft.resonance) : 0.75,
       });
     });
   };
@@ -378,6 +380,7 @@ export default function SoonApp({ onBack }) {
         onResetFishContext={() => { setBubblesEnabled(true); setBubblesIntensity(1); recenterFish(); }}
         onToggleMembraneSide={toggleMembraneSide}
         onBlobAction={applyBlobAction}
+        onSetFishDepth={setFishDepth}
       />
 
 

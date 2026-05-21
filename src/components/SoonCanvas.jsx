@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSoonCanvasLoop } from "./soon/useSoonCanvasLoop.js";
 import { useSoonPointer } from "./soon/useSoonPointer.js";
 import RadialMenu from "./RadialMenu.jsx";
+import { getAudioTuning, setAudioTuning } from "../core/audioEngine.js";
 
 function BlobContextMenu({ anchor, onSelect }) {
   const baseStyle = { position: "absolute", left: `${anchor?.x || 0}px`, top: `${anchor?.y || 0}px` };
@@ -63,12 +64,15 @@ export default function SoonCanvas({
   gamePaused = false,
   pendingBlobAction = null,
   onBlobAction,
+  onSetFishDepth,
 }) {
   const canvasRef = useRef(null);
   const [semioseVideo, setSemioseVideo] = useState(null);
   const [arenaCenterScreen, setArenaCenterScreen] = useState({ x: 0, y: 0 });
   const [fishMenu, setFishMenu] = useState(null);
   const [earActivationText, setEarActivationText] = useState("");
+  const [audioTuning, setAudioTuningState] = useState(() => getAudioTuning());
+  const [showSensitivitySlider, setShowSensitivitySlider] = useState(false);
 
   const cameraRef = useRef({
     x: 0,
@@ -386,6 +390,10 @@ export default function SoonCanvas({
             { id: "depth", label: "Profondeur" },
             { id: "bubbles", label: `Bulles ${bubblesEnabled ? "ON" : "OFF"}` },
             { id: "intensity", label: "Intensité bulles" },
+            { id: "resonance", label: `Résonance ${Math.round(audioTuning.resonance * 100)}%` },
+            { id: "detect", label: `Portée ${audioTuning.detection.toFixed(2)}x` },
+            { id: "contrast", label: `Relief ${audioTuning.depthSeparation.toFixed(2)}x` },
+            { id: "sensitivity", label: `Sensibilité ${Math.round((audioTuning.sensitivity || 0) * 100)}%` },
             { id: "membrane", label: fish?.membraneSide === "outside" ? "Aller intérieur" : "Aller extérieur" },
             { id: "reset", label: "Reset" },
           ]}
@@ -397,10 +405,45 @@ export default function SoonCanvas({
             if (item.id === "depth") onSetFishDepth?.(((Math.round(fish?.depth || 1) % 3) + 1));
             if (item.id === "bubbles") onToggleBubbles?.();
             if (item.id === "intensity") onSetBubblesIntensity?.(Math.min(2, (bubblesIntensity || 1) + 0.25));
+            if (item.id === "resonance") {
+              const next = audioTuning.resonance >= 0.95 ? 0 : audioTuning.resonance + 0.1;
+              setAudioTuning({ resonance: next });
+              setAudioTuningState(getAudioTuning());
+            }
+            if (item.id === "detect") {
+              const next = audioTuning.detection >= 1.85 ? 0.7 : audioTuning.detection + 0.15;
+              setAudioTuning({ detection: next });
+              setAudioTuningState(getAudioTuning());
+            }
+            if (item.id === "contrast") {
+              const next = audioTuning.depthSeparation >= 1.75 ? 0.45 : audioTuning.depthSeparation + 0.15;
+              setAudioTuning({ depthSeparation: next });
+              setAudioTuningState(getAudioTuning());
+            }
+            if (item.id === "sensitivity") setShowSensitivitySlider((v) => !v);
             if (item.id === "membrane") onToggleMembraneSide?.();
             if (item.id === "reset") onResetFishContext?.();
           }}
         />
+      ) : null}
+      {showSensitivitySlider && fishMenu?.screen ? (
+        <div className="fish-sensitivity-slider" style={{ left: `${fishMenu.screen.x + 66}px`, top: `${fishMenu.screen.y + 12}px` }}>
+          <label>
+            👂 Sensibilité
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={Number(audioTuning.sensitivity || 0)}
+              onChange={(event) => {
+                const next = Number(event.target.value);
+                setAudioTuning({ sensitivity: next });
+                setAudioTuningState(getAudioTuning());
+              }}
+            />
+          </label>
+        </div>
       ) : null}
     </div>
   );

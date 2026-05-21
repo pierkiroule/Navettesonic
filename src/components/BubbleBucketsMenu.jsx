@@ -18,10 +18,12 @@ function normalizeHue(value, fallback = 190) {
 export default function BubbleBucketsMenu({ bubbles = [], open = false, onClose, onValidate }) {
   const [bucketItems, setBucketItems] = useState([]);
   const [draftById, setDraftById] = useState({});
+  const [showMixer, setShowMixer] = useState(false);
 
   useEffect(() => {
     if (open) return;
     setDraftById({});
+    setShowMixer(false);
   }, [open]);
 
   useEffect(() => {
@@ -51,6 +53,7 @@ export default function BubbleBucketsMenu({ bubbles = [], open = false, onClose,
           r: Number(existing?.r) || 72,
           hue: normalizeHue(existing?.hue, 190),
           depth: Number(existing?.depth) || 2,
+          resonance: Number(existing?.resonance) || 0.75,
         };
       });
       return next;
@@ -73,8 +76,40 @@ export default function BubbleBucketsMenu({ bubbles = [], open = false, onClose,
             <h3>Éditeur des bulles</h3>
             <small>{selectedCount} bulle(s) dans l’arène</small>
           </div>
-          <button type="button" className="panel-close-btn" onClick={onClose}>×</button>
+          <div className="bubble-buckets-actions">
+            <button type="button" className="bubble-btn mode-toggle" onClick={() => setShowMixer((value) => !value)} title="Ouvrir la table de mixage">
+              🎚️ Mixage
+            </button>
+            <button type="button" className="panel-close-btn" onClick={onClose}>×</button>
+          </div>
         </header>
+        {showMixer ? (
+          <section className="bubble-mixer-panel" aria-label="Table de mixage des bulles actives">
+            {bucketItems
+              .filter((item) => draftById[item.id]?.checked)
+              .map((item) => {
+                const draft = draftById[item.id] || {};
+                const resonance = Math.max(0, Math.min(1, Number(draft.resonance) || 0));
+                return (
+                  <label key={`mix-${item.id}`} className="bubble-mixer-row">
+                    <span>{draft.label || item.name}</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value={resonance}
+                      onChange={(event) => setDraftById((current) => ({
+                        ...current,
+                        [item.id]: { ...current[item.id], resonance: Number(event.target.value) },
+                      }))}
+                    />
+                    <strong>{Math.round(resonance * 100)}%</strong>
+                  </label>
+                );
+              })}
+          </section>
+        ) : null}
 
         <div className="bubble-buckets-list">
           {bucketItems.map((item) => {
@@ -108,6 +143,9 @@ export default function BubbleBucketsMenu({ bubbles = [], open = false, onClose,
                 </label>
                 <label>Profondeur P{Math.max(1, Math.min(3, Math.round(Number(draft.depth) || 2)))}
                   <input type="range" min="1" max="3" step="1" value={Math.max(1, Math.min(3, Math.round(Number(draft.depth) || 2)))} onChange={(event) => setDraftById((current) => ({ ...current, [item.id]: { ...current[item.id], depth: Number(event.target.value) } }))} />
+                </label>
+                <label>Résonance {Math.round((Number(draft.resonance) || 0.75) * 100)}%
+                  <input type="range" min="0" max="1" step="0.01" value={Number(draft.resonance) || 0.75} onChange={(event) => setDraftById((current) => ({ ...current, [item.id]: { ...current[item.id], resonance: Number(event.target.value) } }))} />
                 </label>
               </article>
             );
