@@ -2760,3 +2760,26 @@ button {
 .bucket-item input:not([type]) {
   width: 100%;
 }
+
+.fish-sensitivity-slider {
+  position: absolute;
+  z-index: 30;
+  min-width: 180px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(125, 211, 252, 0.4);
+  background: rgba(2, 8, 23, 0.86);
+  color: #dbeafe;
+  box-shadow: 0 10px 30px rgba(2, 8, 23, 0.45);
+}
+
+.fish-sensitivity-slider label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.fish-sensitivity-slider input[type="range"] {
+  width: 100%;
+}

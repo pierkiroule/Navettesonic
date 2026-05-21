@@ -72,6 +72,7 @@ export default function SoonCanvas({
   const [fishMenu, setFishMenu] = useState(null);
   const [earActivationText, setEarActivationText] = useState("");
   const [audioTuning, setAudioTuningState] = useState(() => getAudioTuning());
+  const [showSensitivitySlider, setShowSensitivitySlider] = useState(false);
 
   const cameraRef = useRef({
     x: 0,
@@ -392,6 +393,7 @@ export default function SoonCanvas({
             { id: "resonance", label: `Résonance ${Math.round(audioTuning.resonance * 100)}%` },
             { id: "detect", label: `Portée ${audioTuning.detection.toFixed(2)}x` },
             { id: "contrast", label: `Relief ${audioTuning.depthSeparation.toFixed(2)}x` },
+            { id: "sensitivity", label: `Sensibilité ${Math.round((audioTuning.sensitivity || 0) * 100)}%` },
             { id: "membrane", label: fish?.membraneSide === "outside" ? "Aller intérieur" : "Aller extérieur" },
             { id: "reset", label: "Reset" },
           ]}
@@ -418,10 +420,30 @@ export default function SoonCanvas({
               setAudioTuning({ depthSeparation: next });
               setAudioTuningState(getAudioTuning());
             }
+            if (item.id === "sensitivity") setShowSensitivitySlider((v) => !v);
             if (item.id === "membrane") onToggleMembraneSide?.();
             if (item.id === "reset") onResetFishContext?.();
           }}
         />
+      ) : null}
+      {showSensitivitySlider && fishMenu?.screen ? (
+        <div className="fish-sensitivity-slider" style={{ left: `${fishMenu.screen.x + 66}px`, top: `${fishMenu.screen.y + 12}px` }}>
+          <label>
+            👂 Sensibilité
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={Number(audioTuning.sensitivity || 0)}
+              onChange={(event) => {
+                const next = Number(event.target.value);
+                setAudioTuning({ sensitivity: next });
+                setAudioTuningState(getAudioTuning());
+              }}
+            />
+          </label>
+        </div>
       ) : null}
     </div>
   );

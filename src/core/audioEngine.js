@@ -36,6 +36,7 @@ const audioTuning = {
   resonance: 0.5,
   detection: 1,
   depthSeparation: 1,
+  sensitivity: 0.7,
 };
 
 function getAudioContext() {
@@ -161,6 +162,7 @@ export function setAudioTuning(patch = {}) {
   audioTuning.resonance = Math.max(0, Math.min(1, Number.isFinite(patch.resonance) ? patch.resonance : audioTuning.resonance));
   audioTuning.detection = Math.max(0.65, Math.min(1.9, Number.isFinite(patch.detection) ? patch.detection : audioTuning.detection));
   audioTuning.depthSeparation = Math.max(0.4, Math.min(1.8, Number.isFinite(patch.depthSeparation) ? patch.depthSeparation : audioTuning.depthSeparation));
+  audioTuning.sensitivity = Math.max(0, Math.min(1, Number.isFinite(patch.sensitivity) ? patch.sensitivity : audioTuning.sensitivity));
 
   if (audioCtx && masterFilter) {
     const cut = 900 + audioTuning.resonance * 7800;
@@ -171,24 +173,28 @@ export function setAudioTuning(patch = {}) {
 }
 
 export function getDetectionScale() {
-  return audioTuning.detection;
+  return audioTuning.detection * (0.65 + audioTuning.sensitivity * 1.35);
 }
 
 export function updateBubbleSpatialMix(fish, bubbles = []) {
   if (!audioCtx || !masterGain || !fish) return;
   const ctx = getAudioContext();
   const fishDepth = Math.max(1, Math.min(3, Math.round(fish?.depth || 2)));
+  const sensitivityBoost = 0.5 + audioTuning.sensitivity * 1.35;
 
   bubbles.forEach((bubble) => {
     const current = activeSounds.get(bubble.id);
     if (!current) return;
     const dx = (bubble.x || 0) - (fish.x || 0);
     const dy = (bubble.y || 0) - (fish.y || 0);
-    const d = Math.hypot(dx, dy);
-    const distGain = Math.max(0, Math.min(1, 1 - d / 460));
+    const bubbleDepth = Math.max(1, Math.min(3, Math.round(bubble.depth || 2)));
+    const z = (bubbleDepth - fishDepth) * 120;
+    const d = Math.sqrt(dx * dx + dy * dy + z * z);
+    const hearRadius = 520 + sensitivityBoost * 360;
+    const distGain = Math.max(0, Math.min(1, 1 - d / hearRadius));
     const depthDiff = Math.abs((Math.round(bubble.depth || 2)) - fishDepth);
     const depthPenalty = Math.max(0.12, 1 - depthDiff * 0.38 * audioTuning.depthSeparation);
-    const targetGain = 0.001 + Math.pow(distGain, 1.9) * depthPenalty * 0.19;
+    const targetGain = 0.001 + Math.pow(distGain, 1.55) * depthPenalty * (0.15 + audioTuning.sensitivity * 0.15);
     const pan = Math.max(-0.95, Math.min(0.95, dx / 300));
     current.gain.gain.setTargetAtTime(targetGain, ctx.currentTime, 0.09);
     current.panner.pan.setTargetAtTime(pan, ctx.currentTime, 0.07);
