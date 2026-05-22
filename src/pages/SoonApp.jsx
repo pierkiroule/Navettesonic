@@ -6,6 +6,8 @@ import Profile from "./Profile.jsx";
 import BubbleBucketsMenu from "../components/BubbleBucketsMenu.jsx";
 import { useSoonStore } from "../store/useSoonStore.js";
 import { renderImmersiveJourney } from "../core/immersiveExporter.js";
+import { buildEchostoryText } from "../core/echostory/echostoryBuilder.js";
+import { ECHOSTORY_SKELETONS } from "../data/echostorySkeletons.js";
 import {
   parseWorkflowFromHash,
   persistWorkflowRoot,
@@ -49,6 +51,7 @@ export default function SoonApp({ onBack }) {
   const [bubblesIntensity, setBubblesIntensity] = useState(1);
   const [bubbleBucketsOpen, setBubbleBucketsOpen] = useState(false);
   const [fishCockpitFolded, setFishCockpitFolded] = useState(false);
+  const [echostoryDraft, setEchostoryDraft] = useState(null);
   const speedBoostUntilRef = useRef(0);
 
   const {
@@ -305,6 +308,17 @@ export default function SoonApp({ onBack }) {
   };
 
 
+
+  const handleGenerateEchostoryFromPath = () => {
+    const skeleton = ECHOSTORY_SKELETONS[0];
+    const story = buildEchostoryText({
+      collectedStars: echostory?.collectedStars || [],
+      path: odysseoPath || [],
+      skeleton,
+      silenceStyle: "dots",
+    });
+    setEchostoryDraft(story);
+  };
   if (page === "profile") {
     return <Profile onBack={() => setPage("arena")} />;
   }
@@ -532,6 +546,15 @@ export default function SoonApp({ onBack }) {
                 <button
                   type="button"
                   className="bubble-btn mode-toggle"
+                  onClick={handleGenerateEchostoryFromPath}
+                  title="Générer un texte ÉchoStory depuis le tracé"
+                >
+                  ✍️ Générer ÉchoStory texte
+                </button>
+
+                <button
+                  type="button"
+                  className="bubble-btn mode-toggle"
                   onClick={handleExportImmersion}
                   disabled={!odysseoPath || odysseoPath.length < 8}
                   title={
@@ -674,6 +697,14 @@ export default function SoonApp({ onBack }) {
             </a>
           )}
         </div>
+      )}
+
+
+      {isOdysseo && echostoryDraft && (
+        <section className="export-status" style={{ maxWidth: 560, whiteSpace: "pre-wrap" }}>
+          <strong>{echostoryDraft.titleSuggestion}</strong>
+          <div style={{ marginTop: 8 }}>{echostoryDraft.plainText}</div>
+        </section>
       )}
 
       <BubbleBucketsMenu
