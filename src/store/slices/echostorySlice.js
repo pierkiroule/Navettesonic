@@ -23,8 +23,9 @@ export const createEchostorySlice = (set) => ({
     };
   }),
   collectEchostoryStar: (id) => set((state) => ({ echostory: collectStar(state.echostory, id) })),
+  advanceEchostoryWave: () => set((state) => ({ echostory: advanceWave(state.echostory) })),
   generateEchostoryText: () => set((state) => {
-    const advanced = advanceWave(state.echostory);
+    const advanced = state.echostory;
     if (advanced.phase !== "story") return { echostory: advanced };
 
     const generatedStory = advanced.collectedStars.slice(0, 15).map((star, index) => ({

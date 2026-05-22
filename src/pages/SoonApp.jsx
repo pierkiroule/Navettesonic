@@ -103,6 +103,7 @@ export default function SoonApp({ onBack }) {
     collectEchostoryStar,
     resetEchostory,
     generateEchostoryText,
+    advanceEchostoryWave,
     triggerEscapeCinematic,
     setEscapeState,
   } = useSoonStore();
@@ -126,7 +127,8 @@ export default function SoonApp({ onBack }) {
   ];
   const stars = echostory?.stars || [];
   const collectedInWave = stars.filter((star) => star?.collected).length;
-  const canGoNextWave = collectedInWave >= 5;
+  const isStoryReady = echostory?.phase === "story";
+  const canGoNextWave = !isStoryReady && collectedInWave >= 5;
 
   useEffect(() => {
     const depth = Math.max(1, Math.min(3, Math.round(fish?.depth || 2)));
@@ -529,12 +531,14 @@ export default function SoonApp({ onBack }) {
           <div style={{ fontSize: 12, opacity: 0.82, marginBottom: 8 }}>
             Vague {waveIndex + 1} — {waveNames[waveIndex]} : "{waveCopy[waveIndex]}"
           </div>
-          <div style={{ fontSize: 13, marginBottom: 8 }}>{collectedInWave} / 5 étoiles cueillies</div>
+          <div style={{ fontSize: 13, marginBottom: 8 }}>
+            {isStoryReady ? "15 / 15 étoiles cueillies" : `${collectedInWave} / 5 étoiles cueillies`}
+          </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button
               type="button"
               className="bubble-btn mode-toggle"
-              onClick={generateEchostoryText}
+              onClick={advanceEchostoryWave}
               disabled={!canGoNextWave}
             >
               Vague suivante
