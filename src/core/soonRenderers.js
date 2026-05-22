@@ -5,16 +5,9 @@ import { drawOdysseoPath } from "./odysseoPath.js";
 import { ARENA_INNER_BOUNDARY_INSET, MEMBRANE_LEVEL_MULTIPLIERS } from "./constants.js";
 import { getArenaRadiusForNode, getPortalOpeningAngle, getPortalOpeningHalfSpan } from "./labybulleWorld.js";
 import {
-  drawFireflies,
-  drawPlacedTriangles,
-  drawPlumeTrail,
-  drawResonanceBubbles,
-} from "./fireflyGame.js";
-import {
   drawEcosystemWorld,
 } from "./ecosystemFx.js";
 import { getBlobRadiusAtAngle } from "./blobArena.js";
-import { spawnFireflyFromSeed } from "./fireflyGame.js";
 import { drawEchostoryStars } from "./echostory/echostoryRender.js";
 
 const CONTOUR_WIDTH_MULTIPLIER = 3;
@@ -69,9 +62,6 @@ export function drawScene(ctx, rect, time, refs) {
       );
     }
 
-    drawPlacedTriangles(ctx, time);
-    drawFireflies(ctx, time);
-    drawResonanceBubbles(ctx, time);
 
     if (current.mode === "echostory") {
       drawEchostoryStars(ctx, current.echostory?.stars || [], time);

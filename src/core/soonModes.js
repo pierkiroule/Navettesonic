@@ -11,7 +11,7 @@ export const SOON_MODES = [
     id: SOON_MODE_COMPO,
     icon: "🫧",
     label: "Composer•°",
-    text: "Pose tes bulles sonores et récolte les lucioles.",
+    text: "Pose tes bulles sonores.",
   },
   {
     id: SOON_MODE_RESO,
