@@ -87,5 +87,6 @@ export function resetEchostoryState() {
     collectedStars: [],
     generatedStory: [],
     storyMarkers: [],
+    escapeState: "idle",
   };
 }

@@ -1,6 +1,14 @@
 import { advanceWave, collectStar, createWaveStars, getCurrentWaveKey, resetEchostoryState } from "../../core/echostory/echostoryEngine.js";
 
 export const createEchostorySlice = (set) => ({
+  triggerEscapeCinematic: () => set((state) => ({
+    echostory: state.echostory?.escapeState === "idle"
+      ? { ...state.echostory, escapeState: "approach" }
+      : state.echostory,
+  })),
+  setEscapeState: (escapeState) => set((state) => ({
+    echostory: { ...state.echostory, escapeState },
+  })),
   resetEchostory: () => set({ echostory: resetEchostoryState() }),
   startEchostory: () => set({ echostory: resetEchostoryState() }),
   setEchostoryWave: (index) => set((state) => {

@@ -66,6 +66,7 @@ export default function SoonApp({ onBack }) {
     toggleEyesClosed,
 
     odysseoPath,
+    odysseoPathIndex,
     odysseoDepthMarkers,
     odysseoTool,
     setOdysseoTool,
@@ -102,6 +103,8 @@ export default function SoonApp({ onBack }) {
     collectEchostoryStar,
     resetEchostory,
     generateEchostoryText,
+    triggerEscapeCinematic,
+    setEscapeState,
   } = useSoonStore();
 
   const selectedBubble =
@@ -270,6 +273,31 @@ export default function SoonApp({ onBack }) {
     stopCircuitAutopilot();
     setBubbleBucketsOpen(true);
   };
+
+
+  useEffect(() => {
+    const nearEnd = (odysseoPathIndex || 0) >= Math.max(0, (odysseoPath?.length || 0) - 2);
+    if (!isTravelPlaying || mode !== SOON_MODE_ECHOSTORY || !nearEnd) return;
+    if ((echostory?.escapeState || "idle") !== "idle") return;
+    triggerEscapeCinematic();
+  }, [
+    isTravelPlaying,
+    mode,
+    odysseoPath,
+    odysseoPathIndex,
+    echostory?.escapeState,
+    triggerEscapeCinematic,
+  ]);
+
+  useEffect(() => {
+    if (echostory?.escapeState !== "approach") return;
+    const toOpening = setTimeout(() => setEscapeState("opening"), 2000);
+    const toReleased = setTimeout(() => setEscapeState("released"), 4000);
+    return () => {
+      clearTimeout(toOpening);
+      clearTimeout(toReleased);
+    };
+  }, [echostory?.escapeState, setEscapeState]);
 
   const handleApplyBubbleBuckets = (payload = []) => {
     const activeBySample = new Map(bubbles.map((bubble) => [bubble.sampleId, bubble]));
@@ -704,6 +732,31 @@ export default function SoonApp({ onBack }) {
         <section className="export-status" style={{ maxWidth: 560, whiteSpace: "pre-wrap" }}>
           <strong>{echostoryDraft.titleSuggestion}</strong>
           <div style={{ marginTop: 8 }}>{echostoryDraft.plainText}</div>
+        </section>
+      )}
+
+
+      {mode === SOON_MODE_ECHOSTORY && (echostory?.escapeState === "approach" || echostory?.escapeState === "opening") && (
+        <section
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 24,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            pointerEvents: "none",
+            background: "rgba(3,10,22,0.22)",
+            color: "#eef6ff",
+            textAlign: "center",
+            padding: 24,
+            fontSize: "clamp(18px, 5vw, 30px)",
+            textShadow: "0 2px 14px rgba(0,0,0,0.5)",
+          }}
+        >
+          <strong>
+            {echostory?.escapeState === "approach" ? "Soon trouve une ouverture…" : "Le bocal s’ouvre."}
+          </strong>
         </section>
       )}
 
