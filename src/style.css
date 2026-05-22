@@ -2577,7 +2577,7 @@ button {
   transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.workflow-tabs button.active.compo-tab {
+.workflow-tabs button.active.echostory-tab {
   color: #082f49;
   background: linear-gradient(135deg, #67e8f9, #7dd3fc);
   box-shadow: 0 6px 16px rgba(56, 189, 248, 0.32);

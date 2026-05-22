@@ -706,7 +706,7 @@ export function updateFireflyGame({ fish, mode }) {
   updatePlacedTrianglesPhysics();
   triggerPlacedTriangleVoicesInOdysseo(fish, now, mode);
 
-  if (mode === "compo") {
+  if (mode === "echostory") {
     if (fireflies.length === 0) {
       spawnFirefly(arenaRadius);
       progressiveSpawnLock = false;

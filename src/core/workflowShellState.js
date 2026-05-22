@@ -22,6 +22,7 @@ export function parseWorkflowFromHash(hash) {
   if (raw === WORKFLOW_ROOT_COMPO) return { root: WORKFLOW_ROOT_COMPO, odysseoMode: null };
 
   // backward compatibility for legacy deep links
+  if (raw === "compo") return { root: WORKFLOW_ROOT_COMPO, odysseoMode: null };
   if (raw === ODYSSEO_MODE_TRACE) return { root: WORKFLOW_ROOT_NAVIGO, odysseoMode: ODYSSEO_MODE_TRACE };
   if (raw === ODYSSEO_MODE_TRAVEL) return { root: WORKFLOW_ROOT_NAVIGO, odysseoMode: ODYSSEO_MODE_TRAVEL };
 
@@ -34,7 +35,7 @@ export function serializeWorkflowHash(root, odysseoMode = ODYSSEO_MODE_TRACE) {
     return odysseoMode === ODYSSEO_MODE_TRAVEL ? "#travel" : "#trace";
   }
 
-  return "#compo";
+  return "#echostory";
 }
 
 export function readPersistedWorkflowRoot(storage = globalThis?.localStorage) {

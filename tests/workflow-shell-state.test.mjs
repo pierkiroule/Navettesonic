@@ -11,7 +11,7 @@ import {
 } from '../src/core/workflowShellState.js';
 
 test('parseWorkflowFromHash supports new and legacy routes', () => {
-  assert.deepEqual(parseWorkflowFromHash('#compo'), { root: WORKFLOW_ROOT_COMPO, odysseoMode: null });
+  assert.deepEqual(parseWorkflowFromHash('#echostory'), { root: WORKFLOW_ROOT_COMPO, odysseoMode: null });
   assert.deepEqual(parseWorkflowFromHash('#navigo'), { root: WORKFLOW_ROOT_NAVIGO, odysseoMode: ODYSSEO_MODE_TRACE });
   assert.deepEqual(parseWorkflowFromHash('#trace'), { root: WORKFLOW_ROOT_NAVIGO, odysseoMode: ODYSSEO_MODE_TRACE });
   assert.deepEqual(parseWorkflowFromHash('#travel'), { root: WORKFLOW_ROOT_NAVIGO, odysseoMode: ODYSSEO_MODE_TRAVEL });
@@ -21,7 +21,7 @@ test('parseWorkflowFromHash supports new and legacy routes', () => {
 });
 
 test('serializeWorkflowHash preserves backward compatibility for navigo subroutes', () => {
-  assert.equal(serializeWorkflowHash(WORKFLOW_ROOT_COMPO), '#compo');
+  assert.equal(serializeWorkflowHash(WORKFLOW_ROOT_COMPO), '#echostory');
   assert.equal(serializeWorkflowHash(WORKFLOW_ROOT_NAVIGO, ODYSSEO_MODE_TRACE), '#trace');
   assert.equal(serializeWorkflowHash(WORKFLOW_ROOT_NAVIGO, ODYSSEO_MODE_TRAVEL), '#travel');
 });

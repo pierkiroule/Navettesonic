@@ -1,11 +1,11 @@
 export const SOON_MODE_INTRO = "intro";
-export const SOON_MODE_COMPO = "compo";
+export const SOON_MODE_COMPO = "echostory";
 export const SOON_MODE_RESO = "reso";
 export const SOON_MODE_ECHOSTORY = "echostory";
 
 export const SOON_MODES_ALLOWED = [SOON_MODE_INTRO, SOON_MODE_COMPO, SOON_MODE_RESO, SOON_MODE_ECHOSTORY];
 
-export const WORKFLOW_ROOT_COMPO = "compo";
+export const WORKFLOW_ROOT_COMPO = "echostory";
 export const WORKFLOW_ROOT_NAVIGO = "navigo";
 export const WORKFLOW_ROOT_ALLOWED = [WORKFLOW_ROOT_COMPO, WORKFLOW_ROOT_NAVIGO];
 

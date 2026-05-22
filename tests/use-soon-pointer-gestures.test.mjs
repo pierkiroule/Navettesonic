@@ -9,7 +9,7 @@ function createHarness() {
     setPointerCapture: () => {},
     releasePointerCapture: () => {},
   };
-  const stateRef = { current: { interactionMode: 'swim', mode: 'compo', fish: { depth: 1 }, viewZoom: 0, circuitAutopilot: false, bubbles: [] } };
+  const stateRef = { current: { interactionMode: 'swim', mode: 'echostory', fish: { depth: 1 }, viewZoom: 0, circuitAutopilot: false, bubbles: [] } };
   const api = useSoonPointer({
     canvasRef: { current: canvas },
     cameraRef: { current: { x: 0, y: 0 } },
