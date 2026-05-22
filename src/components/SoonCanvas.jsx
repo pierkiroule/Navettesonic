@@ -65,6 +65,8 @@ export default function SoonCanvas({
   pendingBlobAction = null,
   onBlobAction,
   onSetFishDepth,
+  echostory,
+  onCollectEchostoryStar,
 }) {
   const canvasRef = useRef(null);
   const [semioseVideo, setSemioseVideo] = useState(null);
@@ -132,6 +134,7 @@ export default function SoonCanvas({
     arenaBlob,
     gamePaused,
     pendingBlobAction,
+    echostory,
   });
 
   useEffect(() => {
@@ -160,6 +163,7 @@ export default function SoonCanvas({
       arenaBlob,
       gamePaused,
       pendingBlobAction,
+      echostory,
     };
   }, [
     mode,
@@ -186,6 +190,7 @@ export default function SoonCanvas({
     arenaBlob,
     gamePaused,
     pendingBlobAction,
+    echostory,
   ]);
 
   useEffect(() => {
@@ -235,6 +240,7 @@ export default function SoonCanvas({
     activeBubbleAudioRef,
     onTickFish,
     onSemioseVideoTrigger: setSemioseVideo,
+    onCollectEchostoryStar,
   });
 
   const {

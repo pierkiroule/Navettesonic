@@ -94,6 +94,8 @@ export default function SoonApp({ onBack }) {
     gamePaused,
     pendingBlobAction,
     arenaBlob,
+    echostory,
+    collectEchostoryStar,
   } = useSoonStore();
 
   const selectedBubble =
@@ -381,6 +383,8 @@ export default function SoonApp({ onBack }) {
         onToggleMembraneSide={toggleMembraneSide}
         onBlobAction={applyBlobAction}
         onSetFishDepth={setFishDepth}
+        echostory={echostory}
+        onCollectEchostoryStar={collectEchostoryStar}
       />
 
 
