@@ -284,20 +284,8 @@ export default function SoonCanvas({
     return undefined;
   }, [eyesClosed]);
 
-  const earToggleTapRef = useRef({
-    lastTapAt: 0,
-  });
-
-  const handleEarButtonPointerDown = (event) => {
-    if (event.pointerType && event.pointerType !== "touch") return;
-    const now = Date.now();
-    const interval = now - (earToggleTapRef.current.lastTapAt || 0);
-    earToggleTapRef.current.lastTapAt = now;
-    if (interval > 0 && interval <= 320) {
-      event.preventDefault();
-      onToggleEyesClosed?.();
-      earToggleTapRef.current.lastTapAt = 0;
-    }
+  const handleEarButtonClick = () => {
+    onToggleEyesClosed?.();
   };
 
   useEffect(() => {
@@ -349,8 +337,8 @@ export default function SoonCanvas({
         className={`arena-recenter-btn ${eyesClosed ? "is-active" : ""}`}
         style={{ left: `${arenaCenterScreen.x}px`, top: `${arenaCenterScreen.y}px` }}
         aria-label={eyesClosed ? "Mode aveugle actif" : "Mode aveugle inactif"}
-        title="Double-tap tactile : activer/désactiver l’écoute"
-        onPointerDown={handleEarButtonPointerDown}
+        title="Activer/désactiver l’écoute"
+        onClick={handleEarButtonClick}
       >
         👂
       </button>
