@@ -16,6 +16,7 @@ import {
   ODYSSEO_MODE_TRACE,
   SOON_MODE_COMPO,
   SOON_MODE_RESO,
+  SOON_MODE_ECHOSTORY,
   WORKFLOW_ROOT_COMPO,
   WORKFLOW_ROOT_NAVIGO,
   modeToWorkflowRoot,
@@ -96,6 +97,8 @@ export default function SoonApp({ onBack }) {
     arenaBlob,
     echostory,
     collectEchostoryStar,
+    resetEchostory,
+    generateEchostoryText,
   } = useSoonStore();
 
   const selectedBubble =
@@ -106,6 +109,18 @@ export default function SoonApp({ onBack }) {
 
   const isOdysseo = mode === SOON_MODE_RESO;
   const isEditMode = interactionMode === "edit";
+
+  const isEchostory = mode === SOON_MODE_ECHOSTORY;
+  const waveIndex = Math.max(0, Math.min(2, Number.isFinite(echostory?.waveIndex) ? echostory.waveIndex : 0));
+  const waveNames = ["Immersion", "Bascule", "Ouverture"];
+  const waveCopy = [
+    "Cueillez les premières étoiles sensorielles.",
+    "Laissez entrer l’étrange.",
+    "Approchez du rêve.",
+  ];
+  const stars = echostory?.stars || [];
+  const collectedInWave = stars.filter((star) => star?.collected).length;
+  const canGoNextWave = collectedInWave >= 5;
 
   useEffect(() => {
     const depth = Math.max(1, Math.min(3, Math.round(fish?.depth || 2)));
@@ -311,6 +326,14 @@ export default function SoonApp({ onBack }) {
             activeRoot={activeRoot}
             onChangeRoot={setWorkflowRoot}
           />
+          <button
+            type="button"
+            className={`bubble-btn mode-toggle ${isEchostory ? "active" : ""}`}
+            onClick={() => setMode(SOON_MODE_ECHOSTORY)}
+            style={{ marginLeft: 8 }}
+          >
+            ✨ ÉchoStory
+          </button>
         </div>
 
         <button
@@ -435,6 +458,52 @@ export default function SoonApp({ onBack }) {
                 <li><strong>Itération courte</strong> : 1 modif = 1 réécoute.</li>
               </ul>
             </article>
+          </div>
+        </section>
+      )}
+
+
+      {isEchostory && (
+        <section
+          className="echostory-hud"
+          style={{
+            position: "fixed",
+            left: 12,
+            right: 12,
+            bottom: 92,
+            zIndex: 18,
+            padding: "10px 12px",
+            borderRadius: 12,
+            background: "rgba(8,16,28,0.86)",
+            border: "1px solid rgba(150,180,255,0.28)",
+            color: "#eaf4ff",
+            backdropFilter: "blur(3px)",
+          }}
+        >
+          <strong style={{ display: "block", marginBottom: 4 }}>ÉchoStory</strong>
+          <div style={{ fontSize: 13, opacity: 0.95, marginBottom: 4 }}>
+            Vague actuelle : {waveIndex + 1}/3 — {waveNames[waveIndex]}
+          </div>
+          <div style={{ fontSize: 12, opacity: 0.82, marginBottom: 8 }}>
+            Vague {waveIndex + 1} — {waveNames[waveIndex]} : "{waveCopy[waveIndex]}"
+          </div>
+          <div style={{ fontSize: 13, marginBottom: 8 }}>{collectedInWave} / 5 étoiles cueillies</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="bubble-btn mode-toggle"
+              onClick={generateEchostoryText}
+              disabled={!canGoNextWave}
+            >
+              Vague suivante
+            </button>
+            <button
+              type="button"
+              className="bubble-btn mode-toggle"
+              onClick={resetEchostory}
+            >
+              Réinitialiser
+            </button>
           </div>
         </section>
       )}
