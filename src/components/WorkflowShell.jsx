@@ -1,7 +1,7 @@
 import { WORKFLOW_ROOT_COMPO, WORKFLOW_ROOT_NAVIGO } from "../core/uiState.js";
 
 export default function WorkflowShell({ activeRoot = WORKFLOW_ROOT_COMPO, onChangeRoot }) {
-  const isCompo = activeRoot === WORKFLOW_ROOT_COMPO;
+  const isEchostory = activeRoot === WORKFLOW_ROOT_COMPO;
   const isTuto = activeRoot === "tuto";
 
   return (
@@ -19,17 +19,17 @@ export default function WorkflowShell({ activeRoot = WORKFLOW_ROOT_COMPO, onChan
         <button
           type="button"
           role="tab"
-          aria-selected={isCompo}
-          className={isCompo ? "active compo-tab" : "compo-tab"}
+          aria-selected={isEchostory}
+          className={isEchostory ? "active echostory-tab" : "echostory-tab"}
           onClick={() => onChangeRoot?.(WORKFLOW_ROOT_COMPO)}
         >
-          Compo
+          Echostory
         </button>
         <button
           type="button"
           role="tab"
-          aria-selected={!isCompo}
-          className={!isCompo ? "active navigo-tab" : "navigo-tab"}
+          aria-selected={!isEchostory}
+          className={!isEchostory ? "active navigo-tab" : "navigo-tab"}
           onClick={() => onChangeRoot?.(WORKFLOW_ROOT_NAVIGO)}
         >
           Navigo

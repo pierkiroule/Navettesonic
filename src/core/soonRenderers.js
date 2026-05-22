@@ -773,7 +773,7 @@ export function drawBubbles(ctx, bubbles = [], selectedBubbleId, mode, time, int
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(bubble.label, bubble.x, bubble.y);
-    if (selected || mode === "compo" || interactionMode === "edit") {
+    if (selected || mode === "echostory" || interactionMode === "edit") {
       ctx.fillStyle = "rgba(226, 232, 240, 0.68)";
       ctx.font = "700 10px system-ui";
       ctx.fillText(`P${depth}`, bubble.x, bubble.y + radius + 18);

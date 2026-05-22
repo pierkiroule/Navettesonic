@@ -106,7 +106,7 @@ export function useSoonCanvasLoop({
         arenaRadius: runtimeRadius,
       };
 
-      if (current.mode === "reso" || current.mode === "compo") {
+      if (current.mode === "reso" || current.mode === "echostory") {
         cameraRef.current.zoom = 1;
       } else if (isEditMode) {
         if (!wasEditMode) {

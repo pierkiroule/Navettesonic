@@ -241,7 +241,7 @@ export function useSoonPointer({
     const point = getSafeWorldFromEvent(event, { swimEdgeBoost: true });
     const current = stateRef.current;
 
-    if (current.mode === "compo" || current.mode === "reso") {
+    if (current.mode === "echostory" || current.mode === "reso") {
       const r = arenaRef.current.radius || 1200;
       const d = Math.hypot(point.x, point.y);
 
