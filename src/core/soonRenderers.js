@@ -15,6 +15,7 @@ import {
 } from "./ecosystemFx.js";
 import { getBlobRadiusAtAngle } from "./blobArena.js";
 import { spawnFireflyFromSeed } from "./fireflyGame.js";
+import { drawEchostoryStars } from "./echostory/echostoryRender.js";
 
 const CONTOUR_WIDTH_MULTIPLIER = 3;
 const guppyRuntime = {
@@ -71,6 +72,10 @@ export function drawScene(ctx, rect, time, refs) {
     drawPlacedTriangles(ctx, time);
     drawFireflies(ctx, time);
     drawResonanceBubbles(ctx, time);
+
+    if (current.mode === "echostory") {
+      drawEchostoryStars(ctx, current.echostory?.stars || [], time);
+    }
 
     if (current.interactionMode !== "edit") {
       drawCharacters(ctx, time);

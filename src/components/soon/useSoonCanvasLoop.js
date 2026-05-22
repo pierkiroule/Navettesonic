@@ -17,6 +17,22 @@ import {
   updateCharacters,
 } from "../../core/characters/characterEngine.js";
 
+
+function collectNearbyEchostoryStars(current, onCollect) {
+  if (current?.mode !== "echostory") return;
+  if (!onCollect || !current?.fish) return;
+  const fishX = Number.isFinite(current.fish.x) ? current.fish.x : 0;
+  const fishY = Number.isFinite(current.fish.y) ? current.fish.y : 0;
+  (current?.echostory?.stars || []).forEach((star) => {
+    if (!star || star.collected) return;
+    const dx = (star.x || 0) - fishX;
+    const dy = (star.y || 0) - fishY;
+    if (Math.hypot(dx, dy) < 55) {
+      onCollect(star.id);
+    }
+  });
+}
+
 export function useSoonCanvasLoop({
   canvasRef,
   cameraRef,
@@ -25,6 +41,7 @@ export function useSoonCanvasLoop({
   activeBubbleAudioRef,
   onTickFish,
   onSemioseVideoTrigger,
+  onCollectEchostoryStar,
 }) {
   useEffect(() => {
     let frame = 0;
@@ -115,6 +132,7 @@ export function useSoonCanvasLoop({
       }
 
       const next = stateRef.current || {};
+      collectNearbyEchostoryStars(next, onCollectEchostoryStar);
       const nextFish = next.fish || null;
       const arenaCenter = getArenaWorldCenter(next);
       const fishWorld = nextFish
@@ -215,5 +233,6 @@ export function useSoonCanvasLoop({
     activeBubbleAudioRef,
     onTickFish,
     onSemioseVideoTrigger,
+    onCollectEchostoryStar,
   ]);
 }

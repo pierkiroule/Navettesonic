@@ -5,6 +5,7 @@ import { getFishNavigableRadius } from "../core/constants.js";
 import { SOON_MODE_COMPO, normalizeSoonMode } from "../core/uiState.js";
 import { buildMazeByArena, generateLabybulle, getArenaLevelFromId, validateWorldGraph } from "../core/labybulleWorld.js";
 import { createArenaBlob } from "../core/blobArena.js";
+import { resetEchostoryState } from "../core/echostory/echostoryEngine.js";
 
 export const saved = loadState();
 export const labybulleWorld = generateLabybulle(saved?.labybulleSeed ?? 1);
@@ -26,6 +27,8 @@ export const defaultFish = {
   breachExpiresAt: null, breachUsed: false, hasQuill: false, membraneSide: "inside",
 };
 
+
+export const initialEchostory = resetEchostoryState();
 export const initialState = {
   mode: normalizeSoonMode(saved?.mode, SOON_MODE_COMPO),
   bubbles: (saved?.arenaBubblesById?.[saved?.currentArenaId || labybulleWorld.startArenaId] || saved?.bubbles || defaultPack.bubbles).map((bubble) => ({ ...bubble })),
@@ -52,4 +55,5 @@ export const initialState = {
   arenaBlob: createArenaBlob(96, DEFAULT_ARENA_RADIUS),
   gamePaused: false,
   pendingBlobAction: null,
+  echostory: { ...initialEchostory },
 };

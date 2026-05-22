@@ -7,6 +7,7 @@ import { createFishSlice } from "./slices/fishSlice.js";
 import { createCircuitSlice } from "./slices/circuitSlice.js";
 import { createBubbleSlice } from "./slices/bubbleSlice.js";
 import { createPackSlice } from "./slices/packSlice.js";
+import { createEchostorySlice } from "./slices/echostorySlice.js";
 
 export const useSoonStore = create((set, get) => ({
   ...initialState,
@@ -21,4 +22,5 @@ export const useSoonStore = create((set, get) => ({
   ...createCircuitSlice(set, get),
   ...createBubbleSlice(set, get),
   ...createPackSlice(set, get),
+  ...createEchostorySlice(set, get),
 }));

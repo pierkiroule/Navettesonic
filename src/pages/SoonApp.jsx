@@ -6,6 +6,8 @@ import Profile from "./Profile.jsx";
 import BubbleBucketsMenu from "../components/BubbleBucketsMenu.jsx";
 import { useSoonStore } from "../store/useSoonStore.js";
 import { renderImmersiveJourney } from "../core/immersiveExporter.js";
+import { buildEchostoryText } from "../core/echostory/echostoryBuilder.js";
+import { ECHOSTORY_SKELETONS } from "../data/echostorySkeletons.js";
 import {
   parseWorkflowFromHash,
   persistWorkflowRoot,
@@ -16,6 +18,7 @@ import {
   ODYSSEO_MODE_TRACE,
   SOON_MODE_COMPO,
   SOON_MODE_RESO,
+  SOON_MODE_ECHOSTORY,
   WORKFLOW_ROOT_COMPO,
   WORKFLOW_ROOT_NAVIGO,
   modeToWorkflowRoot,
@@ -48,6 +51,7 @@ export default function SoonApp({ onBack }) {
   const [bubblesIntensity, setBubblesIntensity] = useState(1);
   const [bubbleBucketsOpen, setBubbleBucketsOpen] = useState(false);
   const [fishCockpitFolded, setFishCockpitFolded] = useState(false);
+  const [echostoryDraft, setEchostoryDraft] = useState(null);
   const speedBoostUntilRef = useRef(0);
 
   const {
@@ -62,6 +66,7 @@ export default function SoonApp({ onBack }) {
     toggleEyesClosed,
 
     odysseoPath,
+    odysseoPathIndex,
     odysseoDepthMarkers,
     odysseoTool,
     setOdysseoTool,
@@ -94,6 +99,13 @@ export default function SoonApp({ onBack }) {
     gamePaused,
     pendingBlobAction,
     arenaBlob,
+    echostory,
+    collectEchostoryStar,
+    resetEchostory,
+    generateEchostoryText,
+    advanceEchostoryWave,
+    triggerEscapeCinematic,
+    setEscapeState,
   } = useSoonStore();
 
   const selectedBubble =
@@ -104,6 +116,19 @@ export default function SoonApp({ onBack }) {
 
   const isOdysseo = mode === SOON_MODE_RESO;
   const isEditMode = interactionMode === "edit";
+
+  const isEchostory = mode === SOON_MODE_ECHOSTORY;
+  const waveIndex = Math.max(0, Math.min(2, Number.isFinite(echostory?.waveIndex) ? echostory.waveIndex : 0));
+  const waveNames = ["Immersion", "Bascule", "Ouverture"];
+  const waveCopy = [
+    "Cueillez les premières étoiles sensorielles.",
+    "Laissez entrer l’étrange.",
+    "Approchez du rêve.",
+  ];
+  const stars = echostory?.stars || [];
+  const collectedInWave = stars.filter((star) => star?.collected).length;
+  const isStoryReady = echostory?.phase === "story";
+  const canGoNextWave = !isStoryReady && collectedInWave >= 5;
 
   useEffect(() => {
     const depth = Math.max(1, Math.min(3, Math.round(fish?.depth || 2)));
@@ -251,6 +276,31 @@ export default function SoonApp({ onBack }) {
     setBubbleBucketsOpen(true);
   };
 
+
+  useEffect(() => {
+    const nearEnd = (odysseoPathIndex || 0) >= Math.max(0, (odysseoPath?.length || 0) - 2);
+    if (!isTravelPlaying || mode !== SOON_MODE_ECHOSTORY || !nearEnd) return;
+    if ((echostory?.escapeState || "idle") !== "idle") return;
+    triggerEscapeCinematic();
+  }, [
+    isTravelPlaying,
+    mode,
+    odysseoPath,
+    odysseoPathIndex,
+    echostory?.escapeState,
+    triggerEscapeCinematic,
+  ]);
+
+  useEffect(() => {
+    if (echostory?.escapeState !== "approach") return;
+    const toOpening = setTimeout(() => setEscapeState("opening"), 2000);
+    const toReleased = setTimeout(() => setEscapeState("released"), 4000);
+    return () => {
+      clearTimeout(toOpening);
+      clearTimeout(toReleased);
+    };
+  }, [echostory?.escapeState, setEscapeState]);
+
   const handleApplyBubbleBuckets = (payload = []) => {
     const activeBySample = new Map(bubbles.map((bubble) => [bubble.sampleId, bubble]));
 
@@ -288,6 +338,17 @@ export default function SoonApp({ onBack }) {
   };
 
 
+
+  const handleGenerateEchostoryFromPath = () => {
+    const skeleton = ECHOSTORY_SKELETONS[0];
+    const story = buildEchostoryText({
+      collectedStars: echostory?.collectedStars || [],
+      path: odysseoPath || [],
+      skeleton,
+      silenceStyle: "dots",
+    });
+    setEchostoryDraft(story);
+  };
   if (page === "profile") {
     return <Profile onBack={() => setPage("arena")} />;
   }
@@ -309,6 +370,14 @@ export default function SoonApp({ onBack }) {
             activeRoot={activeRoot}
             onChangeRoot={setWorkflowRoot}
           />
+          <button
+            type="button"
+            className={`bubble-btn mode-toggle ${isEchostory ? "active" : ""}`}
+            onClick={() => setMode(SOON_MODE_ECHOSTORY)}
+            style={{ marginLeft: 8 }}
+          >
+            ✨ ÉchoStory
+          </button>
         </div>
 
         <button
@@ -381,6 +450,8 @@ export default function SoonApp({ onBack }) {
         onToggleMembraneSide={toggleMembraneSide}
         onBlobAction={applyBlobAction}
         onSetFishDepth={setFishDepth}
+        echostory={echostory}
+        onCollectEchostoryStar={collectEchostoryStar}
       />
 
 
@@ -435,6 +506,54 @@ export default function SoonApp({ onBack }) {
         </section>
       )}
 
+
+      {isEchostory && (
+        <section
+          className="echostory-hud"
+          style={{
+            position: "fixed",
+            left: 12,
+            right: 12,
+            bottom: 92,
+            zIndex: 18,
+            padding: "10px 12px",
+            borderRadius: 12,
+            background: "rgba(8,16,28,0.86)",
+            border: "1px solid rgba(150,180,255,0.28)",
+            color: "#eaf4ff",
+            backdropFilter: "blur(3px)",
+          }}
+        >
+          <strong style={{ display: "block", marginBottom: 4 }}>ÉchoStory</strong>
+          <div style={{ fontSize: 13, opacity: 0.95, marginBottom: 4 }}>
+            Vague actuelle : {waveIndex + 1}/3 — {waveNames[waveIndex]}
+          </div>
+          <div style={{ fontSize: 12, opacity: 0.82, marginBottom: 8 }}>
+            Vague {waveIndex + 1} — {waveNames[waveIndex]} : "{waveCopy[waveIndex]}"
+          </div>
+          <div style={{ fontSize: 13, marginBottom: 8 }}>
+            {isStoryReady ? "15 / 15 étoiles cueillies" : `${collectedInWave} / 5 étoiles cueillies`}
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="bubble-btn mode-toggle"
+              onClick={advanceEchostoryWave}
+              disabled={!canGoNextWave}
+            >
+              Vague suivante
+            </button>
+            <button
+              type="button"
+              className="bubble-btn mode-toggle"
+              onClick={resetEchostory}
+            >
+              Réinitialiser
+            </button>
+          </div>
+        </section>
+      )}
+
       <div className={`cockpit ${isOdysseo ? "odysseo-cockpit" : ""}`}>
         <div className="cockpit-buttons">
           {isOdysseo ? (
@@ -454,6 +573,15 @@ export default function SoonApp({ onBack }) {
                   }
                 >
                   {isTravelPlaying ? "⏸ Pause" : "▶ Play"}
+                </button>
+
+                <button
+                  type="button"
+                  className="bubble-btn mode-toggle"
+                  onClick={handleGenerateEchostoryFromPath}
+                  title="Générer un texte ÉchoStory depuis le tracé"
+                >
+                  ✍️ Générer ÉchoStory texte
                 </button>
 
                 <button
@@ -601,6 +729,39 @@ export default function SoonApp({ onBack }) {
             </a>
           )}
         </div>
+      )}
+
+
+      {isOdysseo && echostoryDraft && (
+        <section className="export-status" style={{ maxWidth: 560, whiteSpace: "pre-wrap" }}>
+          <strong>{echostoryDraft.titleSuggestion}</strong>
+          <div style={{ marginTop: 8 }}>{echostoryDraft.plainText}</div>
+        </section>
+      )}
+
+
+      {mode === SOON_MODE_ECHOSTORY && (echostory?.escapeState === "approach" || echostory?.escapeState === "opening") && (
+        <section
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 24,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            pointerEvents: "none",
+            background: "rgba(3,10,22,0.22)",
+            color: "#eef6ff",
+            textAlign: "center",
+            padding: 24,
+            fontSize: "clamp(18px, 5vw, 30px)",
+            textShadow: "0 2px 14px rgba(0,0,0,0.5)",
+          }}
+        >
+          <strong>
+            {echostory?.escapeState === "approach" ? "Soon trouve une ouverture…" : "Le bocal s’ouvre."}
+          </strong>
+        </section>
       )}
 
       <BubbleBucketsMenu
