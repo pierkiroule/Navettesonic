@@ -2,17 +2,7 @@ import {
   createStarTornado,
   drawStarTornado,
   updateStarTornado,
-  getStarTornadoWaveRadius,
 } from "./starTornado.js";
-import {
-  createExternalSeedStock,
-  drawLucioleSeeds,
-  updateLucioleSeeds,
-} from "../lucioles/lucioleSeeds.js";
-import {
-  getUncollectedFireflyCount,
-  spawnFireflyFromSeed,
-} from "../fireflyGame.js";
 import {
   getTornadoEffectState,
   getWorldBlur,
@@ -23,8 +13,6 @@ const characters = {
   initialized: false,
   lastTime: 0,
   tornado: null,
-  lucioleSeeds: [],
-  externalSeedStock: null,
 };
 
 export function initCharacters(arenaRadius = 1200) {
@@ -39,8 +27,6 @@ export function initCharacters(arenaRadius = 1200) {
     r: 38,
   });
 
-  characters.lucioleSeeds = [];
-  characters.externalSeedStock = createExternalSeedStock(120);
 }
 
 export function updateCharacters({ fish, arenaRadius = 1200 } = {}) {
@@ -52,31 +38,11 @@ export function updateCharacters({ fish, arenaRadius = 1200 } = {}) {
 
   updateStarTornado(characters.tornado, fish, dt, arenaRadius);
 
-  updateLucioleSeeds(
-    characters.lucioleSeeds,
-    characters.externalSeedStock,
-    dt,
-    (seed) => {
-      spawnFireflyFromSeed(seed.x, seed.y);
-    }
-  );
-
-  const waveRadius = getStarTornadoWaveRadius(characters.tornado, now);
-  if (waveRadius !== null) {
-    characters.lucioleSeeds.length = 0;
-  }
-
-  const stock = characters.externalSeedStock;
-  if (stock && stock.remaining <= 0 && getUncollectedFireflyCount() <= 2) {
-    stock.remaining = 12;
-  }
-
 }
 
 export function drawCharacters(ctx, time = performance.now()) {
   if (!characters.initialized) return;
 
-  drawLucioleSeeds(ctx, characters.lucioleSeeds, time);
   drawStarTornado(ctx, characters.tornado, time);
 }
 
@@ -93,6 +59,4 @@ export function getCharacterWorldEffects(time = performance.now()) {
 export function resetCharacters() {
   characters.initialized = false;
   characters.tornado = null;
-  characters.lucioleSeeds = [];
-  characters.externalSeedStock = null;
 }

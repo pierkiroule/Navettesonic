@@ -41,5 +41,5 @@ if(type==="inspi"){const centerRepulse=Math.max(300,basePush*6.2);nx-=Math.cos(f
 
 nextBubbles=nextBubbles.map((bubble)=>keepBubbleOffMembrane(bubble,nextBlob));
 const velocityDamping=type==="inspi"?0.12:0.35;
-return{arenaBlob:nextBlob,gamePaused:false,pendingBlobAction:null,bubbles:nextBubbles,fish:{...(s.fish||{}),x:nx,y:ny,targetX:nx,targetY:ny,vx:(s.fish?.vx||0)*velocityDamping,vy:(s.fish?.vy||0)*velocityDamping}};}),
+return{arenaBlob:nextBlob,gamePaused:false,pendingBlobAction:null,eyesClosed:false,bubbles:nextBubbles,fish:{...(s.fish||{}),x:nx,y:ny,targetX:nx,targetY:ny,vx:(s.fish?.vx||0)*velocityDamping,vy:(s.fish?.vy||0)*velocityDamping}};}),
 });

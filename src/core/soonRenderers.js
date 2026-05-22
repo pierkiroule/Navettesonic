@@ -5,16 +5,9 @@ import { drawOdysseoPath } from "./odysseoPath.js";
 import { ARENA_INNER_BOUNDARY_INSET, MEMBRANE_LEVEL_MULTIPLIERS } from "./constants.js";
 import { getArenaRadiusForNode, getPortalOpeningAngle, getPortalOpeningHalfSpan } from "./labybulleWorld.js";
 import {
-  drawFireflies,
-  drawPlacedTriangles,
-  drawPlumeTrail,
-  drawResonanceBubbles,
-} from "./fireflyGame.js";
-import {
   drawEcosystemWorld,
 } from "./ecosystemFx.js";
 import { getBlobRadiusAtAngle } from "./blobArena.js";
-import { spawnFireflyFromSeed } from "./fireflyGame.js";
 import { drawEchostoryStars } from "./echostory/echostoryRender.js";
 
 const CONTOUR_WIDTH_MULTIPLIER = 3;
@@ -38,15 +31,12 @@ export function drawScene(ctx, rect, time, refs) {
 
   enterWorld(ctx, rect, cameraRef, stateRef);
 
-  if (!current.eyesClosed) {
-    drawArenaBoundary(ctx, arenaRef, time, current);
-  }
+  drawArenaBoundary(ctx, arenaRef, time, current);
   drawArenaGuppies(ctx, time, current, arenaRef.current?.radius || 1200);
 
-  if (!current.eyesClosed) {
-    drawArenaNightSky(ctx, arenaRef, time);
-    drawEcosystemWorld(ctx, current, time);
-    drawWorldParticles(ctx, arenaRef, time);
+  drawArenaNightSky(ctx, arenaRef, time);
+  drawEcosystemWorld(ctx, current, time);
+  drawWorldParticles(ctx, arenaRef, time);
 
     if (current.mode === "reso") {
       drawOdysseoPath(
@@ -69,28 +59,22 @@ export function drawScene(ctx, rect, time, refs) {
       );
     }
 
-    drawPlacedTriangles(ctx, time);
-    drawFireflies(ctx, time);
-    drawResonanceBubbles(ctx, time);
 
     if (current.mode === "echostory") {
       drawEchostoryStars(ctx, current.echostory?.stars || [], time);
     }
 
-    if (current.interactionMode !== "edit") {
-      drawCharacters(ctx, time);
-    }
+  if (current.interactionMode !== "edit") {
+    drawCharacters(ctx, time);
   }
 
   drawFish(ctx, current.fish, time, current.worldGraph, current.currentArenaId);
-  if (!current.eyesClosed) drawQuill(ctx, current.fish, time);
+  drawQuill(ctx, current.fish, time);
 
   exitWorld(ctx);
 
-  if (!current.eyesClosed) {
-    drawCameraVignette(ctx, rect, current.fish);
-    drawHud(ctx, rect, current, arenaRef);
-  }
+  drawCameraVignette(ctx, rect, current.fish);
+  drawHud(ctx, rect, current, arenaRef);
 }
 
 function drawGuppyTopView(ctx, x, y, angle, size = 1, sway = 0) {

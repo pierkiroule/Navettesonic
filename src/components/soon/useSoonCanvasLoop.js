@@ -8,7 +8,6 @@ import {
   updateArena,
 } from "../../core/soonCamera.js";
 import { updateBubbleSpatialMix } from "../../core/audioEngine.js";
-import { consumeSemioseVideoTrigger, updateFireflyGame } from "../../core/fireflyGame.js";
 import { updateEcosystemFx } from "../../core/ecosystemFx.js";
 import { updateBubbleAudioTriggers } from "../../core/soonAudioTriggers.js";
 import { drawScene } from "../../core/soonRenderers.js";
@@ -148,16 +147,6 @@ export function useSoonCanvasLoop({
       if (!isEditMode) {
         updateBubbleAudioTriggers(next, activeBubbleAudioRef);
         updateBubbleSpatialMix(next.fish || null, next.bubbles || []);
-
-        updateFireflyGame({
-          fish: next.fish,
-          mode: next.mode,
-          bubbles: next.bubbles || [],
-        });
-        const semioseVideoTrigger = consumeSemioseVideoTrigger();
-        if (semioseVideoTrigger) {
-          onSemioseVideoTrigger?.(semioseVideoTrigger);
-        }
       }
 
       updateEcosystemFx({
