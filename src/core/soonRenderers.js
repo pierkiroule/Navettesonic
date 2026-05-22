@@ -731,19 +731,23 @@ export function drawBubbles(ctx, bubbles = [], selectedBubbleId, mode, time, int
   ctx.save();
 
   bubbles.forEach((bubble) => {
+    const bubbleX = Number.isFinite(bubble?.x) ? bubble.x : null;
+    const bubbleY = Number.isFinite(bubble?.y) ? bubble.y : null;
+    if (bubbleX === null || bubbleY === null) return;
     const selected = bubble.id === selectedBubbleId;
-    const pulse = Math.sin(time * 0.003 + bubble.x * 0.01) * 5;
+    const pulse = Math.sin(time * 0.003 + bubbleX * 0.01) * 5;
     const depth = Math.round(bubble.depth || 1);
     const radius = getBubbleVisualRadius(bubble);
+    if (!Number.isFinite(radius) || radius <= 0) return;
     const alphaBase = depth === 1 ? 0.58 : depth === 2 ? 0.46 : 0.32;
     const alpha = alphaBase * Math.max(0.2, Math.min(2, intensity));
 
     const glow = ctx.createRadialGradient(
-      bubble.x,
-      bubble.y,
+      bubbleX,
+      bubbleY,
       radius * 0.2,
-      bubble.x,
-      bubble.y,
+      bubbleX,
+      bubbleY,
       radius * 1.7
     );
 
@@ -751,17 +755,17 @@ export function drawBubbles(ctx, bubbles = [], selectedBubbleId, mode, time, int
     glow.addColorStop(1, `hsla(${bubble.hue}, 100%, 60%, 0)`);
 
     ctx.beginPath();
-    ctx.arc(bubble.x, bubble.y, radius * 1.7 + pulse, 0, Math.PI * 2);
+    ctx.arc(bubbleX, bubbleY, radius * 1.7 + pulse, 0, Math.PI * 2);
     ctx.fillStyle = glow;
     ctx.fill();
 
     ctx.beginPath();
-    ctx.arc(bubble.x, bubble.y, radius + pulse, 0, Math.PI * 2);
+    ctx.arc(bubbleX, bubbleY, radius + pulse, 0, Math.PI * 2);
     ctx.fillStyle = `hsla(${bubble.hue}, 90%, 66%, ${alpha})`;
     ctx.fill();
 
     ctx.beginPath();
-    ctx.arc(bubble.x, bubble.y, radius + 12 + pulse, 0, Math.PI * 2);
+    ctx.arc(bubbleX, bubbleY, radius + 12 + pulse, 0, Math.PI * 2);
     ctx.strokeStyle = selected
       ? "rgba(255,255,255,0.95)"
       : `hsla(${bubble.hue}, 100%, 78%, 0.35)`;
@@ -772,11 +776,11 @@ export function drawBubbles(ctx, bubbles = [], selectedBubbleId, mode, time, int
     ctx.font = "700 14px system-ui";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(bubble.label, bubble.x, bubble.y);
+    ctx.fillText(bubble.label, bubbleX, bubbleY);
     if (selected || mode === "echostory" || interactionMode === "edit") {
       ctx.fillStyle = "rgba(226, 232, 240, 0.68)";
       ctx.font = "700 10px system-ui";
-      ctx.fillText(`P${depth}`, bubble.x, bubble.y + radius + 18);
+      ctx.fillText(`P${depth}`, bubbleX, bubbleY + radius + 18);
     }
 
     drawNestedDepositFigure(ctx, bubble, radius, bubble.deposits || [], time);
