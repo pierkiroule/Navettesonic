@@ -247,15 +247,14 @@ button {
 .echostory-overlay {
   position: fixed;
   left: 50%;
-  bottom: max(10vh, 68px);
-  transform: translateX(-50%);
+  top: 50%;
+  transform: translate(-50%, -50%);
   width: min(92vw, 980px);
   pointer-events: none;
   z-index: 30;
   display: flex;
   justify-content: center;
   padding: 0 10px;
-  animation: echostory-fade 380ms ease-out;
 }
 
 .echostory-overlay p {
@@ -274,6 +273,7 @@ button {
   box-shadow: 0 12px 30px rgba(2, 6, 23, 0.45), 0 0 26px rgba(34, 211, 238, 0.14);
   text-shadow: 0 2px 14px rgba(0, 0, 0, 0.62);
   backdrop-filter: blur(6px);
+  animation: echostory-fade 520ms ease-out;
 }
 
 @keyframes echostory-fade {

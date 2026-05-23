@@ -343,6 +343,11 @@ export default function SoonApp({ onBack }) {
 
 
   const handleGenerateEchostoryFromPath = () => {
+    if (echostoryDraft) {
+      setEchostoryDraft(null);
+      return;
+    }
+
     const skeleton = ECHOSTORY_SKELETONS[0];
     const story = buildEchostoryText({
       collectedStars: echostory?.collectedStars || [],
@@ -540,7 +545,7 @@ export default function SoonApp({ onBack }) {
                   onClick={handleGenerateEchostoryFromPath}
                   title="Générer un texte ÉchoStory depuis le tracé"
                 >
-                  ✍️ Générer ÉchoStory texte
+                  {echostoryDraft ? "✍️ Fermer ÉchoStory texte" : "✍️ Générer ÉchoStory texte"}
                 </button>
 
                 <button
