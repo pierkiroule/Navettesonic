@@ -11,6 +11,7 @@ import { updateBubbleSpatialMix } from "../../core/audioEngine.js";
 import { updateEcosystemFx } from "../../core/ecosystemFx.js";
 import { updateBubbleAudioTriggers } from "../../core/soonAudioTriggers.js";
 import { drawScene } from "../../core/soonRenderers.js";
+import { resetCanvasPaintState } from "../../core/canvasState.js";
 import {
   getCharacterWorldEffects,
   updateCharacters,
@@ -45,6 +46,8 @@ export function useSoonCanvasLoop({
   useEffect(() => {
     let frame = 0;
     let wasEditMode = false;
+    const postFxCanvas = document.createElement("canvas");
+    const postFxCtx = postFxCanvas.getContext("2d");
     const CAMERA_FOLLOW_SMOOTHING = 0.22;
     const CAMERA_MAX_STEP_PER_FRAME = 42;
     function getArenaWorldCenter(current = {}) {
@@ -155,25 +158,45 @@ export function useSoonCanvasLoop({
         mode: next.mode,
       });
 
-      ctx.filter = "none";
+      const dpr = window.devicePixelRatio || 1;
+      ctx.save();
+      try {
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        resetCanvasPaintState(ctx);
 
-      drawScene(ctx, rect, performance.now(), {
-        stateRef,
-        arenaRef,
-        cameraRef,
-        enterWorld,
-        exitWorld,
-      });
-
-      if (worldFx.blur > 0.1) {
-        ctx.save();
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.globalCompositeOperation = "source-over";
-        ctx.globalAlpha = 0.98;
-        ctx.filter = `blur(${worldFx.blur}px)`;
-        ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height);
-        ctx.filter = "none";
+        drawScene(ctx, rect, performance.now(), {
+          stateRef,
+          arenaRef,
+          cameraRef,
+          enterWorld,
+          exitWorld,
+        });
+      } finally {
         ctx.restore();
+      }
+
+      const shouldApplyWorldBlur = worldFx.blur > 0.1 && next.mode !== "echostory";
+      if (shouldApplyWorldBlur) {
+        if (postFxCtx) {
+          if (postFxCanvas.width !== canvas.width || postFxCanvas.height !== canvas.height) {
+            postFxCanvas.width = canvas.width;
+            postFxCanvas.height = canvas.height;
+          }
+          postFxCtx.setTransform(1, 0, 0, 1, 0, 0);
+          postFxCtx.globalCompositeOperation = "copy";
+          postFxCtx.filter = "none";
+          postFxCtx.drawImage(canvas, 0, 0, canvas.width, canvas.height);
+          postFxCtx.globalCompositeOperation = "source-over";
+
+          ctx.save();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.globalCompositeOperation = "source-over";
+          ctx.globalAlpha = 0.98;
+          ctx.filter = `blur(${worldFx.blur}px)`;
+          ctx.drawImage(postFxCanvas, 0, 0, canvas.width, canvas.height);
+          ctx.filter = "none";
+          ctx.restore();
+        }
       }
 
 
@@ -207,6 +230,15 @@ export function useSoonCanvasLoop({
         );
         ctx.restore();
       }
+
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      resetCanvasPaintState(ctx);
+      ctx.fillStyle = "rgba(255,255,255,0.95)";
+      ctx.beginPath();
+      ctx.arc(10, 10, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
 
       frame = requestAnimationFrame(loop);
     }

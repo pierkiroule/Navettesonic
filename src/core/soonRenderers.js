@@ -9,6 +9,7 @@ import {
 } from "./ecosystemFx.js";
 import { getBlobRadiusAtAngle } from "./blobArena.js";
 import { drawEchostoryStars } from "./echostory/echostoryRender.js";
+import { resetCanvasPaintState } from "./canvasState.js";
 
 const CONTOUR_WIDTH_MULTIPLIER = 3;
 const guppyRuntime = {
@@ -20,60 +21,90 @@ const guppyRuntime = {
   cosmicStreaks: [],
   nextCosmicSpawnAt: 0,
 };
+const warnedRendererErrors = new Set();
+
+function drawIsolated(ctx, drawFn) {
+  ctx.save();
+  try {
+    resetCanvasPaintState(ctx);
+    try {
+      drawFn();
+    } catch (error) {
+      const key = error?.message || String(error);
+      if (!warnedRendererErrors.has(key)) {
+        warnedRendererErrors.add(key);
+        console.warn("[Soon] draw stage failed (isolated)", error);
+      }
+    }
+  } finally {
+    ctx.restore();
+  }
+}
 
 export function drawScene(ctx, rect, time, refs) {
   const { stateRef, arenaRef, cameraRef, enterWorld, exitWorld } = refs;
   const current = stateRef.current;
-  const isCircuitMode = current.interactionMode === "circuit";
+  let worldEntered = false;
+  try {
+    drawOcean(ctx, rect, time, current);
+    resetCanvasPaintState(ctx);
+    drawDepthVeil(ctx, rect, current.fish);
 
-  drawOcean(ctx, rect, time, current);
-  drawDepthVeil(ctx, rect, current.fish);
+    enterWorld(ctx, rect, cameraRef, stateRef);
+    worldEntered = true;
 
-  enterWorld(ctx, rect, cameraRef, stateRef);
+    drawIsolated(ctx, () => drawArenaBoundary(ctx, arenaRef, time, current));
+    drawIsolated(ctx, () => drawArenaGuppies(ctx, time, current, arenaRef.current?.radius || 1200));
 
-  drawArenaBoundary(ctx, arenaRef, time, current);
-  drawArenaGuppies(ctx, time, current, arenaRef.current?.radius || 1200);
+    drawIsolated(ctx, () => drawArenaNightSky(ctx, arenaRef, time));
+    drawIsolated(ctx, () => drawEcosystemWorld(ctx, current, time));
+    drawIsolated(ctx, () => drawWorldParticles(ctx, arenaRef, time));
 
-  drawArenaNightSky(ctx, arenaRef, time);
-  drawEcosystemWorld(ctx, current, time);
-  drawWorldParticles(ctx, arenaRef, time);
+      if (current.mode === "reso") {
+        drawIsolated(ctx, () => drawOdysseoPath(
+          ctx,
+          current.odysseoPath || [],
+          current.odysseoDepthMarkers || [],
+          time
+        ));
+      }
 
-    if (current.mode === "reso") {
-      drawOdysseoPath(
-        ctx,
-        current.odysseoPath || [],
-        current.odysseoDepthMarkers || [],
-        time
-      );
+      if (current.bubblesEnabled !== false) {
+        drawIsolated(ctx, () => drawBubbles(
+          ctx,
+          current.bubbles,
+          current.selectedBubbleId,
+          current.mode,
+          time,
+          current.interactionMode,
+          current.bubblesIntensity
+        ));
+      }
+
+
+      if (current.mode === "echostory") {
+        drawIsolated(ctx, () => drawEchostoryStars(ctx, current.echostory?.stars || [], time));
+      }
+
+    if (current.interactionMode !== "edit") {
+      drawIsolated(ctx, () => drawCharacters(ctx, time));
     }
 
-    if (current.bubblesEnabled !== false) {
-      drawBubbles(
-        ctx,
-        current.bubbles,
-        current.selectedBubbleId,
-        current.mode,
-        time,
-        current.interactionMode,
-        current.bubblesIntensity
-      );
+    drawIsolated(ctx, () => drawFish(ctx, current.fish, time, current.worldGraph, current.currentArenaId));
+    drawIsolated(ctx, () => drawQuill(ctx, current.fish, time));
+  } finally {
+    if (worldEntered) {
+      try {
+        exitWorld(ctx);
+      } catch (_error) {
+        // no-op: on sécurise la pile de contexte au mieux en cas d'erreur de rendu
+      }
     }
-
-
-    if (current.mode === "echostory") {
-      drawEchostoryStars(ctx, current.echostory?.stars || [], time);
-    }
-
-  if (current.interactionMode !== "edit") {
-    drawCharacters(ctx, time);
+    resetCanvasPaintState(ctx);
   }
 
-  drawFish(ctx, current.fish, time, current.worldGraph, current.currentArenaId);
-  drawQuill(ctx, current.fish, time);
-
-  exitWorld(ctx);
-
   drawCameraVignette(ctx, rect, current.fish);
+  resetCanvasPaintState(ctx);
   drawHud(ctx, rect, current, arenaRef);
 }
 
