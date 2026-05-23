@@ -127,8 +127,8 @@ export default function SoonApp({ onBack }) {
   const waveIndex = Math.max(0, Math.min(2, Number.isFinite(echostory?.waveIndex) ? echostory.waveIndex : 0));
   const waveNames = ["Immersion", "Bascule", "Ouverture"];
   const waveCopy = [
-    "Cueillez les premières étoiles sensorielles.",
-    "Laissez entrer l’étrange.",
+    "Entrez par les sensations.",
+    "Laissez l’étrange apparaître.",
     "Approchez du rêve.",
   ];
   const stars = echostory?.stars || [];
@@ -155,15 +155,15 @@ export default function SoonApp({ onBack }) {
     if (mode === SOON_MODE_COMPO) {
       return {
         key: SOON_MODE_COMPO,
-        title: "Composer",
-        tip: "Choisissez vos éléments et organisez votre scène.",
+        title: "Compo•°",
+        tip: "Cueillez des étoiles de rêverie en trois vagues.",
       };
     }
 
     return {
       key: WORKFLOW_ROOT_NAVIGO,
       title: "Navigo",
-      tip: "Trace, ancre et lance la lecture du parcours depuis un seul espace.",
+      tip: "Tracez le chemin que Soon va traverser.",
     };
   }, [mode]);
 
@@ -354,8 +354,8 @@ export default function SoonApp({ onBack }) {
   };
 
   const handleLaunchEchostoryTraversal = () => {
-    const currentLines = echostory?.generatedStory?.length
-      ? echostory.generatedStory
+    const currentLines = echostory?.storyTimeline?.length
+      ? echostory.storyTimeline.map((line) => ({ id: line.id, text: line.text }))
       : buildEchostoryText({
           collectedStars: echostory?.collectedStars || [],
           path: odysseoPath || [],
@@ -363,14 +363,9 @@ export default function SoonApp({ onBack }) {
           silenceStyle: "dots",
         }).lines.map((line, index) => ({ ...line, id: `line-${index + 1}` }));
 
-    if (!echostory?.generatedStory?.length) {
-      useSoonStore.setState((state) => ({
-        echostory: { ...state.echostory, generatedStory: currentLines },
-      }));
-    }
     const storyTimeline = buildStoryTimeline({ lines: currentLines, path: odysseoPath || [] });
     useSoonStore.setState((state) => ({
-      echostory: { ...state.echostory, storyTimeline },
+      echostory: { ...state.echostory, storyTimeline, timelineCursor: 0 },
     }));
     startEchostoryTraversal();
     setIsTravelPlaying(true);
@@ -439,12 +434,12 @@ export default function SoonApp({ onBack }) {
                 ), null);
                 useSoonStore.setState((state) => ({
                   fish: result.fish,
-                  echostoryPathIndex: result.echostoryPathIndex,
                   echostory: {
                     ...state.echostory,
                     traversalActive: result.traversalActive,
                     traversalFinished: result.traversalFinished,
                     echostoryPathIndex: result.echostoryPathIndex,
+                    timelineCursor: activeLine?.index ?? state.echostory.timelineCursor ?? 0,
                     activeLine: activeLine?.text || null,
                     escapeState: result.escapeState,
                   },
@@ -504,12 +499,15 @@ export default function SoonApp({ onBack }) {
 
       {isEchostory && (
         <section className="echostory-hud" aria-live="polite">
-          <span className="echostory-chip">V{waveIndex + 1}/3 · {collectedInWave}/5 ✶</span>
+          <span className="echostory-chip">Vague {waveIndex + 1} — {waveNames[waveIndex]}</span>
+          <span className="echostory-chip">{collectedInWave} / 5 étoiles cueillies</span>
+          <span className="echostory-chip">{waveCopy[waveIndex]}</span>
           {canGoNextWave && (
             <button type="button" className="echostory-next" onClick={advanceEchostoryWave}>
-              Suivante
+              Vague suivante
             </button>
           )}
+          {isStoryReady && <span className="echostory-chip">Votre matière de rêverie est prête. Passez dans Navigo.</span>}
         </section>
       )}
 
@@ -518,21 +516,6 @@ export default function SoonApp({ onBack }) {
           {isOdysseo ? (
             <div className="odysseo-tools">
               <div className="tool-row primary-tools">
-                <button
-                  type="button"
-                  className={`bubble-btn mode-toggle ${isTravelPlaying ? "active" : ""}`}
-                  onClick={() => setIsTravelPlaying((current) => !current)}
-                  disabled={!odysseoPath || odysseoPath.length < 2}
-                  title={
-                    odysseoPath && odysseoPath.length >= 2
-                      ? isTravelPlaying
-                        ? "Mettre la traversée en pause"
-                        : "Lancer la traversée"
-                      : "Trace un parcours d’abord"
-                  }
-                >
-                  {isTravelPlaying ? "⏸ Pause" : "▶ Play"}
-                </button>
                 <button
                   type="button"
                   className={`bubble-btn mode-toggle ${echostory?.traversalActive ? "active" : ""}`}
@@ -546,9 +529,9 @@ export default function SoonApp({ onBack }) {
                     handleLaunchEchostoryTraversal();
                   }}
                   disabled={!odysseoPath || odysseoPath.length < 8}
-                  title="Lancer la traversée ÉchoStory one-way"
+                  title="Lancer la traversée"
                 >
-                  {echostory?.traversalActive ? "⏸ Pause ÉchoStory" : "Lancer l’ÉchoStory"}
+                  {echostory?.traversalActive ? "Mettre en pause" : "Lancer la traversée"}
                 </button>
 
                 <button

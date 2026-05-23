@@ -13,7 +13,7 @@ export default function WorkflowShell({ activeRoot = WORKFLOW_ROOT_COMPO, onChan
           className={isEchostory ? "active echostory-tab" : "echostory-tab"}
           onClick={() => onChangeRoot?.(WORKFLOW_ROOT_COMPO)}
         >
-          Echostory
+          Compo•°
         </button>
         <button
           type="button"

@@ -15,6 +15,7 @@ export const createEchostorySlice = (set) => ({
       traversalActive: true,
       traversalFinished: false,
       echostoryPathIndex: 0,
+      timelineCursor: 0,
       escapeState: "idle",
     },
   })),
@@ -27,6 +28,7 @@ export const createEchostorySlice = (set) => ({
       traversalActive: false,
       traversalFinished: false,
       echostoryPathIndex: 0,
+      timelineCursor: 0,
       activeLine: null,
       escapeState: "idle",
     },
@@ -67,17 +69,16 @@ export const createEchostorySlice = (set) => ({
       wave: getCurrentWaveKey(star.wave === "immersion" ? 0 : star.wave === "bascule" ? 1 : 2),
       text: star.text,
     }));
-    const storyMarkers = generatedStory.map((line, index) => ({
-      id: `echostory-marker-${index + 1}`,
-      lineId: line.id,
-      index,
-    }));
 
     return {
       echostory: {
         ...advanced,
-        generatedStory,
-        storyMarkers,
+        storyTimeline: generatedStory.map((line, index) => ({
+          id: line.id,
+          text: line.text,
+          index,
+        })),
+        timelineCursor: 0,
       },
     };
   }),
