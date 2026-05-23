@@ -46,6 +46,8 @@ export function useSoonCanvasLoop({
   useEffect(() => {
     let frame = 0;
     let wasEditMode = false;
+    const postFxCanvas = document.createElement("canvas");
+    const postFxCtx = postFxCanvas.getContext("2d");
     const CAMERA_FOLLOW_SMOOTHING = 0.22;
     const CAMERA_MAX_STEP_PER_FRAME = 42;
     function getArenaWorldCenter(current = {}) {
@@ -174,14 +176,26 @@ export function useSoonCanvasLoop({
       }
 
       if (worldFx.blur > 0.1) {
-        ctx.save();
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.globalCompositeOperation = "source-over";
-        ctx.globalAlpha = 0.98;
-        ctx.filter = `blur(${worldFx.blur}px)`;
-        ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height);
-        ctx.filter = "none";
-        ctx.restore();
+        if (postFxCtx) {
+          if (postFxCanvas.width !== canvas.width || postFxCanvas.height !== canvas.height) {
+            postFxCanvas.width = canvas.width;
+            postFxCanvas.height = canvas.height;
+          }
+          postFxCtx.setTransform(1, 0, 0, 1, 0, 0);
+          postFxCtx.globalCompositeOperation = "copy";
+          postFxCtx.filter = "none";
+          postFxCtx.drawImage(canvas, 0, 0, canvas.width, canvas.height);
+          postFxCtx.globalCompositeOperation = "source-over";
+
+          ctx.save();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.globalCompositeOperation = "source-over";
+          ctx.globalAlpha = 0.98;
+          ctx.filter = `blur(${worldFx.blur}px)`;
+          ctx.drawImage(postFxCanvas, 0, 0, canvas.width, canvas.height);
+          ctx.filter = "none";
+          ctx.restore();
+        }
       }
 
 
