@@ -58,37 +58,41 @@ export function getNextTrailTarget(trail = []) {
 }
 
 export function drawFishTrail(ctx, trail = [], time = performance.now()) {
-  if (trail.length < 2) return;
+  if (trail.length === 0) return;
 
   ctx.save();
   ctx.globalCompositeOperation = "screen";
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
 
-  for (let i = 1; i < trail.length; i += 1) {
-    const a = trail[i - 1];
-    const b = trail[i];
-
-    const age = time - b.bornAt;
-    const alpha = Math.max(0, 1 - age / b.life);
+  for (let i = 0; i < trail.length; i += 1) {
+    const point = trail[i];
+    const age = time - point.bornAt;
+    const alpha = Math.max(0, 1 - age / point.life);
 
     if (alpha <= 0) continue;
 
-    ctx.strokeStyle = `rgba(125, 245, 255, ${alpha * 0.48})`;
-    ctx.lineWidth = 10 * alpha;
+    const cadence = i / Math.max(1, trail.length - 1);
+    const pulse = Math.sin(time * 0.008 + i * 0.42) * 0.5 + 0.5;
+    const radius = (3.5 + cadence * 4.5) * (0.92 + pulse * 0.16) * alpha;
+
+    const halo = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, radius * 3.8);
+    halo.addColorStop(0, `rgba(160, 245, 255, ${alpha * 0.72})`);
+    halo.addColorStop(0.55, `rgba(94, 234, 212, ${alpha * 0.24})`);
+    halo.addColorStop(1, "rgba(56, 189, 248, 0)");
 
     ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
-    ctx.stroke();
-
-    ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.28})`;
-    ctx.lineWidth = 2.4 * alpha;
+    ctx.arc(point.x, point.y, radius * 3.4, 0, Math.PI * 2);
+    ctx.fillStyle = halo;
+    ctx.fill();
 
     ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
-    ctx.stroke();
+    ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(186, 230, 253, ${alpha * 0.78})`;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(point.x - radius * 0.24, point.y - radius * 0.24, radius * 0.34, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.82})`;
+    ctx.fill();
   }
 
   ctx.restore();
