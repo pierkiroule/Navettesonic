@@ -22,6 +22,16 @@ const guppyRuntime = {
   nextCosmicSpawnAt: 0,
 };
 
+function drawIsolated(ctx, drawFn) {
+  ctx.save();
+  try {
+    resetCanvasPaintState(ctx);
+    drawFn();
+  } finally {
+    ctx.restore();
+  }
+}
+
 export function drawScene(ctx, rect, time, refs) {
   const { stateRef, arenaRef, cameraRef, enterWorld, exitWorld } = refs;
   const current = stateRef.current;
@@ -34,25 +44,24 @@ export function drawScene(ctx, rect, time, refs) {
     enterWorld(ctx, rect, cameraRef, stateRef);
     worldEntered = true;
 
-    drawArenaBoundary(ctx, arenaRef, time, current);
-    drawArenaGuppies(ctx, time, current, arenaRef.current?.radius || 1200);
+    drawIsolated(ctx, () => drawArenaBoundary(ctx, arenaRef, time, current));
+    drawIsolated(ctx, () => drawArenaGuppies(ctx, time, current, arenaRef.current?.radius || 1200));
 
-    drawArenaNightSky(ctx, arenaRef, time);
-    drawEcosystemWorld(ctx, current, time);
-    drawWorldParticles(ctx, arenaRef, time);
+    drawIsolated(ctx, () => drawArenaNightSky(ctx, arenaRef, time));
+    drawIsolated(ctx, () => drawEcosystemWorld(ctx, current, time));
+    drawIsolated(ctx, () => drawWorldParticles(ctx, arenaRef, time));
 
       if (current.mode === "reso") {
-        drawOdysseoPath(
+        drawIsolated(ctx, () => drawOdysseoPath(
           ctx,
           current.odysseoPath || [],
           current.odysseoDepthMarkers || [],
           time
-        );
+        ));
       }
 
       if (current.bubblesEnabled !== false) {
-        resetCanvasPaintState(ctx);
-        drawBubbles(
+        drawIsolated(ctx, () => drawBubbles(
           ctx,
           current.bubbles,
           current.selectedBubbleId,
@@ -60,22 +69,20 @@ export function drawScene(ctx, rect, time, refs) {
           time,
           current.interactionMode,
           current.bubblesIntensity
-        );
+        ));
       }
 
 
       if (current.mode === "echostory") {
-        drawEchostoryStars(ctx, current.echostory?.stars || [], time);
+        drawIsolated(ctx, () => drawEchostoryStars(ctx, current.echostory?.stars || [], time));
       }
 
     if (current.interactionMode !== "edit") {
-      resetCanvasPaintState(ctx);
-      drawCharacters(ctx, time);
+      drawIsolated(ctx, () => drawCharacters(ctx, time));
     }
 
-    resetCanvasPaintState(ctx);
-    drawFish(ctx, current.fish, time, current.worldGraph, current.currentArenaId);
-    drawQuill(ctx, current.fish, time);
+    drawIsolated(ctx, () => drawFish(ctx, current.fish, time, current.worldGraph, current.currentArenaId));
+    drawIsolated(ctx, () => drawQuill(ctx, current.fish, time));
   } finally {
     if (worldEntered) {
       try {
