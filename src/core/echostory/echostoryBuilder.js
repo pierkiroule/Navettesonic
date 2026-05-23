@@ -48,3 +48,18 @@ export function buildEchostoryText({ collectedStars = [], path = [], skeleton = 
     plainText: lines.map((line) => line.text).join("\n"),
   };
 }
+
+export function buildStoryTimeline({ lines = [], path = [] } = {}) {
+  if (!Array.isArray(lines) || !lines.length || !Array.isArray(path) || path.length < 2) {
+    return [];
+  }
+
+  const maxIndex = path.length - 1;
+  const step = lines.length > 1 ? maxIndex / (lines.length - 1) : 0;
+
+  return lines.map((line, idx) => ({
+    id: line?.id || `echostory-timeline-${idx + 1}`,
+    text: line?.text || "",
+    index: Math.max(0, Math.min(maxIndex, Math.round(step * idx))),
+  }));
+}
