@@ -9,6 +9,7 @@ import {
 } from "./ecosystemFx.js";
 import { getBlobRadiusAtAngle } from "./blobArena.js";
 import { drawEchostoryStars } from "./echostory/echostoryRender.js";
+import { resetCanvasPaintState } from "./canvasState.js";
 
 const CONTOUR_WIDTH_MULTIPLIER = 3;
 const guppyRuntime = {
@@ -27,6 +28,7 @@ export function drawScene(ctx, rect, time, refs) {
   const isCircuitMode = current.interactionMode === "circuit";
 
   drawOcean(ctx, rect, time, current);
+  resetCanvasPaintState(ctx);
   drawDepthVeil(ctx, rect, current.fish);
 
   enterWorld(ctx, rect, cameraRef, stateRef);
@@ -48,6 +50,7 @@ export function drawScene(ctx, rect, time, refs) {
     }
 
     if (current.bubblesEnabled !== false) {
+      resetCanvasPaintState(ctx);
       drawBubbles(
         ctx,
         current.bubbles,
@@ -65,15 +68,19 @@ export function drawScene(ctx, rect, time, refs) {
     }
 
   if (current.interactionMode !== "edit") {
+    resetCanvasPaintState(ctx);
     drawCharacters(ctx, time);
   }
 
+  resetCanvasPaintState(ctx);
   drawFish(ctx, current.fish, time, current.worldGraph, current.currentArenaId);
   drawQuill(ctx, current.fish, time);
 
   exitWorld(ctx);
+  resetCanvasPaintState(ctx);
 
   drawCameraVignette(ctx, rect, current.fish);
+  resetCanvasPaintState(ctx);
   drawHud(ctx, rect, current, arenaRef);
 }
 

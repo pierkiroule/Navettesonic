@@ -11,6 +11,7 @@ import { updateBubbleSpatialMix } from "../../core/audioEngine.js";
 import { updateEcosystemFx } from "../../core/ecosystemFx.js";
 import { updateBubbleAudioTriggers } from "../../core/soonAudioTriggers.js";
 import { drawScene } from "../../core/soonRenderers.js";
+import { resetCanvasPaintState } from "../../core/canvasState.js";
 import {
   getCharacterWorldEffects,
   updateCharacters,
@@ -155,7 +156,9 @@ export function useSoonCanvasLoop({
         mode: next.mode,
       });
 
-      ctx.filter = "none";
+      const dpr = window.devicePixelRatio || 1;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      resetCanvasPaintState(ctx);
 
       drawScene(ctx, rect, performance.now(), {
         stateRef,
@@ -164,6 +167,15 @@ export function useSoonCanvasLoop({
         enterWorld,
         exitWorld,
       });
+
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      resetCanvasPaintState(ctx);
+      ctx.fillStyle = "rgba(255,255,255,0.95)";
+      ctx.beginPath();
+      ctx.arc(10, 10, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
 
       if (worldFx.blur > 0.1) {
         ctx.save();

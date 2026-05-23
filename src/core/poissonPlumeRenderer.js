@@ -567,7 +567,8 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
 
   ctx.translate(x, y);
   ctx.rotate(angle + Math.PI / 2);
-  ctx.globalAlpha *= depthAlpha;
+  const previousAlpha = ctx.globalAlpha;
+  ctx.globalAlpha = previousAlpha * depthAlpha;
 
   ctx.scale(
     depthScale * fluidScale * ropeStretch * (1 - mouthPull * 0.02),
@@ -585,5 +586,6 @@ export function drawPoissonPlume(ctx, fish, options = {}) {
   drawDorsalLine(ctx, d);
   drawHead(ctx, d, mouthPull);
 
+  ctx.globalAlpha = previousAlpha;
   ctx.restore();
 }
