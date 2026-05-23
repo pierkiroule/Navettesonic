@@ -38,7 +38,7 @@ function interpolateForward(path, index) {
 
 export function tickEchostoryTraversal(state, options = {}) {
   const path = state.odysseoPath || [];
-  const currentIndex = Math.max(0, state.echostoryPathIndex ?? 0);
+  const currentIndex = Math.max(0, state.echostory?.echostoryPathIndex ?? 0);
 
   if (path.length < 2) return null;
 
