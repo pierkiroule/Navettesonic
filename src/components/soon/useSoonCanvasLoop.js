@@ -157,25 +157,21 @@ export function useSoonCanvasLoop({
       });
 
       const dpr = window.devicePixelRatio || 1;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      resetCanvasPaintState(ctx);
-
-      drawScene(ctx, rect, performance.now(), {
-        stateRef,
-        arenaRef,
-        cameraRef,
-        enterWorld,
-        exitWorld,
-      });
-
       ctx.save();
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      resetCanvasPaintState(ctx);
-      ctx.fillStyle = "rgba(255,255,255,0.95)";
-      ctx.beginPath();
-      ctx.arc(10, 10, 2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+      try {
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        resetCanvasPaintState(ctx);
+
+        drawScene(ctx, rect, performance.now(), {
+          stateRef,
+          arenaRef,
+          cameraRef,
+          enterWorld,
+          exitWorld,
+        });
+      } finally {
+        ctx.restore();
+      }
 
       if (worldFx.blur > 0.1) {
         ctx.save();
@@ -219,6 +215,15 @@ export function useSoonCanvasLoop({
         );
         ctx.restore();
       }
+
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      resetCanvasPaintState(ctx);
+      ctx.fillStyle = "rgba(255,255,255,0.95)";
+      ctx.beginPath();
+      ctx.arc(10, 10, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
 
       frame = requestAnimationFrame(loop);
     }
