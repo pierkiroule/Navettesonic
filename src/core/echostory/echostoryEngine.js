@@ -87,6 +87,10 @@ export function resetEchostoryState() {
     collectedStars: [],
     generatedStory: [],
     storyMarkers: [],
+    traversalActive: false,
+    traversalFinished: false,
+    echostoryPathIndex: 0,
+    activeLine: null,
     escapeState: "idle",
   };
 }

@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import SidePanel from "../components/SidePanel.jsx";
 import SoonCanvas from "../components/SoonCanvas.jsx";
+import EchostoryOverlay from "../components/EchostoryOverlay.jsx";
 import WorkflowShell from "../components/WorkflowShell.jsx";
 import Profile from "./Profile.jsx";
 import BubbleBucketsMenu from "../components/BubbleBucketsMenu.jsx";
 import { useSoonStore } from "../store/useSoonStore.js";
 import { renderImmersiveJourney } from "../core/immersiveExporter.js";
-import { buildEchostoryText } from "../core/echostory/echostoryBuilder.js";
+import { buildEchostoryText, buildStoryTimeline } from "../core/echostory/echostoryBuilder.js";
+import { tickEchostoryTraversal } from "../core/echostory/echostoryTraversalEngine.js";
 import { ECHOSTORY_SKELETONS } from "../data/echostorySkeletons.js";
 import {
   parseWorkflowFromHash,
@@ -105,6 +107,11 @@ export default function SoonApp({ onBack }) {
     advanceEchostoryWave,
     triggerEscapeCinematic,
     setEscapeState,
+    startEchostoryTraversal,
+    stopEchostoryTraversal,
+    resetEchostoryTraversal,
+    finishEchostoryTraversal,
+    setEchostoryActiveLine,
   } = useSoonStore();
 
   const selectedBubble =
@@ -345,6 +352,29 @@ export default function SoonApp({ onBack }) {
     });
     setEchostoryDraft(story);
   };
+
+  const handleLaunchEchostoryTraversal = () => {
+    const currentLines = echostory?.generatedStory?.length
+      ? echostory.generatedStory
+      : buildEchostoryText({
+          collectedStars: echostory?.collectedStars || [],
+          path: odysseoPath || [],
+          skeleton: ECHOSTORY_SKELETONS[0],
+          silenceStyle: "dots",
+        }).lines.map((line, index) => ({ ...line, id: `line-${index + 1}` }));
+
+    if (!echostory?.generatedStory?.length) {
+      useSoonStore.setState((state) => ({
+        echostory: { ...state.echostory, generatedStory: currentLines },
+      }));
+    }
+    const storyTimeline = buildStoryTimeline({ lines: currentLines, path: odysseoPath || [] });
+    useSoonStore.setState((state) => ({
+      echostory: { ...state.echostory, storyTimeline },
+    }));
+    startEchostoryTraversal();
+    setIsTravelPlaying(true);
+  };
   if (page === "profile") {
     return <Profile onBack={() => setPage("arena")} />;
   }
@@ -399,6 +429,32 @@ export default function SoonApp({ onBack }) {
           const effectiveSwimSpeed = boosted ? swimSpeed * 1.8 : swimSpeed;
           if (isOdysseo) {
             if (isTravelPlaying) {
+              if (echostory?.traversalActive) {
+                const result = tickEchostoryTraversal(useSoonStore.getState(), { desiredDurationSec: 180 });
+                if (!result) return;
+                const fullState = useSoonStore.getState();
+                const timeline = fullState?.echostory?.storyTimeline || [];
+                const activeLine = timeline.reduce((best, item) => (
+                  item.index <= result.echostoryPathIndex ? item : best
+                ), null);
+                useSoonStore.setState((state) => ({
+                  fish: result.fish,
+                  echostoryPathIndex: result.echostoryPathIndex,
+                  echostory: {
+                    ...state.echostory,
+                    traversalActive: result.traversalActive,
+                    traversalFinished: result.traversalFinished,
+                    echostoryPathIndex: result.echostoryPathIndex,
+                    activeLine: activeLine?.text || null,
+                    escapeState: result.escapeState,
+                  },
+                }));
+                if (result.finished) {
+                  finishEchostoryTraversal();
+                  setIsTravelPlaying(false);
+                }
+                return;
+              }
               tickOdysseoPath({ swimSpeed: effectiveSwimSpeed });
             }
             return;
@@ -476,6 +532,23 @@ export default function SoonApp({ onBack }) {
                   }
                 >
                   {isTravelPlaying ? "⏸ Pause" : "▶ Play"}
+                </button>
+                <button
+                  type="button"
+                  className={`bubble-btn mode-toggle ${echostory?.traversalActive ? "active" : ""}`}
+                  onClick={() => {
+                    if (echostory?.traversalActive) {
+                      stopEchostoryTraversal();
+                      setEchostoryActiveLine(null);
+                      setIsTravelPlaying(false);
+                      return;
+                    }
+                    handleLaunchEchostoryTraversal();
+                  }}
+                  disabled={!odysseoPath || odysseoPath.length < 8}
+                  title="Lancer la traversée ÉchoStory one-way"
+                >
+                  {echostory?.traversalActive ? "⏸ Pause ÉchoStory" : "Lancer l’ÉchoStory"}
                 </button>
 
                 <button
@@ -662,10 +735,11 @@ export default function SoonApp({ onBack }) {
           }}
         >
           <strong>
-            {echostory?.escapeState === "approach" ? "Soon trouve une ouverture…" : "Le bocal s’ouvre."}
+            {echostory?.escapeState === "approach" ? "Soon trouve une ouverture…" : "Le bocal s’ouvre…"}
           </strong>
         </section>
       )}
+      <EchostoryOverlay line={echostory?.activeLine} visible={Boolean(echostory?.traversalActive && echostory?.activeLine)} />
 
       <BubbleBucketsMenu
         open={bubbleBucketsOpen}

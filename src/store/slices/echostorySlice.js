@@ -9,6 +9,39 @@ export const createEchostorySlice = (set) => ({
   setEscapeState: (escapeState) => set((state) => ({
     echostory: { ...state.echostory, escapeState },
   })),
+  startEchostoryTraversal: () => set((state) => ({
+    echostory: {
+      ...state.echostory,
+      traversalActive: true,
+      traversalFinished: false,
+      echostoryPathIndex: 0,
+      escapeState: "idle",
+    },
+  })),
+  stopEchostoryTraversal: () => set((state) => ({
+    echostory: { ...state.echostory, traversalActive: false },
+  })),
+  resetEchostoryTraversal: () => set((state) => ({
+    echostory: {
+      ...state.echostory,
+      traversalActive: false,
+      traversalFinished: false,
+      echostoryPathIndex: 0,
+      activeLine: null,
+      escapeState: "idle",
+    },
+  })),
+  finishEchostoryTraversal: () => set((state) => ({
+    echostory: {
+      ...state.echostory,
+      traversalActive: false,
+      traversalFinished: true,
+      escapeState: "approach",
+    },
+  })),
+  setEchostoryActiveLine: (line) => set((state) => ({
+    echostory: { ...state.echostory, activeLine: line ?? null },
+  })),
   resetEchostory: () => set({ echostory: resetEchostoryState() }),
   startEchostory: () => set({ echostory: resetEchostoryState() }),
   setEchostoryWave: (index) => set((state) => {
