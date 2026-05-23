@@ -2561,7 +2561,7 @@ button {
 }
 .workflow-tabs {
   display: flex;
-  gap: 6px;
+  gap: 8px;
 }
 .workflow-tabs button,
 .navigo-substeps button {
@@ -2589,11 +2589,6 @@ button {
   box-shadow: 0 6px 16px rgba(236, 72, 153, 0.35);
 }
 
-.workflow-tabs button.active.tuto-tab {
-  color: #3f1d02;
-  background: linear-gradient(135deg, #fbbf24, #fb923c);
-  box-shadow: 0 6px 16px rgba(251, 146, 60, 0.35);
-}
 .navigo-substeps {
   display: flex;
   gap: 8px;
@@ -2810,4 +2805,37 @@ button {
 
 .bubble-mixer-row input[type="range"] {
   width: 100%;
+}
+
+
+.echostory-hud {
+  position: fixed;
+  left: 50%;
+  bottom: 84px;
+  transform: translateX(-50%);
+  z-index: 16;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.42);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  backdrop-filter: blur(4px);
+}
+
+.echostory-chip {
+  font-size: 11px;
+  line-height: 1;
+  color: rgba(226, 232, 240, 0.82);
+  letter-spacing: 0.02em;
+}
+
+.echostory-next {
+  border: none;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: #cffafe;
+  background: rgba(8, 145, 178, 0.22);
 }

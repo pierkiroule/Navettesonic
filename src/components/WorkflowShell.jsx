@@ -2,20 +2,10 @@ import { WORKFLOW_ROOT_COMPO, WORKFLOW_ROOT_NAVIGO } from "../core/uiState.js";
 
 export default function WorkflowShell({ activeRoot = WORKFLOW_ROOT_COMPO, onChangeRoot }) {
   const isEchostory = activeRoot === WORKFLOW_ROOT_COMPO;
-  const isTuto = activeRoot === "tuto";
 
   return (
     <div className="workflow-shell" role="group" aria-label="Workflow principal">
       <div className="workflow-tabs" role="tablist" aria-label="Onglets racine">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={isTuto}
-          className={isTuto ? "active tuto-tab" : "tuto-tab"}
-          onClick={() => onChangeRoot?.("tuto")}
-        >
-          Tuto
-        </button>
         <button
           type="button"
           role="tab"

@@ -34,9 +34,8 @@ const SPEED_BY_LEVEL = {
 };
 
 export default function SoonApp({ onBack }) {
-  const WORKFLOW_ROOT_TUTO = "tuto";
   const [page, setPage] = useState("arena");
-  const [activeRoot, setActiveRoot] = useState(WORKFLOW_ROOT_TUTO);
+  const [activeRoot, setActiveRoot] = useState(WORKFLOW_ROOT_COMPO);
   const [interactionMode, setInteractionMode] = useState("swim");
   const [odysseoMode, setOdysseoMode] = useState(ODYSSEO_MODE_TRACE);
   const [viewZoom, setViewZoom] = useState(1);
@@ -192,9 +191,6 @@ export default function SoonApp({ onBack }) {
   const setWorkflowRoot = (root) => {
     setActiveRoot(root);
 
-    if (root === WORKFLOW_ROOT_TUTO) {
-      return;
-    }
 
     stopCircuitAutopilot();
     setInteractionMode("swim");
@@ -370,14 +366,6 @@ export default function SoonApp({ onBack }) {
             activeRoot={activeRoot}
             onChangeRoot={setWorkflowRoot}
           />
-          <button
-            type="button"
-            className={`bubble-btn mode-toggle ${isEchostory ? "active" : ""}`}
-            onClick={() => setMode(SOON_MODE_ECHOSTORY)}
-            style={{ marginLeft: 8 }}
-          >
-            ✨ ÉchoStory
-          </button>
         </div>
 
         <button
@@ -455,102 +443,17 @@ export default function SoonApp({ onBack }) {
       />
 
 
-      {activeRoot === WORKFLOW_ROOT_TUTO && (
-        <section className="tutorial-panel" aria-label="Tutoriel Soon">
-          <h3>Tuto•° — prise en main simple et pro</h3>
-          <p>
-            Bienvenue dans Soon•°. Tu vas créer un écho-système sonore en 2 étapes :
-            <strong> Compo </strong>(tu construis), puis <strong>Navigo</strong> (tu fais voyager l’écoute).
-          </p>
-          <div className="tutorial-grid">
-            <article>
-              <h4>Étape 1 — Se déplacer</h4>
-              <ul>
-                <li><strong>Tap :</strong> le poisson-plume nage vers la zone visée.</li>
-                <li><strong>Double-tap :</strong> active un boost court de vitesse.</li>
-                <li><strong>Appui long :</strong> ouvre le menu radial contextuel.</li>
-                <li><strong>Recentrer :</strong> remet le poisson au centre et relance ton orientation.</li>
-              </ul>
-              <p><strong>Validation :</strong> Je sais me déplacer librement.</p>
-            </article>
-            <article>
-              <h4>Étape 2 — Créer et régler les bulles (Compo)</h4>
-              <ul>
-                <li><strong>Mode Éditer :</strong> double-tap vide pour créer 1 bulle.</li>
-                <li><strong>Tap bulle :</strong> ouvre les réglages de ta bulle sonore.</li>
-                <li><strong>Profondeur :</strong> règle P1/P2/P3 pour donner du relief.</li>
-                <li><strong>Mission :</strong> crée 3 bulles avec des profondeurs différentes.</li>
-              </ul>
-              <p><strong>Validation :</strong> J’entends les variations selon la position et la profondeur.</p>
-            </article>
-            <article>
-              <h4>Étape 3 — Tracer et jouer (Navigo)</h4>
-              <ul>
-                <li><strong>Outil Dessin ✏️ :</strong> trace le trajet d’écoute.</li>
-                <li><strong>Outil Ancre ⚓ :</strong> place des jalons de profondeur (1, 2, 3).</li>
-                <li><strong>Play / Pause :</strong> lance ou arrête la traversée du parcours.</li>
-                <li><strong>Effacer 🧽 :</strong> nettoie le tracé pour recommencer un nouveau voyage.</li>
-              </ul>
-              <p><strong>Validation :</strong> J’ai joué mon premier parcours d’écoute.</p>
-            </article>
-            <article>
-              <h4>Tips pro (optionnel)</h4>
-              <ul>
-                <li><strong>3 à 5 bulles max</strong> pour garder une scène lisible.</li>
-                <li><strong>Contrastes clairs</strong> : profondeur, taille, rôle.</li>
-                <li><strong>Récit d’écoute</strong> : entrée → tension → relâchement.</li>
-                <li><strong>Itération courte</strong> : 1 modif = 1 réécoute.</li>
-              </ul>
-            </article>
-          </div>
-        </section>
-      )}
+
 
 
       {isEchostory && (
-        <section
-          className="echostory-hud"
-          style={{
-            position: "fixed",
-            left: 12,
-            right: 12,
-            bottom: 92,
-            zIndex: 18,
-            padding: "10px 12px",
-            borderRadius: 12,
-            background: "rgba(8,16,28,0.86)",
-            border: "1px solid rgba(150,180,255,0.28)",
-            color: "#eaf4ff",
-            backdropFilter: "blur(3px)",
-          }}
-        >
-          <strong style={{ display: "block", marginBottom: 4 }}>ÉchoStory</strong>
-          <div style={{ fontSize: 13, opacity: 0.95, marginBottom: 4 }}>
-            Vague actuelle : {waveIndex + 1}/3 — {waveNames[waveIndex]}
-          </div>
-          <div style={{ fontSize: 12, opacity: 0.82, marginBottom: 8 }}>
-            Vague {waveIndex + 1} — {waveNames[waveIndex]} : "{waveCopy[waveIndex]}"
-          </div>
-          <div style={{ fontSize: 13, marginBottom: 8 }}>
-            {isStoryReady ? "15 / 15 étoiles cueillies" : `${collectedInWave} / 5 étoiles cueillies`}
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button
-              type="button"
-              className="bubble-btn mode-toggle"
-              onClick={advanceEchostoryWave}
-              disabled={!canGoNextWave}
-            >
-              Vague suivante
+        <section className="echostory-hud" aria-live="polite">
+          <span className="echostory-chip">V{waveIndex + 1}/3 · {collectedInWave}/5 ✶</span>
+          {canGoNextWave && (
+            <button type="button" className="echostory-next" onClick={advanceEchostoryWave}>
+              Suivante
             </button>
-            <button
-              type="button"
-              className="bubble-btn mode-toggle"
-              onClick={resetEchostory}
-            >
-              Réinitialiser
-            </button>
-          </div>
+          )}
         </section>
       )}
 
