@@ -175,7 +175,8 @@ export function useSoonCanvasLoop({
         ctx.restore();
       }
 
-      if (worldFx.blur > 0.1) {
+      const shouldApplyWorldBlur = worldFx.blur > 0.1 && next.mode !== "echostory";
+      if (shouldApplyWorldBlur) {
         if (postFxCtx) {
           if (postFxCanvas.width !== canvas.width || postFxCanvas.height !== canvas.height) {
             postFxCanvas.width = canvas.width;
