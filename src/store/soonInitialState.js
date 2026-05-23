@@ -27,15 +27,51 @@ export const defaultFish = {
   breachExpiresAt: null, breachUsed: false, hasQuill: false, membraneSide: "inside",
 };
 
+function normalizeBubble(rawBubble, index = 0) {
+  const fallbackAngle = (Math.PI * 2 * index) / 5;
+  const fallbackRadius = 720;
+  const fallbackX = Math.cos(fallbackAngle) * fallbackRadius;
+  const fallbackY = Math.sin(fallbackAngle) * fallbackRadius;
+  const x = Number(rawBubble?.x);
+  const y = Number(rawBubble?.y);
+  const normalizedX = Number.isFinite(x) ? x : fallbackX;
+  const normalizedY = Number.isFinite(y) ? y : fallbackY;
+  const radius = Number(rawBubble?.r);
+  const hue = Number(rawBubble?.hue);
+  const depth = Number(rawBubble?.depth);
+  return {
+    ...rawBubble,
+    x: normalizedX,
+    y: normalizedY,
+    r: Number.isFinite(radius) && radius > 0 ? radius : 72,
+    hue: Number.isFinite(hue) ? hue : 190,
+    depth: Number.isFinite(depth) ? depth : 1,
+  };
+}
+
+function normalizeBubbles(list = []) {
+  return (Array.isArray(list) ? list : []).map((bubble, index) => normalizeBubble(bubble, index));
+}
+
+const initialArenaId = saved?.currentArenaId || labybulleWorld.startArenaId;
+const sourceBubbles = saved?.arenaBubblesById?.[initialArenaId] || saved?.bubbles || defaultPack.bubbles;
+const normalizedInitialBubbles = normalizeBubbles(sourceBubbles);
+const normalizedArenaBubblesById = saved?.arenaBubblesById
+  ? Object.fromEntries(
+    Object.entries(saved.arenaBubblesById).map(([arenaId, bubbles]) => [arenaId, normalizeBubbles(bubbles)])
+  )
+  : {
+    [initialArenaId]: normalizedInitialBubbles.map((bubble) => ({ ...bubble })),
+  };
 
 export const initialEchostory = resetEchostoryState();
 export const initialState = {
   mode: normalizeSoonMode(saved?.mode, SOON_MODE_COMPO),
-  bubbles: (saved?.arenaBubblesById?.[saved?.currentArenaId || labybulleWorld.startArenaId] || saved?.bubbles || defaultPack.bubbles).map((bubble) => ({ ...bubble })),
+  bubbles: normalizedInitialBubbles.map((bubble) => ({ ...bubble })),
   fish: {
     ...defaultFish,
     ...(saved?.fish || {}),
-    arenaLevel: getArenaLevelFromId(saved?.currentArenaId || labybulleWorld.startArenaId),
+    arenaLevel: getArenaLevelFromId(initialArenaId),
   },
   fishTrail: saved?.fishTrail || [],
   selectedBubbleId: null,
@@ -47,11 +83,9 @@ export const initialState = {
   eyesClosed: false,
   labybulleSeed: saved?.labybulleSeed ?? 1,
   worldGraph: labybulleWorld,
-  currentArenaId: saved?.currentArenaId || labybulleWorld.startArenaId,
+  currentArenaId: initialArenaId,
   mazeByArena,
-  arenaBubblesById: saved?.arenaBubblesById || {
-    [saved?.currentArenaId || labybulleWorld.startArenaId]: (saved?.bubbles || defaultPack.bubbles).map((bubble) => ({ ...bubble })),
-  },
+  arenaBubblesById: normalizedArenaBubblesById,
   arenaBlob: createArenaBlob(96, DEFAULT_ARENA_RADIUS),
   gamePaused: false,
   pendingBlobAction: null,
