@@ -25,59 +25,67 @@ const guppyRuntime = {
 export function drawScene(ctx, rect, time, refs) {
   const { stateRef, arenaRef, cameraRef, enterWorld, exitWorld } = refs;
   const current = stateRef.current;
-  const isCircuitMode = current.interactionMode === "circuit";
-
-  drawOcean(ctx, rect, time, current);
-  resetCanvasPaintState(ctx);
-  drawDepthVeil(ctx, rect, current.fish);
-
-  enterWorld(ctx, rect, cameraRef, stateRef);
-
-  drawArenaBoundary(ctx, arenaRef, time, current);
-  drawArenaGuppies(ctx, time, current, arenaRef.current?.radius || 1200);
-
-  drawArenaNightSky(ctx, arenaRef, time);
-  drawEcosystemWorld(ctx, current, time);
-  drawWorldParticles(ctx, arenaRef, time);
-
-    if (current.mode === "reso") {
-      drawOdysseoPath(
-        ctx,
-        current.odysseoPath || [],
-        current.odysseoDepthMarkers || [],
-        time
-      );
-    }
-
-    if (current.bubblesEnabled !== false) {
-      resetCanvasPaintState(ctx);
-      drawBubbles(
-        ctx,
-        current.bubbles,
-        current.selectedBubbleId,
-        current.mode,
-        time,
-        current.interactionMode,
-        current.bubblesIntensity
-      );
-    }
-
-
-    if (current.mode === "echostory") {
-      drawEchostoryStars(ctx, current.echostory?.stars || [], time);
-    }
-
-  if (current.interactionMode !== "edit") {
+  let worldEntered = false;
+  try {
+    drawOcean(ctx, rect, time, current);
     resetCanvasPaintState(ctx);
-    drawCharacters(ctx, time);
+    drawDepthVeil(ctx, rect, current.fish);
+
+    enterWorld(ctx, rect, cameraRef, stateRef);
+    worldEntered = true;
+
+    drawArenaBoundary(ctx, arenaRef, time, current);
+    drawArenaGuppies(ctx, time, current, arenaRef.current?.radius || 1200);
+
+    drawArenaNightSky(ctx, arenaRef, time);
+    drawEcosystemWorld(ctx, current, time);
+    drawWorldParticles(ctx, arenaRef, time);
+
+      if (current.mode === "reso") {
+        drawOdysseoPath(
+          ctx,
+          current.odysseoPath || [],
+          current.odysseoDepthMarkers || [],
+          time
+        );
+      }
+
+      if (current.bubblesEnabled !== false) {
+        resetCanvasPaintState(ctx);
+        drawBubbles(
+          ctx,
+          current.bubbles,
+          current.selectedBubbleId,
+          current.mode,
+          time,
+          current.interactionMode,
+          current.bubblesIntensity
+        );
+      }
+
+
+      if (current.mode === "echostory") {
+        drawEchostoryStars(ctx, current.echostory?.stars || [], time);
+      }
+
+    if (current.interactionMode !== "edit") {
+      resetCanvasPaintState(ctx);
+      drawCharacters(ctx, time);
+    }
+
+    resetCanvasPaintState(ctx);
+    drawFish(ctx, current.fish, time, current.worldGraph, current.currentArenaId);
+    drawQuill(ctx, current.fish, time);
+  } finally {
+    if (worldEntered) {
+      try {
+        exitWorld(ctx);
+      } catch (_error) {
+        // no-op: on sécurise la pile de contexte au mieux en cas d'erreur de rendu
+      }
+    }
+    resetCanvasPaintState(ctx);
   }
-
-  resetCanvasPaintState(ctx);
-  drawFish(ctx, current.fish, time, current.worldGraph, current.currentArenaId);
-  drawQuill(ctx, current.fish, time);
-
-  exitWorld(ctx);
-  resetCanvasPaintState(ctx);
 
   drawCameraVignette(ctx, rect, current.fish);
   resetCanvasPaintState(ctx);
