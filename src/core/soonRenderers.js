@@ -21,12 +21,21 @@ const guppyRuntime = {
   cosmicStreaks: [],
   nextCosmicSpawnAt: 0,
 };
+const warnedRendererErrors = new Set();
 
 function drawIsolated(ctx, drawFn) {
   ctx.save();
   try {
     resetCanvasPaintState(ctx);
-    drawFn();
+    try {
+      drawFn();
+    } catch (error) {
+      const key = error?.message || String(error);
+      if (!warnedRendererErrors.has(key)) {
+        warnedRendererErrors.add(key);
+        console.warn("[Soon] draw stage failed (isolated)", error);
+      }
+    }
   } finally {
     ctx.restore();
   }
