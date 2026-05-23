@@ -4,6 +4,7 @@ const WAVE_KEYS = ["immersion", "bascule", "ouverture"];
 const MAX_COLLECTED_STARS = 15;
 const STARS_PER_WAVE = 5;
 const ARENA_RADIUS = 900;
+const DEV_AUTO_COLLECT_STARS = Boolean(import.meta?.env?.DEV);
 
 function randomInRange(min, max) {
   return min + Math.random() * (max - min);
@@ -34,7 +35,7 @@ export function createWaveStars(waveIndex, count = STARS_PER_WAVE) {
     x: randomInRange(-ARENA_RADIUS, ARENA_RADIUS),
     y: randomInRange(-ARENA_RADIUS, ARENA_RADIUS),
     r: randomInRange(14, 26),
-    collected: false,
+    collected: DEV_AUTO_COLLECT_STARS,
     phase: randomInRange(0, Math.PI * 2),
   }));
 }
@@ -68,6 +69,14 @@ export function advanceWave(echostory) {
   if (!echostory) return resetEchostoryState();
   if (!canAdvanceWave(echostory)) return echostory;
 
+  const collectedStars = echostory.collectedStars || [];
+  const currentWaveCollected = (echostory.stars || []).filter((star) => star?.collected);
+  const knownStarIds = new Set(collectedStars.map((star) => star?.id));
+  const mergedCollectedStars = [
+    ...collectedStars,
+    ...currentWaveCollected.filter((star) => !knownStarIds.has(star?.id)),
+  ].slice(0, MAX_COLLECTED_STARS);
+
   const nextWaveIndex = echostory.waveIndex + 1;
   const hasNextWave = nextWaveIndex < WAVE_KEYS.length;
 
@@ -76,6 +85,7 @@ export function advanceWave(echostory) {
     waveIndex: hasNextWave ? nextWaveIndex : echostory.waveIndex,
     phase: hasNextWave ? "collect" : "story",
     stars: hasNextWave ? createWaveStars(nextWaveIndex, STARS_PER_WAVE) : [],
+    collectedStars: mergedCollectedStars,
   };
 }
 
