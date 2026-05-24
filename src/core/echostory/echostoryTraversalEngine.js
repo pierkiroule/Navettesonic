@@ -2,6 +2,7 @@ import { getDepthAtPathIndex } from "../odysseoPath.js";
 
 const DEFAULT_DURATION_SEC = 180;
 const DEFAULT_TICKS_PER_SEC = 60;
+const MIN_POINTS_PER_SECOND = 3.2;
 
 function getTraversalSpeed(pathLength, desiredDurationSec) {
   if (pathLength < 2) return 0;
@@ -10,7 +11,9 @@ function getTraversalSpeed(pathLength, desiredDurationSec) {
     ? desiredDurationSec
     : DEFAULT_DURATION_SEC;
 
-  return (pathLength - 1) / (duration * DEFAULT_TICKS_PER_SEC);
+  const byDuration = (pathLength - 1) / (duration * DEFAULT_TICKS_PER_SEC);
+  const minSpeed = MIN_POINTS_PER_SECOND / DEFAULT_TICKS_PER_SEC;
+  return Math.max(byDuration, minSpeed);
 }
 
 function interpolateForward(path, index) {
