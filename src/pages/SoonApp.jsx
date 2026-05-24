@@ -7,7 +7,7 @@ import Profile from "./Profile.jsx";
 import BubbleBucketsMenu from "../components/BubbleBucketsMenu.jsx";
 import { useSoonStore } from "../store/useSoonStore.js";
 import { renderImmersiveJourney } from "../core/immersiveExporter.js";
-import { buildEchostoryText, buildStoryTimeline } from "../core/echostory/echostoryBuilder.js";
+import { buildEchostoryText, buildStoryTimeline, buildPathStarsFromTimeline } from "../core/echostory/echostoryBuilder.js";
 import { tickEchostoryTraversal } from "../core/echostory/echostoryTraversalEngine.js";
 import { ECHOSTORY_SKELETONS } from "../data/echostorySkeletons.js";
 import {
@@ -103,7 +103,6 @@ export default function SoonApp({ onBack }) {
     echostory,
     collectEchostoryStar,
     resetEchostory,
-    generateEchostoryText,
     advanceEchostoryWave,
     triggerEscapeCinematic,
     setEscapeState,
@@ -342,23 +341,24 @@ export default function SoonApp({ onBack }) {
 
 
 
-  const handleGenerateEchostoryFromPath = () => {
-    if (echostoryDraft) {
-      setEchostoryDraft(null);
-      return;
-    }
 
-    const skeleton = ECHOSTORY_SKELETONS[0];
-    const story = buildEchostoryText({
+  useEffect(() => {
+    if (!isOdysseo || (odysseoPath?.length || 0) < 2 || echostory?.traversalActive) return;
+
+    const previewLines = buildEchostoryText({
       collectedStars: echostory?.collectedStars || [],
       path: odysseoPath || [],
-      skeleton,
+      skeleton: ECHOSTORY_SKELETONS[0],
       silenceStyle: "dots",
-    });
-    setEchostoryDraft(story);
-  };
+    }).lines.map((line, index) => ({ id: line.id || `preview-${index + 1}`, text: line.text }));
 
-  const handleLaunchEchostoryTraversal = () => {
+    const stars = buildPathStarsFromTimeline({ lines: previewLines, path: odysseoPath || [] });
+    useSoonStore.setState((state) => ({
+      echostory: { ...state.echostory, stars },
+    }));
+  }, [isOdysseo, odysseoPath, echostory?.collectedStars, echostory?.traversalActive]);
+
+  const handleComposeAndLaunchTraversal = () => {
     const currentLines = echostory?.storyTimeline?.length
       ? echostory.storyTimeline.map((line) => ({ id: line.id, text: line.text }))
       : buildEchostoryText({
@@ -369,9 +369,11 @@ export default function SoonApp({ onBack }) {
         }).lines.map((line, index) => ({ ...line, id: `line-${index + 1}` }));
 
     const storyTimeline = buildStoryTimeline({ lines: currentLines, path: odysseoPath || [] });
+    const stars = buildPathStarsFromTimeline({ lines: currentLines, path: odysseoPath || [] });
     useSoonStore.setState((state) => ({
-      echostory: { ...state.echostory, storyTimeline, timelineCursor: 0 },
+      echostory: { ...state.echostory, storyTimeline, stars, timelineCursor: 0, activeLine: null },
     }));
+    setEchostoryDraft({ titleSuggestion: "ÉchoStory tracée", plainText: currentLines.map((l) => l.text).join("\n") });
     startEchostoryTraversal();
     setIsTravelPlaying(true);
   };
@@ -531,21 +533,12 @@ export default function SoonApp({ onBack }) {
                       setIsTravelPlaying(false);
                       return;
                     }
-                    handleLaunchEchostoryTraversal();
+                    handleComposeAndLaunchTraversal();
                   }}
                   disabled={!odysseoPath || odysseoPath.length < 8}
                   title="Lancer la traversée"
                 >
-                  {echostory?.traversalActive ? "Mettre en pause" : "Lancer la traversée"}
-                </button>
-
-                <button
-                  type="button"
-                  className="bubble-btn mode-toggle"
-                  onClick={handleGenerateEchostoryFromPath}
-                  title="Générer un texte ÉchoStory depuis le tracé"
-                >
-                  {echostoryDraft ? "✍️ Fermer ÉchoStory texte" : "✍️ Générer ÉchoStory texte"}
+                  {echostory?.traversalActive ? "Mettre en pause" : "✨ Composer + Traverser"}
                 </button>
 
                 <button
