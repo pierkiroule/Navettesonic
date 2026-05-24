@@ -20,6 +20,20 @@ function pickRandomUnique(items, count) {
   return picks;
 }
 
+function createPearlWireLayout(count) {
+  const safeCount = Math.max(1, count);
+  const threadLength = ARENA_RADIUS * 1.55;
+  const step = safeCount > 1 ? threadLength / (safeCount - 1) : 0;
+  const startX = -threadLength * 0.5;
+
+  return Array.from({ length: safeCount }, (_, index) => {
+    const t = safeCount > 1 ? index / (safeCount - 1) : 0.5;
+    const x = startX + step * index;
+    const y = Math.sin(t * Math.PI * 2.2) * 55;
+    return { x, y, t };
+  });
+}
+
 export function getCurrentWaveKey(waveIndex) {
   return WAVE_KEYS[waveIndex] || WAVE_KEYS[0];
 }
@@ -29,14 +43,16 @@ export function createWaveStars(waveIndex, count = STARS_PER_WAVE) {
   const bank = ECHOSTORY_WAVES[wave] || [];
   const fragments = pickRandomUnique(bank, Math.max(0, Math.min(count, STARS_PER_WAVE)));
 
+  const pearls = createPearlWireLayout(fragments.length);
+
   return fragments.map((fragment, index) => ({
     ...fragment,
     id: `${fragment.id}-star-${index + 1}`,
-    x: randomInRange(-ARENA_RADIUS, ARENA_RADIUS),
-    y: randomInRange(-ARENA_RADIUS, ARENA_RADIUS),
+    x: pearls[index]?.x ?? randomInRange(-ARENA_RADIUS, ARENA_RADIUS),
+    y: pearls[index]?.y ?? randomInRange(-ARENA_RADIUS, ARENA_RADIUS),
     r: randomInRange(14, 26),
     collected: DEV_AUTO_COLLECT_STARS,
-    phase: randomInRange(0, Math.PI * 2),
+    phase: (pearls[index]?.t ?? Math.random()) * Math.PI * 2,
   }));
 }
 
