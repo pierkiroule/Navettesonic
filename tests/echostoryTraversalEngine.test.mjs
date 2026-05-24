@@ -20,3 +20,12 @@ test("tickEchostoryTraversal advances from previous echostory index", () => {
   assert.ok(result.echostoryPathIndex > 40);
   assert.equal(result.finished, false);
 });
+
+test("tickEchostoryTraversal keeps a visible speed on short paths", () => {
+  const state = makeState(8, 0);
+  const result = tickEchostoryTraversal(state, { desiredDurationSec: 180 });
+
+  assert.ok(result);
+  assert.ok(result.echostoryPathIndex >= 0.05);
+  assert.equal(result.finished, false);
+});

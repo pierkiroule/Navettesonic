@@ -63,3 +63,29 @@ export function buildStoryTimeline({ lines = [], path = [] } = {}) {
     index: Math.max(0, Math.min(maxIndex, Math.round(step * idx))),
   }));
 }
+
+
+export function buildPathStarsFromTimeline({ lines = [], path = [] } = {}) {
+  if (!Array.isArray(path) || path.length < 2 || !Array.isArray(lines) || !lines.length) return [];
+
+  const starCount = Math.max(1, Math.min(24, Math.round(path.length / 36)));
+  const maxIndex = path.length - 1;
+  const step = starCount > 1 ? maxIndex / (starCount - 1) : 0;
+
+  return Array.from({ length: starCount }, (_, idx) => {
+    const pathIndex = Math.max(0, Math.min(maxIndex, Math.round(step * idx)));
+    const point = path[pathIndex] || path[0] || { x: 0, y: 0 };
+    const line = lines[idx % lines.length] || { text: '' };
+    return {
+      id: `odysseo-star-${idx + 1}`,
+      x: point.x,
+      y: point.y,
+      r: 12 + (idx % 4),
+      phase: idx * 0.42,
+      color: '#dbeafe',
+      text: line.text || '',
+      collected: false,
+      pathIndex,
+    };
+  });
+}

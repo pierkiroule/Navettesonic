@@ -31,6 +31,15 @@ export function drawEchostoryStars(ctx, stars = [], time = 0) {
       ctx.fillStyle = "rgba(255,255,255,0.9)";
       ctx.globalAlpha = 0.85;
       ctx.fill();
+
+      if (star.text) {
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = "rgba(224, 242, 254, 0.95)";
+        ctx.font = "600 12px system-ui";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        ctx.fillText(String(star.text), x, y - radius - 10);
+      }
     });
   } finally {
     ctx.restore();
