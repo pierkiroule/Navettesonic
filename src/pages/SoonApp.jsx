@@ -609,6 +609,76 @@ export default function SoonApp({ onBack }) {
                   ))}
                 </div>
               )}
+
+              <div className="tool-row fish-tools">
+                <div className={`fish-sliders fish-sliders-layout ${fishCockpitFolded ? "folded" : ""}`}>
+                  <label className="fish-slider-column" htmlFor="depth-slider-vertical">
+                    <span className="slider-label">🌊 Profondeur</span>
+                    <input
+                      id="depth-slider-vertical"
+                      className="slim-vertical-range depth"
+                      type="range"
+                      min="1"
+                      max="3"
+                      step="1"
+                      value={selectedDepth}
+                      onChange={(event) => { const depth = Number(event.target.value); setSelectedDepth(depth); setFishDepth(depth); }}
+                    />
+                    <span className="slider-value">{selectedDepth}</span>
+                  </label>
+
+                  <label className="fish-slider-row horizontal" htmlFor="zoom-slider-horizontal">
+                    <button
+                      type="button"
+                      className="bubble-btn mode-toggle"
+                      onClick={handleOpenBubbleBuckets}
+                      title="🫧 Déclenchement tactile"
+                      aria-label="Ouvrir l’éditeur des bulles sonores"
+                    >
+                      🫧
+                    </button>
+                    <span className="slider-label slider-label-top">🔍 Zoom</span>
+                    <div className="fish-slider-horizontal-track">
+                      <input
+                        id="zoom-slider-horizontal"
+                        className="slim-horizontal-range"
+                        type="range"
+                        min="0"
+                        max="2"
+                        step="0.05"
+                        value={viewZoom}
+                        onChange={(event) => setViewZoom(Number(event.target.value))}
+                      />
+                      <span className="slider-value">{viewZoom.toFixed(1)}</span>
+                    </div>
+                  </label>
+
+                  <label className="fish-slider-column" htmlFor="speed-slider-vertical">
+                    <span className="slider-label">⚡ Vitesse</span>
+                    <input
+                      id="speed-slider-vertical"
+                      className="slim-vertical-range speed"
+                      type="range"
+                      min="1"
+                      max="3"
+                      step="1"
+                      value={swimSpeedLevel}
+                      onChange={(event) => { const level = Number(event.target.value); setSwimSpeedLevel(level); setSwimSpeed(SPEED_BY_LEVEL[level]); }}
+                    />
+                    <span className="slider-value">{swimSpeedLevel}</span>
+                  </label>
+
+                  <button
+                    type="button"
+                    className="bubble-btn fish-cockpit-fold-toggle"
+                    onClick={() => setFishCockpitFolded((value) => !value)}
+                    aria-label={fishCockpitFolded ? "Déplier le mini cockpit" : "Replier le mini cockpit"}
+                    title={fishCockpitFolded ? "Déplier" : "Replier"}
+                  >
+                    {fishCockpitFolded ? "▾" : "▴"}
+                  </button>
+                </div>
+              </div>
             </div>
                     ) : (
           <div className="tool-row fish-tools">
