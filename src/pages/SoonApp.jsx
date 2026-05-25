@@ -9,6 +9,7 @@ import { useSoonStore } from "../store/useSoonStore.js";
 import { renderImmersiveJourney } from "../core/immersiveExporter.js";
 import { buildEchostoryText, buildStoryTimeline, buildPathStarsFromTimeline } from "../core/echostory/echostoryBuilder.js";
 import { tickEchostoryTraversal } from "../core/echostory/echostoryTraversalEngine.js";
+import { buildStarMp3Trace } from "../core/odysseoStarMp3Trace.js";
 import { ECHOSTORY_SKELETONS } from "../data/echostorySkeletons.js";
 import {
   parseWorkflowFromHash,
@@ -236,6 +237,27 @@ export default function SoonApp({ onBack }) {
   const openBubbleEditor = (id) => {
     selectBubble(id);
     setEditorOpenKey((value) => value + 1);
+  };
+
+
+  const handleGenerateStarMp3Trace = () => {
+    const mp3Trace = buildStarMp3Trace({
+      collectedStars: echostory?.collectedStars || [],
+      path: odysseoPath || [],
+    });
+
+    if (!mp3Trace.length) {
+      setExportStatus("Cueillez d’abord des étoiles pour composer un tracé MP3.");
+      return;
+    }
+
+    const title = "Navigo · Tracé composé d’étoiles MP3";
+    const plainText = mp3Trace
+      .map((item) => `${String(item.cue).padStart(2, "0")}. [${item.wave}] ${item.title} → ${item.suggestedFile}`)
+      .join("\n");
+
+    setEchostoryDraft({ titleSuggestion: title, plainText });
+    setExportStatus(`Tracé MP3 prêt (${mp3Trace.length} étoiles).`);
   };
 
   const handleExportImmersion = async () => {
@@ -552,7 +574,16 @@ export default function SoonApp({ onBack }) {
                       : "Trace un parcours d’abord"
                   }
                 >
-                  🎧 Générer
+                  🎧 Générer immersion
+                </button>
+
+                <button
+                  type="button"
+                  className="bubble-btn mode-toggle"
+                  onClick={handleGenerateStarMp3Trace}
+                  title="Composer un tracé d’étoiles MP3"
+                >
+                  ⭐ Tracé MP3
                 </button>
               </div>
 
