@@ -26,6 +26,7 @@ const TRIANGLE_AUDIO_RETRIGGER_COOLDOWN_MS = 14000;
 const FIREFLY_VOICE_CHAIN_DELAY_MS = 3000;
 const FIREFLY_PREVIEW_HOLD_MS = 600;
 const FIREFLY_HEAD_PUSH_FORCE = 1.15;
+const FIREFLY_SECOND_TOUCH_MIN_DELAY_MS = 250;
 
 const fireflies = [];
 const plumeTrail = [];
@@ -316,6 +317,7 @@ function spawnFirefly(sampleIndex = null) {
     previewTouchedDuringPlayback: false,
     previewCollectArmedUntil: 0,
     hasPlayedPreview: false,
+    firstPreviewTouchAt: 0,
     wasHeadTouching: false,
   });
 }
@@ -350,6 +352,7 @@ export function spawnFireflyFromSeed(x = 0, y = 0) {
     previewTouchedDuringPlayback: false,
     previewCollectArmedUntil: 0,
     hasPlayedPreview: false,
+    firstPreviewTouchAt: 0,
     wasHeadTouching: false,
   });
 }
@@ -546,6 +549,7 @@ async function triggerFireflyPreview(firefly, now) {
   firefly.previewPlaying = true;
   firefly.previewTouchedDuringPlayback = false;
   firefly.hasPlayedPreview = true;
+  if (!firefly.firstPreviewTouchAt) firefly.firstPreviewTouchAt = now;
 
   try {
     await playOneShotFile(firefly.sampleUrl, {
@@ -579,8 +583,15 @@ function tryCollectFirefly(fish, firefly, now) {
     return false;
   }
 
-  if (firefly.previewPlaying || now < (firefly.previewCollectArmedUntil || 0)) {
-    firefly.previewTouchedDuringPlayback = true;
+  const delayPassed = now - (firefly.firstPreviewTouchAt || 0) >= FIREFLY_SECOND_TOUCH_MIN_DELAY_MS;
+
+  if (!delayPassed) return false;
+
+  if (!firefly.previewPlaying && now < (firefly.previewCollectArmedUntil || 0)) {
+    return attachSingleFireflyToTail(fish, firefly, now);
+  }
+
+  if (!firefly.previewPlaying && firefly.previewCollectArmedUntil > 0) {
     return attachSingleFireflyToTail(fish, firefly, now);
   }
 
