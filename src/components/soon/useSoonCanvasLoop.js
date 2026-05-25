@@ -35,6 +35,38 @@ function getEchostorySampleUrlCandidates(sampleIndex) {
   ];
 }
 
+async function playHtmlAudioFallback(url, volume = 0.85) {
+  if (typeof Audio === "undefined") return false;
+  return new Promise((resolve) => {
+    const audio = new Audio(url);
+    audio.preload = "auto";
+    audio.crossOrigin = "anonymous";
+    audio.volume = Math.max(0.05, Math.min(1, volume));
+    const cleanup = () => {
+      audio.onended = null;
+      audio.onerror = null;
+      audio.oncanplaythrough = null;
+    };
+    audio.onended = () => {
+      cleanup();
+      resolve(true);
+    };
+    audio.onerror = () => {
+      cleanup();
+      resolve(false);
+    };
+    audio.oncanplaythrough = async () => {
+      try {
+        await audio.play();
+      } catch {
+        cleanup();
+        resolve(false);
+      }
+    };
+    audio.load();
+  });
+}
+
 async function playEchostoryStarPreview(star, fishX = 0) {
   if (!star) return;
   const sampleIndex = Number.parseInt(String(star.id || "").match(/(\d{1,3})/)?.[1] || "", 10);
@@ -43,12 +75,22 @@ async function playEchostoryStarPreview(star, fishX = 0) {
   const candidates = getEchostorySampleUrlCandidates(sampleIndex);
   for (const url of candidates) {
     try {
-      await playOneShotFile(url, { volume: 0.4, pan });
+      await playOneShotFile(url, { volume: 0.78, pan });
       return;
     } catch {
       // continue
     }
   }
+
+  for (const url of candidates) {
+    const played = await playHtmlAudioFallback(url, 0.92);
+    if (played) return;
+  }
+
+  console.warn("[Soon][echostory] preview introuvable ou illisible", {
+    starId: star.id,
+    candidates,
+  });
 }
 function pushNearbyEchostoryStars(current, onCollect) {
   if (current?.mode !== "echostory") return;
