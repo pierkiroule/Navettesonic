@@ -50,7 +50,7 @@ async function playEchostoryStarPreview(star, fishX = 0) {
     }
   }
 }
-function pushNearbyEchostoryStars(current) {
+function pushNearbyEchostoryStars(current, onCollect) {
   if (current?.mode !== "echostory") return;
   if (!current?.fish) return;
   const fishX = Number.isFinite(current.fish.x) ? current.fish.x : 0;
@@ -66,6 +66,11 @@ function pushNearbyEchostoryStars(current) {
       if (!star.previewPlayed) {
         star.previewPlayed = true;
         playEchostoryStarPreview(star, fishX);
+      } else if (!star.collectedTriggered && typeof onCollect === "function") {
+        star.collectedTriggered = true;
+        onCollect(star.id);
+        playEchostoryStarPreview(star, fishX);
+        current.fish.tailPower = Math.min(18, Math.max(current.fish.tailPower || 0, 1) + 1);
       }
       const ux = dx / distance;
       const uy = dy / distance;
@@ -180,7 +185,7 @@ export function useSoonCanvasLoop({
       }
 
       const next = stateRef.current || {};
-      pushNearbyEchostoryStars(next);
+      pushNearbyEchostoryStars(next, onCollectEchostoryStar);
       const nextFish = next.fish || null;
       const arenaCenter = getArenaWorldCenter(next);
       const fishWorld = nextFish
