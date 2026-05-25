@@ -1,10 +1,10 @@
 import { FIREFLY_VOICES } from "../data/fireflyVoices.js";
 import { playOneShotFile } from "./audioEngine.js";
 
-const MAX_FIREFLIES = 18;
+const MAX_FIREFLIES = 53;
 const MAX_TRAIL_POINTS = 42;
 
-const FIREFLY_TRAIL_ATTACH_RADIUS = 42;
+const FIREFLY_HEAD_TOUCH_RADIUS = 54;
 const FIREFLY_ATTACHED_SPACING_TARGETS = [0.34, 0.62, 0.9];
 const FIREFLY_TAIL_MAX_ATTACHED = 3;
 const FIREFLY_REPULSE_COOLDOWN_MS = 900;
@@ -24,14 +24,14 @@ const TRIANGLE_ROTATION_PUSH_FACTOR = 0.0032;
 const TRIANGLE_AUDIO_TRIGGER_RADIUS = 94;
 const TRIANGLE_AUDIO_RETRIGGER_COOLDOWN_MS = 14000;
 const FIREFLY_VOICE_CHAIN_DELAY_MS = 3000;
+const FIREFLY_PREVIEW_HOLD_MS = 600;
+const FIREFLY_HEAD_PUSH_FORCE = 1.15;
 
 const fireflies = [];
 const plumeTrail = [];
 const placedTriangles = [];
 const resonanceBubbles = [];
 
-let spawnClock = 1;
-let progressiveSpawnLock = false;
 let completeTriangleSince = 0;
 let fireflyVoiceQueue = Promise.resolve();
 
@@ -63,6 +63,17 @@ function getSampleUrlCandidates(sampleIndex) {
   ];
 }
 
+
+function getFireflyDirectSampleUrl(sampleIndex) {
+  const n3 = String(sampleIndex).padStart(3, "0");
+  return `${FIREFLY_VOICE_BASE_URL}/extrait_${n3}.mp3`;
+}
+
+function getWaveFromSampleIndex(sampleIndex) {
+  if (sampleIndex <= 20) return 1;
+  if (sampleIndex <= 35) return 2;
+  return 3;
+}
 function getMorphoseSampleUrlCandidates(sampleIndex) {
   const n = String(sampleIndex);
   const n2 = String(sampleIndex).padStart(2, "0");
@@ -271,8 +282,11 @@ function getDistanceToPath(path, point) {
   return best;
 }
 
-function spawnFirefly() {
+function spawnFirefly(sampleIndex = null) {
   const type = pickFireflyType();
+  const resolvedSampleIndex = Number.isFinite(sampleIndex) ? Math.max(1, Math.min(53, Math.floor(sampleIndex))) : pickFireflySampleIndex(type.id);
+  const sampleUrl = getFireflyDirectSampleUrl(resolvedSampleIndex);
+  const wave = getWaveFromSampleIndex(resolvedSampleIndex);
   const angle = Math.random() * Math.PI * 2;
   const radius = rand(160, 440);
 
@@ -295,11 +309,21 @@ function spawnFirefly() {
     mouthPushCooldownUntil: 0,
     pushedAt: 0,
     bornAt: performance.now(),
+    sampleIndex: resolvedSampleIndex,
+    sampleUrl,
+    wave,
+    previewPlaying: false,
+    previewTouchedDuringPlayback: false,
+    previewCollectArmedUntil: 0,
+    hasPlayedPreview: false,
+    touchStage: 0,
+    wasHeadTouching: false,
   });
 }
 
 export function spawnFireflyFromSeed(x = 0, y = 0) {
   const type = pickFireflyType();
+  const sampleIndex = pickFireflySampleIndex(type.id);
 
   fireflies.push({
     id: makeId("luciole"),
@@ -320,6 +344,15 @@ export function spawnFireflyFromSeed(x = 0, y = 0) {
     mouthPushCooldownUntil: 0,
     pushedAt: 0,
     bornAt: performance.now(),
+    sampleIndex,
+    sampleUrl: getFireflyDirectSampleUrl(sampleIndex),
+    wave: 0,
+    previewPlaying: false,
+    previewTouchedDuringPlayback: false,
+    previewCollectArmedUntil: 0,
+    hasPlayedPreview: false,
+    touchStage: 0,
+    wasHeadTouching: false,
   });
 }
 
@@ -371,7 +404,7 @@ function attachSingleFireflyToTail(fish, firefly, now) {
   firefly.vy *= 0.25;
 
   normalizeAttachedOrders();
-  void queueFireflyVoicePlayback(() => playFireflyCollectVoice(firefly));
+
 
   return true;
 }
@@ -497,18 +530,63 @@ function attractUsefulFireflyToPlume(firefly, now) {
   firefly.pushedAt = now;
 }
 
+
+function pushFireflyFromHead(firefly, fish) {
+  const mouth = getMouth(fish);
+  const dx = firefly.x - mouth.x;
+  const dy = firefly.y - mouth.y;
+  const d = Math.hypot(dx, dy) || 1;
+  const nx = dx / d;
+  const ny = dy / d;
+  firefly.vx += nx * FIREFLY_HEAD_PUSH_FORCE + (fish.vx || 0) * 0.08;
+  firefly.vy += ny * FIREFLY_HEAD_PUSH_FORCE + (fish.vy || 0) * 0.08;
+}
+
+async function triggerFireflyPreview(firefly, now) {
+  if (!firefly || firefly.previewPlaying) return;
+
+  firefly.previewPlaying = true;
+  firefly.previewTouchedDuringPlayback = false;
+  firefly.hasPlayedPreview = true;
+
+  try {
+    await playOneShotFile(firefly.sampleUrl, {
+      volume: 0.42,
+      pan: Math.max(-0.85, Math.min(0.85, safe(firefly?.x) / 420)),
+    });
+  } catch (error) {
+    console.warn("[Soon] sample étoile introuvable", firefly.sampleUrl, error);
+  } finally {
+    firefly.previewPlaying = false;
+    firefly.previewCollectArmedUntil = performance.now() + FIREFLY_PREVIEW_HOLD_MS;
+  }
+}
+
 function tryCollectFirefly(fish, firefly, now) {
   if (firefly.attached) return false;
   if (now < (firefly.linkedCooldownUntil || 0)) return false;
 
-  const d = getDistanceToPath(plumeTrail, {
-    x: firefly.x,
-    y: firefly.y,
-  });
+  const mouth = getMouth(fish);
+  const distanceToHead = Math.hypot(mouth.x - firefly.x, mouth.y - firefly.y);
+  const isTouchingHead = distanceToHead <= FIREFLY_HEAD_TOUCH_RADIUS + firefly.r;
+  const justTouchedHead = isTouchingHead && !firefly.wasHeadTouching;
 
-  if (d > FIREFLY_TRAIL_ATTACH_RADIUS) return false;
+  firefly.wasHeadTouching = isTouchingHead;
 
-  return attachSingleFireflyToTail(fish, firefly, now);
+  if (!justTouchedHead) return false;
+
+  if ((firefly.touchStage || 0) === 0) {
+    firefly.touchStage = 1;
+    pushFireflyFromHead(firefly, fish);
+    void triggerFireflyPreview(firefly, now);
+    return false;
+  }
+
+  if ((firefly.touchStage || 0) >= 1 && firefly.hasPlayedPreview) {
+    return attachSingleFireflyToTail(fish, firefly, now);
+  }
+
+  return false;
 }
 
 function hasCompleteHaikuTriangle() {
@@ -706,35 +784,9 @@ export function updateFireflyGame({ fish, mode }) {
   updatePlacedTrianglesPhysics();
   triggerPlacedTriangleVoicesInOdysseo(fish, now, mode);
 
-  if (mode === "echostory") {
-    if (fireflies.length === 0) {
-      spawnFirefly(arenaRadius);
-      progressiveSpawnLock = false;
-    }
-
-    spawnClock += 0.08;
-
-    while (spawnClock >= 1) {
-      spawnClock -= 1;
-
-      const freeCount = fireflies.filter((item) => !item.attached).length;
-      const canProgressivelySpawn = freeCount >= 1 && freeCount <= 2;
-
-      if (!canProgressivelySpawn) {
-        progressiveSpawnLock = false;
-        continue;
-      }
-
-      if (!progressiveSpawnLock) {
-        progressiveSpawnLock = true;
-        const batchSize = Math.floor(rand(1, 4));
-        const room = Math.max(0, MAX_FIREFLIES - fireflies.length);
-        const spawnCount = Math.min(batchSize, room);
-
-        for (let i = 0; i < spawnCount; i += 1) {
-          spawnFirefly(arenaRadius);
-        }
-      }
+  if (mode === "echostory" && fireflies.length === 0) {
+    for (let sampleIndex = 1; sampleIndex <= MAX_FIREFLIES; sampleIndex += 1) {
+      spawnFirefly(sampleIndex);
     }
   }
 
@@ -902,7 +954,9 @@ export function drawFireflies(ctx, time) {
     const type = getFireflyType(firefly.typeId);
     const pulse = Math.sin(time * 0.004 + firefly.phase) * 0.5 + 0.5;
     const r = firefly.r * (firefly.attached ? 0.82 : 0.92) * (0.94 + pulse * 0.18);
-    const alpha = firefly.attached ? 0.86 : 0.72;
+    const blinking = firefly.previewPlaying;
+    const blinkPulse = blinking ? (Math.sin(time * 0.024 + firefly.phase) > 0 ? 1 : 0.22) : 1;
+    const alpha = (firefly.attached ? 0.86 : 0.72) * blinkPulse;
     const pushedAge = performance.now() - (firefly.pushedAt || 0);
     const pushedGlow = Math.max(0, 1 - pushedAge / 260);
 
@@ -1101,7 +1155,5 @@ export function resetFireflyGame() {
   completeTriangleSince = 0;
   placedTriangles.length = 0;
   resonanceBubbles.length = 0;
-  spawnClock = 1;
-  progressiveSpawnLock = false;
   spawnFirefly();
 }
