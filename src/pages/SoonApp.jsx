@@ -47,6 +47,8 @@ export default function SoonApp({ onBack }) {
   const [bubbleBucketsOpen, setBubbleBucketsOpen] = useState(false);
   const [fishCockpitFolded, setFishCockpitFolded] = useState(false);
   const speedBoostUntilRef = useRef(0);
+  const plumeTraceActiveRef = useRef(false);
+  const plumeLastPointRef = useRef(null);
 
   const {
     mode,
@@ -250,6 +252,12 @@ export default function SoonApp({ onBack }) {
     }
   };
 
+  const [plumeTraceActive, setPlumeTraceActive] = useState(false);
+  useEffect(() => {
+    plumeTraceActiveRef.current = plumeTraceActive;
+    if (!plumeTraceActive) plumeLastPointRef.current = null;
+  }, [plumeTraceActive]);
+
   const boostFishSpeed = () => {
     speedBoostUntilRef.current = Date.now() + 1200;
   };
@@ -429,6 +437,16 @@ export default function SoonApp({ onBack }) {
           const boosted = Date.now() < speedBoostUntilRef.current;
           const effectiveSwimSpeed = boosted ? swimSpeed * 1.8 : swimSpeed;
           if (isOdysseo) {
+            if (plumeTraceActiveRef.current && !isTravelPlaying && Number.isFinite(fish?.x) && Number.isFinite(fish?.y)) {
+              const previous = plumeLastPointRef.current;
+              const dx = previous ? fish.x - previous.x : 999;
+              const dy = previous ? fish.y - previous.y : 999;
+              const distance = Math.hypot(dx, dy);
+              if (!previous || distance >= 18) {
+                addOdysseoPathPoint(fish.x, fish.y);
+                plumeLastPointRef.current = { x: fish.x, y: fish.y };
+              }
+            }
             if (isTravelPlaying) {
               if (echostory?.traversalActive) {
                 const result = tickEchostoryTraversal(useSoonStore.getState(), { desiredDurationSec: 180 });
@@ -572,11 +590,11 @@ export default function SoonApp({ onBack }) {
               <div className="tool-row trace-tools">
                 <button
                   type="button"
-                  className={`bubble-btn tool-chip ${odysseoTool === "draw" ? "active" : ""}`}
-                  onClick={() => setOdysseoTool("draw")}
-                  title="Dessiner le trajet"
+                  className={`bubble-btn tool-chip ${plumeTraceActive ? "active" : ""}`}
+                  onClick={() => setPlumeTraceActive((value) => !value)}
+                  title="Tracer automatiquement avec les déplacements de Soon"
                 >
-                  ✏️ Dessin
+                  🪶 Plume {plumeTraceActive ? "ON" : "OFF"}
                 </button>
 
                 <button
@@ -591,7 +609,10 @@ export default function SoonApp({ onBack }) {
                 <button
                   type="button"
                   className="bubble-btn tool-chip danger"
-                  onClick={clearOdysseoPath}
+                  onClick={() => {
+                    clearOdysseoPath();
+                    plumeLastPointRef.current = null;
+                  }}
                   title="Effacer le tracé"
                 >
                   🧽 Effacer
