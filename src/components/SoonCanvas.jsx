@@ -449,7 +449,7 @@ export default function SoonCanvas({
           </label>
         </div>
       ) : null}
-      {echostoryPrompt && (mode === "echostory" || mode === "reso") ? (
+      {echostoryPrompt && mode === "echostory" ? (
         <div className="echostory-prompt-menu" role="dialog" aria-live="polite" aria-label="Cueillir l'étoile ?">
           <p>Cueillir cette étoile sonore ?</p>
           <div className="echostory-prompt-actions">
