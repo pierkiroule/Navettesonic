@@ -65,10 +65,16 @@ export function buildStoryTimeline({ lines = [], path = [] } = {}) {
 }
 
 
-export function buildPathStarsFromTimeline({ lines = [], path = [] } = {}) {
-  if (!Array.isArray(path) || path.length < 2 || !Array.isArray(lines) || !lines.length) return [];
+export function buildPathStarsFromTimeline({ lines = [], path = [], collectedStars = [] } = {}) {
+  if (!Array.isArray(path) || path.length < 2) return [];
 
-  const starCount = Math.max(1, Math.min(24, Math.round(path.length / 36)));
+  const hasCollectedStars = Array.isArray(collectedStars) && collectedStars.length > 0;
+  if (!hasCollectedStars && (!Array.isArray(lines) || !lines.length)) return [];
+
+  const sourceStars = hasCollectedStars ? collectedStars.slice(0, 15) : [];
+  const starCount = hasCollectedStars
+    ? sourceStars.length
+    : Math.max(1, Math.min(24, Math.round(path.length / 36)));
   const maxIndex = path.length - 1;
   const step = starCount > 1 ? maxIndex / (starCount - 1) : 0;
 
@@ -76,14 +82,17 @@ export function buildPathStarsFromTimeline({ lines = [], path = [] } = {}) {
     const pathIndex = Math.max(0, Math.min(maxIndex, Math.round(step * idx)));
     const point = path[pathIndex] || path[0] || { x: 0, y: 0 };
     const line = lines[idx % lines.length] || { text: '' };
+    const sourceStar = sourceStars[idx] || null;
     return {
-      id: `odysseo-star-${idx + 1}`,
+      id: sourceStar?.id || `odysseo-star-${idx + 1}`,
       x: point.x,
       y: point.y,
-      r: 12 + (idx % 4),
+      r: sourceStar?.r || (12 + (idx % 4)),
       phase: idx * 0.42,
-      color: '#dbeafe',
-      text: line.text || '',
+      color: sourceStar?.color || '#dbeafe',
+      text: sourceStar?.text || line.text || '',
+      wave: sourceStar?.wave,
+      phaseIndex: sourceStar?.phaseIndex,
       collected: false,
       pathIndex,
     };

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildEchostoryText, estimatePathDuration, pickStarsForPath } from "../src/core/echostory/echostoryBuilder.js";
+import { buildEchostoryText, buildPathStarsFromTimeline, estimatePathDuration, pickStarsForPath } from "../src/core/echostory/echostoryBuilder.js";
 
 test("estimatePathDuration clamps and scales", () => {
   assert.equal(estimatePathDuration([], 2), 0);
@@ -32,4 +32,23 @@ test("buildEchostoryText returns shaped output", () => {
   assert.equal(typeof out.titleSuggestion, "string");
   assert.ok(Array.isArray(out.lines));
   assert.ok(out.plainText.includes("Et bientôt…"));
+});
+
+test("buildPathStarsFromTimeline reuses collected stars in order for navigi trace", () => {
+  const collectedStars = [
+    { id: "imm-1", text: "A", wave: "immersion", color: "#53b9ff", r: 19 },
+    { id: "bas-1", text: "B", wave: "bascule", color: "#ff9f40", r: 20 },
+    { id: "ouv-1", text: "C", wave: "ouverture", color: "#51d37c", r: 21 },
+  ];
+
+  const pathStars = buildPathStarsFromTimeline({
+    collectedStars,
+    lines: [{ text: "unused" }],
+    path: [{ x: 0, y: 0 }, { x: 20, y: 20 }, { x: 40, y: 40 }],
+  });
+
+  assert.equal(pathStars.length, 3);
+  assert.deepEqual(pathStars.map((star) => star.id), ["imm-1", "bas-1", "ouv-1"]);
+  assert.deepEqual(pathStars.map((star) => star.text), ["A", "B", "C"]);
+  assert.deepEqual(pathStars.map((star) => star.color), ["#53b9ff", "#ff9f40", "#51d37c"]);
 });
