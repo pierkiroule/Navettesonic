@@ -76,7 +76,7 @@ async function playEchostoryStarPreview(star, fishX = 0) {
   for (const url of candidates) {
     try {
       await playOneShotFile(url, { volume: 0.78, pan });
-      return;
+      return true;
     } catch {
       // continue
     }
@@ -84,14 +84,26 @@ async function playEchostoryStarPreview(star, fishX = 0) {
 
   for (const url of candidates) {
     const played = await playHtmlAudioFallback(url, 0.92);
-    if (played) return;
+    if (played) return true;
   }
 
   console.warn("[Soon][echostory] preview introuvable ou illisible", {
     starId: star.id,
     candidates,
   });
+  return false;
 }
+
+function triggerEchostoryStarPreview(star, fishX = 0) {
+  if (!star || star.previewPlaying) return;
+  star.previewPlaying = true;
+  star.previewStartedAt = Date.now();
+  playEchostoryStarPreview(star, fishX).finally(() => {
+    star.previewPlaying = false;
+    star.previewStartedAt = 0;
+  });
+}
+
 function pushNearbyEchostoryStars(current, onCollect) {
   if (current?.mode !== "echostory") return;
   if (!current?.fish) return;
@@ -105,14 +117,12 @@ function pushNearbyEchostoryStars(current, onCollect) {
     const dy = (star.y || 0) - fishY;
     const distance = Math.hypot(dx, dy);
     if (distance > 0 && distance < PUSH_RADIUS) {
-      if (!star.previewPlayed) {
-        star.previewPlayed = true;
-        playEchostoryStarPreview(star, fishX);
-      } else if (!star.collectedTriggered && typeof onCollect === "function") {
+      if (star.previewPlaying && !star.collectedTriggered && typeof onCollect === "function") {
         star.collectedTriggered = true;
         onCollect(star.id);
-        playEchostoryStarPreview(star, fishX);
         current.fish.tailPower = Math.min(18, Math.max(current.fish.tailPower || 0, 1) + 1);
+      } else if (!star.previewPlaying) {
+        triggerEchostoryStarPreview(star, fishX);
       }
       const ux = dx / distance;
       const uy = dy / distance;
