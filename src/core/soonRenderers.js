@@ -83,7 +83,7 @@ export function drawScene(ctx, rect, time, refs) {
 
 
       if (current.mode === "echostory" || current.mode === "reso") {
-        drawIsolated(ctx, () => drawEchostoryStars(ctx, current.echostory?.stars || [], time));
+        drawIsolated(ctx, () => drawEchostoryStars(ctx, current.echostory?.stars || [], time, current.fish));
       }
 
     if (current.interactionMode !== "edit") {

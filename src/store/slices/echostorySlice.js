@@ -53,7 +53,7 @@ export const createEchostorySlice = (set) => ({
         ...state.echostory,
         phase: "collect",
         waveIndex: safeIndex,
-        stars: createWaveStars(safeIndex, 5),
+        stars: createWaveStars(safeIndex, 15),
       },
     };
   }),

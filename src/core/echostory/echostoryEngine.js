@@ -2,7 +2,9 @@ import { ECHOSTORY_WAVES } from "../../data/echostoryFragments.js";
 
 const WAVE_KEYS = ["immersion", "bascule", "ouverture"];
 const MAX_COLLECTED_STARS = 15;
-const STARS_PER_WAVE = 5;
+const STAR_PHASE_COUNT = 3;
+const STARS_PER_PHASE = 5;
+const TOTAL_STARS = STAR_PHASE_COUNT * STARS_PER_PHASE;
 const ARENA_RADIUS = 900;
 const DEV_AUTO_COLLECT_STARS = Boolean(import.meta?.env?.DEV);
 
@@ -20,17 +22,20 @@ function pickRandomUnique(items, count) {
   return picks;
 }
 
-function createPearlWireLayout(count) {
+function createPearlScatterLayout(count) {
   const safeCount = Math.max(1, count);
-  const threadLength = ARENA_RADIUS * 1.55;
-  const step = safeCount > 1 ? threadLength / (safeCount - 1) : 0;
-  const startX = -threadLength * 0.5;
-
+  const radius = ARENA_RADIUS * 0.82;
   return Array.from({ length: safeCount }, (_, index) => {
-    const t = safeCount > 1 ? index / (safeCount - 1) : 0.5;
-    const x = startX + step * index;
-    const y = Math.sin(t * Math.PI * 2.2) * 55;
-    return { x, y, t };
+    const ring = index % STAR_PHASE_COUNT;
+    const angle = Math.random() * Math.PI * 2;
+    const jitter = 120 + Math.random() * 220;
+    const ringRadius = radius * (0.55 + ring * 0.18);
+    return {
+      x: Math.cos(angle) * Math.max(120, ringRadius - jitter * 0.25),
+      y: Math.sin(angle) * Math.max(120, ringRadius - jitter * 0.25),
+      t: safeCount > 1 ? index / (safeCount - 1) : 0.5,
+      phaseIndex: ring,
+    };
   });
 }
 
@@ -38,27 +43,34 @@ export function getCurrentWaveKey(waveIndex) {
   return WAVE_KEYS[waveIndex] || WAVE_KEYS[0];
 }
 
-export function createWaveStars(waveIndex, count = STARS_PER_WAVE) {
-  const wave = getCurrentWaveKey(waveIndex);
-  const bank = ECHOSTORY_WAVES[wave] || [];
-  const fragments = pickRandomUnique(bank, Math.max(0, Math.min(count, STARS_PER_WAVE)));
+const PHASE_COLORS = ["#53b9ff", "#ff9f40", "#51d37c"];
 
-  const pearls = createPearlWireLayout(fragments.length);
+export function createWaveStars(waveIndex, count = TOTAL_STARS) {
+  const fragments = [];
+  for (let phaseIndex = 0; phaseIndex < STAR_PHASE_COUNT; phaseIndex += 1) {
+    const wave = getCurrentWaveKey(phaseIndex);
+    const bank = ECHOSTORY_WAVES[wave] || [];
+    fragments.push(...pickRandomUnique(bank, STARS_PER_PHASE));
+  }
+  const limited = fragments.slice(0, Math.max(0, Math.min(count, TOTAL_STARS)));
+  const pearls = createPearlScatterLayout(limited.length);
 
-  return fragments.map((fragment, index) => ({
+  return limited.map((fragment, index) => ({
     ...fragment,
     id: `${fragment.id}-star-${index + 1}`,
     x: pearls[index]?.x ?? randomInRange(-ARENA_RADIUS, ARENA_RADIUS),
     y: pearls[index]?.y ?? randomInRange(-ARENA_RADIUS, ARENA_RADIUS),
-    r: randomInRange(14, 26),
+    r: randomInRange(14, 24),
     collected: DEV_AUTO_COLLECT_STARS,
     phase: (pearls[index]?.t ?? Math.random()) * Math.PI * 2,
+    phaseIndex: pearls[index]?.phaseIndex ?? (index % STAR_PHASE_COUNT),
+    color: PHASE_COLORS[pearls[index]?.phaseIndex ?? (index % STAR_PHASE_COUNT)],
   }));
 }
 
 export function canAdvanceWave(echostory) {
   const stars = echostory?.stars || [];
-  return stars.length === STARS_PER_WAVE && stars.every((star) => star.collected === true);
+  return stars.length >= TOTAL_STARS && stars.every((star) => star.collected === true);
 }
 
 export function collectStar(echostory, starId) {
@@ -93,14 +105,11 @@ export function advanceWave(echostory) {
     ...currentWaveCollected.filter((star) => !knownStarIds.has(star?.id)),
   ].slice(0, MAX_COLLECTED_STARS);
 
-  const nextWaveIndex = echostory.waveIndex + 1;
-  const hasNextWave = nextWaveIndex < WAVE_KEYS.length;
-
   return {
     ...echostory,
-    waveIndex: hasNextWave ? nextWaveIndex : echostory.waveIndex,
-    phase: hasNextWave ? "collect" : "story",
-    stars: hasNextWave ? createWaveStars(nextWaveIndex, STARS_PER_WAVE) : [],
+    waveIndex: 0,
+    phase: "story",
+    stars: [],
     collectedStars: mergedCollectedStars,
   };
 }
@@ -109,7 +118,7 @@ export function resetEchostoryState() {
   return {
     phase: "collect",
     waveIndex: 0,
-    stars: createWaveStars(0, STARS_PER_WAVE),
+    stars: createWaveStars(0, TOTAL_STARS),
     collectedStars: [],
     storyTimeline: [],
     timelineCursor: 0,
