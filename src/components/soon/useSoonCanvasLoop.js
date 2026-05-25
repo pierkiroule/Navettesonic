@@ -105,18 +105,37 @@ function triggerEchostoryStarPreview(star, fishX = 0) {
 }
 
 function pushNearbyEchostoryStars(current, onPrompt) {
-  if (current?.mode !== "echostory") return;
+  if (current?.mode !== "echostory" && current?.mode !== "reso") return;
   if (!current?.fish) return;
   const fishX = Number.isFinite(current.fish.x) ? current.fish.x : 0;
   const fishY = Number.isFinite(current.fish.y) ? current.fish.y : 0;
-  const PUSH_RADIUS = 55;
+  const TRIGGER_RADIUS = 55;
   const PUSH_DISTANCE = 18;
+  const RESO_RETRIGGER_MS = 1200;
+
   (current?.echostory?.stars || []).forEach((star) => {
     if (!star || star.collected) return;
     const dx = (star.x || 0) - fishX;
     const dy = (star.y || 0) - fishY;
     const distance = Math.hypot(dx, dy);
-    if (distance > 0 && distance < PUSH_RADIUS) {
+    const isInside = distance < TRIGGER_RADIUS;
+
+    if (current?.mode === "reso") {
+      if (!isInside) {
+        star.resoInside = false;
+        return;
+      }
+      const now = Date.now();
+      const readyByCooldown = now >= (star.resoAudioCooldownUntil || 0);
+      if (!star.resoInside && readyByCooldown && !star.previewPlaying) {
+        star.resoInside = true;
+        star.resoAudioCooldownUntil = now + RESO_RETRIGGER_MS;
+        triggerEchostoryStarPreview(star, fishX);
+      }
+      return;
+    }
+
+    if (distance > 0 && isInside) {
       if (!star.previewPlaying && !star.collectPromptOpen) {
         star.collectPromptOpen = true;
         triggerEchostoryStarPreview(star, fishX);
