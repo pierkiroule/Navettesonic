@@ -25,6 +25,7 @@ const TRIANGLE_AUDIO_TRIGGER_RADIUS = 94;
 const TRIANGLE_AUDIO_RETRIGGER_COOLDOWN_MS = 14000;
 const FIREFLY_VOICE_CHAIN_DELAY_MS = 3000;
 const FIREFLY_PREVIEW_HOLD_MS = 600;
+const FIREFLY_HEAD_PUSH_FORCE = 1.15;
 
 const fireflies = [];
 const plumeTrail = [];
@@ -314,6 +315,8 @@ function spawnFirefly(sampleIndex = null) {
     previewPlaying: false,
     previewTouchedDuringPlayback: false,
     previewCollectArmedUntil: 0,
+    hasPlayedPreview: false,
+    wasHeadTouching: false,
   });
 }
 
@@ -346,6 +349,8 @@ export function spawnFireflyFromSeed(x = 0, y = 0) {
     previewPlaying: false,
     previewTouchedDuringPlayback: false,
     previewCollectArmedUntil: 0,
+    hasPlayedPreview: false,
+    wasHeadTouching: false,
   });
 }
 
@@ -523,11 +528,24 @@ function attractUsefulFireflyToPlume(firefly, now) {
   firefly.pushedAt = now;
 }
 
+
+function pushFireflyFromHead(firefly, fish) {
+  const mouth = getMouth(fish);
+  const dx = firefly.x - mouth.x;
+  const dy = firefly.y - mouth.y;
+  const d = Math.hypot(dx, dy) || 1;
+  const nx = dx / d;
+  const ny = dy / d;
+  firefly.vx += nx * FIREFLY_HEAD_PUSH_FORCE + (fish.vx || 0) * 0.08;
+  firefly.vy += ny * FIREFLY_HEAD_PUSH_FORCE + (fish.vy || 0) * 0.08;
+}
+
 async function triggerFireflyPreview(firefly, now) {
   if (!firefly || firefly.previewPlaying) return;
 
   firefly.previewPlaying = true;
   firefly.previewTouchedDuringPlayback = false;
+  firefly.hasPlayedPreview = true;
 
   try {
     await playOneShotFile(firefly.sampleUrl, {
@@ -548,14 +566,24 @@ function tryCollectFirefly(fish, firefly, now) {
 
   const mouth = getMouth(fish);
   const distanceToHead = Math.hypot(mouth.x - firefly.x, mouth.y - firefly.y);
-  if (distanceToHead > FIREFLY_HEAD_TOUCH_RADIUS + firefly.r) return false;
+  const isTouchingHead = distanceToHead <= FIREFLY_HEAD_TOUCH_RADIUS + firefly.r;
+  const justTouchedHead = isTouchingHead && !firefly.wasHeadTouching;
+
+  firefly.wasHeadTouching = isTouchingHead;
+
+  if (!justTouchedHead) return false;
+
+  if (!firefly.hasPlayedPreview) {
+    pushFireflyFromHead(firefly, fish);
+    void triggerFireflyPreview(firefly, now);
+    return false;
+  }
 
   if (firefly.previewPlaying || now < (firefly.previewCollectArmedUntil || 0)) {
     firefly.previewTouchedDuringPlayback = true;
     return attachSingleFireflyToTail(fish, firefly, now);
   }
 
-  void triggerFireflyPreview(firefly, now);
   return false;
 }
 
@@ -1018,12 +1046,6 @@ export function detachHaikuTriangleAt(x, y) {
     x,
     y,
     bornAt: performance.now(),
-    sampleIndex: resolvedSampleIndex,
-    sampleUrl,
-    wave,
-    previewPlaying: false,
-    previewTouchedDuringPlayback: false,
-    previewCollectArmedUntil: 0,
     fireflies: placed,
   });
 
@@ -1131,7 +1153,5 @@ export function resetFireflyGame() {
   completeTriangleSince = 0;
   placedTriangles.length = 0;
   resonanceBubbles.length = 0;
-  spawnClock = 1;
-  progressiveSpawnLock = false;
   spawnFirefly();
 }
