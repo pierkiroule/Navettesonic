@@ -409,6 +409,17 @@ export default function SoonApp({ onBack }) {
 
         <button
           type="button"
+          className={`top-nav-icon top-nav-plume ${plumeTraceActive ? "active" : ""}`}
+          onClick={() => setPlumeTraceActive((value) => !value)}
+          aria-label={plumeTraceActive ? "Désactiver la plume" : "Activer la plume"}
+          title={isOdysseo ? "🪶 Active le traçage par déplacement de Soon" : "Passez en Navigo pour activer la plume"}
+          disabled={!isOdysseo}
+        >
+          🪶
+        </button>
+
+        <button
+          type="button"
           className="top-nav-icon top-nav-profile"
           onClick={() => setPage("profile")}
           aria-label="Profil"
@@ -588,15 +599,6 @@ export default function SoonApp({ onBack }) {
               </div>
 
               <div className="tool-row trace-tools">
-                <button
-                  type="button"
-                  className={`bubble-btn tool-chip ${plumeTraceActive ? "active" : ""}`}
-                  onClick={() => setPlumeTraceActive((value) => !value)}
-                  title="Tracer automatiquement avec les déplacements de Soon"
-                >
-                  🪶 Plume {plumeTraceActive ? "ON" : "OFF"}
-                </button>
-
                 <button
                   type="button"
                   className={`bubble-btn tool-chip ${odysseoTool === "depth" ? "active" : ""}`}
