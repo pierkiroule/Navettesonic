@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import SidePanel from "../components/SidePanel.jsx";
 import SoonCanvas from "../components/SoonCanvas.jsx";
-import WorkflowShell from "../components/WorkflowShell.jsx";
 import Profile from "./Profile.jsx";
 import BubbleBucketsMenu from "../components/BubbleBucketsMenu.jsx";
 import { useSoonStore } from "../store/useSoonStore.js";
@@ -21,11 +20,7 @@ import {
   SOON_MODE_COMPO,
   SOON_MODE_RESO,
   SOON_MODE_ECHOSTORY,
-  WORKFLOW_ROOT_COMPO,
-  WORKFLOW_ROOT_NAVIGO,
-  modeToWorkflowRoot,
   normalizeOdysseoMode,
-  workflowRootToMode,
 } from "../core/uiState.js";
 
 
@@ -37,7 +32,6 @@ const SPEED_BY_LEVEL = {
 
 export default function SoonApp({ onBack }) {
   const [page, setPage] = useState("arena");
-  const [activeRoot, setActiveRoot] = useState(WORKFLOW_ROOT_COMPO);
   const [interactionMode, setInteractionMode] = useState("swim");
   const [odysseoMode, setOdysseoMode] = useState(ODYSSEO_MODE_TRACE);
   const [viewZoom, setViewZoom] = useState(1);
@@ -145,20 +139,29 @@ export default function SoonApp({ onBack }) {
 
 
   const flowStep = useMemo(() => {
-    if (mode === SOON_MODE_COMPO) {
+    const starCount = echostory?.collectedStars?.length || 0;
+    const hasPath = Array.isArray(odysseoPath) && odysseoPath.length >= 8;
+    const phase = isOdysseo ? "navigo" : "compo";
+    if (phase === "compo") {
       return {
-        key: SOON_MODE_COMPO,
-        title: "Compo•°",
-        tip: "Cueillez des étoiles de rêverie en trois vagues.",
+        key: "compo",
+        title: "1. Composer",
+        tip: "Choisissez vos bulles et cueillez vos étoiles vocales.",
       };
     }
-
+    if (!hasPath) {
+      return {
+        key: "trace",
+        title: "2. Tracer",
+        tip: `Tracez un parcours (8 points mini). Étoiles prêtes: ${starCount}.`,
+      };
+    }
     return {
-      key: WORKFLOW_ROOT_NAVIGO,
-      title: "Navigo",
-      tip: "Tracez un parcours avec vos étoiles sonores récoltées.",
+      key: "play",
+      title: "3. Lire",
+      tip: "Relisez la séance et exportez votre rendu immersif.",
     };
-  }, [mode]);
+  }, [echostory?.collectedStars?.length, isOdysseo, odysseoPath]);
 
   const [stepTipVisible, setStepTipVisible] = useState(false);
 
@@ -166,44 +169,24 @@ export default function SoonApp({ onBack }) {
     const fromHash = parseWorkflowFromHash(window.location.hash);
     const persistedRoot = readPersistedWorkflowRoot();
 
-    if (fromHash?.root === WORKFLOW_ROOT_NAVIGO) {
-      setActiveRoot(WORKFLOW_ROOT_NAVIGO);
+    if (fromHash?.root === "navigo") {
       setMode(SOON_MODE_RESO);
       setOdysseoMode(normalizeOdysseoMode(fromHash.odysseoMode));
       return;
     }
 
-    if (persistedRoot === WORKFLOW_ROOT_NAVIGO) {
-      setActiveRoot(WORKFLOW_ROOT_NAVIGO);
+    if (persistedRoot === "navigo") {
       setMode(SOON_MODE_RESO);
       setOdysseoMode(ODYSSEO_MODE_TRACE);
       return;
     }
-    setActiveRoot(WORKFLOW_ROOT_COMPO);
   }, [setMode]);
 
   useEffect(() => {
-    const root = modeToWorkflowRoot(mode);
+    const root = mode === SOON_MODE_COMPO ? "echostory" : "navigo";
     persistWorkflowRoot(root);
     window.history.replaceState(null, "", serializeWorkflowHash(root, odysseoMode));
   }, [mode, odysseoMode]);
-
-  const setWorkflowRoot = (root) => {
-    setActiveRoot(root);
-
-
-    stopCircuitAutopilot();
-    setInteractionMode("swim");
-    setIsTravelPlaying(false);
-
-    if (root === WORKFLOW_ROOT_NAVIGO) {
-      setMode(SOON_MODE_RESO);
-      setOdysseoMode((current) => normalizeOdysseoMode(current));
-      return;
-    }
-
-    setMode(workflowRootToMode(root));
-  };
 
   useEffect(() => {
     setStepTipVisible(true);
@@ -409,11 +392,11 @@ export default function SoonApp({ onBack }) {
           <span>{flowStep.tip}</span>
         </div>
 
-        <div className="top-nav-flow">
-          <WorkflowShell
-            activeRoot={activeRoot}
-            onChangeRoot={setWorkflowRoot}
-          />
+        <div className="top-nav-flow" aria-live="polite">
+          <span className="flow-chip">Bulles</span>
+          <span className="flow-chip">Étoiles</span>
+          <span className="flow-chip">Tracé</span>
+          <span className="flow-chip">Lecture</span>
         </div>
 
         <button
