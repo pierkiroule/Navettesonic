@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import SidePanel from "../components/SidePanel.jsx";
 import SoonCanvas from "../components/SoonCanvas.jsx";
-import EchostoryOverlay from "../components/EchostoryOverlay.jsx";
 import WorkflowShell from "../components/WorkflowShell.jsx";
 import Profile from "./Profile.jsx";
 import BubbleBucketsMenu from "../components/BubbleBucketsMenu.jsx";
@@ -53,7 +52,6 @@ export default function SoonApp({ onBack }) {
   const [bubblesIntensity, setBubblesIntensity] = useState(1);
   const [bubbleBucketsOpen, setBubbleBucketsOpen] = useState(false);
   const [fishCockpitFolded, setFishCockpitFolded] = useState(false);
-  const [echostoryDraft, setEchostoryDraft] = useState(null);
   const speedBoostUntilRef = useRef(0);
 
   const {
@@ -126,11 +124,6 @@ export default function SoonApp({ onBack }) {
   const isEchostory = mode === SOON_MODE_ECHOSTORY;
   const waveIndex = Math.max(0, Math.min(2, Number.isFinite(echostory?.waveIndex) ? echostory.waveIndex : 0));
   const waveNames = ["Immersion", "Bascule", "Ouverture"];
-  const waveCopy = [
-    "Entrez par les sensations.",
-    "Laissez l’étrange apparaître.",
-    "Approchez du rêve.",
-  ];
   const stars = echostory?.stars || [];
   const collectedInWave = stars.filter((star) => star?.collected).length;
   const isStoryReady = echostory?.phase === "story";
@@ -251,12 +244,6 @@ export default function SoonApp({ onBack }) {
       return;
     }
 
-    const title = "Navigo · Tracé composé d’étoiles MP3";
-    const plainText = mp3Trace
-      .map((item) => `${String(item.cue).padStart(2, "0")}. [${item.wave}] ${item.title} → ${item.suggestedFile}`)
-      .join("\n");
-
-    setEchostoryDraft({ titleSuggestion: title, plainText });
     setExportStatus(`Tracé MP3 prêt (${mp3Trace.length} étoiles).`);
   };
 
@@ -530,13 +517,11 @@ export default function SoonApp({ onBack }) {
         <section className="echostory-hud" aria-live="polite">
           <span className="echostory-chip">Vague {waveIndex + 1} — {waveNames[waveIndex]}</span>
           <span className="echostory-chip">{collectedInWave} / 5 étoiles cueillies</span>
-          <span className="echostory-chip">{waveCopy[waveIndex]}</span>
           {canGoNextWave && (
             <button type="button" className="echostory-next" onClick={advanceEchostoryWave}>
               Vague suivante
             </button>
           )}
-          {isStoryReady && <span className="echostory-chip">Votre matière de rêverie est prête. Passez dans Navigo.</span>}
         </section>
       )}
 
@@ -795,40 +780,6 @@ export default function SoonApp({ onBack }) {
           )}
         </div>
       )}
-
-
-      {isOdysseo && echostoryDraft && (
-        <section className="export-status" style={{ maxWidth: 560, whiteSpace: "pre-wrap" }}>
-          <strong>{echostoryDraft.titleSuggestion}</strong>
-          <div style={{ marginTop: 8 }}>{echostoryDraft.plainText}</div>
-        </section>
-      )}
-
-
-      {mode === SOON_MODE_ECHOSTORY && (echostory?.escapeState === "approach" || echostory?.escapeState === "opening") && (
-        <section
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 24,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            pointerEvents: "none",
-            background: "rgba(3,10,22,0.22)",
-            color: "#eef6ff",
-            textAlign: "center",
-            padding: 24,
-            fontSize: "clamp(18px, 5vw, 30px)",
-            textShadow: "0 2px 14px rgba(0,0,0,0.5)",
-          }}
-        >
-          <strong>
-            {echostory?.escapeState === "approach" ? "Soon trouve une ouverture…" : "Le bocal s’ouvre…"}
-          </strong>
-        </section>
-      )}
-      <EchostoryOverlay line={echostory?.activeLine} visible={Boolean(echostory?.traversalActive && echostory?.activeLine)} />
 
       <BubbleBucketsMenu
         open={bubbleBucketsOpen}
