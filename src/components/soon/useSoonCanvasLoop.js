@@ -7,7 +7,7 @@ import {
   resizeCanvas,
   updateArena,
 } from "../../core/soonCamera.js";
-import { updateBubbleSpatialMix } from "../../core/audioEngine.js";
+import { playOneShotFile, updateBubbleSpatialMix } from "../../core/audioEngine.js";
 import { updateEcosystemFx } from "../../core/ecosystemFx.js";
 import { updateBubbleAudioTriggers } from "../../core/soonAudioTriggers.js";
 import { drawScene } from "../../core/soonRenderers.js";
@@ -18,6 +18,38 @@ import {
 } from "../../core/characters/characterEngine.js";
 
 
+
+const ECHOSTORY_VOICE_BASE_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/sooncut";
+
+function getEchostorySampleUrlCandidates(sampleIndex) {
+  const n = String(sampleIndex);
+  const n2 = String(sampleIndex).padStart(2, "0");
+  const n3 = String(sampleIndex).padStart(3, "0");
+  return [
+    `${ECHOSTORY_VOICE_BASE_URL}/extrait_${n3}.mp3`,
+    `${ECHOSTORY_VOICE_BASE_URL}/extrait_${n2}.mp3`,
+    `${ECHOSTORY_VOICE_BASE_URL}/extrait_${n}.mp3`,
+    `${ECHOSTORY_VOICE_BASE_URL}/${n3}.mp3`,
+    `${ECHOSTORY_VOICE_BASE_URL}/${n2}.mp3`,
+    `${ECHOSTORY_VOICE_BASE_URL}/${n}.mp3`,
+  ];
+}
+
+async function playEchostoryStarPreview(star, fishX = 0) {
+  if (!star) return;
+  const sampleIndex = Number.parseInt(String(star.id || "").match(/(\d{1,3})/)?.[1] || "", 10);
+  if (!Number.isFinite(sampleIndex)) return;
+  const pan = Math.max(-0.85, Math.min(0.85, fishX / 420));
+  const candidates = getEchostorySampleUrlCandidates(sampleIndex);
+  for (const url of candidates) {
+    try {
+      await playOneShotFile(url, { volume: 0.4, pan });
+      return;
+    } catch {
+      // continue
+    }
+  }
+}
 function pushNearbyEchostoryStars(current) {
   if (current?.mode !== "echostory") return;
   if (!current?.fish) return;
@@ -31,6 +63,10 @@ function pushNearbyEchostoryStars(current) {
     const dy = (star.y || 0) - fishY;
     const distance = Math.hypot(dx, dy);
     if (distance > 0 && distance < PUSH_RADIUS) {
+      if (!star.previewPlayed) {
+        star.previewPlayed = true;
+        playEchostoryStarPreview(star, fishX);
+      }
       const ux = dx / distance;
       const uy = dy / distance;
       star.x = (star.x || 0) + ux * PUSH_DISTANCE;
