@@ -382,7 +382,6 @@ export default function SoonApp({ onBack }) {
     useSoonStore.setState((state) => ({
       echostory: { ...state.echostory, storyTimeline, stars, timelineCursor: 0, activeLine: null },
     }));
-    setEchostoryDraft({ titleSuggestion: "ÉchoStory tracée", plainText: currentLines.map((l) => l.text).join("\n") });
     startEchostoryTraversal();
     setIsTravelPlaying(true);
   };
