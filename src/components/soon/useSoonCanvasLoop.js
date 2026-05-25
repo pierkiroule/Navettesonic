@@ -7,7 +7,7 @@ import {
   resizeCanvas,
   updateArena,
 } from "../../core/soonCamera.js";
-import { updateBubbleSpatialMix } from "../../core/audioEngine.js";
+import { playOneShotFile, updateBubbleSpatialMix } from "../../core/audioEngine.js";
 import { updateEcosystemFx } from "../../core/ecosystemFx.js";
 import { updateBubbleAudioTriggers } from "../../core/soonAudioTriggers.js";
 import { drawScene } from "../../core/soonRenderers.js";
@@ -18,17 +18,118 @@ import {
 } from "../../core/characters/characterEngine.js";
 
 
-function collectNearbyEchostoryStars(current, onCollect) {
+
+const ECHOSTORY_VOICE_BASE_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/sooncut";
+
+function getEchostorySampleUrlCandidates(sampleIndex) {
+  const n = String(sampleIndex);
+  const n2 = String(sampleIndex).padStart(2, "0");
+  const n3 = String(sampleIndex).padStart(3, "0");
+  return [
+    `${ECHOSTORY_VOICE_BASE_URL}/extrait_${n3}.mp3`,
+    `${ECHOSTORY_VOICE_BASE_URL}/extrait_${n2}.mp3`,
+    `${ECHOSTORY_VOICE_BASE_URL}/extrait_${n}.mp3`,
+    `${ECHOSTORY_VOICE_BASE_URL}/${n3}.mp3`,
+    `${ECHOSTORY_VOICE_BASE_URL}/${n2}.mp3`,
+    `${ECHOSTORY_VOICE_BASE_URL}/${n}.mp3`,
+  ];
+}
+
+async function playHtmlAudioFallback(url, volume = 0.85) {
+  if (typeof Audio === "undefined") return false;
+  return new Promise((resolve) => {
+    const audio = new Audio(url);
+    audio.preload = "auto";
+    audio.crossOrigin = "anonymous";
+    audio.volume = Math.max(0.05, Math.min(1, volume));
+    const cleanup = () => {
+      audio.onended = null;
+      audio.onerror = null;
+      audio.oncanplaythrough = null;
+    };
+    audio.onended = () => {
+      cleanup();
+      resolve(true);
+    };
+    audio.onerror = () => {
+      cleanup();
+      resolve(false);
+    };
+    audio.oncanplaythrough = async () => {
+      try {
+        await audio.play();
+      } catch {
+        cleanup();
+        resolve(false);
+      }
+    };
+    audio.load();
+  });
+}
+
+async function playEchostoryStarPreview(star, fishX = 0) {
+  if (!star) return;
+  const sampleIndex = Number.parseInt(String(star.id || "").match(/(\d{1,3})/)?.[1] || "", 10);
+  if (!Number.isFinite(sampleIndex)) return;
+  const pan = Math.max(-0.85, Math.min(0.85, fishX / 420));
+  const candidates = getEchostorySampleUrlCandidates(sampleIndex);
+  for (const url of candidates) {
+    try {
+      await playOneShotFile(url, { volume: 0.78, pan });
+      return true;
+    } catch {
+      // continue
+    }
+  }
+
+  for (const url of candidates) {
+    const played = await playHtmlAudioFallback(url, 0.92);
+    if (played) return true;
+  }
+
+  console.warn("[Soon][echostory] preview introuvable ou illisible", {
+    starId: star.id,
+    candidates,
+  });
+  return false;
+}
+
+function triggerEchostoryStarPreview(star, fishX = 0) {
+  if (!star || star.previewPlaying) return;
+  star.previewPlaying = true;
+  star.previewStartedAt = Date.now();
+  playEchostoryStarPreview(star, fishX).finally(() => {
+    star.previewPlaying = false;
+    star.previewStartedAt = 0;
+  });
+}
+
+function pushNearbyEchostoryStars(current, onPrompt) {
   if (current?.mode !== "echostory") return;
-  if (!onCollect || !current?.fish) return;
+  if (!current?.fish) return;
   const fishX = Number.isFinite(current.fish.x) ? current.fish.x : 0;
   const fishY = Number.isFinite(current.fish.y) ? current.fish.y : 0;
+  const PUSH_RADIUS = 55;
+  const PUSH_DISTANCE = 18;
   (current?.echostory?.stars || []).forEach((star) => {
     if (!star || star.collected) return;
     const dx = (star.x || 0) - fishX;
     const dy = (star.y || 0) - fishY;
-    if (Math.hypot(dx, dy) < 55) {
-      onCollect(star.id);
+    const distance = Math.hypot(dx, dy);
+    if (distance > 0 && distance < PUSH_RADIUS) {
+      if (!star.previewPlaying && !star.collectPromptOpen) {
+        star.collectPromptOpen = true;
+        triggerEchostoryStarPreview(star, fishX);
+        onPrompt?.(star.id);
+      }
+      const ux = dx / distance;
+      const uy = dy / distance;
+      star.x = (star.x || 0) + ux * PUSH_DISTANCE;
+      star.y = (star.y || 0) + uy * PUSH_DISTANCE;
+      return;
+    }
+    if (distance === 0) {
+      star.y = (star.y || 0) - PUSH_DISTANCE;
     }
   });
 }
@@ -42,6 +143,7 @@ export function useSoonCanvasLoop({
   onTickFish,
   onSemioseVideoTrigger,
   onCollectEchostoryStar,
+  onPromptEchostoryStarCollect,
 }) {
   useEffect(() => {
     let frame = 0;
@@ -134,7 +236,7 @@ export function useSoonCanvasLoop({
       }
 
       const next = stateRef.current || {};
-      collectNearbyEchostoryStars(next, onCollectEchostoryStar);
+      pushNearbyEchostoryStars(next, onPromptEchostoryStarCollect);
       const nextFish = next.fish || null;
       const arenaCenter = getArenaWorldCenter(next);
       const fishWorld = nextFish
@@ -255,5 +357,6 @@ export function useSoonCanvasLoop({
     onTickFish,
     onSemioseVideoTrigger,
     onCollectEchostoryStar,
+    onPromptEchostoryStarCollect,
   ]);
 }

@@ -11,6 +11,9 @@ export function drawEchostoryStars(ctx, stars = [], time = 0) {
       const y = Number.isFinite(star.y) ? star.y : 0;
       const color = star.color || "#ffffff";
 
+      const blinking = star.previewPlaying === true;
+      const blinkPulse = blinking ? (Math.sin(time * 0.028 + (star.phase || 0) + index) > 0 ? 1 : 0.18) : 1;
+
       const halo = ctx.createRadialGradient(x, y, radius * 0.2, x, y, radius * 2.8);
       halo.addColorStop(0, `${color}aa`);
       halo.addColorStop(0.45, `${color}44`);
@@ -23,13 +26,13 @@ export function drawEchostoryStars(ctx, stars = [], time = 0) {
       ctx.beginPath();
       ctx.arc(x, y, radius, 0, Math.PI * 2);
       ctx.fillStyle = color;
-      ctx.globalAlpha = 0.85;
+      ctx.globalAlpha = 0.85 * blinkPulse;
       ctx.fill();
 
       ctx.beginPath();
       ctx.arc(x - radius * 0.2, y - radius * 0.2, radius * 0.28, 0, Math.PI * 2);
       ctx.fillStyle = "rgba(255,255,255,0.9)";
-      ctx.globalAlpha = 0.85;
+      ctx.globalAlpha = 0.85 * blinkPulse;
       ctx.fill();
 
       if (star.text) {

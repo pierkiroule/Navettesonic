@@ -75,6 +75,7 @@ export default function SoonCanvas({
   const [earActivationText, setEarActivationText] = useState("");
   const [audioTuning, setAudioTuningState] = useState(() => getAudioTuning());
   const [showSensitivitySlider, setShowSensitivitySlider] = useState(false);
+  const [echostoryPrompt, setEchostoryPrompt] = useState(null);
 
   const cameraRef = useRef({
     x: 0,
@@ -241,7 +242,16 @@ export default function SoonCanvas({
     onTickFish,
     onSemioseVideoTrigger: setSemioseVideo,
     onCollectEchostoryStar,
+    onPromptEchostoryStarCollect: (starId) => {
+      setEchostoryPrompt({ starId, openedAt: Date.now() });
+    },
   });
+
+  useEffect(() => {
+    if (!echostoryPrompt) return;
+    const timeoutId = setTimeout(() => setEchostoryPrompt(null), 7000);
+    return () => clearTimeout(timeoutId);
+  }, [echostoryPrompt]);
 
   const {
     handlePointerDown,
@@ -437,6 +447,44 @@ export default function SoonCanvas({
               }}
             />
           </label>
+        </div>
+      ) : null}
+      {echostoryPrompt && mode === "echostory" ? (
+        <div className="echostory-prompt-menu" role="dialog" aria-live="polite" aria-label="Cueillir l'étoile ?">
+          <p>Cette étoile parle. La cueillir ?</p>
+          <div className="echostory-prompt-actions">
+            <button
+              type="button"
+              onClick={() => {
+                onCollectEchostoryStar?.(echostoryPrompt.starId);
+                if (stateRef.current?.fish) {
+                  stateRef.current.fish.tailPower = Math.min(18, Math.max(stateRef.current.fish.tailPower || 0, 1) + 1);
+                }
+                const stars = stateRef.current?.echostory?.stars || [];
+                const star = stars.find((item) => item?.id === echostoryPrompt.starId);
+                if (star) {
+                  star.collectedTriggered = true;
+                  star.collectPromptOpen = false;
+                }
+                setEchostoryPrompt(null);
+              }}
+            >
+              Oui, cueillir
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const stars = stateRef.current?.echostory?.stars || [];
+                const star = stars.find((item) => item?.id === echostoryPrompt.starId);
+                if (star) {
+                  star.collectPromptOpen = false;
+                }
+                setEchostoryPrompt(null);
+              }}
+            >
+              Non
+            </button>
+          </div>
         </div>
       ) : null}
     </div>
