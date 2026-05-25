@@ -105,7 +105,7 @@ function triggerEchostoryStarPreview(star, fishX = 0) {
 }
 
 function pushNearbyEchostoryStars(current, onPrompt) {
-  if (current?.mode !== "echostory") return;
+  if (current?.mode !== "echostory" && current?.mode !== "reso") return;
   if (!current?.fish) return;
   const fishX = Number.isFinite(current.fish.x) ? current.fish.x : 0;
   const fishY = Number.isFinite(current.fish.y) ? current.fish.y : 0;

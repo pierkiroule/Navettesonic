@@ -163,7 +163,7 @@ export default function SoonApp({ onBack }) {
     return {
       key: WORKFLOW_ROOT_NAVIGO,
       title: "Navigo",
-      tip: "Tracez le chemin que Soon va traverser.",
+      tip: "Tracez un parcours avec vos étoiles sonores récoltées.",
     };
   }, [mode]);
 
@@ -540,6 +540,13 @@ export default function SoonApp({ onBack }) {
         </section>
       )}
 
+      {isOdysseo && (
+        <section className="echostory-hud" aria-live="polite">
+          <span className="echostory-chip">Navigo: tracez un parcours qui rejoue vos étoiles sonores.</span>
+          <span className="echostory-chip">Étoiles récoltées: {(echostory?.collectedStars || []).length} / 15</span>
+        </section>
+      )}
+
       <div className={`cockpit ${isOdysseo ? "odysseo-cockpit" : ""}`}>
         <div className="cockpit-buttons">
           {isOdysseo ? (
@@ -560,7 +567,7 @@ export default function SoonApp({ onBack }) {
                   disabled={!odysseoPath || odysseoPath.length < 8}
                   title="Lancer la traversée"
                 >
-                  {echostory?.traversalActive ? "Mettre en pause" : "✨ Composer + Traverser"}
+                  {echostory?.traversalActive ? "Mettre en pause" : "✨ Lire le tracé"}
                 </button>
 
                 <button
@@ -574,7 +581,7 @@ export default function SoonApp({ onBack }) {
                       : "Trace un parcours d’abord"
                   }
                 >
-                  🎧 Générer immersion
+                  🎧 Rendu immersion
                 </button>
 
                 <button
@@ -583,7 +590,7 @@ export default function SoonApp({ onBack }) {
                   onClick={handleGenerateStarMp3Trace}
                   title="Composer un tracé d’étoiles MP3"
                 >
-                  ⭐ Tracé MP3
+                  ⭐ Composer le tracé étoiles
                 </button>
               </div>
 
