@@ -104,7 +104,7 @@ function triggerEchostoryStarPreview(star, fishX = 0) {
   });
 }
 
-function pushNearbyEchostoryStars(current, onCollect) {
+function pushNearbyEchostoryStars(current, onPrompt) {
   if (current?.mode !== "echostory") return;
   if (!current?.fish) return;
   const fishX = Number.isFinite(current.fish.x) ? current.fish.x : 0;
@@ -117,12 +117,10 @@ function pushNearbyEchostoryStars(current, onCollect) {
     const dy = (star.y || 0) - fishY;
     const distance = Math.hypot(dx, dy);
     if (distance > 0 && distance < PUSH_RADIUS) {
-      if (star.previewPlaying && !star.collectedTriggered && typeof onCollect === "function") {
-        star.collectedTriggered = true;
-        onCollect(star.id);
-        current.fish.tailPower = Math.min(18, Math.max(current.fish.tailPower || 0, 1) + 1);
-      } else if (!star.previewPlaying) {
+      if (!star.previewPlaying && !star.collectPromptOpen) {
+        star.collectPromptOpen = true;
         triggerEchostoryStarPreview(star, fishX);
+        onPrompt?.(star.id);
       }
       const ux = dx / distance;
       const uy = dy / distance;
@@ -145,6 +143,7 @@ export function useSoonCanvasLoop({
   onTickFish,
   onSemioseVideoTrigger,
   onCollectEchostoryStar,
+  onPromptEchostoryStarCollect,
 }) {
   useEffect(() => {
     let frame = 0;
@@ -237,7 +236,7 @@ export function useSoonCanvasLoop({
       }
 
       const next = stateRef.current || {};
-      pushNearbyEchostoryStars(next, onCollectEchostoryStar);
+      pushNearbyEchostoryStars(next, onPromptEchostoryStarCollect);
       const nextFish = next.fish || null;
       const arenaCenter = getArenaWorldCenter(next);
       const fishWorld = nextFish
@@ -358,5 +357,6 @@ export function useSoonCanvasLoop({
     onTickFish,
     onSemioseVideoTrigger,
     onCollectEchostoryStar,
+    onPromptEchostoryStarCollect,
   ]);
 }
