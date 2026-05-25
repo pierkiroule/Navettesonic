@@ -361,7 +361,11 @@ export default function SoonApp({ onBack }) {
       silenceStyle: "dots",
     }).lines.map((line, index) => ({ id: line.id || `preview-${index + 1}`, text: line.text }));
 
-    const stars = buildPathStarsFromTimeline({ lines: previewLines, path: odysseoPath || [] });
+    const stars = buildPathStarsFromTimeline({
+      lines: previewLines,
+      path: odysseoPath || [],
+      collectedStars: echostory?.collectedStars || [],
+    });
     useSoonStore.setState((state) => ({
       echostory: { ...state.echostory, stars },
     }));
@@ -378,7 +382,11 @@ export default function SoonApp({ onBack }) {
         }).lines.map((line, index) => ({ ...line, id: `line-${index + 1}` }));
 
     const storyTimeline = buildStoryTimeline({ lines: currentLines, path: odysseoPath || [] });
-    const stars = buildPathStarsFromTimeline({ lines: currentLines, path: odysseoPath || [] });
+    const stars = buildPathStarsFromTimeline({
+      lines: currentLines,
+      path: odysseoPath || [],
+      collectedStars: echostory?.collectedStars || [],
+    });
     useSoonStore.setState((state) => ({
       echostory: { ...state.echostory, storyTimeline, stars, timelineCursor: 0, activeLine: null },
     }));
