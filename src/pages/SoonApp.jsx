@@ -437,16 +437,6 @@ export default function SoonApp({ onBack }) {
           const boosted = Date.now() < speedBoostUntilRef.current;
           const effectiveSwimSpeed = boosted ? swimSpeed * 1.8 : swimSpeed;
           if (isOdysseo) {
-            if (plumeTraceActiveRef.current && !isTravelPlaying && Number.isFinite(fish?.x) && Number.isFinite(fish?.y)) {
-              const previous = plumeLastPointRef.current;
-              const dx = previous ? fish.x - previous.x : 999;
-              const dy = previous ? fish.y - previous.y : 999;
-              const distance = Math.hypot(dx, dy);
-              if (!previous || distance >= 18) {
-                addOdysseoPathPoint(fish.x, fish.y);
-                plumeLastPointRef.current = { x: fish.x, y: fish.y };
-              }
-            }
             if (isTravelPlaying) {
               if (echostory?.traversalActive) {
                 const result = tickEchostoryTraversal(useSoonStore.getState(), { desiredDurationSec: 180 });
@@ -475,6 +465,23 @@ export default function SoonApp({ onBack }) {
                 return;
               }
               tickOdysseoPath({ swimSpeed: effectiveSwimSpeed });
+              return;
+            }
+
+            tickFish({ swimSpeed: effectiveSwimSpeed, arenaRadius });
+
+            if (plumeTraceActiveRef.current) {
+              const fishNow = useSoonStore.getState()?.fish;
+              if (Number.isFinite(fishNow?.x) && Number.isFinite(fishNow?.y)) {
+                const previous = plumeLastPointRef.current;
+                const dx = previous ? fishNow.x - previous.x : 999;
+                const dy = previous ? fishNow.y - previous.y : 999;
+                const distance = Math.hypot(dx, dy);
+                if (!previous || distance >= 18) {
+                  addOdysseoPathPoint(fishNow.x, fishNow.y);
+                  plumeLastPointRef.current = { x: fishNow.x, y: fishNow.y };
+                }
+              }
             }
             return;
           }
