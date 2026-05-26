@@ -409,17 +409,6 @@ export default function SoonApp({ onBack }) {
 
         <button
           type="button"
-          className={`top-nav-icon top-nav-plume ${plumeTraceActive ? "active" : ""}`}
-          onClick={() => setPlumeTraceActive((value) => !value)}
-          aria-label={plumeTraceActive ? "Désactiver la plume" : "Activer la plume"}
-          title={isOdysseo ? "🪶 Active le traçage par déplacement de Soon" : "Passez en Navigo pour activer la plume"}
-          disabled={!isOdysseo}
-        >
-          🪶
-        </button>
-
-        <button
-          type="button"
           className="top-nav-icon top-nav-profile"
           onClick={() => setPage("profile")}
           aria-label="Profil"
@@ -782,6 +771,31 @@ export default function SoonApp({ onBack }) {
           )}
         </div>
       </div>
+
+      {isOdysseo && (
+        <div className="mode-switch-bottom" role="group" aria-label="Choix nage ou traçage">
+          <div className="mode-switch-pill">
+            <button
+              type="button"
+              className={`mode-switch-button ${!plumeTraceActive ? "active" : ""}`}
+              onClick={() => setPlumeTraceActive(false)}
+              aria-pressed={!plumeTraceActive}
+              title="Mode nage libre (sans tracer)"
+            >
+              🐟 Nage
+            </button>
+            <button
+              type="button"
+              className={`mode-switch-button ${plumeTraceActive ? "active" : ""}`}
+              onClick={() => setPlumeTraceActive(true)}
+              aria-pressed={plumeTraceActive}
+              title="Mode plume (trace le parcours avec les déplacements de Soon)"
+            >
+              🪶 Tracé
+            </button>
+          </div>
+        </div>
+      )}
 
       {isOdysseo && (exportStatus || exportUrl) && (
         <div className="export-status">
