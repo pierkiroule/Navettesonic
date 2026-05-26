@@ -817,25 +817,25 @@ export default function SoonApp({ onBack }) {
       </div>
 
       {isOdysseo && (
-        <div className="mode-switch-bottom" role="group" aria-label="Choix nage ou traçage">
+        <div className="mode-switch-bottom" role="group" aria-label="Modes tactiles Soon">
           <div className="mode-switch-pill">
             <button
               type="button"
-              className={`mode-switch-button ${!plumeTraceActive ? "active" : ""}`}
-              onClick={() => setPlumeTraceActive(false)}
-              aria-pressed={!plumeTraceActive}
-              title="Mode nage libre (sans tracer)"
+              className={`mode-switch-button ${soonTouchMode === "bubble" ? "active" : ""}`}
+              onClick={() => setSoonTouchMode("bubble")}
+              aria-pressed={soonTouchMode === "bubble"}
+              title="Mode 🫧 : pousser bulles/étoiles, écouter sans récolter"
             >
-              🐟 Nage
+              🫧 Mode bulle
             </button>
             <button
               type="button"
-              className={`mode-switch-button ${plumeTraceActive ? "active" : ""}`}
-              onClick={() => setPlumeTraceActive(true)}
-              aria-pressed={plumeTraceActive}
-              title="Mode plume (trace le parcours avec les déplacements de Soon)"
+              className={`mode-switch-button ${soonTouchMode === "plume" ? "active" : ""}`}
+              onClick={() => setSoonTouchMode("plume")}
+              aria-pressed={soonTouchMode === "plume"}
+              title="Mode 🪶 : tracer et enfiler les étoiles"
             >
-              🪶 Tracé
+              🪶 Mode plume
             </button>
           </div>
         </div>
