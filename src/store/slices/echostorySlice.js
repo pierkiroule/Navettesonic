@@ -58,6 +58,21 @@ export const createEchostorySlice = (set) => ({
     };
   }),
   collectEchostoryStar: (id) => set((state) => ({ echostory: collectStar(state.echostory, id) })),
+  threadEchostoryStar: (id) => set((state) => {
+    const echostory = state.echostory || {};
+    if (!id) return { echostory };
+    const currentCollected = echostory.collectedStars || [];
+    if (currentCollected.length >= 15) return { echostory };
+    if (currentCollected.some((star) => star?.id === id)) return { echostory };
+    const source = (echostory.stars || []).find((star) => star?.id === id);
+    if (!source) return { echostory };
+    return {
+      echostory: {
+        ...echostory,
+        collectedStars: [...currentCollected, { ...source, collected: true }].slice(0, 15),
+      },
+    };
+  }),
   advanceEchostoryWave: () => set((state) => ({ echostory: advanceWave(state.echostory) })),
   generateEchostoryText: () => set((state) => {
     const advanced = state.echostory;

@@ -98,6 +98,7 @@ export default function SoonApp({ onBack }) {
     arenaBlob,
     echostory,
     collectEchostoryStar,
+    threadEchostoryStar,
     resetEchostory,
     advanceEchostoryWave,
     triggerEscapeCinematic,
@@ -367,8 +368,8 @@ export default function SoonApp({ onBack }) {
     const collectedIds = new Set((echostory?.collectedStars || []).map((star) => star?.id));
     const nearest = starsPool.find((star) => !collectedIds.has(star.id) && Math.hypot((star.x || 0) - fx, (star.y || 0) - fy) <= 48);
     if (!nearest) return;
-    collectEchostoryStar(nearest.id);
-  }, [isOdysseo, soonTouchMode, isTravelPlaying, fish?.x, fish?.y, echostory?.stars, echostory?.collectedStars, collectEchostoryStar]);
+    threadEchostoryStar(nearest.id);
+  }, [isOdysseo, soonTouchMode, isTravelPlaying, fish?.x, fish?.y, echostory?.stars, echostory?.collectedStars, threadEchostoryStar]);
 
   const handleComposeAndLaunchTraversal = () => {
     const currentLines = echostory?.storyTimeline?.length
