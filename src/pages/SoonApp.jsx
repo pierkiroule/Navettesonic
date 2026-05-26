@@ -419,7 +419,7 @@ export default function SoonApp({ onBack }) {
 
       <SoonCanvas
         mode={mode}
-        interactionMode={isOdysseo ? "circuit" : interactionMode}
+        interactionMode={isOdysseo && odysseoTool === "depth" ? "circuit" : "swim"}
         odysseoMode={odysseoMode}
         bubbles={bubbles}
         fish={fish}
