@@ -337,7 +337,7 @@ export default function SoonApp({ onBack }) {
 
 
   useEffect(() => {
-    if (!isOdysseo || (odysseoPath?.length || 0) < 2 || echostory?.traversalActive) return;
+    if (!isOdysseo || soonTouchMode === "plume" || (odysseoPath?.length || 0) < 2 || echostory?.traversalActive) return;
 
     const previewLines = buildEchostoryText({
       collectedStars: echostory?.collectedStars || [],
@@ -354,7 +354,7 @@ export default function SoonApp({ onBack }) {
     useSoonStore.setState((state) => ({
       echostory: { ...state.echostory, stars },
     }));
-  }, [isOdysseo, odysseoPath, echostory?.collectedStars, echostory?.traversalActive]);
+  }, [isOdysseo, soonTouchMode, odysseoPath, echostory?.collectedStars, echostory?.traversalActive]);
 
 
   useEffect(() => {
