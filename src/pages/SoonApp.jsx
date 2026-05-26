@@ -646,15 +646,26 @@ export default function SoonApp({ onBack }) {
                   </label>
 
                   <label className="fish-slider-row horizontal" htmlFor="zoom-slider-horizontal">
-                    <button
-                      type="button"
-                      className="bubble-btn mode-toggle"
-                      onClick={handleOpenBubbleBuckets}
-                      title="🫧 Déclenchement tactile"
-                      aria-label="Ouvrir l’éditeur des bulles sonores"
-                    >
-                      🫧
-                    </button>
+                    <div className="fish-slider-actions">
+                      <button
+                        type="button"
+                        className="bubble-btn mode-toggle"
+                        onClick={handleOpenBubbleBuckets}
+                        title="🫧 Déclenchement tactile"
+                        aria-label="Ouvrir l’éditeur des bulles sonores"
+                      >
+                        🫧
+                      </button>
+                      <button
+                        type="button"
+                        className={`bubble-btn mode-toggle ${plumeTraceActive ? "active" : ""}`}
+                        onClick={() => setPlumeTraceActive((value) => !value)}
+                        title={plumeTraceActive ? "🪶 Traçage activé" : "🪶 Activer le traçage par déplacement"}
+                        aria-label={plumeTraceActive ? "Désactiver le traçage plume" : "Activer le traçage plume"}
+                      >
+                        🪶
+                      </button>
+                    </div>
                     <span className="slider-label slider-label-top">🔍 Zoom</span>
                     <div className="fish-slider-horizontal-track">
                       <input
@@ -716,16 +727,27 @@ export default function SoonApp({ onBack }) {
                   <span className="slider-value">{selectedDepth}</span>
                 </label>
 
-                <label className="fish-slider-row horizontal" htmlFor="zoom-slider-horizontal">
-                  <button
-                    type="button"
-                    className="bubble-btn mode-toggle"
-                    onClick={handleOpenBubbleBuckets}
-                    title="🫧 Déclenchement tactile"
-                    aria-label="Ouvrir l’éditeur des bulles sonores"
-                  >
-                    🫧
-                  </button>
+                  <label className="fish-slider-row horizontal" htmlFor="zoom-slider-horizontal">
+                  <div className="fish-slider-actions">
+                    <button
+                      type="button"
+                      className="bubble-btn mode-toggle"
+                      onClick={handleOpenBubbleBuckets}
+                      title="🫧 Déclenchement tactile"
+                      aria-label="Ouvrir l’éditeur des bulles sonores"
+                    >
+                      🫧
+                    </button>
+                    <button
+                      type="button"
+                      className="bubble-btn mode-toggle"
+                      onClick={() => setMode(SOON_MODE_RESO)}
+                      title="Activer Navigo pour tracer avec 🪶"
+                      aria-label="Passer en Navigo"
+                    >
+                      🪶
+                    </button>
+                  </div>
                   <span className="slider-label slider-label-top">🔍 Zoom</span>
                   <div className="fish-slider-horizontal-track">
                     <input
