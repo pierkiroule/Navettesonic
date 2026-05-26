@@ -6,14 +6,12 @@ export function clampDepth(depth) {
 }
 
 export function pushBubblesFromFish(bubbles = [], fish = {}, fishDepth = 1) {
-  const depth = clampDepth(fishDepth);
   const fishX = fish.x || 0;
   const fishY = fish.y || 0;
   const fishAngle = Number.isFinite(fish.angle) ? fish.angle : -Math.PI / 2;
   const head = { x: fishX + Math.cos(fishAngle) * 36, y: fishY + Math.sin(fishAngle) * 36, radius: 34 };
   const body = { x: fishX - Math.cos(fishAngle) * 10, y: fishY - Math.sin(fishAngle) * 10, radius: 40 };
   return bubbles.map((bubble) => {
-    if (clampDepth(bubble.depth) !== depth) return bubble;
     const bubbleRadius = getBubblePhysicsRadius(bubble);
     let pushX = 0; let pushY = 0;
     [head, body].forEach((zone) => {
@@ -38,7 +36,6 @@ export function separateBubblesByDepth(bubbles = []) {
     for (let i = 0; i < next.length; i += 1) {
       for (let j = i + 1; j < next.length; j += 1) {
         const a = next[i]; const b = next[j];
-        if (clampDepth(a.depth) !== clampDepth(b.depth)) continue;
         const dx = (b.x || 0) - (a.x || 0);
         const dy = (b.y || 0) - (a.y || 0);
         const rawDistance = Math.hypot(dx, dy);
