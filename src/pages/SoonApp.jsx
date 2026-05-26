@@ -409,13 +409,6 @@ export default function SoonApp({ onBack }) {
           <span>{flowStep.tip}</span>
         </div>
 
-        <div className="top-nav-flow" aria-live="polite">
-          <span className="flow-chip">Bulles</span>
-          <span className="flow-chip">Étoiles</span>
-          <span className="flow-chip">Tracé</span>
-          <span className="flow-chip">Lecture</span>
-        </div>
-
         <button
           type="button"
           className="top-nav-icon top-nav-profile"
@@ -628,21 +621,6 @@ export default function SoonApp({ onBack }) {
 
               <div className="tool-row fish-tools">
                 <div className={`fish-sliders fish-sliders-layout ${fishCockpitFolded ? "folded" : ""}`}>
-                  <label className="fish-slider-column" htmlFor="depth-slider-vertical">
-                    <span className="slider-label">🌊 Plan unique</span>
-                    <input
-                      id="depth-slider-vertical"
-                      className="slim-vertical-range depth"
-                      type="range"
-                      min="1"
-                      max="3"
-                      step="1"
-                      value={UNIFIED_DEPTH}
-                      onChange={() => setFishDepth(UNIFIED_DEPTH)}
-                    />
-                    <span className="slider-value">1</span>
-                  </label>
-
                   <label className="fish-slider-row horizontal" htmlFor="zoom-slider-horizontal">
                     <div className="fish-slider-actions">
                       <button
@@ -710,21 +688,6 @@ export default function SoonApp({ onBack }) {
                     ) : (
           <div className="tool-row fish-tools">
               <div className={`fish-sliders fish-sliders-layout ${fishCockpitFolded ? "folded" : ""}`}>
-                <label className="fish-slider-column" htmlFor="depth-slider-vertical">
-                  <span className="slider-label">🌊 Plan unique</span>
-                  <input
-                    id="depth-slider-vertical"
-                    className="slim-vertical-range depth"
-                    type="range"
-                    min="1"
-                    max="3"
-                    step="1"
-                    value={UNIFIED_DEPTH}
-                    onChange={() => setFishDepth(UNIFIED_DEPTH)}
-                  />
-                  <span className="slider-value">1</span>
-                </label>
-
                   <label className="fish-slider-row horizontal" htmlFor="zoom-slider-horizontal">
                   <div className="fish-slider-actions">
                     <button
