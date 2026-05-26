@@ -49,6 +49,7 @@ export default function SoonApp({ onBack }) {
   const speedBoostUntilRef = useRef(0);
   const plumeTraceActiveRef = useRef(false);
   const plumeLastPointRef = useRef(null);
+  const [soonTouchMode, setSoonTouchMode] = useState("bubble");
 
   const {
     mode,
@@ -252,11 +253,10 @@ export default function SoonApp({ onBack }) {
     }
   };
 
-  const [plumeTraceActive, setPlumeTraceActive] = useState(false);
   useEffect(() => {
-    plumeTraceActiveRef.current = plumeTraceActive;
-    if (!plumeTraceActive) plumeLastPointRef.current = null;
-  }, [plumeTraceActive]);
+    plumeTraceActiveRef.current = soonTouchMode === "plume";
+    if (soonTouchMode !== "plume") plumeLastPointRef.current = null;
+  }, [soonTouchMode]);
 
   const boostFishSpeed = () => {
     speedBoostUntilRef.current = Date.now() + 1200;
@@ -361,6 +361,21 @@ export default function SoonApp({ onBack }) {
       echostory: { ...state.echostory, stars },
     }));
   }, [isOdysseo, odysseoPath, echostory?.collectedStars, echostory?.traversalActive]);
+
+
+  useEffect(() => {
+    if (!isOdysseo || soonTouchMode !== "plume" || isTravelPlaying) return;
+    const fishNow = fish || {};
+    const fx = Number.isFinite(fishNow.x) ? fishNow.x : null;
+    const fy = Number.isFinite(fishNow.y) ? fishNow.y : null;
+    if (fx === null || fy === null) return;
+
+    const starsPool = echostory?.stars || [];
+    const collectedIds = new Set((echostory?.collectedStars || []).map((star) => star?.id));
+    const nearest = starsPool.find((star) => !collectedIds.has(star.id) && Math.hypot((star.x || 0) - fx, (star.y || 0) - fy) <= 48);
+    if (!nearest) return;
+    collectEchostoryStar(nearest.id);
+  }, [isOdysseo, soonTouchMode, isTravelPlaying, fish?.x, fish?.y, echostory?.stars, echostory?.collectedStars, collectEchostoryStar]);
 
   const handleComposeAndLaunchTraversal = () => {
     const currentLines = echostory?.storyTimeline?.length
@@ -665,10 +680,10 @@ export default function SoonApp({ onBack }) {
                       </button>
                       <button
                         type="button"
-                        className={`bubble-btn mode-toggle ${plumeTraceActive ? "active" : ""}`}
-                        onClick={() => setPlumeTraceActive((value) => !value)}
-                        title={plumeTraceActive ? "🪶 Traçage activé" : "🪶 Activer le traçage par déplacement"}
-                        aria-label={plumeTraceActive ? "Désactiver le traçage plume" : "Activer le traçage plume"}
+                        className={`bubble-btn mode-toggle ${soonTouchMode === "plume" ? "active" : ""}`}
+                        onClick={() => setSoonTouchMode("plume")}
+                        title="Mode 🪶 tracer et enfiler les étoiles"
+                        aria-label="Activer le mode plume"
                       >
                         🪶
                       </button>
@@ -738,9 +753,9 @@ export default function SoonApp({ onBack }) {
                   <div className="fish-slider-actions">
                     <button
                       type="button"
-                      className="bubble-btn mode-toggle"
-                      onClick={handleOpenBubbleBuckets}
-                      title="🫧 Déclenchement tactile"
+                      className={`bubble-btn mode-toggle ${soonTouchMode === "bubble" ? "active" : ""}`}
+                      onClick={() => setSoonTouchMode("bubble")}
+                      title="Mode 🫧 pousser et écouter"
                       aria-label="Ouvrir l’éditeur des bulles sonores"
                     >
                       🫧
@@ -802,25 +817,25 @@ export default function SoonApp({ onBack }) {
       </div>
 
       {isOdysseo && (
-        <div className="mode-switch-bottom" role="group" aria-label="Choix nage ou traçage">
+        <div className="mode-switch-bottom" role="group" aria-label="Modes tactiles Soon">
           <div className="mode-switch-pill">
             <button
               type="button"
-              className={`mode-switch-button ${!plumeTraceActive ? "active" : ""}`}
-              onClick={() => setPlumeTraceActive(false)}
-              aria-pressed={!plumeTraceActive}
-              title="Mode nage libre (sans tracer)"
+              className={`mode-switch-button ${soonTouchMode === "bubble" ? "active" : ""}`}
+              onClick={() => setSoonTouchMode("bubble")}
+              aria-pressed={soonTouchMode === "bubble"}
+              title="Mode 🫧 : pousser bulles/étoiles, écouter sans récolter"
             >
-              🐟 Nage
+              🫧 Mode bulle
             </button>
             <button
               type="button"
-              className={`mode-switch-button ${plumeTraceActive ? "active" : ""}`}
-              onClick={() => setPlumeTraceActive(true)}
-              aria-pressed={plumeTraceActive}
-              title="Mode plume (trace le parcours avec les déplacements de Soon)"
+              className={`mode-switch-button ${soonTouchMode === "plume" ? "active" : ""}`}
+              onClick={() => setSoonTouchMode("plume")}
+              aria-pressed={soonTouchMode === "plume"}
+              title="Mode 🪶 : tracer et enfiler les étoiles"
             >
-              🪶 Tracé
+              🪶 Mode plume
             </button>
           </div>
         </div>
