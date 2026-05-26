@@ -357,7 +357,7 @@ export default function SoonApp({ onBack }) {
 
 
   useEffect(() => {
-    if (!isOdysseo || soonTouchMode !== "bubble" || isTravelPlaying) return;
+    if (!isOdysseo || soonTouchMode !== "plume" || isTravelPlaying) return;
     const fishNow = fish || {};
     const fx = Number.isFinite(fishNow.x) ? fishNow.x : null;
     const fy = Number.isFinite(fishNow.y) ? fishNow.y : null;
