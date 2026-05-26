@@ -3,18 +3,6 @@ import { useEffect, useMemo, useState } from "react";
 import { getRuntimeSupabaseSamples, setRuntimeSupabaseSamples } from "../data/runtimeSoundLibrary.js";
 import { listSoundBubbles } from "../services/supabaseSoundService.js";
 
-function clampDepth(value) {
-  return Math.max(1, Math.min(3, Math.round(Number(value) || 1)));
-}
-
-function getDepthLabel(depth) {
-  const d = clampDepth(depth);
-
-  if (d === 1) return "P1 · surface";
-  if (d === 2) return "P2 · milieu";
-  return "P3 · fond";
-}
-
 export default function BubbleEditor({ bubble, onUpdate, onDelete }) {
   const [bucketSamples, setBucketSamples] = useState(() => getRuntimeSupabaseSamples());
 
@@ -50,7 +38,6 @@ export default function BubbleEditor({ bubble, onUpdate, onDelete }) {
     );
   }
 
-  const depth = clampDepth(bubble.depth);
   const radius = Number(bubble.r) || 70;
   const hue = Number(bubble.hue) || 190;
 
@@ -110,21 +97,8 @@ export default function BubbleEditor({ bubble, onUpdate, onDelete }) {
 
       <div className="bubble-field">
         <div className="bubble-field-row">
-          <span>Profondeur</span>
-          <strong>{getDepthLabel(depth)}</strong>
-        </div>
-
-        <div className="depth-buttons">
-          {[1, 2, 3].map((value) => (
-            <button
-              key={value}
-              type="button"
-              className={depth === value ? "active" : ""}
-              onClick={() => onUpdate({ depth: value })}
-            >
-              P{value}
-            </button>
-          ))}
+          <span>Plan</span>
+          <strong>Unique</strong>
         </div>
       </div>
 

@@ -39,7 +39,7 @@ export default function SoonApp({ onBack }) {
   const [swimSpeedLevel, setSwimSpeedLevel] = useState(2);
   const [isTravelPlaying, setIsTravelPlaying] = useState(false);
   const [editorOpenKey, setEditorOpenKey] = useState(0);
-  const [selectedDepth, setSelectedDepth] = useState(2);
+  const UNIFIED_DEPTH = 1;
   const [exportStatus, setExportStatus] = useState("");
   const [exportUrl, setExportUrl] = useState(null);
   const [bubblesEnabled, setBubblesEnabled] = useState(true);
@@ -98,6 +98,7 @@ export default function SoonApp({ onBack }) {
     arenaBlob,
     echostory,
     collectEchostoryStar,
+    threadEchostoryStar,
     resetEchostory,
     advanceEchostoryWave,
     triggerEscapeCinematic,
@@ -125,11 +126,6 @@ export default function SoonApp({ onBack }) {
   const collectedInWave = stars.filter((star) => star?.collected).length;
   const isStoryReady = echostory?.phase === "story";
   const canGoNextWave = !isStoryReady && collectedInWave >= 5;
-
-  useEffect(() => {
-    const depth = Math.max(1, Math.min(3, Math.round(fish?.depth || 2)));
-    setSelectedDepth(depth);
-  }, [fish?.depth]);
 
   useEffect(() => {
     const closestLevel = [1, 2, 3].reduce((best, level) => (
@@ -266,10 +262,8 @@ export default function SoonApp({ onBack }) {
     const bubble = bubbles.find((item) => item.id === id);
     if (!bubble) return;
 
-    const nextDepth = (Math.round(bubble.depth || 1) % 3) + 1;
-
     selectBubble(id);
-    updateBubble(id, { depth: nextDepth });
+    updateBubble(id, { depth: UNIFIED_DEPTH });
     setEditorOpenKey((value) => value + 1);
   };
 
@@ -319,7 +313,7 @@ export default function SoonApp({ onBack }) {
           label: draft.label || item.name,
           r: Number(draft.r) || existing.r || 72,
           hue: Number(draft.hue) || existing.hue || 190,
-          depth: Number(draft.depth) || existing.depth || selectedDepth,
+          depth: UNIFIED_DEPTH,
           resonance: Number.isFinite(Number(draft.resonance)) ? Number(draft.resonance) : (existing.resonance ?? 0.75),
         });
         return;
@@ -333,7 +327,7 @@ export default function SoonApp({ onBack }) {
         label: draft.label || item.name,
         r: Number(draft.r) || 72,
         hue: Number(draft.hue) || 190,
-        depth: Number(draft.depth) || selectedDepth,
+        depth: UNIFIED_DEPTH,
         resonance: Number.isFinite(Number(draft.resonance)) ? Number(draft.resonance) : 0.75,
       });
     });
@@ -343,7 +337,7 @@ export default function SoonApp({ onBack }) {
 
 
   useEffect(() => {
-    if (!isOdysseo || (odysseoPath?.length || 0) < 2 || echostory?.traversalActive) return;
+    if (!isOdysseo || soonTouchMode === "plume" || (odysseoPath?.length || 0) < 2 || echostory?.traversalActive) return;
 
     const previewLines = buildEchostoryText({
       collectedStars: echostory?.collectedStars || [],
@@ -360,7 +354,7 @@ export default function SoonApp({ onBack }) {
     useSoonStore.setState((state) => ({
       echostory: { ...state.echostory, stars },
     }));
-  }, [isOdysseo, odysseoPath, echostory?.collectedStars, echostory?.traversalActive]);
+  }, [isOdysseo, soonTouchMode, odysseoPath, echostory?.collectedStars, echostory?.traversalActive]);
 
 
   useEffect(() => {
@@ -374,8 +368,8 @@ export default function SoonApp({ onBack }) {
     const collectedIds = new Set((echostory?.collectedStars || []).map((star) => star?.id));
     const nearest = starsPool.find((star) => !collectedIds.has(star.id) && Math.hypot((star.x || 0) - fx, (star.y || 0) - fy) <= 48);
     if (!nearest) return;
-    collectEchostoryStar(nearest.id);
-  }, [isOdysseo, soonTouchMode, isTravelPlaying, fish?.x, fish?.y, echostory?.stars, echostory?.collectedStars, collectEchostoryStar]);
+    threadEchostoryStar(nearest.id);
+  }, [isOdysseo, soonTouchMode, isTravelPlaying, fish?.x, fish?.y, echostory?.stars, echostory?.collectedStars, threadEchostoryStar]);
 
   const handleComposeAndLaunchTraversal = () => {
     const currentLines = echostory?.storyTimeline?.length
@@ -413,13 +407,6 @@ export default function SoonApp({ onBack }) {
         <div className={`flow-step-tip ${stepTipVisible ? "visible" : ""}`} aria-live="polite">
           <strong>{flowStep.title}</strong>
           <span>{flowStep.tip}</span>
-        </div>
-
-        <div className="top-nav-flow" aria-live="polite">
-          <span className="flow-chip">Bulles</span>
-          <span className="flow-chip">Étoiles</span>
-          <span className="flow-chip">Tracé</span>
-          <span className="flow-chip">Lecture</span>
         </div>
 
         <button
@@ -515,7 +502,7 @@ export default function SoonApp({ onBack }) {
         onAddPathPoint={addPathPoint}
         onAddOdysseoPathPoint={addOdysseoPathPoint}
         onAddOdysseoDepthMarker={(x, y) => {
-          addOdysseoDepthMarker(x, y, selectedDepth);
+          addOdysseoDepthMarker(x, y, UNIFIED_DEPTH);
         }}
         onOpenBubbleEditor={openBubbleEditor}
         onRecenterFish={handleOpenBubbleBuckets}
@@ -632,41 +619,8 @@ export default function SoonApp({ onBack }) {
                 </button>
               </div>
 
-              {odysseoTool === "depth" && (
-                <div className="tool-row depth-tools">
-                  {[1, 2, 3].map((depth) => (
-                    <button
-                      key={depth}
-                      type="button"
-                      className={`bubble-btn depth-choice depth-choice-${depth} ${
-                        selectedDepth === depth ? "active" : ""
-                      }`}
-                      onClick={() => setSelectedDepth(depth)}
-                      title={`Profondeur ${depth}`}
-                    >
-                      P{depth}
-                    </button>
-                  ))}
-                </div>
-              )}
-
               <div className="tool-row fish-tools">
                 <div className={`fish-sliders fish-sliders-layout ${fishCockpitFolded ? "folded" : ""}`}>
-                  <label className="fish-slider-column" htmlFor="depth-slider-vertical">
-                    <span className="slider-label">🌊 Profondeur</span>
-                    <input
-                      id="depth-slider-vertical"
-                      className="slim-vertical-range depth"
-                      type="range"
-                      min="1"
-                      max="3"
-                      step="1"
-                      value={selectedDepth}
-                      onChange={(event) => { const depth = Number(event.target.value); setSelectedDepth(depth); setFishDepth(depth); }}
-                    />
-                    <span className="slider-value">{selectedDepth}</span>
-                  </label>
-
                   <label className="fish-slider-row horizontal" htmlFor="zoom-slider-horizontal">
                     <div className="fish-slider-actions">
                       <button
@@ -734,21 +688,6 @@ export default function SoonApp({ onBack }) {
                     ) : (
           <div className="tool-row fish-tools">
               <div className={`fish-sliders fish-sliders-layout ${fishCockpitFolded ? "folded" : ""}`}>
-                <label className="fish-slider-column" htmlFor="depth-slider-vertical">
-                  <span className="slider-label">🌊 Profondeur</span>
-                  <input
-                    id="depth-slider-vertical"
-                    className="slim-vertical-range depth"
-                    type="range"
-                    min="1"
-                    max="3"
-                    step="1"
-                    value={selectedDepth}
-                    onChange={(event) => { const depth = Number(event.target.value); setSelectedDepth(depth); setFishDepth(depth); }}
-                  />
-                  <span className="slider-value">{selectedDepth}</span>
-                </label>
-
                   <label className="fish-slider-row horizontal" htmlFor="zoom-slider-horizontal">
                   <div className="fish-slider-actions">
                     <button

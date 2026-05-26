@@ -52,7 +52,7 @@ export default function BubbleBucketsMenu({ bubbles = [], open = false, onClose,
           label: existing?.label || item.name,
           r: Number(existing?.r) || 72,
           hue: normalizeHue(existing?.hue, 190),
-          depth: Number(existing?.depth) || 2,
+          depth: 1,
           resonance: Number(existing?.resonance) || 0.75,
         };
       });
@@ -141,9 +141,7 @@ export default function BubbleBucketsMenu({ bubbles = [], open = false, onClose,
                 <label>Couleur {Math.round(Number(draft.hue) || 190)}°
                   <input type="range" min="0" max="360" value={Number(draft.hue) || 190} onChange={(event) => setDraftById((current) => ({ ...current, [item.id]: { ...current[item.id], hue: Number(event.target.value) } }))} />
                 </label>
-                <label>Profondeur P{Math.max(1, Math.min(3, Math.round(Number(draft.depth) || 2)))}
-                  <input type="range" min="1" max="3" step="1" value={Math.max(1, Math.min(3, Math.round(Number(draft.depth) || 2)))} onChange={(event) => setDraftById((current) => ({ ...current, [item.id]: { ...current[item.id], depth: Number(event.target.value) } }))} />
-                </label>
+                <label>Plan unique (profondeur désactivée)</label>
                 <label>Résonance {Math.round((Number(draft.resonance) || 0.75) * 100)}%
                   <input type="range" min="0" max="1" step="0.01" value={Number(draft.resonance) || 0.75} onChange={(event) => setDraftById((current) => ({ ...current, [item.id]: { ...current[item.id], resonance: Number(event.target.value) } }))} />
                 </label>
