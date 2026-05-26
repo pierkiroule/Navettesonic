@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import SidePanel from "../components/SidePanel.jsx";
 import SoonCanvas from "../components/SoonCanvas.jsx";
-import WorkflowShell from "../components/WorkflowShell.jsx";
 import Profile from "./Profile.jsx";
 import BubbleBucketsMenu from "../components/BubbleBucketsMenu.jsx";
 import { useSoonStore } from "../store/useSoonStore.js";
@@ -21,11 +20,7 @@ import {
   SOON_MODE_COMPO,
   SOON_MODE_RESO,
   SOON_MODE_ECHOSTORY,
-  WORKFLOW_ROOT_COMPO,
-  WORKFLOW_ROOT_NAVIGO,
-  modeToWorkflowRoot,
   normalizeOdysseoMode,
-  workflowRootToMode,
 } from "../core/uiState.js";
 
 
@@ -37,7 +32,6 @@ const SPEED_BY_LEVEL = {
 
 export default function SoonApp({ onBack }) {
   const [page, setPage] = useState("arena");
-  const [activeRoot, setActiveRoot] = useState(WORKFLOW_ROOT_COMPO);
   const [interactionMode, setInteractionMode] = useState("swim");
   const [odysseoMode, setOdysseoMode] = useState(ODYSSEO_MODE_TRACE);
   const [viewZoom, setViewZoom] = useState(1);
@@ -53,6 +47,8 @@ export default function SoonApp({ onBack }) {
   const [bubbleBucketsOpen, setBubbleBucketsOpen] = useState(false);
   const [fishCockpitFolded, setFishCockpitFolded] = useState(false);
   const speedBoostUntilRef = useRef(0);
+  const plumeTraceActiveRef = useRef(false);
+  const plumeLastPointRef = useRef(null);
 
   const {
     mode,
@@ -145,20 +141,29 @@ export default function SoonApp({ onBack }) {
 
 
   const flowStep = useMemo(() => {
-    if (mode === SOON_MODE_COMPO) {
+    const starCount = echostory?.collectedStars?.length || 0;
+    const hasPath = Array.isArray(odysseoPath) && odysseoPath.length >= 8;
+    const phase = isOdysseo ? "navigo" : "compo";
+    if (phase === "compo") {
       return {
-        key: SOON_MODE_COMPO,
-        title: "Compo•°",
-        tip: "Cueillez des étoiles de rêverie en trois vagues.",
+        key: "compo",
+        title: "1. Composer",
+        tip: "Choisissez vos bulles et cueillez vos étoiles vocales.",
       };
     }
-
+    if (!hasPath) {
+      return {
+        key: "trace",
+        title: "2. Tracer",
+        tip: `Tracez un parcours (8 points mini). Étoiles prêtes: ${starCount}.`,
+      };
+    }
     return {
-      key: WORKFLOW_ROOT_NAVIGO,
-      title: "Navigo",
-      tip: "Tracez un parcours avec vos étoiles sonores récoltées.",
+      key: "play",
+      title: "3. Lire",
+      tip: "Relisez la séance et exportez votre rendu immersif.",
     };
-  }, [mode]);
+  }, [echostory?.collectedStars?.length, isOdysseo, odysseoPath]);
 
   const [stepTipVisible, setStepTipVisible] = useState(false);
 
@@ -166,44 +171,24 @@ export default function SoonApp({ onBack }) {
     const fromHash = parseWorkflowFromHash(window.location.hash);
     const persistedRoot = readPersistedWorkflowRoot();
 
-    if (fromHash?.root === WORKFLOW_ROOT_NAVIGO) {
-      setActiveRoot(WORKFLOW_ROOT_NAVIGO);
+    if (fromHash?.root === "navigo") {
       setMode(SOON_MODE_RESO);
       setOdysseoMode(normalizeOdysseoMode(fromHash.odysseoMode));
       return;
     }
 
-    if (persistedRoot === WORKFLOW_ROOT_NAVIGO) {
-      setActiveRoot(WORKFLOW_ROOT_NAVIGO);
+    if (persistedRoot === "navigo") {
       setMode(SOON_MODE_RESO);
       setOdysseoMode(ODYSSEO_MODE_TRACE);
       return;
     }
-    setActiveRoot(WORKFLOW_ROOT_COMPO);
   }, [setMode]);
 
   useEffect(() => {
-    const root = modeToWorkflowRoot(mode);
+    const root = mode === SOON_MODE_COMPO ? "echostory" : "navigo";
     persistWorkflowRoot(root);
     window.history.replaceState(null, "", serializeWorkflowHash(root, odysseoMode));
   }, [mode, odysseoMode]);
-
-  const setWorkflowRoot = (root) => {
-    setActiveRoot(root);
-
-
-    stopCircuitAutopilot();
-    setInteractionMode("swim");
-    setIsTravelPlaying(false);
-
-    if (root === WORKFLOW_ROOT_NAVIGO) {
-      setMode(SOON_MODE_RESO);
-      setOdysseoMode((current) => normalizeOdysseoMode(current));
-      return;
-    }
-
-    setMode(workflowRootToMode(root));
-  };
 
   useEffect(() => {
     setStepTipVisible(true);
@@ -266,6 +251,12 @@ export default function SoonApp({ onBack }) {
       setExportStatus(error?.message || "Export impossible");
     }
   };
+
+  const [plumeTraceActive, setPlumeTraceActive] = useState(false);
+  useEffect(() => {
+    plumeTraceActiveRef.current = plumeTraceActive;
+    if (!plumeTraceActive) plumeLastPointRef.current = null;
+  }, [plumeTraceActive]);
 
   const boostFishSpeed = () => {
     speedBoostUntilRef.current = Date.now() + 1200;
@@ -409,11 +400,11 @@ export default function SoonApp({ onBack }) {
           <span>{flowStep.tip}</span>
         </div>
 
-        <div className="top-nav-flow">
-          <WorkflowShell
-            activeRoot={activeRoot}
-            onChangeRoot={setWorkflowRoot}
-          />
+        <div className="top-nav-flow" aria-live="polite">
+          <span className="flow-chip">Bulles</span>
+          <span className="flow-chip">Étoiles</span>
+          <span className="flow-chip">Tracé</span>
+          <span className="flow-chip">Lecture</span>
         </div>
 
         <button
@@ -428,7 +419,7 @@ export default function SoonApp({ onBack }) {
 
       <SoonCanvas
         mode={mode}
-        interactionMode={isOdysseo ? "circuit" : interactionMode}
+        interactionMode={isOdysseo && odysseoTool === "depth" ? "circuit" : "swim"}
         odysseoMode={odysseoMode}
         bubbles={bubbles}
         fish={fish}
@@ -474,6 +465,23 @@ export default function SoonApp({ onBack }) {
                 return;
               }
               tickOdysseoPath({ swimSpeed: effectiveSwimSpeed });
+              return;
+            }
+
+            tickFish({ swimSpeed: effectiveSwimSpeed, arenaRadius });
+
+            if (plumeTraceActiveRef.current) {
+              const fishNow = useSoonStore.getState()?.fish;
+              if (Number.isFinite(fishNow?.x) && Number.isFinite(fishNow?.y)) {
+                const previous = plumeLastPointRef.current;
+                const dx = previous ? fishNow.x - previous.x : 999;
+                const dy = previous ? fishNow.y - previous.y : 999;
+                const distance = Math.hypot(dx, dy);
+                if (!previous || distance >= 18) {
+                  addOdysseoPathPoint(fishNow.x, fishNow.y);
+                  plumeLastPointRef.current = { x: fishNow.x, y: fishNow.y };
+                }
+              }
             }
             return;
           }
@@ -589,15 +597,6 @@ export default function SoonApp({ onBack }) {
               <div className="tool-row trace-tools">
                 <button
                   type="button"
-                  className={`bubble-btn tool-chip ${odysseoTool === "draw" ? "active" : ""}`}
-                  onClick={() => setOdysseoTool("draw")}
-                  title="Dessiner le trajet"
-                >
-                  ✏️ Dessin
-                </button>
-
-                <button
-                  type="button"
                   className={`bubble-btn tool-chip ${odysseoTool === "depth" ? "active" : ""}`}
                   onClick={() => setOdysseoTool("depth")}
                   title="Poser une ancre d’ambiance"
@@ -608,7 +607,10 @@ export default function SoonApp({ onBack }) {
                 <button
                   type="button"
                   className="bubble-btn tool-chip danger"
-                  onClick={clearOdysseoPath}
+                  onClick={() => {
+                    clearOdysseoPath();
+                    plumeLastPointRef.current = null;
+                  }}
                   title="Effacer le tracé"
                 >
                   🧽 Effacer
@@ -651,15 +653,26 @@ export default function SoonApp({ onBack }) {
                   </label>
 
                   <label className="fish-slider-row horizontal" htmlFor="zoom-slider-horizontal">
-                    <button
-                      type="button"
-                      className="bubble-btn mode-toggle"
-                      onClick={handleOpenBubbleBuckets}
-                      title="🫧 Déclenchement tactile"
-                      aria-label="Ouvrir l’éditeur des bulles sonores"
-                    >
-                      🫧
-                    </button>
+                    <div className="fish-slider-actions">
+                      <button
+                        type="button"
+                        className="bubble-btn mode-toggle"
+                        onClick={handleOpenBubbleBuckets}
+                        title="🫧 Déclenchement tactile"
+                        aria-label="Ouvrir l’éditeur des bulles sonores"
+                      >
+                        🫧
+                      </button>
+                      <button
+                        type="button"
+                        className={`bubble-btn mode-toggle ${plumeTraceActive ? "active" : ""}`}
+                        onClick={() => setPlumeTraceActive((value) => !value)}
+                        title={plumeTraceActive ? "🪶 Traçage activé" : "🪶 Activer le traçage par déplacement"}
+                        aria-label={plumeTraceActive ? "Désactiver le traçage plume" : "Activer le traçage plume"}
+                      >
+                        🪶
+                      </button>
+                    </div>
                     <span className="slider-label slider-label-top">🔍 Zoom</span>
                     <div className="fish-slider-horizontal-track">
                       <input
@@ -721,16 +734,27 @@ export default function SoonApp({ onBack }) {
                   <span className="slider-value">{selectedDepth}</span>
                 </label>
 
-                <label className="fish-slider-row horizontal" htmlFor="zoom-slider-horizontal">
-                  <button
-                    type="button"
-                    className="bubble-btn mode-toggle"
-                    onClick={handleOpenBubbleBuckets}
-                    title="🫧 Déclenchement tactile"
-                    aria-label="Ouvrir l’éditeur des bulles sonores"
-                  >
-                    🫧
-                  </button>
+                  <label className="fish-slider-row horizontal" htmlFor="zoom-slider-horizontal">
+                  <div className="fish-slider-actions">
+                    <button
+                      type="button"
+                      className="bubble-btn mode-toggle"
+                      onClick={handleOpenBubbleBuckets}
+                      title="🫧 Déclenchement tactile"
+                      aria-label="Ouvrir l’éditeur des bulles sonores"
+                    >
+                      🫧
+                    </button>
+                    <button
+                      type="button"
+                      className="bubble-btn mode-toggle"
+                      onClick={() => setMode(SOON_MODE_RESO)}
+                      title="Activer Navigo pour tracer avec 🪶"
+                      aria-label="Passer en Navigo"
+                    >
+                      🪶
+                    </button>
+                  </div>
                   <span className="slider-label slider-label-top">🔍 Zoom</span>
                   <div className="fish-slider-horizontal-track">
                     <input
@@ -776,6 +800,31 @@ export default function SoonApp({ onBack }) {
           )}
         </div>
       </div>
+
+      {isOdysseo && (
+        <div className="mode-switch-bottom" role="group" aria-label="Choix nage ou traçage">
+          <div className="mode-switch-pill">
+            <button
+              type="button"
+              className={`mode-switch-button ${!plumeTraceActive ? "active" : ""}`}
+              onClick={() => setPlumeTraceActive(false)}
+              aria-pressed={!plumeTraceActive}
+              title="Mode nage libre (sans tracer)"
+            >
+              🐟 Nage
+            </button>
+            <button
+              type="button"
+              className={`mode-switch-button ${plumeTraceActive ? "active" : ""}`}
+              onClick={() => setPlumeTraceActive(true)}
+              aria-pressed={plumeTraceActive}
+              title="Mode plume (trace le parcours avec les déplacements de Soon)"
+            >
+              🪶 Tracé
+            </button>
+          </div>
+        </div>
+      )}
 
       {isOdysseo && (exportStatus || exportUrl) && (
         <div className="export-status">
