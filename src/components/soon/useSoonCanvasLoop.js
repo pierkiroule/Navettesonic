@@ -13,7 +13,7 @@ import { updateBubbleAudioTriggers } from "../../core/soonAudioTriggers.js";
 import { drawScene } from "../../core/soonRenderers.js";
 import { getMembraneRadiusForLevel } from "../../core/fishNavigationEngine.js";
 import { resetCanvasPaintState } from "../../core/canvasState.js";
-import { ARENA_INNER_BOUNDARY_INSET } from "../../core/constants.js";
+import { ARENA_INNER_BOUNDARY_INSET, MEMBRANE_LEVEL_MULTIPLIERS } from "../../core/constants.js";
 import { getBlobRadiusAtAngle } from "../../core/blobArena.js";
 import {
   getCharacterWorldEffects,
@@ -51,7 +51,9 @@ function updateContourRide(current = {}, arenaRadius = 1200, now = performance.n
   if (!fish) return;
 
   const level = Number.isFinite(fish.arenaLevel) ? fish.arenaLevel : 0;
-  const contourRadius = Math.max(84, getMembraneRadiusForLevel(arenaRadius, level));
+  const runtimeInnerRadius = Math.max(0, arenaRadius - ARENA_INNER_BOUNDARY_INSET);
+  const levelMultiplier = MEMBRANE_LEVEL_MULTIPLIERS[level] ?? MEMBRANE_LEVEL_MULTIPLIERS[0] ?? 1;
+  const contourRadius = Math.max(84, runtimeInnerRadius * levelMultiplier);
   const beacon = { x: 0, y: -contourRadius };
   const ride = current.contourRide || null;
   const zenithStar = current.zenithStar || null;
@@ -79,6 +81,7 @@ function updateContourRide(current = {}, arenaRadius = 1200, now = performance.n
       fish.targetY = beacon.y;
       fish.vx = 0;
       fish.vy = 0;
+      fish.angle = 0;
     }
     if (!canTrigger && Number.isFinite(zenithStar?.hitAt) && now - zenithStar.hitAt >= ZENITH_STAR_REARM_DELAY_MS) {
       current.zenithStar = {
@@ -104,10 +107,13 @@ function updateContourRide(current = {}, arenaRadius = 1200, now = performance.n
   fish.angle = angle + Math.PI / 2;
 
   if (progress >= 1) {
-    fish.x = Math.cos(ride.baseAngle) * (contourRadius - 72);
-    fish.y = Math.sin(ride.baseAngle) * (contourRadius - 72);
+    fish.x = Math.cos(ride.baseAngle) * contourRadius;
+    fish.y = Math.sin(ride.baseAngle) * contourRadius;
     fish.targetX = fish.x;
     fish.targetY = fish.y;
+    fish.vx = 0;
+    fish.vy = 0;
+    fish.angle = 0;
     current.contourRide = null;
     current.zenithStar = {
       ...(current.zenithStar || {}),
