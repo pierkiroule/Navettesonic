@@ -135,7 +135,9 @@ export default function SoonCanvas({
   });
 
   useEffect(() => {
+    const previousRuntime = stateRef.current || {};
     stateRef.current = {
+      ...previousRuntime,
       mode,
       interactionMode,
       odysseoMode,
