@@ -126,6 +126,11 @@ export default function SoonApp({ onBack }) {
   const collectedInWave = stars.filter((star) => star?.collected).length;
   const isStoryReady = echostory?.phase === "story";
   const canGoNextWave = !isStoryReady && collectedInWave >= 5;
+  const linearCompositionItems = (echostory?.collectedStars || []).map((star, index) => ({
+    id: star?.id || `collected-${index + 1}`,
+    label: star?.text || star?.label || `Étoile ${index + 1}`,
+    type: star?.wave || "vocal",
+  }));
 
   useEffect(() => {
     const closestLevel = [1, 2, 3].reduce((best, level) => (
@@ -641,6 +646,15 @@ export default function SoonApp({ onBack }) {
                       >
                         🪶
                       </button>
+                      <button
+                        type="button"
+                        className={`bubble-btn mode-toggle ${soonTouchMode === "yarn" ? "active" : ""}`}
+                        onClick={() => setSoonTouchMode("yarn")}
+                        title="Mode 🧶 éditeur : voir la traîne en ligne verticale"
+                        aria-label="Ouvrir l’éditeur vertical de traîne"
+                      >
+                        🧶
+                      </button>
                     </div>
                     <span className="slider-label slider-label-top">🔍 Zoom</span>
                     <div className="fish-slider-horizontal-track">
@@ -707,6 +721,15 @@ export default function SoonApp({ onBack }) {
                       aria-label="Activer le mode récolter"
                     >
                       🪶
+                    </button>
+                    <button
+                      type="button"
+                      className={`bubble-btn mode-toggle ${soonTouchMode === "yarn" ? "active" : ""}`}
+                      onClick={() => setSoonTouchMode("yarn")}
+                      title="Mode 🧶 éditeur : voir la traîne en ligne verticale"
+                      aria-label="Ouvrir l’éditeur vertical de traîne"
+                    >
+                      🧶
                     </button>
                   </div>
                   <span className="slider-label slider-label-top">🔍 Zoom</span>
@@ -776,6 +799,15 @@ export default function SoonApp({ onBack }) {
             >
               🪶 Mode récolter
             </button>
+            <button
+              type="button"
+              className={`mode-switch-button ${soonTouchMode === "yarn" ? "active" : ""}`}
+              onClick={() => setSoonTouchMode("yarn")}
+              aria-pressed={soonTouchMode === "yarn"}
+              title="Mode 🧶 éditeur : relire la composition MP3 linéaire"
+            >
+              🧶 Mode éditeur
+            </button>
           </div>
         </div>
       )}
@@ -789,6 +821,30 @@ export default function SoonApp({ onBack }) {
             </a>
           )}
         </div>
+      )}
+
+
+      {soonTouchMode === "yarn" && (
+        <section className="echostory-hud" aria-label="Éditeur vertical de traîne">
+          <span className="echostory-chip">🧶 Éditeur de traîne (vertical)</span>
+          <span className="echostory-chip">{linearCompositionItems.length} éléments alignés</span>
+          <div style={{ maxHeight: "38vh", overflowY: "auto", width: "100%", padding: "8px 0" }}>
+            <div style={{ borderLeft: "2px solid rgba(255,255,255,0.35)", marginLeft: "14px", paddingLeft: "12px" }}>
+              {linearCompositionItems.length === 0 ? (
+                <div className="echostory-chip">Aucun élément récolté pour le moment.</div>
+              ) : (
+                linearCompositionItems.map((item, index) => (
+                  <div key={item.id} className="echostory-chip" style={{ display: "block", marginBottom: "8px" }}>
+                    {index + 1}. {item.label} · {item.type}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+          <button type="button" className="echostory-next" onClick={handleGenerateStarMp3Trace}>
+            ▶ Play composition MP3 linéaire
+          </button>
+        </section>
       )}
 
       <BubbleBucketsMenu
