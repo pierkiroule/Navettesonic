@@ -84,7 +84,6 @@ export default function SoonCanvas({
   const [earActivationText, setEarActivationText] = useState("");
   const [audioTuning, setAudioTuningState] = useState(() => getAudioTuning());
   const [showSensitivitySlider, setShowSensitivitySlider] = useState(false);
-  const [echostoryPrompt, setEchostoryPrompt] = useState(null);
 
   const cameraRef = useRef({
     x: 0,
@@ -257,28 +256,9 @@ export default function SoonCanvas({
     onTickFish,
     onSemioseVideoTrigger: setSemioseVideo,
     onCollectEchostoryStar,
-    onPromptEchostoryStarCollect: (event) => {
-      if (event?.type === "star-collect" && event?.starId) {
-        onCollectEchostoryStar?.(event.starId);
-        onPlayTrailItems?.("collect", {
-          id: `star:${event.starId}`,
-          kind: "star",
-          label: event?.star?.text || "Étoile",
-          starId: event.starId,
-        });
-        return;
-      }
-      const starId = typeof event === "string" ? event : event?.starId;
-      if (starId) setEchostoryPrompt({ starId, openedAt: Date.now() });
-    },
-    onCollectTrailItem: (item) => onPlayTrailItems?.("collect", item),
+    onPromptEchostoryStarCollect: () => {},
+    onCollectTrailItem: () => {},
   });
-
-  useEffect(() => {
-    if (!echostoryPrompt) return;
-    const timeoutId = setTimeout(() => setEchostoryPrompt(null), 7000);
-    return () => clearTimeout(timeoutId);
-  }, [echostoryPrompt]);
 
   const {
     handlePointerDown,
@@ -427,8 +407,6 @@ export default function SoonCanvas({
             { id: "contrast", label: `Relief ${audioTuning.depthSeparation.toFixed(2)}x` },
             { id: "sensitivity", label: `Sensibilité ${Math.round((audioTuning.sensitivity || 0) * 100)}%` },
             { id: "membrane", label: fish?.membraneSide === "outside" ? "Aller intérieur" : "Aller extérieur" },
-            { id: "trail-play", label: `Lire traîne (${trailCount})` },
-            { id: "trail-release", label: "Libérer étoiles" },
             { id: "reset", label: "Reset" },
           ]}
           onSelect={(item) => {
@@ -456,8 +434,6 @@ export default function SoonCanvas({
             }
             if (item.id === "sensitivity") setShowSensitivitySlider((v) => !v);
             if (item.id === "membrane") onToggleMembraneSide?.();
-            if (item.id === "trail-release") onReleaseTrailItems?.();
-            if (item.id === "trail-play") onPlayTrailItems?.("play");
             if (item.id === "reset") onResetFishContext?.();
           }}
         />
@@ -479,44 +455,6 @@ export default function SoonCanvas({
               }}
             />
           </label>
-        </div>
-      ) : null}
-      {echostoryPrompt && mode === "echostory" ? (
-        <div className="echostory-prompt-menu" role="dialog" aria-live="polite" aria-label="Activer l'étoile sonore ?">
-          <p>Activer cette étoile sonore ?</p>
-          <div className="echostory-prompt-actions">
-            <button
-              type="button"
-              onClick={() => {
-                onCollectEchostoryStar?.(echostoryPrompt.starId);
-                if (stateRef.current?.fish) {
-                  stateRef.current.fish.tailPower = Math.min(18, Math.max(stateRef.current.fish.tailPower || 0, 1) + 1);
-                }
-                const stars = stateRef.current?.echostory?.stars || [];
-                const star = stars.find((item) => item?.id === echostoryPrompt.starId);
-                if (star) {
-                  star.collectedTriggered = true;
-                  star.collectPromptOpen = false;
-                }
-                setEchostoryPrompt(null);
-              }}
-            >
-              Activer
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const stars = stateRef.current?.echostory?.stars || [];
-                const star = stars.find((item) => item?.id === echostoryPrompt.starId);
-                if (star) {
-                  star.collectPromptOpen = false;
-                }
-                setEchostoryPrompt(null);
-              }}
-            >
-              Non
-            </button>
-          </div>
         </div>
       ) : null}
     </div>
