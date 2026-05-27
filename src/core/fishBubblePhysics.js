@@ -25,7 +25,16 @@ export function pushBubblesFromFish(bubbles = [], fish = {}, fishDepth = 1) {
       pushY += (dy / d) * push;
     });
     if (pushX === 0 && pushY === 0) return bubble;
-    const safe = clampToCircle({ x: (bubble.x || 0) + pushX, y: (bubble.y || 0) + pushY }, DEFAULT_ARENA_RADIUS * 1.6);
+    const boundaryRadius = DEFAULT_ARENA_RADIUS * 1.6;
+    const nextX = (bubble.x || 0) + pushX;
+    const nextY = (bubble.y || 0) + pushY;
+    const dist = Math.hypot(nextX, nextY);
+    const stickThreshold = boundaryRadius - Math.max(18, bubbleRadius * 0.35);
+    if (dist >= stickThreshold && dist > 0) {
+      const angle = Math.atan2(nextY, nextX);
+      return { ...bubble, x: Math.cos(angle) * boundaryRadius, y: Math.sin(angle) * boundaryRadius };
+    }
+    const safe = clampToCircle({ x: nextX, y: nextY }, boundaryRadius);
     return { ...bubble, x: safe.x, y: safe.y };
   });
 }
