@@ -38,6 +38,7 @@ export default function SoonApp({ onBack }) {
   const [swimSpeed, setSwimSpeed] = useState(1.15);
   const [swimSpeedLevel, setSwimSpeedLevel] = useState(2);
   const [isTravelPlaying, setIsTravelPlaying] = useState(false);
+  const [contourPlaybackPaused, setContourPlaybackPaused] = useState(false);
   const [editorOpenKey, setEditorOpenKey] = useState(0);
   const UNIFIED_DEPTH = 1;
   const [exportStatus, setExportStatus] = useState("");
@@ -242,6 +243,7 @@ export default function SoonApp({ onBack }) {
     }
     handleComposeAndLaunchTraversal();
     setIsTravelPlaying(true);
+    setContourPlaybackPaused(false);
     setExportStatus("Lecture MP3 du contour lancée.");
   };
 
@@ -456,6 +458,7 @@ export default function SoonApp({ onBack }) {
           const effectiveSwimSpeed = boosted ? swimSpeed * 1.8 : swimSpeed;
           if (isOdysseo) {
             if (isTravelPlaying) {
+              if (contourPlaybackPaused) return;
               if (echostory?.traversalActive) {
                 const result = tickEchostoryTraversal(useSoonStore.getState(), { desiredDurationSec: 180 });
                 if (!result) return;
@@ -540,6 +543,14 @@ export default function SoonApp({ onBack }) {
         onSetFishDepth={setFishDepth}
         echostory={echostory}
         onCollectEchostoryStar={collectEchostoryStar}
+        contourPlaybackPaused={contourPlaybackPaused}
+        onToggleContourPlayback={() => {
+          setContourPlaybackPaused((paused) => {
+            const next = !paused;
+            setIsTravelPlaying(!next);
+            return next;
+          });
+        }}
       />
 
 

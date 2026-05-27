@@ -20,6 +20,7 @@ const guppyRuntime = {
   pinkSmoke: [],
   cosmicStreaks: [],
   nextCosmicSpawnAt: 0,
+  contourReaders: [],
 };
 const warnedRendererErrors = new Set();
 
@@ -198,6 +199,16 @@ function ensureGuppyRuntime(current, arenaRadius) {
   }
   // Important narratif: au départ aucune perle/graine sur la membrane.
   // Elles arrivent uniquement via les étoiles filantes cosmiques.
+  if (!guppyRuntime.contourReaders.length) {
+    const count = 7;
+    for (let i = 0; i < count; i += 1) {
+      guppyRuntime.contourReaders.push({
+        id: `contour-reader-${i + 1}`,
+        angle: Math.PI / 2 - (Math.PI * 2 * i) / count,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+  }
 }
 
 function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
@@ -208,6 +219,7 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
   const seeds = guppyRuntime.driftingSeeds;
   const pinkSmoke = guppyRuntime.pinkSmoke;
   const cosmicStreaks = guppyRuntime.cosmicStreaks;
+  const contourReaders = guppyRuntime.contourReaders;
   const dt = 1;
 
   if (now >= guppyRuntime.nextCosmicSpawnAt) {
@@ -505,6 +517,24 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
   fish.forEach((g, i) => {
     drawGuppyTopView(ctx, g.x, g.y, g.angle, 0.72 + (i % 4) * 0.08, time * 0.02 + g.phase);
   });
+
+  const readerZones = [];
+  const paused = Boolean(current?.contourPlaybackPaused);
+  const angularStep = (Math.PI * 2) / (30000 / 16.67);
+  contourReaders.forEach((reader) => {
+    if (!paused) reader.angle -= angularStep;
+    const edge = getArenaEdgeRadius(current, arenaRadius, reader.angle);
+    const rimRadius = Math.max(80, edge + 26);
+    const rx = Math.cos(reader.angle) * rimRadius;
+    const ry = Math.sin(reader.angle) * rimRadius;
+    const sway = paused ? 1 : 0.45;
+    const x = rx + Math.cos(time * 0.002 + reader.phase) * (6 * sway);
+    const y = ry + Math.sin(time * 0.0016 + reader.phase) * (5 * sway);
+    const facing = reader.angle - Math.PI / 2;
+    drawGuppyTopView(ctx, x, y, facing, 0.78, time * 0.016 + reader.phase);
+    readerZones.push({ id: reader.id, x, y, r: 26 });
+  });
+  current.contourReaderHitZones = readerZones;
 
   ctx.restore();
 }
