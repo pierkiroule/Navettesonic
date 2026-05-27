@@ -772,6 +772,8 @@ export function drawBubbles(ctx, bubbles = [], selectedBubbleId, mode, time, int
     if (!Number.isFinite(radius) || radius <= 0) return;
     const alphaBase = depth === 1 ? 0.58 : depth === 2 ? 0.46 : 0.32;
     const alpha = alphaBase * Math.max(0.2, Math.min(2, intensity));
+    const snappedToContour = bubble?.attachedToContour === true;
+    const snapPulse = Math.sin(time * 0.006 + bubbleX * 0.01) * 0.5 + 0.5;
 
     const glow = ctx.createRadialGradient(
       bubbleX,
@@ -789,6 +791,18 @@ export function drawBubbles(ctx, bubbles = [], selectedBubbleId, mode, time, int
     ctx.arc(bubbleX, bubbleY, radius * 1.7 + pulse, 0, Math.PI * 2);
     ctx.fillStyle = glow;
     ctx.fill();
+
+    if (snappedToContour) {
+      const haloRadius = radius * (2 + snapPulse * 0.45);
+      const snapHalo = ctx.createRadialGradient(bubbleX, bubbleY, radius * 0.24, bubbleX, bubbleY, haloRadius);
+      snapHalo.addColorStop(0, "rgba(255, 244, 199, 0.95)");
+      snapHalo.addColorStop(0.45, "rgba(255, 208, 99, 0.52)");
+      snapHalo.addColorStop(1, "rgba(255, 208, 99, 0)");
+      ctx.beginPath();
+      ctx.arc(bubbleX, bubbleY, haloRadius, 0, Math.PI * 2);
+      ctx.fillStyle = snapHalo;
+      ctx.fill();
+    }
 
     ctx.beginPath();
     ctx.arc(bubbleX, bubbleY, radius + pulse, 0, Math.PI * 2);

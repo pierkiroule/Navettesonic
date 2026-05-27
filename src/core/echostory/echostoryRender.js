@@ -22,6 +22,19 @@ function drawStar(ctx, x, y, radius, color, alpha = 1) {
   ctx.fill();
 }
 
+function drawContourSnapHalo(ctx, x, y, radius, time = 0, phase = 0) {
+  const pulse = Math.sin(time * 0.006 + phase) * 0.5 + 0.5;
+  const haloRadius = radius * (2.8 + pulse * 0.35);
+  const halo = ctx.createRadialGradient(x, y, radius * 0.25, x, y, haloRadius);
+  halo.addColorStop(0, "rgba(255, 248, 214, 0.95)");
+  halo.addColorStop(0.45, "rgba(255, 205, 92, 0.55)");
+  halo.addColorStop(1, "rgba(255, 205, 92, 0)");
+  ctx.beginPath();
+  ctx.arc(x, y, haloRadius, 0, Math.PI * 2);
+  ctx.fillStyle = halo;
+  ctx.fill();
+}
+
 function drawCollectedStarThread(ctx, stars = [], fish = {}, time = 0) {
   if (!Array.isArray(stars) || !stars.length) return;
   const collected = stars.filter((star) => star?.collected).slice(0, 15);
@@ -67,6 +80,9 @@ export function drawEchostoryStars(ctx, stars = [], time = 0, fish = null) {
 
       const blinking = star.previewPlaying === true;
       const blinkPulse = blinking ? (Math.sin(time * 0.028 + (star.phase || 0) + index) > 0 ? 1 : 0.18) : 1;
+      if (star.attachedToContour) {
+        drawContourSnapHalo(ctx, x, y, radius, time, (star.phase || 0) + index * 0.21);
+      }
       drawStar(ctx, x, y, radius, color, blinkPulse);
     });
 
