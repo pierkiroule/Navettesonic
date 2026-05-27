@@ -14,6 +14,7 @@ import { drawScene } from "../../core/soonRenderers.js";
 import { getMembraneRadiusForLevel } from "../../core/fishNavigationEngine.js";
 import { resetCanvasPaintState } from "../../core/canvasState.js";
 import { ARENA_INNER_BOUNDARY_INSET } from "../../core/constants.js";
+import { getBlobRadiusAtAngle } from "../../core/blobArena.js";
 import {
   getCharacterWorldEffects,
   updateCharacters,
@@ -30,6 +31,19 @@ const STAR_EDGE_STICK_RELEASE = 86;
 
 const CONTOUR_RIDE_DURATION_MS = 30000;
 const CONTOUR_RIDE_ENTRY_THRESHOLD = 52;
+
+function getContourSnapRadius(current = {}, angle = 0) {
+  const arenaRadius = Number.isFinite(current?.arenaRadius) ? current.arenaRadius : 1200;
+  const fishLevel = Number.isFinite(current?.fish?.arenaLevel) ? current.fish.arenaLevel : 0;
+  const hasBlob = Array.isArray(current?.arenaBlob?.points) && current.arenaBlob.points.length > 2;
+  if (hasBlob) {
+    return Math.max(
+      84,
+      getBlobRadiusAtAngle(current.arenaBlob, angle) - ARENA_INNER_BOUNDARY_INSET
+    );
+  }
+  return Math.max(84, getMembraneRadiusForLevel(arenaRadius, fishLevel));
+}
 
 function updateContourRide(current = {}, arenaRadius = 1200, now = performance.now()) {
   const fish = current?.fish;
@@ -165,7 +179,6 @@ function pushNearbyEchostoryStars(current) {
   const arenaRadius = Number.isFinite(current?.arenaRadius) ? current.arenaRadius : 1200;
   const contourSnapThreshold = Math.max(24, arenaRadius - STAR_EDGE_STICK_THRESHOLD);
   const contourReleaseThreshold = Math.max(32, arenaRadius - STAR_EDGE_STICK_RELEASE);
-  const contourRadius = Math.max(84, arenaRadius - ARENA_INNER_BOUNDARY_INSET);
 
   (current?.echostory?.stars || []).forEach((star) => {
     if (!star) return;
@@ -200,6 +213,7 @@ function pushNearbyEchostoryStars(current) {
     const distCenter = Math.hypot(star.x || 0, star.y || 0);
     if (distCenter >= contourSnapThreshold) {
       const angle = Math.atan2(star.y || 0, star.x || 0);
+      const contourRadius = getContourSnapRadius(current, angle);
       star.attachedToContour = true;
       star.contourAngle = angle;
       star.x = Math.cos(angle) * contourRadius;
@@ -208,6 +222,15 @@ function pushNearbyEchostoryStars(current) {
       star.vy = 0;
     } else if (star.attachedToContour && distCenter >= contourReleaseThreshold) {
       const angle = Number.isFinite(star.contourAngle) ? star.contourAngle : Math.atan2(star.y || 0, star.x || 0);
+      const contourRadius = getContourSnapRadius(current, angle);
+      star.contourAngle = angle;
+      star.x = Math.cos(angle) * contourRadius;
+      star.y = Math.sin(angle) * contourRadius;
+      star.vx = 0;
+      star.vy = 0;
+    } else if (star.attachedToContour) {
+      const angle = Number.isFinite(star.contourAngle) ? star.contourAngle : Math.atan2(star.y || 0, star.x || 0);
+      const contourRadius = getContourSnapRadius(current, angle);
       star.contourAngle = angle;
       star.x = Math.cos(angle) * contourRadius;
       star.y = Math.sin(angle) * contourRadius;
@@ -342,10 +365,16 @@ export function useSoonCanvasLoop({
         const distCenter = Math.hypot(bubble.x || 0, bubble.y || 0);
         const arenaRadius = Number.isFinite(next?.arenaRadius) ? next.arenaRadius : 1200;
         const contourSnapThreshold = Math.max(24, arenaRadius - 108);
-        const contourRadius = Math.max(84, arenaRadius - ARENA_INNER_BOUNDARY_INSET);
         if (distCenter >= contourSnapThreshold) {
           const angle = Math.atan2(bubble.y || 0, bubble.x || 0);
+          const contourRadius = getContourSnapRadius(next, angle);
           bubble.attachedToContour = true;
+          bubble.contourAngle = angle;
+          bubble.x = Math.cos(angle) * contourRadius;
+          bubble.y = Math.sin(angle) * contourRadius;
+        } else if (bubble.attachedToContour) {
+          const angle = Number.isFinite(bubble.contourAngle) ? bubble.contourAngle : Math.atan2(bubble.y || 0, bubble.x || 0);
+          const contourRadius = getContourSnapRadius(next, angle);
           bubble.contourAngle = angle;
           bubble.x = Math.cos(angle) * contourRadius;
           bubble.y = Math.sin(angle) * contourRadius;
