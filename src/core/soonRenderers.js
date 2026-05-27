@@ -583,6 +583,12 @@ export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
   drawArenaNetworkBackdrop(ctx, current, radius);
   if (current?.arenaBlob?.points?.length) {
     drawBlobArena(ctx, current.arenaBlob, time);
+    drawResonantContourBeacon(ctx, {
+      x: 0,
+      y: -Math.max(40, getBlobRadiusAtAngle(current.arenaBlob, -Math.PI / 2) - ARENA_INNER_BOUNDARY_INSET),
+      time,
+      mode: current?.mode,
+    });
     return;
   }
   const innerRadius = Math.max(0, radius - ARENA_INNER_BOUNDARY_INSET);
@@ -644,6 +650,42 @@ export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
     }
   });
 
+  const activeContourRadius = rings[Math.max(0, Math.min(rings.length - 1, arenaLevel))] || innerRadius;
+  drawResonantContourBeacon(ctx, {
+    x: 0,
+    y: -activeContourRadius,
+    time,
+    mode: current?.mode,
+  });
+
+  ctx.restore();
+}
+
+function drawResonantContourBeacon(ctx, { x = 0, y = 0, time = 0, mode = "" } = {}) {
+  const pulse = Math.sin(time * 0.004) * 0.5 + 0.5;
+  const haloRadius = 20 + pulse * 10;
+  const coreRadius = mode === "reso" ? 6.8 : 5.4;
+  const halo = ctx.createRadialGradient(x, y, 0, x, y, haloRadius);
+  halo.addColorStop(0, `rgba(255, 237, 164, ${0.92 - pulse * 0.12})`);
+  halo.addColorStop(0.45, `rgba(125, 211, 252, ${0.48 + pulse * 0.26})`);
+  halo.addColorStop(1, "rgba(125, 211, 252, 0)");
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, haloRadius, 0, Math.PI * 2);
+  ctx.fillStyle = halo;
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(x, y, coreRadius, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(255, 244, 214, 0.98)";
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(x, y, coreRadius + 2.8, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(103, 232, 249, ${0.62 + pulse * 0.3})`;
+  ctx.lineWidth = 1.6 * CONTOUR_WIDTH_MULTIPLIER;
+  ctx.stroke();
   ctx.restore();
 }
 
