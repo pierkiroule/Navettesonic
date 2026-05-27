@@ -13,6 +13,7 @@ import { updateBubbleAudioTriggers } from "../../core/soonAudioTriggers.js";
 import { drawScene } from "../../core/soonRenderers.js";
 import { getMembraneRadiusForLevel } from "../../core/fishNavigationEngine.js";
 import { resetCanvasPaintState } from "../../core/canvasState.js";
+import { ARENA_INNER_BOUNDARY_INSET } from "../../core/constants.js";
 import {
   getCharacterWorldEffects,
   updateCharacters,
@@ -164,7 +165,7 @@ function pushNearbyEchostoryStars(current) {
   const arenaRadius = Number.isFinite(current?.arenaRadius) ? current.arenaRadius : 1200;
   const contourSnapThreshold = Math.max(24, arenaRadius - STAR_EDGE_STICK_THRESHOLD);
   const contourReleaseThreshold = Math.max(32, arenaRadius - STAR_EDGE_STICK_RELEASE);
-  const contourRadius = Math.max(84, arenaRadius - 28);
+  const contourRadius = Math.max(84, arenaRadius - ARENA_INNER_BOUNDARY_INSET);
 
   (current?.echostory?.stars || []).forEach((star) => {
     if (!star) return;
@@ -341,7 +342,7 @@ export function useSoonCanvasLoop({
         const distCenter = Math.hypot(bubble.x || 0, bubble.y || 0);
         const arenaRadius = Number.isFinite(next?.arenaRadius) ? next.arenaRadius : 1200;
         const contourSnapThreshold = Math.max(24, arenaRadius - 108);
-        const contourRadius = Math.max(84, arenaRadius - 34);
+        const contourRadius = Math.max(84, arenaRadius - ARENA_INNER_BOUNDARY_INSET);
         if (distCenter >= contourSnapThreshold) {
           const angle = Math.atan2(bubble.y || 0, bubble.x || 0);
           bubble.attachedToContour = true;
