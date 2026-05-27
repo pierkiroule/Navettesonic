@@ -13,6 +13,8 @@ export function pushBubblesFromFish(bubbles = [], fish = {}, fishDepth = 1) {
   const body = { x: fishX - Math.cos(fishAngle) * 10, y: fishY - Math.sin(fishAngle) * 10, radius: 40 };
   return bubbles.map((bubble) => {
     const bubbleRadius = getBubblePhysicsRadius(bubble);
+    const previousVX = Number.isFinite(bubble.pushVX) ? bubble.pushVX : 0;
+    const previousVY = Number.isFinite(bubble.pushVY) ? bubble.pushVY : 0;
     let pushX = 0; let pushY = 0;
     [head, body].forEach((zone) => {
       const dx = (bubble.x || 0) - zone.x;
@@ -20,22 +22,28 @@ export function pushBubblesFromFish(bubbles = [], fish = {}, fishDepth = 1) {
       const d = Math.hypot(dx, dy) || 0.0001;
       const overlap = zone.radius + bubbleRadius - d;
       if (overlap <= 0) return;
-      const push = overlap * 0.2;
+      const push = overlap * 0.3;
       pushX += (dx / d) * push;
       pushY += (dy / d) * push;
     });
-    if (pushX === 0 && pushY === 0) return bubble;
     const boundaryRadius = DEFAULT_ARENA_RADIUS * 1.6;
-    const nextX = (bubble.x || 0) + pushX;
-    const nextY = (bubble.y || 0) + pushY;
+    const nextVX = (previousVX + pushX) * 0.82;
+    const nextVY = (previousVY + pushY) * 0.82;
+    const impulseMagnitude = Math.hypot(nextVX, nextVY);
+    if (impulseMagnitude < 0.02 && pushX === 0 && pushY === 0) {
+      if (previousVX === 0 && previousVY === 0) return bubble;
+      return { ...bubble, pushVX: 0, pushVY: 0 };
+    }
+    const nextX = (bubble.x || 0) + nextVX;
+    const nextY = (bubble.y || 0) + nextVY;
     const dist = Math.hypot(nextX, nextY);
     const stickThreshold = boundaryRadius - Math.max(18, bubbleRadius * 0.35);
     if (dist >= stickThreshold && dist > 0) {
       const angle = Math.atan2(nextY, nextX);
-      return { ...bubble, x: Math.cos(angle) * boundaryRadius, y: Math.sin(angle) * boundaryRadius };
+      return { ...bubble, x: Math.cos(angle) * boundaryRadius, y: Math.sin(angle) * boundaryRadius, pushVX: nextVX * 0.35, pushVY: nextVY * 0.35 };
     }
     const safe = clampToCircle({ x: nextX, y: nextY }, boundaryRadius);
-    return { ...bubble, x: safe.x, y: safe.y };
+    return { ...bubble, x: safe.x, y: safe.y, pushVX: nextVX, pushVY: nextVY };
   });
 }
 

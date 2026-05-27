@@ -386,7 +386,15 @@ export function useSoonPointer({
     }
 
     if (!isEditMode) {
-      onFishTarget?.(point.x, point.y, arenaRef.current.radius);
+      const startPoint = pointerRef.current.startPoint || point;
+      const pullDx = point.x - startPoint.x;
+      const pullDy = point.y - startPoint.y;
+      const leadPoint = {
+        x: point.x + pullDx * 0.2,
+        y: point.y + pullDy * 0.2,
+      };
+
+      onFishTarget?.(leadPoint.x, leadPoint.y, arenaRef.current.radius);
 
       if (current.mode === "reso" && current.soonTouchMode === "plume") {
         onAddPathPoint?.(point);
