@@ -19,3 +19,19 @@ test('buildStarMp3Trace orders stars by wave and creates mp3 suggestions', () =>
   assert.match(trace[0].suggestedFile, /^01_ecume-douce\.mp3$/);
   assert.equal(trace[2].traceProgress, 1);
 });
+
+
+test('buildStarMp3Trace follows contour orbit order when stars are attached to flow', () => {
+  const trace = buildStarMp3Trace({
+    collectedStars: [
+      { id: 'b', wave: 'ouverture', text: 'Beta', attachedToContour: true, contourAngle: Math.PI * 1.2 },
+      { id: 'a', wave: 'immersion', text: 'Alpha', attachedToContour: true, contourAngle: Math.PI * 0.25 },
+      { id: 'c', wave: 'bascule', text: 'Gamma', attachedToContour: true, contourAngle: Math.PI * 1.8 },
+    ],
+    path: [{ x: 0, y: 0 }, { x: 2, y: 1 }],
+  });
+
+  assert.deepEqual(trace.map((item) => item.starId), ['a', 'b', 'c']);
+  assert.equal(trace.every((item) => item.orbitFlow === true), true);
+  assert.equal(trace[0].orbitAngle < trace[1].orbitAngle, true);
+});
