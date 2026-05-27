@@ -9,6 +9,11 @@ export function pushBubblesFromFish(bubbles = [], fish = {}, fishDepth = 1) {
   const fishX = fish.x || 0;
   const fishY = fish.y || 0;
   const fishAngle = Number.isFinite(fish.angle) ? fish.angle : -Math.PI / 2;
+  const fishVX = Number.isFinite(fish.vx) ? fish.vx : 0;
+  const fishVY = Number.isFinite(fish.vy) ? fish.vy : 0;
+  const fishSpeed = Math.hypot(fishVX, fishVY);
+  const fishDirX = fishSpeed > 0.0001 ? fishVX / fishSpeed : Math.cos(fishAngle);
+  const fishDirY = fishSpeed > 0.0001 ? fishVY / fishSpeed : Math.sin(fishAngle);
   const head = { x: fishX + Math.cos(fishAngle) * 36, y: fishY + Math.sin(fishAngle) * 36, radius: 34 };
   const body = { x: fishX - Math.cos(fishAngle) * 10, y: fishY - Math.sin(fishAngle) * 10, radius: 40 };
   return bubbles.map((bubble) => {
@@ -23,8 +28,12 @@ export function pushBubblesFromFish(bubbles = [], fish = {}, fishDepth = 1) {
       const overlap = zone.radius + bubbleRadius - d;
       if (overlap <= 0) return;
       const push = overlap * 0.62;
-      pushX += (dx / d) * push;
-      pushY += (dy / d) * push;
+      const normalX = dx / d;
+      const normalY = dy / d;
+      const directionalBoost = Math.max(0, normalX * fishDirX + normalY * fishDirY);
+      const thrust = fishSpeed * (0.55 + directionalBoost * 0.7);
+      pushX += normalX * push + fishDirX * thrust;
+      pushY += normalY * push + fishDirY * thrust;
     });
     const boundaryRadius = DEFAULT_ARENA_RADIUS * 1.6;
     const nextVX = (previousVX + pushX) * 0.985;
