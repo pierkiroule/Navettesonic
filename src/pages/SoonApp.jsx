@@ -769,9 +769,9 @@ export default function SoonApp({ onBack }) {
               className={`mode-switch-button ${soonTouchMode === "plume" ? "active" : ""}`}
               onClick={() => setSoonTouchMode("plume")}
               aria-pressed={soonTouchMode === "plume"}
-              title="Mode 🪶 : tisser des liens narratifs entre les étoiles sans les pousser"
+              title="Activer le tissage inter-étoiles"
             >
-              🪶 Mode tissage
+              🪶 Tissage inter-étoiles
             </button>
           </div>
         </div>
