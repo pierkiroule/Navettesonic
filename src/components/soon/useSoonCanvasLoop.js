@@ -20,6 +20,9 @@ import {
 
 
 const ECHOSTORY_VOICE_BASE_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/sooncut";
+const CONTACT_PUSH_DISTANCE = 34;
+const BLINK_DELAY_MS = 2000;
+const BLINK_DURATION_MS = 5000;
 
 function getEchostorySampleUrlCandidates(sampleIndex) {
   const n = String(sampleIndex);
@@ -110,7 +113,6 @@ function pushNearbyEchostoryStars(current, onPrompt) {
   const fishX = Number.isFinite(current.fish.x) ? current.fish.x : 0;
   const fishY = Number.isFinite(current.fish.y) ? current.fish.y : 0;
   const TRIGGER_RADIUS = 55;
-  const PUSH_DISTANCE = 18;
   const RESO_RETRIGGER_MS = 1200;
   const arenaRadius = Number.isFinite(current?.arenaRadius) ? current.arenaRadius : 1200;
   const contourSnapThreshold = Math.max(24, arenaRadius - 108);
@@ -140,8 +142,8 @@ function pushNearbyEchostoryStars(current, onPrompt) {
       if (!isPlumeWeaving && distance > 0 && isInside) {
         const ux = dx / distance;
         const uy = dy / distance;
-        star.x = (star.x || 0) + ux * PUSH_DISTANCE;
-        star.y = (star.y || 0) + uy * PUSH_DISTANCE;
+        star.x = (star.x || 0) + ux * CONTACT_PUSH_DISTANCE;
+        star.y = (star.y || 0) + uy * CONTACT_PUSH_DISTANCE;
       }
       const distCenter = Math.hypot(star.x || 0, star.y || 0);
       if (!isPlumeWeaving && distCenter >= contourSnapThreshold) {
@@ -152,6 +154,12 @@ function pushNearbyEchostoryStars(current, onPrompt) {
         star.y = Math.sin(angle) * contourRadius;
       }
       return;
+    }
+
+    const now = Date.now();
+    if (Number.isFinite(star.blinkArmAt) && now >= star.blinkArmAt && now > (star.blinkUntil || 0)) {
+      star.blinkUntil = now + BLINK_DURATION_MS;
+      star.blinkArmAt = null;
     }
 
     if (distance > 0 && isInside) {
@@ -165,7 +173,9 @@ function pushNearbyEchostoryStars(current, onPrompt) {
         star.collected = true;
         onPrompt?.({ type: "star-collect", starId: star.id, star });
       } else {
-        star.blinkUntil = now + 5000;
+        if (!Number.isFinite(star.blinkArmAt) || now > star.blinkArmAt) {
+          star.blinkArmAt = now + BLINK_DELAY_MS;
+        }
       }
       const ux = dx / distance;
       const uy = dy / distance;
@@ -174,7 +184,7 @@ function pushNearbyEchostoryStars(current, onPrompt) {
       return;
     }
     if (distance === 0) {
-      star.y = (star.y || 0) - PUSH_DISTANCE;
+      star.y = (star.y || 0) - CONTACT_PUSH_DISTANCE;
     }
   });
 }
@@ -285,15 +295,31 @@ export function useSoonCanvasLoop({
       pushNearbyEchostoryStars(next, onPromptEchostoryStarCollect);
       const fishDepth = Math.round(next?.fish?.depth || 1);
       (next?.bubbles || []).forEach((bubble) => {
+        const now = Date.now();
+        if (Number.isFinite(bubble.blinkArmAt) && now >= bubble.blinkArmAt && now > (bubble.blinkUntil || 0)) {
+          bubble.blinkUntil = now + BLINK_DURATION_MS;
+          bubble.blinkArmAt = null;
+        }
         const d = Math.hypot((bubble.x || 0) - (next?.fish?.x || 0), (bubble.y || 0) - (next?.fish?.y || 0));
         if (d < 62 && Math.abs(Math.round(bubble.depth || 1) - fishDepth) <= 1) {
-          onCollectTrailItem?.({
-            id: `bubble:${bubble.id}`,
-            kind: "bubble",
-            label: bubble.label || "Bulle sonore",
-            bubbleId: bubble.id,
-            sampleId: bubble.sampleId,
-          });
+          const blinking = now <= (bubble.blinkUntil || 0);
+          if (d > 0) {
+            const ux = ((bubble.x || 0) - (next?.fish?.x || 0)) / d;
+            const uy = ((bubble.y || 0) - (next?.fish?.y || 0)) / d;
+            bubble.x = (bubble.x || 0) + ux * CONTACT_PUSH_DISTANCE;
+            bubble.y = (bubble.y || 0) + uy * CONTACT_PUSH_DISTANCE;
+          }
+          if (blinking) {
+            onCollectTrailItem?.({
+              id: `bubble:${bubble.id}`,
+              kind: "bubble",
+              label: bubble.label || "Bulle sonore",
+              bubbleId: bubble.id,
+              sampleId: bubble.sampleId,
+            });
+          } else if (!Number.isFinite(bubble.blinkArmAt) || now > bubble.blinkArmAt) {
+            bubble.blinkArmAt = now + BLINK_DELAY_MS;
+          }
         }
       });
       const nextFish = next.fish || null;
