@@ -422,9 +422,13 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
 
   const readerZones = [];
   const paused = Boolean(current?.contourPlaybackPaused);
-  const angularStep = (Math.PI * 2) / (30000 / 16.67);
+  const nowMs = performance.now();
+  const prevMs = guppyRuntime.lastContourReaderTickAt || nowMs;
+  const dtSec = Math.max(0, Math.min(0.1, (nowMs - prevMs) / 1000));
+  guppyRuntime.lastContourReaderTickAt = nowMs;
+  const angularSpeed = (Math.PI * 2) / 30;
   const leader = contourReaders[0];
-  if (leader && !paused) leader.angle += angularStep;
+  if (leader && !paused) leader.angle -= angularSpeed * dtSec;
   const leadAngle = leader?.angle ?? 0;
   contourReaders.forEach((reader, index) => {
     const localAngle = leadAngle + (index - (contourReaders.length - 1) * 0.5) * 0.045;
