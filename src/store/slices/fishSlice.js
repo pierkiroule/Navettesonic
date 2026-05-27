@@ -45,6 +45,8 @@ const nextEchostory=s.echostory?{...s.echostory,stars:stars.map((star)=>{
   const starAngle=Number.isFinite(star.contourAngle)?star.contourAngle:Math.atan2(star.y||0,star.x||0);
   return {...star,attachedToContour:false,x:Math.cos(starAngle)*innerReleaseRadius,y:Math.sin(starAngle)*innerReleaseRadius};
 })}:s.echostory;
-return{gamePaused:false,pendingBlobAction:null,eyesClosed:false,echostory:nextEchostory,fish:{...(s.fish||{}),targetX:s.fish?.x||0,targetY:s.fish?.y||0}};
+const startLooping=type==="looping";
+const loopStartAngle=Number.isFinite(angle)?angle:(-Math.PI/2);
+return{gamePaused:false,pendingBlobAction:null,eyesClosed:false,echostory:nextEchostory,contourRide:startLooping?{active:true,startedAt:performance.now(),baseAngle:loopStartAngle}:s.contourRide,fish:{...(s.fish||{}),targetX:s.fish?.x||0,targetY:s.fish?.y||0}};
 }),
 });

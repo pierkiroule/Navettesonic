@@ -7,12 +7,15 @@ import { getAudioTuning, setAudioTuning } from "../core/audioEngine.js";
 function BlobContextMenu({ anchor, onSelect }) {
   const baseStyle = { position: "absolute", left: `${anchor?.x || 0}px`, top: `${anchor?.y || 0}px` };
   return (
-    <div style={baseStyle} className="fish-blob-context-menu" aria-label="Menu expi inspi">
+    <div style={baseStyle} className="fish-blob-context-menu" aria-label="Menu expi inspi looping">
       <button type="button" className="fish-blob-half fish-blob-half-top" onClick={() => onSelect("expi")}>
         ↑ Expi
       </button>
       <button type="button" className="fish-blob-half fish-blob-half-bottom" onClick={() => onSelect("inspi")}>
         ↓ Inspi
+      </button>
+      <button type="button" className="fish-blob-looping" onClick={() => onSelect("looping")}>
+        Looping
       </button>
     </div>
   );

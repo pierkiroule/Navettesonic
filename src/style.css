@@ -2667,6 +2667,26 @@ button {
   filter: brightness(1.12);
 }
 
+.fish-blob-looping {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(125, 211, 252, 0.45);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #e2e8f0;
+  background: rgba(15, 23, 42, 0.92);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+}
+
+.fish-blob-looping:hover,
+.fish-blob-looping:active {
+  filter: brightness(1.12);
+}
+
 .fish-radial-menu {
   position: fixed;
   transform: translate(-50%, -50%);
