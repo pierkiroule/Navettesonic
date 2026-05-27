@@ -99,6 +99,8 @@ export default function SoonApp({ onBack }) {
     arenaBlob,
     echostory,
     collectEchostoryStar,
+    addTrailItem,
+    clearTrailItems,
     resetEchostory,
     advanceEchostoryWave,
     triggerEscapeCinematic,
@@ -126,11 +128,17 @@ export default function SoonApp({ onBack }) {
   const collectedInWave = stars.filter((star) => star?.collected).length;
   const isStoryReady = echostory?.phase === "story";
   const canGoNextWave = !isStoryReady && collectedInWave >= 5;
-  const linearCompositionItems = (echostory?.collectedStars || []).map((star, index) => ({
-    id: star?.id || `collected-${index + 1}`,
-    label: star?.text || star?.label || `Étoile ${index + 1}`,
-    type: star?.wave || "vocal",
+  const linearCompositionItems = (echostory?.trailItems || []).map((item, index) => ({
+    id: item?.id || `trail-${index + 1}`,
+    label: item?.label || `Élément ${index + 1}`,
+    type: item?.kind || "trace",
   }));
+
+  const handleTrailAction = (action, payload) => {
+    if (action === "collect" && payload?.id) {
+      addTrailItem(payload);
+    }
+  };
 
   useEffect(() => {
     const closestLevel = [1, 2, 3].reduce((best, level) => (
@@ -539,6 +547,9 @@ export default function SoonApp({ onBack }) {
           });
         }}
         soonTouchMode={soonTouchMode}
+        onReleaseTrailItems={clearTrailItems}
+        onPlayTrailItems={handleTrailAction}
+        trailCount={(echostory?.trailItems || []).length}
       />
 
 

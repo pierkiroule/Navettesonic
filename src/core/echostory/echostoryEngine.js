@@ -127,5 +127,6 @@ export function resetEchostoryState() {
     echostoryPathIndex: 0,
     activeLine: null,
     escapeState: "idle",
+    trailItems: [],
   };
 }

@@ -58,6 +58,16 @@ export const createEchostorySlice = (set) => ({
     };
   }),
   collectEchostoryStar: (id) => set((state) => ({ echostory: collectStar(state.echostory, id) })),
+  addTrailItem: (item) => set((state) => {
+    if (!item?.id) return {};
+    const echostory = state.echostory || {};
+    const trailItems = Array.isArray(echostory.trailItems) ? echostory.trailItems : [];
+    if (trailItems.some((entry) => entry?.id === item.id)) return {};
+    return { echostory: { ...echostory, trailItems: [...trailItems, item] } };
+  }),
+  clearTrailItems: () => set((state) => ({
+    echostory: { ...(state.echostory || {}), trailItems: [] },
+  })),
   threadEchostoryStar: (id) => set((state) => {
     const echostory = state.echostory || {};
     if (!id) return { echostory };
