@@ -756,6 +756,21 @@ export default function SoonApp({ onBack }) {
           <div className="mode-switch-pill">
             <button
               type="button"
+              className={`mode-switch-button ${contourPlaybackPaused ? "" : "active"}`}
+              onClick={() => {
+                setContourPlaybackPaused((paused) => {
+                  const next = !paused;
+                  setIsTravelPlaying(!next);
+                  return next;
+                });
+              }}
+              aria-pressed={!contourPlaybackPaused}
+              title="Lecture du contour"
+            >
+              {contourPlaybackPaused ? "▶️ Play contour" : "⏸ Pause contour"}
+            </button>
+            <button
+              type="button"
               className={`mode-switch-button ${soonTouchMode === "bubble" ? "active" : ""}`}
               onClick={() => setSoonTouchMode("bubble")}
               aria-pressed={soonTouchMode === "bubble"}

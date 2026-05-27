@@ -422,18 +422,22 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
 
   const readerZones = [];
   const paused = Boolean(current?.contourPlaybackPaused);
-  const angularStep = (Math.PI * 2) / (26000 / 16.67);
-  contourReaders.forEach((reader) => {
-    if (!paused) reader.angle -= angularStep; // sens horaire
-    const edge = getArenaEdgeRadius(current, arenaRadius, reader.angle);
-    const rimRadius = Math.max(80, edge + 26);
-    const rx = Math.cos(reader.angle) * rimRadius;
-    const ry = Math.sin(reader.angle) * rimRadius;
-    const sway = paused ? 1 : 0.45;
-    const x = rx + Math.cos(time * 0.002 + reader.phase) * (6 * sway);
-    const y = ry + Math.sin(time * 0.0016 + reader.phase) * (5 * sway);
-    const facing = reader.angle - Math.PI / 2;
-    drawGuppyTopView(ctx, x, y, facing, 0.78, time * 0.016 + reader.phase);
+  const angularStep = (Math.PI * 2) / (30000 / 16.67);
+  const leader = contourReaders[0];
+  if (leader && !paused) leader.angle -= angularStep;
+  const leadAngle = leader?.angle ?? 0;
+  contourReaders.forEach((reader, index) => {
+    const localAngle = leadAngle + (index - (contourReaders.length - 1) * 0.5) * 0.045;
+    const edge = getArenaEdgeRadius(current, arenaRadius, localAngle);
+    const rimRadius = Math.max(80, edge + 26 + Math.abs(index - 3) * 2.5);
+    const rx = Math.cos(localAngle) * rimRadius;
+    const ry = Math.sin(localAngle) * rimRadius;
+    const sway = paused ? 0.35 : 0.2;
+    const x = rx + Math.cos(time * 0.002 + reader.phase) * (4 * sway);
+    const y = ry + Math.sin(time * 0.0016 + reader.phase) * (3 * sway);
+    const facing = localAngle - Math.PI / 2;
+    drawGuppyTopView(ctx, x, y, facing, 0.78 - Math.abs(index - 3) * 0.05, time * 0.016 + reader.phase);
+    reader.angle = localAngle;
     readerZones.push({ id: reader.id, x, y, r: 26 });
   });
   current.contourReaderHitZones = readerZones;
