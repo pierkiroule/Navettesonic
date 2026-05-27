@@ -21,40 +21,5 @@ const staged=loaded.map((b)=>({...b,x:(next?.fish?.x||0)+(b.x||0)*0.12,y:(next?.
 return{...next,bubbles:staged,arenaBubblesById:byArena,bubbleTransitionProgress:0,bubbleTransitionTarget:loaded,selectedBubbleId:null,selectedBeaconId:null};}),
 startFishTrailAt:(x,y)=>set(()=>({fishTrail:startFishTrailAt(x,y)})),
 addFishTrailPoint:(x,y)=>set((s)=>({fishTrail:addFishTrailPoint(s.fishTrail||[],x,y)})),
-applyBlobAction:(type,angle)=>set((s)=>{
-if(type==="looping"){
-const loopStartAngle=Number.isFinite(angle)?angle:(-Math.PI/2);
-return{
-  gamePaused:false,
-  pendingBlobAction:null,
-  eyesClosed:false,
-  contourRide:{active:true,startedAt:performance.now(),baseAngle:loopStartAngle},
-  fish:{...(s.fish||{}),targetX:s.fish?.x||0,targetY:s.fish?.y||0},
-};
-}
-const arenaRadius=s.arenaRadius||1200;
-const outerTrackRadius=Math.max(120,arenaRadius+26);
-const innerReleaseRadius=Math.max(120,arenaRadius-220);
-const stars=s.echostory?.stars||[];
-let selectedId=null;
-let selectedDistance=Infinity;
-stars.forEach((star)=>{
-  if(!star)return;
-  const isAttached=Boolean(star.attachedToContour);
-  if(type==="expi"&&isAttached)return;
-  if(type==="inspi"&&!isAttached)return;
-  const d=Math.hypot((star.x||0)-(s.fish?.x||0),(star.y||0)-(s.fish?.y||0));
-  if(d<selectedDistance){selectedDistance=d;selectedId=star.id;}
-});
-const nextEchostory=s.echostory?{...s.echostory,stars:stars.map((star)=>{
-  if(!star||star.id!==selectedId)return star;
-  if(type==="expi"){
-    const starAngle=Math.atan2(star.y||0,star.x||0);
-    return {...star,attachedToContour:true,contourAngle:starAngle,x:Math.cos(starAngle)*outerTrackRadius,y:Math.sin(starAngle)*outerTrackRadius};
-  }
-  const starAngle=Number.isFinite(star.contourAngle)?star.contourAngle:Math.atan2(star.y||0,star.x||0);
-  return {...star,attachedToContour:false,x:Math.cos(starAngle)*innerReleaseRadius,y:Math.sin(starAngle)*innerReleaseRadius};
-})}:s.echostory;
-return{gamePaused:false,pendingBlobAction:null,eyesClosed:false,echostory:nextEchostory,fish:{...(s.fish||{}),targetX:s.fish?.x||0,targetY:s.fish?.y||0}};
-}),
+applyBlobAction:()=>set((s)=>({ ...s, pendingBlobAction: null })),
 });
