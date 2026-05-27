@@ -3,6 +3,7 @@ import { useSoonCanvasLoop } from "./soon/useSoonCanvasLoop.js";
 import { useSoonPointer } from "./soon/useSoonPointer.js";
 import RadialMenu from "./RadialMenu.jsx";
 import { getAudioTuning, setAudioTuning } from "../core/audioEngine.js";
+import { ARENA_INNER_BOUNDARY_INSET, MEMBRANE_LEVEL_MULTIPLIERS } from "../core/constants.js";
 
 
 export default function SoonCanvas({
@@ -68,6 +69,7 @@ export default function SoonCanvas({
   const [earActivationText, setEarActivationText] = useState("");
   const [audioTuning, setAudioTuningState] = useState(() => getAudioTuning());
   const [showSensitivitySlider, setShowSensitivitySlider] = useState(false);
+  const [contourPlayButton, setContourPlayButton] = useState({ visible: false, x: 0, y: 0 });
 
   const cameraRef = useRef({
     x: 0,
@@ -288,6 +290,76 @@ export default function SoonCanvas({
     return () => cancelAnimationFrame(frame);
   }, [arenaRef, cameraRef, canvasRef, stateRef]);
 
+  useEffect(() => {
+    let frame = 0;
+    const updateContourPlayButton = () => {
+      const canvas = canvasRef.current;
+      const current = stateRef.current || {};
+      const fishState = current.fish || {};
+      const rideActive = Boolean(current?.contourRide?.active);
+      if (!canvas || !fishState || rideActive) {
+        setContourPlayButton((prev) => (prev.visible ? { ...prev, visible: false } : prev));
+        frame = requestAnimationFrame(updateContourPlayButton);
+        return;
+      }
+      const arenaRadius = Number.isFinite(current.arenaRadius) ? current.arenaRadius : (arenaRef.current.radius || 1200);
+      const level = Number.isFinite(fishState.arenaLevel) ? fishState.arenaLevel : 0;
+      const multiplier = MEMBRANE_LEVEL_MULTIPLIERS[level] ?? MEMBRANE_LEVEL_MULTIPLIERS[0] ?? 1;
+      const contourRadius = Math.max(84, Math.max(0, arenaRadius - ARENA_INNER_BOUNDARY_INSET) * multiplier);
+      const zenith = { x: 0, y: -contourRadius };
+      const fishX = Number.isFinite(fishState.x) ? fishState.x : 0;
+      const fishY = Number.isFinite(fishState.y) ? fishState.y : 0;
+      const snapped = Math.hypot(fishX - zenith.x, fishY - zenith.y) <= 38;
+
+      if (!snapped) {
+        setContourPlayButton((prev) => (prev.visible ? { ...prev, visible: false } : prev));
+        frame = requestAnimationFrame(updateContourPlayButton);
+        return;
+      }
+
+      const rect = canvas.getBoundingClientRect();
+      const viewZoom = Number.isFinite(current.viewZoom) ? current.viewZoom : 0;
+      const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 2.55);
+      const userZoom = fitZoom * (1 + viewZoom * 1.55);
+      const world = current.worldGraph;
+      const arenaId = current.currentArenaId || world?.startArenaId;
+      const arenaNode = (world?.nodes || []).find((node) => node.id === arenaId) || null;
+      const center = arenaNode?.absoluteCenter || { x: 0, y: 0 };
+      const centerX = Number.isFinite(center.x) ? center.x : 0;
+      const centerY = Number.isFinite(center.y) ? center.y : 0;
+      const camera = cameraRef.current || { x: 0, y: 0 };
+
+      const screenX = rect.width * 0.5 + (centerX + zenith.x - camera.x) * userZoom;
+      const screenY = rect.height * 0.5 + (centerY + zenith.y - camera.y) * userZoom - 46;
+      setContourPlayButton({ visible: true, x: screenX, y: screenY });
+      frame = requestAnimationFrame(updateContourPlayButton);
+    };
+    frame = requestAnimationFrame(updateContourPlayButton);
+    return () => cancelAnimationFrame(frame);
+  }, [arenaRef, cameraRef, canvasRef, stateRef]);
+
+  const handleContourPlayClick = () => {
+    const current = stateRef.current || {};
+    const fishState = current.fish || {};
+    const arenaRadius = Number.isFinite(current.arenaRadius) ? current.arenaRadius : (arenaRef.current.radius || 1200);
+    const level = Number.isFinite(fishState.arenaLevel) ? fishState.arenaLevel : 0;
+    const multiplier = MEMBRANE_LEVEL_MULTIPLIERS[level] ?? MEMBRANE_LEVEL_MULTIPLIERS[0] ?? 1;
+    const contourRadius = Math.max(84, Math.max(0, arenaRadius - ARENA_INNER_BOUNDARY_INSET) * multiplier);
+    const now = performance.now();
+    const zenith = { x: 0, y: -contourRadius };
+
+    fishState.x = zenith.x;
+    fishState.y = zenith.y;
+    fishState.targetX = zenith.x;
+    fishState.targetY = zenith.y;
+    fishState.vx = 0;
+    fishState.vy = 0;
+    fishState.angle = 0;
+    current.contourRide = { active: true, startedAt: now, baseAngle: -Math.PI / 2 };
+    current.zenithStar = { ...(current.zenithStar || {}), x: zenith.x, y: zenith.y, radius: 52, armed: false, hitAt: now };
+    setContourPlayButton((prev) => ({ ...prev, visible: false }));
+  };
+
   return (
     <div className="soon-canvas-shell">
       <canvas
@@ -312,6 +384,18 @@ export default function SoonCanvas({
         <div className="ear-activation-text" role="status" aria-live="polite">
           {earActivationText}
         </div>
+      ) : null}
+      {contourPlayButton.visible ? (
+        <button
+          type="button"
+          className="contour-play-btn"
+          style={{ left: `${contourPlayButton.x}px`, top: `${contourPlayButton.y}px` }}
+          onClick={handleContourPlayClick}
+          aria-label="Lancer le tour de contour"
+          title="Play tour de piste"
+        >
+          ▶
+        </button>
       ) : null}
       {semioseVideo?.url ? (
         <div

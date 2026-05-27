@@ -226,6 +226,27 @@ button {
   outline-offset: 2px;
 }
 
+.contour-play-btn {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 15;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid rgba(186, 230, 253, 0.55);
+  background: rgba(2, 6, 23, 0.78);
+  color: rgba(236, 254, 255, 0.96);
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+  line-height: 1;
+  box-shadow: 0 8px 22px rgba(2, 6, 23, 0.4), 0 0 18px rgba(34, 211, 238, 0.32);
+}
+
+.contour-play-btn:hover {
+  background: rgba(14, 116, 144, 0.45);
+}
+
 .ear-activation-text {
   position: absolute;
   left: 50%;
