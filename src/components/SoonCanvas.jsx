@@ -69,6 +69,7 @@ export default function SoonCanvas({
   onCollectEchostoryStar,
   contourPlaybackPaused = false,
   onToggleContourPlayback,
+  soonTouchMode = "bubble",
 }) {
   const canvasRef = useRef(null);
   const [semioseVideo, setSemioseVideo] = useState(null);
@@ -139,6 +140,7 @@ export default function SoonCanvas({
     pendingBlobAction,
     echostory,
     contourPlaybackPaused,
+    soonTouchMode,
   });
 
   useEffect(() => {
@@ -169,6 +171,7 @@ export default function SoonCanvas({
       pendingBlobAction,
       echostory,
       contourPlaybackPaused,
+      soonTouchMode,
     };
   }, [
     mode,
@@ -197,6 +200,7 @@ export default function SoonCanvas({
     pendingBlobAction,
     echostory,
     contourPlaybackPaused,
+    soonTouchMode,
   ]);
 
   useEffect(() => {

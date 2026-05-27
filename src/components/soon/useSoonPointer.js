@@ -182,7 +182,7 @@ export function useSoonPointer({
       onFishTarget?.(point.x, point.y, arenaRef.current.radius);
     }
 
-    if (current.mode === "reso") {
+    if (current.mode === "reso" && current.soonTouchMode === "plume") {
       onAddPathPoint?.(point);
     }
   }
@@ -388,7 +388,7 @@ export function useSoonPointer({
     if (!isEditMode) {
       onFishTarget?.(point.x, point.y, arenaRef.current.radius);
 
-      if (current.mode === "reso") {
+      if (current.mode === "reso" && current.soonTouchMode === "plume") {
         onAddPathPoint?.(point);
       }
     }
