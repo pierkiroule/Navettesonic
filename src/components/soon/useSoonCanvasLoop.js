@@ -127,7 +127,9 @@ function pushNearbyEchostoryStars(current, onPrompt) {
     const isInside = distance < TRIGGER_RADIUS;
 
     if (current?.mode === "reso") {
-      const isPlumeWeaving = current?.soonTouchMode === "plume";
+      const touchMode = current?.soonTouchMode || "bubble";
+      const isPlumeWeaving = touchMode === "plume";
+      const isEarMode = touchMode === "ear";
       if (!isInside) {
         star.resoInside = false;
         return;
@@ -139,19 +141,23 @@ function pushNearbyEchostoryStars(current, onPrompt) {
         star.resoAudioCooldownUntil = now + RESO_RETRIGGER_MS;
         triggerEchostoryStarPreview(star, fishX);
       }
-      if (!isPlumeWeaving && distance > 0 && isInside) {
+      if (!isPlumeWeaving && !isEarMode && distance > 0 && isInside) {
         const ux = dx / distance;
         const uy = dy / distance;
         star.x = (star.x || 0) + ux * CONTACT_PUSH_DISTANCE;
         star.y = (star.y || 0) + uy * CONTACT_PUSH_DISTANCE;
       }
       const distCenter = Math.hypot(star.x || 0, star.y || 0);
-      if (!isPlumeWeaving && distCenter >= contourSnapThreshold) {
+      if (!isPlumeWeaving && !isEarMode && distCenter >= contourSnapThreshold) {
         const angle = Math.atan2(star.y || 0, star.x || 0);
         star.attachedToContour = true;
         star.contourAngle = angle;
         star.x = Math.cos(angle) * contourRadius;
         star.y = Math.sin(angle) * contourRadius;
+      }
+      if (isPlumeWeaving && isInside) {
+        star.collected = true;
+        onPrompt?.({ type: "star-collect", starId: star.id, star });
       }
       return;
     }

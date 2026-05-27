@@ -743,7 +743,7 @@ export default function SoonApp({ onBack }) {
                       type="button"
                       className={`bubble-btn mode-toggle ${soonTouchMode === "bubble" ? "active" : ""}`}
                       onClick={() => setSoonTouchMode("bubble")}
-                      title="Mode 🫧 pousser et écouter"
+                      title="Mode 🫧 balader, pousser, sans récolter"
                       aria-label="Ouvrir l’éditeur des bulles sonores"
                     >
                       🫧
@@ -805,16 +805,25 @@ export default function SoonApp({ onBack }) {
               aria-pressed={soonTouchMode === "bubble"}
               title="Mode 🫧 : pousser bulles/étoiles, écouter sans récolter"
             >
-              🫧 Mode bulle
+              🫧 Mode balade
             </button>
             <button
               type="button"
               className={`mode-switch-button ${soonTouchMode === "plume" ? "active" : ""}`}
               onClick={() => setSoonTouchMode("plume")}
               aria-pressed={soonTouchMode === "plume"}
-              title="Activer le tissage inter-étoiles"
+              title="Mode 🪶 récolte sur traîne"
             >
-              🪶 Tissage inter-étoiles
+              🪶 Mode récolte
+            </button>
+            <button
+              type="button"
+              className={`mode-switch-button ${soonTouchMode === "ear" ? "active" : ""}`}
+              onClick={() => setSoonTouchMode("ear")}
+              aria-pressed={soonTouchMode === "ear"}
+              title="Mode 👂 écoute de la traîne"
+            >
+              👂 Mode écoute
             </button>
           </div>
         </div>
