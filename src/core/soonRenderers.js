@@ -182,21 +182,6 @@ function drawContourReader(ctx, current = {}, arenaRadius = 1200, time = 0) {
 function ensureGuppyRuntime(current, arenaRadius) {
   if (guppyRuntime.initialized) return;
   guppyRuntime.initialized = true;
-  const count = 14;
-  for (let i = 0; i < count; i += 1) {
-    const a = (Math.PI * 2 * i) / count;
-    const edge = getArenaEdgeRadius(current, arenaRadius, a);
-    const r = Math.max(120, edge * (0.22 + Math.random() * 0.54));
-    guppyRuntime.fish.push({
-      id: `guppy-${i}`,
-      x: Math.cos(a) * r,
-      y: Math.sin(a) * r,
-      vx: Math.cos(a + Math.PI / 2) * 0.7,
-      vy: Math.sin(a + Math.PI / 2) * 0.7,
-      angle: a,
-      phase: Math.random() * Math.PI * 2,
-    });
-  }
   // Important narratif: au départ aucune perle/graine sur la membrane.
   // Elles arrivent uniquement via les étoiles filantes cosmiques.
   if (!guppyRuntime.contourReaders.length) {
@@ -220,6 +205,7 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
   const pinkSmoke = guppyRuntime.pinkSmoke;
   const cosmicStreaks = guppyRuntime.cosmicStreaks;
   const contourReaders = guppyRuntime.contourReaders;
+  const plumeFish = current?.fish || null;
   const dt = 1;
 
   if (now >= guppyRuntime.nextCosmicSpawnAt) {
@@ -271,86 +257,6 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
         headHitsTarget: 7 + Math.floor(Math.random() * 3),
         lastHeadHitAt: 0,
       });
-    }
-  });
-
-  const plumeFish = current?.fish || null;
-  fish.forEach((g) => {
-    const a = Math.atan2(g.y, g.x);
-    const edge = getArenaEdgeRadius(current, arenaRadius, a);
-    const navMax = Math.max(110, edge - 58);
-    const navMin = Math.max(70, edge * 0.16);
-
-    // Les poissons-roses sont attirés par la graine la plus proche.
-    let nearestSeed = null;
-    let nearestSeedDistance = Infinity;
-    for (let i = 0; i < seeds.length; i += 1) {
-      const seed = seeds[i];
-      const d = Math.hypot((seed.x || 0) - (g.x || 0), (seed.y || 0) - (g.y || 0));
-      if (d < nearestSeedDistance) {
-        nearestSeedDistance = d;
-        nearestSeed = seed;
-      }
-    }
-    if (nearestSeed && nearestSeedDistance < 220) {
-      const weight = (220 - nearestSeedDistance) / 220;
-      const tx = ((nearestSeed.x || 0) - (g.x || 0)) / Math.max(0.001, nearestSeedDistance);
-      const ty = ((nearestSeed.y || 0) - (g.y || 0)) / Math.max(0.001, nearestSeedDistance);
-      g.vx += tx * (0.035 + weight * 0.07);
-      g.vy += ty * (0.035 + weight * 0.07);
-    }
-
-    // Le poisson-plume peut pousser légèrement les poissons-roses.
-    if (plumeFish) {
-      const dxPlume = (g.x || 0) - (plumeFish.x || 0);
-      const dyPlume = (g.y || 0) - (plumeFish.y || 0);
-      const dPlume = Math.hypot(dxPlume, dyPlume);
-      if (dPlume < 88) {
-        const push = (88 - dPlume) / 88;
-        const nx = dxPlume / Math.max(0.001, dPlume);
-        const ny = dyPlume / Math.max(0.001, dPlume);
-        g.vx += nx * (0.04 + push * 0.1) + (plumeFish.vx || 0) * 0.04;
-        g.vy += ny * (0.04 + push * 0.1) + (plumeFish.vy || 0) * 0.04;
-      }
-    }
-
-    g.vx += (Math.random() - 0.5) * 0.06;
-    g.vy += (Math.random() - 0.5) * 0.06;
-    const speed = Math.hypot(g.vx, g.vy) || 1;
-    const targetSpeed = 0.9 + Math.sin(time * 0.001 + g.phase) * 0.24;
-    g.vx = (g.vx / speed) * targetSpeed;
-    g.vy = (g.vy / speed) * targetSpeed;
-    g.x += g.vx * dt;
-    g.y += g.vy * dt;
-
-    const d = Math.hypot(g.x, g.y);
-    if (d > navMax) {
-      const c = navMax / d;
-      g.x *= c; g.y *= c;
-      g.vx *= -0.35; g.vy *= -0.35;
-    } else if (d < navMin) {
-      const c = navMin / Math.max(0.001, d);
-      g.x *= c; g.y *= c;
-      g.vx += Math.cos(a) * 0.2;
-      g.vy += Math.sin(a) * 0.2;
-    }
-    g.angle = Math.atan2(g.vy, g.vx);
-
-    const mouthX = g.x + Math.cos(g.angle) * 11;
-    const mouthY = g.y + Math.sin(g.angle) * 11;
-    const near = pearls.find((p) => p.attached && Math.hypot((p.x || 0) - mouthX, (p.y || 0) - mouthY) < 34);
-    if (near) {
-      for (let j = 0; j < 3; j += 1) {
-        pinkSmoke.push({
-          x: mouthX,
-          y: mouthY,
-          vx: (Math.random() - 0.5) * 0.35,
-          vy: (Math.random() - 0.5) * 0.35,
-          bornAt: now,
-          life: 220 + Math.random() * 180,
-          r: 0.8 + Math.random() * 1.2,
-        });
-      }
     }
   });
 
@@ -514,15 +420,11 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
     ctx.fill();
   });
 
-  fish.forEach((g, i) => {
-    drawGuppyTopView(ctx, g.x, g.y, g.angle, 0.72 + (i % 4) * 0.08, time * 0.02 + g.phase);
-  });
-
   const readerZones = [];
   const paused = Boolean(current?.contourPlaybackPaused);
-  const angularStep = (Math.PI * 2) / (30000 / 16.67);
+  const angularStep = (Math.PI * 2) / (26000 / 16.67);
   contourReaders.forEach((reader) => {
-    if (!paused) reader.angle -= angularStep;
+    if (!paused) reader.angle -= angularStep; // sens horaire
     const edge = getArenaEdgeRadius(current, arenaRadius, reader.angle);
     const rimRadius = Math.max(80, edge + 26);
     const rx = Math.cos(reader.angle) * rimRadius;
