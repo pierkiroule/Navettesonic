@@ -13,7 +13,7 @@ import { updateBubbleAudioTriggers } from "../../core/soonAudioTriggers.js";
 import { drawScene } from "../../core/soonRenderers.js";
 import { getMembraneRadiusForLevel } from "../../core/fishNavigationEngine.js";
 import { resetCanvasPaintState } from "../../core/canvasState.js";
-import { ARENA_INNER_BOUNDARY_INSET } from "../../core/constants.js";
+import { ARENA_INNER_BOUNDARY_INSET, MEMBRANE_LEVEL_MULTIPLIERS } from "../../core/constants.js";
 import { getBlobRadiusAtAngle } from "../../core/blobArena.js";
 import {
   getCharacterWorldEffects,
@@ -29,8 +29,9 @@ const STAR_PUSH_MAX_STEP = 12;
 const STAR_EDGE_STICK_THRESHOLD = 48;
 const STAR_EDGE_STICK_RELEASE = 86;
 
-const CONTOUR_RIDE_DURATION_MS = 30000;
+const CONTOUR_RIDE_DURATION_MS = 9000;
 const CONTOUR_RIDE_ENTRY_THRESHOLD = 52;
+const ZENITH_STAR_REARM_DELAY_MS = 1800;
 
 function getContourSnapRadius(current = {}, angle = 0) {
   const arenaRadius = Number.isFinite(current?.arenaRadius) ? current.arenaRadius : 1200;
@@ -49,18 +50,52 @@ function updateContourRide(current = {}, arenaRadius = 1200, now = performance.n
   const fish = current?.fish;
   if (!fish) return;
 
-  const level = Number.isFinite(fish.arenaLevel) ? fish.arenaLevel : 0;
-  const contourRadius = Math.max(84, getMembraneRadiusForLevel(arenaRadius, level));
-  const beacon = { x: 0, y: -contourRadius };
+  const zenithAngle = -Math.PI / 2;
+  const zenithRadius = getContourSnapRadius(current, zenithAngle);
+  const beacon = { x: 0, y: -zenithRadius };
   const ride = current.contourRide || null;
+  const zenithStar = current.zenithStar || null;
 
   if (!ride?.active) {
     const distToBeacon = Math.hypot((fish.x || 0) - beacon.x, (fish.y || 0) - beacon.y);
-    if (distToBeacon <= CONTOUR_RIDE_ENTRY_THRESHOLD) {
+    const canTrigger = zenithStar?.armed !== false;
+    if (canTrigger && distToBeacon <= CONTOUR_RIDE_ENTRY_THRESHOLD) {
+      current.zenithStar = {
+        ...(zenithStar || {}),
+        x: beacon.x,
+        y: beacon.y,
+        radius: CONTOUR_RIDE_ENTRY_THRESHOLD,
+        armed: false,
+        hitAt: now,
+      };
       current.contourRide = {
         active: true,
         startedAt: now,
         baseAngle: -Math.PI / 2,
+      };
+      fish.x = beacon.x;
+      fish.y = beacon.y;
+      fish.targetX = beacon.x;
+      fish.targetY = beacon.y;
+      fish.vx = 0;
+      fish.vy = 0;
+      fish.angle = 0;
+    }
+    if (!canTrigger && !Number.isFinite(zenithStar?.hitAt)) {
+      current.zenithStar = {
+        ...(zenithStar || {}),
+        x: beacon.x,
+        y: beacon.y,
+        radius: CONTOUR_RIDE_ENTRY_THRESHOLD,
+        armed: true,
+      };
+    } else if (!canTrigger && Number.isFinite(zenithStar?.hitAt) && now - zenithStar.hitAt >= ZENITH_STAR_REARM_DELAY_MS) {
+      current.zenithStar = {
+        ...(zenithStar || {}),
+        x: beacon.x,
+        y: beacon.y,
+        radius: CONTOUR_RIDE_ENTRY_THRESHOLD,
+        armed: true,
       };
     }
     return;
@@ -69,6 +104,7 @@ function updateContourRide(current = {}, arenaRadius = 1200, now = performance.n
   const elapsed = Math.max(0, now - ride.startedAt);
   const progress = Math.min(1, elapsed / CONTOUR_RIDE_DURATION_MS);
   const angle = ride.baseAngle + progress * Math.PI * 2;
+  const contourRadius = getContourSnapRadius(current, angle);
   fish.x = Math.cos(angle) * contourRadius;
   fish.y = Math.sin(angle) * contourRadius;
   fish.targetX = fish.x;
@@ -78,11 +114,23 @@ function updateContourRide(current = {}, arenaRadius = 1200, now = performance.n
   fish.angle = angle + Math.PI / 2;
 
   if (progress >= 1) {
-    fish.x = Math.cos(ride.baseAngle) * (contourRadius - 72);
-    fish.y = Math.sin(ride.baseAngle) * (contourRadius - 72);
+    const endRadius = getContourSnapRadius(current, ride.baseAngle);
+    fish.x = Math.cos(ride.baseAngle) * endRadius;
+    fish.y = Math.sin(ride.baseAngle) * endRadius;
     fish.targetX = fish.x;
     fish.targetY = fish.y;
+    fish.vx = 0;
+    fish.vy = 0;
+    fish.angle = 0;
     current.contourRide = null;
+    current.zenithStar = {
+      ...(current.zenithStar || {}),
+      x: beacon.x,
+      y: beacon.y,
+      radius: CONTOUR_RIDE_ENTRY_THRESHOLD,
+      armed: false,
+      hitAt: now,
+    };
   }
 }
 
