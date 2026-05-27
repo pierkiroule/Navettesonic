@@ -723,6 +723,8 @@ export function drawBubbles(ctx, bubbles = [], selectedBubbleId, mode, time, int
     if (bubbleX === null || bubbleY === null) return;
     const selected = bubble.id === selectedBubbleId;
     const pulse = Math.sin(time * 0.003 + bubbleX * 0.01) * 5;
+    const isBlinking = Date.now() <= (bubble?.blinkUntil || 0);
+    const blinkAlpha = isBlinking ? (Math.sin(time * 0.02) * 0.5 + 0.5) : 0;
     const depth = Math.round(bubble.depth || 1);
     const radius = getBubbleVisualRadius(bubble);
     if (!Number.isFinite(radius) || radius <= 0) return;
@@ -758,6 +760,13 @@ export function drawBubbles(ctx, bubbles = [], selectedBubbleId, mode, time, int
       : `hsla(${bubble.hue}, 100%, 78%, 0.35)`;
     ctx.lineWidth = selected ? 5 : 2;
     ctx.stroke();
+    if (isBlinking) {
+      ctx.beginPath();
+      ctx.arc(bubbleX, bubbleY, radius + 20 + pulse, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255,255,255,${0.25 + blinkAlpha * 0.75})`;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
 
     ctx.fillStyle = "rgba(3, 7, 18, 0.76)";
     ctx.font = "700 14px system-ui";

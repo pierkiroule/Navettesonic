@@ -8,6 +8,7 @@ import { renderImmersiveJourney } from "../core/immersiveExporter.js";
 import { buildEchostoryText, buildStoryTimeline, buildPathStarsFromTimeline } from "../core/echostory/echostoryBuilder.js";
 import { tickEchostoryTraversal } from "../core/echostory/echostoryTraversalEngine.js";
 import { buildStarMp3Trace } from "../core/odysseoStarMp3Trace.js";
+import { playBubbleSound, playOneShotFile } from "../core/audioEngine.js";
 import { ECHOSTORY_SKELETONS } from "../data/echostorySkeletons.js";
 import {
   parseWorkflowFromHash,
@@ -29,6 +30,7 @@ const SPEED_BY_LEVEL = {
   2: 1.15,
   3: 1.7,
 };
+const ECHOSTORY_VOICE_BASE_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/sooncut";
 
 export default function SoonApp({ onBack }) {
   const [page, setPage] = useState("arena");
@@ -99,6 +101,8 @@ export default function SoonApp({ onBack }) {
     arenaBlob,
     echostory,
     collectEchostoryStar,
+    addTrailItem,
+    clearTrailItems,
     resetEchostory,
     advanceEchostoryWave,
     triggerEscapeCinematic,
@@ -126,11 +130,47 @@ export default function SoonApp({ onBack }) {
   const collectedInWave = stars.filter((star) => star?.collected).length;
   const isStoryReady = echostory?.phase === "story";
   const canGoNextWave = !isStoryReady && collectedInWave >= 5;
-  const linearCompositionItems = (echostory?.collectedStars || []).map((star, index) => ({
-    id: star?.id || `collected-${index + 1}`,
-    label: star?.text || star?.label || `Étoile ${index + 1}`,
-    type: star?.wave || "vocal",
+  const linearCompositionItems = (echostory?.trailItems || []).map((item, index) => ({
+    id: item?.id || `trail-${index + 1}`,
+    label: item?.label || `Élément ${index + 1}`,
+    type: item?.kind || "trace",
   }));
+
+  const handleTrailAction = (action, payload) => {
+    if (action === "collect" && payload?.id) {
+      addTrailItem(payload);
+      return;
+    }
+    if (action === "play") {
+      const items = echostory?.trailItems || [];
+      items.forEach((item, index) => {
+        window.setTimeout(() => {
+          if (item?.kind === "bubble") {
+            const bubble = bubbles.find((b) => b.id === item?.bubbleId);
+            if (bubble) playBubbleSound(bubble);
+            return;
+          }
+          if (item?.kind === "star") {
+            const sampleIndex = Number.parseInt(String(item?.starId || "").match(/(\d{1,3})/)?.[1] || "", 10);
+            if (!Number.isFinite(sampleIndex)) return;
+            const n = String(sampleIndex);
+            const n2 = String(sampleIndex).padStart(2, "0");
+            const n3 = String(sampleIndex).padStart(3, "0");
+            const candidates = [
+              `${ECHOSTORY_VOICE_BASE_URL}/extrait_${n3}.mp3`,
+              `${ECHOSTORY_VOICE_BASE_URL}/extrait_${n2}.mp3`,
+              `${ECHOSTORY_VOICE_BASE_URL}/extrait_${n}.mp3`,
+            ];
+            playOneShotFile(candidates[0], { volume: 0.8 }).catch(() => {
+              playOneShotFile(candidates[1], { volume: 0.8 }).catch(() => {
+                playOneShotFile(candidates[2], { volume: 0.8 }).catch(() => {});
+              });
+            });
+          }
+        }, index * 900);
+      });
+    }
+  };
 
   useEffect(() => {
     const closestLevel = [1, 2, 3].reduce((best, level) => (
@@ -539,6 +579,9 @@ export default function SoonApp({ onBack }) {
           });
         }}
         soonTouchMode={soonTouchMode}
+        onReleaseTrailItems={clearTrailItems}
+        onPlayTrailItems={handleTrailAction}
+        trailCount={(echostory?.trailItems || []).length}
       />
 
 
