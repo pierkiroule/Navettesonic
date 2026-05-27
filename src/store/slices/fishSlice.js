@@ -10,10 +10,9 @@ recenterFish:()=>set((s)=>{const f=s.fish||{};const dx=-(f.x||0),dy=-(f.y||0),d=
 setFishDepth:(depth)=>{set((s)=>s.circuitAutopilot?s:{fish:{...s.fish,depth:clampDepth(depth)}});saveState(get());},
 tickFish:({swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADIUS}={})=>set((s)=>{const next=tickFishEngine(s,{swimSpeed,arenaRadius});const prevArena=s.currentArenaId;const nextArena=next?.currentArenaId||prevArena;const transitionProgress=Number.isFinite(s.bubbleTransitionProgress)?s.bubbleTransitionProgress:1;
 const orbitRadius=Math.max(84,arenaRadius-34);
-const fishVelocity=Math.hypot(next?.fish?.vx||0,next?.fish?.vy||0);
-const fishTurn=(next?.fish?.turnAmount||0)*0.006;
-const baseOrbitStep=(0.0018+Math.min(0.008,fishVelocity*0.0012))*Math.max(0.4,swimSpeed);
-const orbitStep=baseOrbitStep+fishTurn;
+const ORBIT_SECONDS_PER_TURN=30;
+const ASSUMED_TICKS_PER_SECOND=60;
+const orbitStep=(Math.PI*2)/(ORBIT_SECONDS_PER_TURN*ASSUMED_TICKS_PER_SECOND);
 const updateOrbitingStars=(echostory)=>{
 if(!echostory||!Array.isArray(echostory.stars))return echostory;
 let changed=false;
