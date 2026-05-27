@@ -271,7 +271,6 @@ export function useSoonPointer({
     pointerRef.current.panStart = null;
     pointerRef.current.pinchDistance = null;
     pointerRef.current.startPoint = point;
-    armLongPress(event, point, current);
 
     if (isCircuitMode) {
       handleCircuitPointerDown(event, point, current);
@@ -281,6 +280,12 @@ export function useSoonPointer({
     if (isEditMode) {
       handleEditPointerDown(event, point, current);
       return;
+    }
+
+    // En nage, on désactive le long-press contextuel pour ne pas casser
+    // la propulsion continue quand le doigt reste posé.
+    if (current.interactionMode !== "swim") {
+      armLongPress(event, point, current);
     }
 
     handleSwimPointerDown(event, point, current);
