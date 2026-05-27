@@ -99,7 +99,6 @@ export default function SoonApp({ onBack }) {
     arenaBlob,
     echostory,
     collectEchostoryStar,
-    threadEchostoryStar,
     resetEchostory,
     advanceEchostoryWave,
     triggerEscapeCinematic,
@@ -268,8 +267,8 @@ export default function SoonApp({ onBack }) {
   };
 
   useEffect(() => {
-    plumeTraceActiveRef.current = soonTouchMode === "collect";
-    if (soonTouchMode !== "collect") plumeLastPointRef.current = null;
+    plumeTraceActiveRef.current = false;
+    plumeLastPointRef.current = null;
   }, [soonTouchMode]);
 
   const boostFishSpeed = () => {
@@ -355,7 +354,7 @@ export default function SoonApp({ onBack }) {
 
 
   useEffect(() => {
-    if (!isOdysseo || soonTouchMode === "collect" || (odysseoPath?.length || 0) < 2 || echostory?.traversalActive) return;
+    if (!isOdysseo || (odysseoPath?.length || 0) < 2 || echostory?.traversalActive) return;
 
     const previewLines = buildEchostoryText({
       collectedStars: echostory?.collectedStars || [],
@@ -375,19 +374,7 @@ export default function SoonApp({ onBack }) {
   }, [isOdysseo, soonTouchMode, odysseoPath, echostory?.collectedStars, echostory?.traversalActive]);
 
 
-  useEffect(() => {
-    if (!isOdysseo || soonTouchMode !== "collect" || isTravelPlaying) return;
-    const fishNow = fish || {};
-    const fx = Number.isFinite(fishNow.x) ? fishNow.x : null;
-    const fy = Number.isFinite(fishNow.y) ? fishNow.y : null;
-    if (fx === null || fy === null) return;
-
-    const starsPool = echostory?.stars || [];
-    const collectedIds = new Set((echostory?.collectedStars || []).map((star) => star?.id));
-    const nearest = starsPool.find((star) => !collectedIds.has(star.id) && Math.hypot((star.x || 0) - fx, (star.y || 0) - fy) <= 48);
-    if (!nearest) return;
-    threadEchostoryStar(nearest.id);
-  }, [isOdysseo, soonTouchMode, isTravelPlaying, fish?.x, fish?.y, echostory?.stars, echostory?.collectedStars, threadEchostoryStar]);
+  
 
   const handleComposeAndLaunchTraversal = () => {
     const currentLines = echostory?.storyTimeline?.length
@@ -661,15 +648,6 @@ export default function SoonApp({ onBack }) {
                       </button>
                       <button
                         type="button"
-                        className={`bubble-btn mode-toggle ${soonTouchMode === "collect" ? "active" : ""}`}
-                        onClick={() => setSoonTouchMode("collect")}
-                        title="Mode 🪶 récolter : accrocher bulles et étoiles à la traîne"
-                        aria-label="Activer le mode récolter"
-                      >
-                        🪶
-                      </button>
-                      <button
-                        type="button"
                         className={`bubble-btn mode-toggle ${soonTouchMode === "yarn" ? "active" : ""}`}
                         onClick={() => setSoonTouchMode("yarn")}
                         title="Mode 🧶 éditeur : voir la traîne en ligne verticale"
@@ -734,15 +712,6 @@ export default function SoonApp({ onBack }) {
                       aria-label="Ouvrir l’éditeur des bulles sonores"
                     >
                       🫧
-                    </button>
-                    <button
-                      type="button"
-                      className={`bubble-btn mode-toggle ${soonTouchMode === "collect" ? "active" : ""}`}
-                      onClick={() => setSoonTouchMode("collect")}
-                      title="Mode 🪶 récolter : accrocher bulles et étoiles à la traîne"
-                      aria-label="Activer le mode récolter"
-                    >
-                      🪶
                     </button>
                     <button
                       type="button"
@@ -811,15 +780,6 @@ export default function SoonApp({ onBack }) {
               title="Mode 🫧 : pousser bulles/étoiles, écouter sans récolter"
             >
               🫧 Mode bulle
-            </button>
-            <button
-              type="button"
-              className={`mode-switch-button ${soonTouchMode === "collect" ? "active" : ""}`}
-              onClick={() => setSoonTouchMode("collect")}
-              aria-pressed={soonTouchMode === "collect"}
-              title="Mode 🪶 récolter : les éléments touchés s’attachent comme des wagons"
-            >
-              🪶 Mode récolter
             </button>
             <button
               type="button"
