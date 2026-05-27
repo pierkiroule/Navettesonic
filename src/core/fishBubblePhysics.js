@@ -27,10 +27,10 @@ export function pushBubblesFromFish(bubbles = [], fish = {}, fishDepth = 1) {
       pushY += (dy / d) * push;
     });
     const boundaryRadius = DEFAULT_ARENA_RADIUS * 1.6;
-    const nextVX = (previousVX + pushX) * 0.82;
-    const nextVY = (previousVY + pushY) * 0.82;
+    const nextVX = (previousVX + pushX) * 0.92;
+    const nextVY = (previousVY + pushY) * 0.92;
     const impulseMagnitude = Math.hypot(nextVX, nextVY);
-    if (impulseMagnitude < 0.02 && pushX === 0 && pushY === 0) {
+    if (impulseMagnitude < 0.008 && pushX === 0 && pushY === 0) {
       if (previousVX === 0 && previousVY === 0) return bubble;
       return { ...bubble, pushVX: 0, pushVY: 0 };
     }
@@ -40,7 +40,7 @@ export function pushBubblesFromFish(bubbles = [], fish = {}, fishDepth = 1) {
     const stickThreshold = boundaryRadius - Math.max(18, bubbleRadius * 0.35);
     if (dist >= stickThreshold && dist > 0) {
       const angle = Math.atan2(nextY, nextX);
-      return { ...bubble, x: Math.cos(angle) * boundaryRadius, y: Math.sin(angle) * boundaryRadius, pushVX: nextVX * 0.35, pushVY: nextVY * 0.35 };
+      return { ...bubble, x: Math.cos(angle) * boundaryRadius, y: Math.sin(angle) * boundaryRadius, pushVX: nextVX * 0.6, pushVY: nextVY * 0.6 };
     }
     const safe = clampToCircle({ x: nextX, y: nextY }, boundaryRadius);
     return { ...bubble, x: safe.x, y: safe.y, pushVX: nextVX, pushVY: nextVY };
