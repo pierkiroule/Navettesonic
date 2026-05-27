@@ -29,7 +29,7 @@ const STAR_PUSH_MAX_STEP = 12;
 const STAR_EDGE_STICK_THRESHOLD = 48;
 const STAR_EDGE_STICK_RELEASE = 86;
 
-const CONTOUR_RIDE_DURATION_MS = 30000;
+const CONTOUR_RIDE_DURATION_MS = 9000;
 const CONTOUR_RIDE_ENTRY_THRESHOLD = 52;
 const ZENITH_STAR_REARM_DELAY_MS = 1800;
 
@@ -83,7 +83,15 @@ function updateContourRide(current = {}, arenaRadius = 1200, now = performance.n
       fish.vy = 0;
       fish.angle = 0;
     }
-    if (!canTrigger && Number.isFinite(zenithStar?.hitAt) && now - zenithStar.hitAt >= ZENITH_STAR_REARM_DELAY_MS) {
+    if (!canTrigger && !Number.isFinite(zenithStar?.hitAt)) {
+      current.zenithStar = {
+        ...(zenithStar || {}),
+        x: beacon.x,
+        y: beacon.y,
+        radius: CONTOUR_RIDE_ENTRY_THRESHOLD,
+        armed: true,
+      };
+    } else if (!canTrigger && Number.isFinite(zenithStar?.hitAt) && now - zenithStar.hitAt >= ZENITH_STAR_REARM_DELAY_MS) {
       current.zenithStar = {
         ...(zenithStar || {}),
         x: beacon.x,
