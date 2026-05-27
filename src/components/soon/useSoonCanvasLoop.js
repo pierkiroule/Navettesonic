@@ -11,6 +11,7 @@ import { playOneShotFile, updateBubbleSpatialMix } from "../../core/audioEngine.
 import { updateEcosystemFx } from "../../core/ecosystemFx.js";
 import { updateBubbleAudioTriggers } from "../../core/soonAudioTriggers.js";
 import { drawScene } from "../../core/soonRenderers.js";
+import { getMembraneRadiusForLevel } from "../../core/fishNavigationEngine.js";
 import { resetCanvasPaintState } from "../../core/canvasState.js";
 import {
   getCharacterWorldEffects,
@@ -23,6 +24,51 @@ const ECHOSTORY_VOICE_BASE_URL = "https://qyffktrggapfzlmmlerq.supabase.co/stora
 const CONTACT_PUSH_DISTANCE = 34;
 const BLINK_DELAY_MS = 2000;
 const BLINK_DURATION_MS = 5000;
+
+const CONTOUR_RIDE_DURATION_MS = 30000;
+const CONTOUR_RIDE_ENTRY_THRESHOLD = 52;
+
+function updateContourRide(current = {}, arenaRadius = 1200, now = performance.now()) {
+  const fish = current?.fish;
+  if (!fish) return;
+
+  const level = Number.isFinite(fish.arenaLevel) ? fish.arenaLevel : 0;
+  const contourRadius = Math.max(84, getMembraneRadiusForLevel(arenaRadius, level));
+  const beacon = { x: 0, y: -contourRadius };
+  const ride = current.contourRide || null;
+
+  if (!ride?.active) {
+    const distToBeacon = Math.hypot((fish.x || 0) - beacon.x, (fish.y || 0) - beacon.y);
+    if (distToBeacon <= CONTOUR_RIDE_ENTRY_THRESHOLD) {
+      current.contourRide = {
+        active: true,
+        startedAt: now,
+        baseAngle: -Math.PI / 2,
+      };
+    }
+    return;
+  }
+
+  const elapsed = Math.max(0, now - ride.startedAt);
+  const progress = Math.min(1, elapsed / CONTOUR_RIDE_DURATION_MS);
+  const angle = ride.baseAngle + progress * Math.PI * 2;
+  fish.x = Math.cos(angle) * contourRadius;
+  fish.y = Math.sin(angle) * contourRadius;
+  fish.targetX = fish.x;
+  fish.targetY = fish.y;
+  fish.vx = 0;
+  fish.vy = 0;
+  fish.angle = angle + Math.PI / 2;
+
+  if (progress >= 1) {
+    fish.x = Math.cos(ride.baseAngle) * (contourRadius - 72);
+    fish.y = Math.sin(ride.baseAngle) * (contourRadius - 72);
+    fish.targetX = fish.x;
+    fish.targetY = fish.y;
+    current.contourRide = null;
+  }
+}
+
 
 function getEchostorySampleUrlCandidates(sampleIndex) {
   const n = String(sampleIndex);
@@ -298,6 +344,7 @@ export function useSoonCanvasLoop({
       }
 
       const next = stateRef.current || {};
+      updateContourRide(next, arenaRef.current.radius, performance.now());
       pushNearbyEchostoryStars(next, onPromptEchostoryStarCollect);
       const fishDepth = Math.round(next?.fish?.depth || 1);
       (next?.bubbles || []).forEach((bubble) => {
