@@ -41,5 +41,14 @@ if(type==="inspi"){const centerRepulse=Math.max(300,basePush*6.2);nx-=Math.cos(f
 
 nextBubbles=nextBubbles.map((bubble)=>keepBubbleOffMembrane(bubble,nextBlob));
 const velocityDamping=type==="inspi"?0.12:0.35;
-return{arenaBlob:nextBlob,gamePaused:false,pendingBlobAction:null,eyesClosed:false,bubbles:nextBubbles,fish:{...(s.fish||{}),x:nx,y:ny,targetX:nx,targetY:ny,vx:(s.fish?.vx||0)*velocityDamping,vy:(s.fish?.vy||0)*velocityDamping}};}),
+const nextEchostory = s.echostory ? {
+...s.echostory,
+stars:(s.echostory.stars||[]).map((star)=>{
+  if(!star?.attachedToContour)return star;
+  const angle=Number.isFinite(star.contourAngle)?star.contourAngle:Math.atan2(star.y||0,star.x||0);
+  const releaseRadius=Math.max(120,(s.arenaRadius||1200)-220);
+  return {...star,attachedToContour:false,x:Math.cos(angle)*releaseRadius,y:Math.sin(angle)*releaseRadius};
+}),
+} : s.echostory;
+return{arenaBlob:nextBlob,gamePaused:false,pendingBlobAction:null,eyesClosed:false,bubbles:nextBubbles,echostory:nextEchostory,fish:{...(s.fish||{}),x:nx,y:ny,targetX:nx,targetY:ny,vx:(s.fish?.vx||0)*velocityDamping,vy:(s.fish?.vy||0)*velocityDamping}};}),
 });

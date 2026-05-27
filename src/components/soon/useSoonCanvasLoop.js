@@ -112,9 +112,13 @@ function pushNearbyEchostoryStars(current, onPrompt) {
   const TRIGGER_RADIUS = 55;
   const PUSH_DISTANCE = 18;
   const RESO_RETRIGGER_MS = 1200;
+  const arenaRadius = Number.isFinite(current?.arenaRadius) ? current.arenaRadius : 1200;
+  const contourSnapThreshold = Math.max(24, arenaRadius - 108);
+  const contourRadius = Math.max(84, arenaRadius - 34);
 
   (current?.echostory?.stars || []).forEach((star) => {
     if (!star || star.collected) return;
+    if (star.attachedToContour) return;
     const dx = (star.x || 0) - fishX;
     const dy = (star.y || 0) - fishY;
     const distance = Math.hypot(dx, dy);
@@ -131,6 +135,20 @@ function pushNearbyEchostoryStars(current, onPrompt) {
         star.resoInside = true;
         star.resoAudioCooldownUntil = now + RESO_RETRIGGER_MS;
         triggerEchostoryStarPreview(star, fishX);
+      }
+      if (distance > 0 && isInside) {
+        const ux = dx / distance;
+        const uy = dy / distance;
+        star.x = (star.x || 0) + ux * PUSH_DISTANCE;
+        star.y = (star.y || 0) + uy * PUSH_DISTANCE;
+      }
+      const distCenter = Math.hypot(star.x || 0, star.y || 0);
+      if (distCenter >= contourSnapThreshold) {
+        const angle = Math.atan2(star.y || 0, star.x || 0);
+        star.attachedToContour = true;
+        star.contourAngle = angle;
+        star.x = Math.cos(angle) * contourRadius;
+        star.y = Math.sin(angle) * contourRadius;
       }
       return;
     }

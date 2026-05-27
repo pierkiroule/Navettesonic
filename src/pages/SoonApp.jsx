@@ -234,6 +234,17 @@ export default function SoonApp({ onBack }) {
     setExportStatus(`Tracé MP3 prêt (${mp3Trace.length} étoiles).`);
   };
 
+  const handlePlayContourMp3 = () => {
+    handleGenerateStarMp3Trace();
+    if ((odysseoPath?.length || 0) < 8) {
+      setExportStatus("Tracez d’abord le contour (min 8 points) pour lire la piste.");
+      return;
+    }
+    handleComposeAndLaunchTraversal();
+    setIsTravelPlaying(true);
+    setExportStatus("Lecture MP3 du contour lancée.");
+  };
+
   const handleExportImmersion = async () => {
     try {
       setExportStatus("Calcul de l’immersion...");
@@ -841,8 +852,8 @@ export default function SoonApp({ onBack }) {
               )}
             </div>
           </div>
-          <button type="button" className="echostory-next" onClick={handleGenerateStarMp3Trace}>
-            ▶ Play composition MP3 linéaire
+          <button type="button" className="echostory-next" onClick={handlePlayContourMp3}>
+            ▶ Lire le contour en MP3
           </button>
         </section>
       )}

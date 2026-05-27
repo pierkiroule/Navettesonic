@@ -54,6 +54,7 @@ export function drawScene(ctx, rect, time, refs) {
     worldEntered = true;
 
     drawIsolated(ctx, () => drawArenaBoundary(ctx, arenaRef, time, current));
+    drawIsolated(ctx, () => drawContourReader(ctx, current, arenaRef.current?.radius || 1200, time));
     drawIsolated(ctx, () => drawArenaGuppies(ctx, time, current, arenaRef.current?.radius || 1200));
 
     drawIsolated(ctx, () => drawArenaNightSky(ctx, arenaRef, time));
@@ -152,6 +153,29 @@ function drawGuppyTopView(ctx, x, y, angle, size = 1, sway = 0) {
 function getArenaEdgeRadius(current, arenaRadius, angle) {
   const hasBlob = Array.isArray(current?.arenaBlob?.points) && current.arenaBlob.points.length > 2;
   return hasBlob ? getBlobRadiusAtAngle(current.arenaBlob, angle) : arenaRadius;
+}
+
+function drawContourReader(ctx, current = {}, arenaRadius = 1200, time = 0) {
+  if (current.mode !== "reso") return;
+  const loopMs = 30000;
+  const phase = ((time % loopMs) + loopMs) % loopMs;
+  const angle = Math.PI / 2 + (phase / loopMs) * Math.PI * 2;
+  const edge = getArenaEdgeRadius(current, arenaRadius, angle);
+  const radius = Math.max(80, edge - 18);
+  const x = Math.cos(angle) * radius;
+  const y = Math.sin(angle) * radius;
+  const glow = ctx.createRadialGradient(x, y, 0, x, y, 36);
+  glow.addColorStop(0, "rgba(255,248,214,0.95)");
+  glow.addColorStop(0.55, "rgba(255,202,118,0.52)");
+  glow.addColorStop(1, "rgba(255,202,118,0)");
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(x, y, 36, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "rgba(255,236,173,0.95)";
+  ctx.beginPath();
+  ctx.arc(x, y, 6, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function ensureGuppyRuntime(current, arenaRadius) {
