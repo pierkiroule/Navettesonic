@@ -632,15 +632,6 @@ export default function SoonApp({ onBack }) {
                       >
                         🫧
                       </button>
-                      <button
-                        type="button"
-                        className={`bubble-btn mode-toggle ${soonTouchMode === "plume" ? "active" : ""}`}
-                        onClick={() => setSoonTouchMode("plume")}
-                        title="Mode 🪶 tracer et enfiler les étoiles"
-                        aria-label="Activer le mode plume"
-                      >
-                        🪶
-                      </button>
                     </div>
                     <span className="slider-label slider-label-top">🔍 Zoom</span>
                     <div className="fish-slider-horizontal-track">
@@ -699,15 +690,6 @@ export default function SoonApp({ onBack }) {
                     >
                       🫧
                     </button>
-                    <button
-                      type="button"
-                      className="bubble-btn mode-toggle"
-                      onClick={() => setMode(SOON_MODE_RESO)}
-                      title="Activer Navigo pour tracer avec 🪶"
-                      aria-label="Passer en Navigo"
-                    >
-                      🪶
-                    </button>
                   </div>
                   <span className="slider-label slider-label-top">🔍 Zoom</span>
                   <div className="fish-slider-horizontal-track">
@@ -756,25 +738,16 @@ export default function SoonApp({ onBack }) {
       </div>
 
       {isOdysseo && (
-        <div className="mode-switch-bottom" role="group" aria-label="Modes tactiles Soon">
+        <div className="mode-switch-bottom" role="group" aria-label="Mode tactile Soon">
           <div className="mode-switch-pill">
             <button
               type="button"
-              className={`mode-switch-button ${soonTouchMode === "bubble" ? "active" : ""}`}
+              className="mode-switch-button active"
               onClick={() => setSoonTouchMode("bubble")}
-              aria-pressed={soonTouchMode === "bubble"}
+              aria-pressed="true"
               title="Mode 🫧 : pousser bulles/étoiles, écouter sans récolter"
             >
               🫧 Mode bulle
-            </button>
-            <button
-              type="button"
-              className={`mode-switch-button ${soonTouchMode === "plume" ? "active" : ""}`}
-              onClick={() => setSoonTouchMode("plume")}
-              aria-pressed={soonTouchMode === "plume"}
-              title="Mode 🪶 : tracer et enfiler les étoiles"
-            >
-              🪶 Mode plume
             </button>
           </div>
         </div>
