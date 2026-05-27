@@ -125,6 +125,7 @@ function pushNearbyEchostoryStars(current, onPrompt) {
     const isInside = distance < TRIGGER_RADIUS;
 
     if (current?.mode === "reso") {
+      const isPlumeWeaving = current?.soonTouchMode === "plume";
       if (!isInside) {
         star.resoInside = false;
         return;
@@ -136,14 +137,14 @@ function pushNearbyEchostoryStars(current, onPrompt) {
         star.resoAudioCooldownUntil = now + RESO_RETRIGGER_MS;
         triggerEchostoryStarPreview(star, fishX);
       }
-      if (distance > 0 && isInside) {
+      if (!isPlumeWeaving && distance > 0 && isInside) {
         const ux = dx / distance;
         const uy = dy / distance;
         star.x = (star.x || 0) + ux * PUSH_DISTANCE;
         star.y = (star.y || 0) + uy * PUSH_DISTANCE;
       }
       const distCenter = Math.hypot(star.x || 0, star.y || 0);
-      if (distCenter >= contourSnapThreshold) {
+      if (!isPlumeWeaving && distCenter >= contourSnapThreshold) {
         const angle = Math.atan2(star.y || 0, star.x || 0);
         star.attachedToContour = true;
         star.contourAngle = angle;

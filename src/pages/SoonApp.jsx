@@ -538,6 +538,7 @@ export default function SoonApp({ onBack }) {
             return next;
           });
         }}
+        soonTouchMode={soonTouchMode}
       />
 
 
@@ -558,8 +559,8 @@ export default function SoonApp({ onBack }) {
 
       {isOdysseo && (
         <section className="echostory-hud" aria-live="polite">
-          <span className="echostory-chip">Navigo: récoltez des bulles/étoiles qui s’attachent à la traîne.</span>
-          <span className="echostory-chip">Étoiles récoltées: {(echostory?.collectedStars || []).length} / 15</span>
+          <span className="echostory-chip">🫧 déplacer/pousser/écouter • 🪶 tisser des liens entre étoiles.</span>
+          <span className="echostory-chip">En mode 🪶, les étoiles ne sont plus récoltées: on tisse une chronologie linéaire.</span>
         </section>
       )}
 
@@ -762,6 +763,15 @@ export default function SoonApp({ onBack }) {
               title="Mode 🫧 : pousser bulles/étoiles, écouter sans récolter"
             >
               🫧 Mode bulle
+            </button>
+            <button
+              type="button"
+              className={`mode-switch-button ${soonTouchMode === "plume" ? "active" : ""}`}
+              onClick={() => setSoonTouchMode("plume")}
+              aria-pressed={soonTouchMode === "plume"}
+              title="Activer le tissage inter-étoiles"
+            >
+              🪶 Tissage inter-étoiles
             </button>
           </div>
         </div>
