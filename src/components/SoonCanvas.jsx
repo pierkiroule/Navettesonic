@@ -460,8 +460,8 @@ export default function SoonCanvas({
         </div>
       ) : null}
       {echostoryPrompt && mode === "echostory" ? (
-        <div className="echostory-prompt-menu" role="dialog" aria-live="polite" aria-label="Cueillir l'étoile ?">
-          <p>Cueillir cette étoile sonore ?</p>
+        <div className="echostory-prompt-menu" role="dialog" aria-live="polite" aria-label="Activer l'étoile sonore ?">
+          <p>Activer cette étoile sonore ?</p>
           <div className="echostory-prompt-actions">
             <button
               type="button"
@@ -479,7 +479,7 @@ export default function SoonCanvas({
                 setEchostoryPrompt(null);
               }}
             >
-              Oui, cueillir
+              Activer
             </button>
             <button
               type="button"
