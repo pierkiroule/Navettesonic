@@ -424,7 +424,7 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
   const paused = Boolean(current?.contourPlaybackPaused);
   const angularStep = (Math.PI * 2) / (26000 / 16.67);
   contourReaders.forEach((reader) => {
-    if (!paused) reader.angle -= angularStep; // sens horaire
+    if (!paused) reader.angle += angularStep; // sens antihoraire
     const edge = getArenaEdgeRadius(current, arenaRadius, reader.angle);
     const rimRadius = Math.max(80, edge + 26);
     const rx = Math.cos(reader.angle) * rimRadius;
@@ -663,8 +663,8 @@ export function drawArenaBoundary(ctx, arenaRef, time, current = {}) {
 
 function drawResonantContourBeacon(ctx, { x = 0, y = 0, time = 0, mode = "" } = {}) {
   const pulse = Math.sin(time * 0.004) * 0.5 + 0.5;
-  const haloRadius = 20 + pulse * 10;
-  const coreRadius = mode === "reso" ? 6.8 : 5.4;
+  const haloRadius = 30 + pulse * 14;
+  const coreRadius = mode === "reso" ? 11.2 : 9.4;
   const halo = ctx.createRadialGradient(x, y, 0, x, y, haloRadius);
   halo.addColorStop(0, `rgba(255, 237, 164, ${0.92 - pulse * 0.12})`);
   halo.addColorStop(0.45, `rgba(125, 211, 252, ${0.48 + pulse * 0.26})`);

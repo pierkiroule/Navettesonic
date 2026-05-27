@@ -4,19 +4,6 @@ import { useSoonPointer } from "./soon/useSoonPointer.js";
 import RadialMenu from "./RadialMenu.jsx";
 import { getAudioTuning, setAudioTuning } from "../core/audioEngine.js";
 
-function BlobContextMenu({ anchor, onSelect }) {
-  const baseStyle = { position: "absolute", left: `${anchor?.x || 0}px`, top: `${anchor?.y || 0}px` };
-  return (
-    <div style={baseStyle} className="fish-blob-context-menu" aria-label="Menu expi inspi">
-      <button type="button" className="fish-blob-half fish-blob-half-top" onClick={() => onSelect("expi")}>
-        ↑ Expi
-      </button>
-      <button type="button" className="fish-blob-half fish-blob-half-bottom" onClick={() => onSelect("inspi")}>
-        ↓ Inspi
-      </button>
-    </div>
-  );
-}
 
 export default function SoonCanvas({
   mode,
@@ -81,7 +68,6 @@ export default function SoonCanvas({
   const [earActivationText, setEarActivationText] = useState("");
   const [audioTuning, setAudioTuningState] = useState(() => getAudioTuning());
   const [showSensitivitySlider, setShowSensitivitySlider] = useState(false);
-  const [echostoryPrompt, setEchostoryPrompt] = useState(null);
 
   const cameraRef = useRef({
     x: 0,
@@ -206,44 +192,8 @@ export default function SoonCanvas({
     soonTouchMode,
   ]);
 
-  useEffect(() => {
-    if (!pendingBlobAction || !canvasRef.current) return;
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const current = stateRef.current || {};
-    const camera = cameraRef.current || { x: 0, y: 0 };
-    const arenaRadius = current.arenaRadius || arenaRef.current.radius || 1200;
-    const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 2.55);
-    const userZoom = fitZoom * (1 + (Number.isFinite(current.viewZoom) ? current.viewZoom : 0) * 1.55);
-    const fishX = Number.isFinite(current?.fish?.x) ? current.fish.x : (pendingBlobAction.worldX || 0);
-    const fishY = Number.isFinite(current?.fish?.y) ? current.fish.y : (pendingBlobAction.worldY || 0);
-    const screenX = rect.width * 0.5 + (fishX - camera.x) * userZoom;
-    const screenY = rect.height * 0.5 + (fishY - camera.y) * userZoom - 74;
-    setFishMenu({ type: "blob", angle: pendingBlobAction.angle, screen: { x: screenX, y: screenY } });
-  }, [pendingBlobAction]);
-
-  useEffect(() => {
-    if (!fishMenu || fishMenu.type !== "blob") return;
-    if (!pendingBlobAction) {
-      setFishMenu(null);
-      return;
-    }
-    const menuAngle = Number.isFinite(fishMenu?.angle) ? fishMenu.angle : 0;
-    const actionAngle = Number.isFinite(pendingBlobAction?.angle) ? pendingBlobAction.angle : 0;
-    const angleDiff = Math.atan2(Math.sin(menuAngle - actionAngle), Math.cos(menuAngle - actionAngle));
-    if (Math.abs(angleDiff) > 0.08) {
-      setFishMenu(null);
-      return;
-    }
-    const fishX = Number.isFinite(fish?.x) ? fish.x : 0;
-    const fishY = Number.isFinite(fish?.y) ? fish.y : 0;
-    const fishDistance = Math.hypot(fishX, fishY);
-    const arenaRadius = stateRef.current?.arenaRadius || arenaRef.current.radius || 1200;
-    const borderThreshold = Math.max(80, arenaRadius - 180);
-    if (fishDistance < borderThreshold) {
-      setFishMenu(null);
-    }
-  }, [fishMenu, fish?.x, fish?.y, pendingBlobAction]);
+  void pendingBlobAction;
+  void onBlobAction;
 
   useSoonCanvasLoop({
     canvasRef,
@@ -254,28 +204,9 @@ export default function SoonCanvas({
     onTickFish,
     onSemioseVideoTrigger: setSemioseVideo,
     onCollectEchostoryStar,
-    onPromptEchostoryStarCollect: (event) => {
-      if (event?.type === "star-collect" && event?.starId) {
-        onCollectEchostoryStar?.(event.starId);
-        onPlayTrailItems?.("collect", {
-          id: `star:${event.starId}`,
-          kind: "star",
-          label: event?.star?.text || "Étoile",
-          starId: event.starId,
-        });
-        return;
-      }
-      const starId = typeof event === "string" ? event : event?.starId;
-      if (starId) setEchostoryPrompt({ starId, openedAt: Date.now() });
-    },
-    onCollectTrailItem: (item) => onPlayTrailItems?.("collect", item),
+    onPromptEchostoryStarCollect: () => {},
+    onCollectTrailItem: () => {},
   });
-
-  useEffect(() => {
-    if (!echostoryPrompt) return;
-    const timeoutId = setTimeout(() => setEchostoryPrompt(null), 7000);
-    return () => clearTimeout(timeoutId);
-  }, [echostoryPrompt]);
 
   const {
     handlePointerDown,
@@ -398,24 +329,12 @@ export default function SoonCanvas({
           />
         </div>
       ) : null}
-      {fishMenu && interactionMode === "swim" && fishMenu?.type === "blob" ? (
-        <BlobContextMenu
-          anchor={fishMenu.screen}
-          onSelect={(action) => {
-            onBlobAction?.(action, fishMenu?.angle);
-            setFishMenu(null);
-          }}
-        />
-      ) : null}
       {fishMenu && interactionMode === "swim" && fishMenu?.type !== "blob" ? (
         <RadialMenu
           aria-label="Menu contextuel poisson"
           anchor={fishMenu.screen}
           onClose={() => setFishMenu(null)}
-          items={fishMenu?.type === "blob" ? [
-            { id: "expi", label: "↑ Expi" },
-            { id: "inspi", label: "↓ Inspi" },
-          ] : [
+          items={[
             { id: "depth", label: "Profondeur" },
             { id: "bubbles", label: `Bulles ${bubblesEnabled ? "ON" : "OFF"}` },
             { id: "intensity", label: "Intensité bulles" },
@@ -424,15 +343,9 @@ export default function SoonCanvas({
             { id: "contrast", label: `Relief ${audioTuning.depthSeparation.toFixed(2)}x` },
             { id: "sensitivity", label: `Sensibilité ${Math.round((audioTuning.sensitivity || 0) * 100)}%` },
             { id: "membrane", label: fish?.membraneSide === "outside" ? "Aller intérieur" : "Aller extérieur" },
-            { id: "trail-play", label: `Lire traîne (${trailCount})` },
-            { id: "trail-release", label: "Libérer étoiles" },
             { id: "reset", label: "Reset" },
           ]}
           onSelect={(item) => {
-            if (fishMenu?.type === "blob") {
-              onBlobAction?.(item.id, fishMenu?.angle);
-              return;
-            }
             if (item.id === "depth") onSetFishDepth?.(((Math.round(fish?.depth || 1) % 3) + 1));
             if (item.id === "bubbles") onToggleBubbles?.();
             if (item.id === "intensity") onSetBubblesIntensity?.(Math.min(2, (bubblesIntensity || 1) + 0.25));
@@ -453,8 +366,6 @@ export default function SoonCanvas({
             }
             if (item.id === "sensitivity") setShowSensitivitySlider((v) => !v);
             if (item.id === "membrane") onToggleMembraneSide?.();
-            if (item.id === "trail-release") onReleaseTrailItems?.();
-            if (item.id === "trail-play") onPlayTrailItems?.("play");
             if (item.id === "reset") onResetFishContext?.();
           }}
         />
@@ -476,44 +387,6 @@ export default function SoonCanvas({
               }}
             />
           </label>
-        </div>
-      ) : null}
-      {echostoryPrompt && mode === "echostory" ? (
-        <div className="echostory-prompt-menu" role="dialog" aria-live="polite" aria-label="Activer l'étoile sonore ?">
-          <p>Activer cette étoile sonore ?</p>
-          <div className="echostory-prompt-actions">
-            <button
-              type="button"
-              onClick={() => {
-                onCollectEchostoryStar?.(echostoryPrompt.starId);
-                if (stateRef.current?.fish) {
-                  stateRef.current.fish.tailPower = Math.min(18, Math.max(stateRef.current.fish.tailPower || 0, 1) + 1);
-                }
-                const stars = stateRef.current?.echostory?.stars || [];
-                const star = stars.find((item) => item?.id === echostoryPrompt.starId);
-                if (star) {
-                  star.collectedTriggered = true;
-                  star.collectPromptOpen = false;
-                }
-                setEchostoryPrompt(null);
-              }}
-            >
-              Activer
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const stars = stateRef.current?.echostory?.stars || [];
-                const star = stars.find((item) => item?.id === echostoryPrompt.starId);
-                if (star) {
-                  star.collectPromptOpen = false;
-                }
-                setEchostoryPrompt(null);
-              }}
-            >
-              Non
-            </button>
-          </div>
         </div>
       ) : null}
     </div>
