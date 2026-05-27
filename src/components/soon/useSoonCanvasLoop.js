@@ -50,11 +50,9 @@ function updateContourRide(current = {}, arenaRadius = 1200, now = performance.n
   const fish = current?.fish;
   if (!fish) return;
 
-  const level = Number.isFinite(fish.arenaLevel) ? fish.arenaLevel : 0;
-  const runtimeInnerRadius = Math.max(0, arenaRadius - ARENA_INNER_BOUNDARY_INSET);
-  const levelMultiplier = MEMBRANE_LEVEL_MULTIPLIERS[level] ?? MEMBRANE_LEVEL_MULTIPLIERS[0] ?? 1;
-  const contourRadius = Math.max(84, runtimeInnerRadius * levelMultiplier);
-  const beacon = { x: 0, y: -contourRadius };
+  const zenithAngle = -Math.PI / 2;
+  const zenithRadius = getContourSnapRadius(current, zenithAngle);
+  const beacon = { x: 0, y: -zenithRadius };
   const ride = current.contourRide || null;
   const zenithStar = current.zenithStar || null;
 
@@ -106,6 +104,7 @@ function updateContourRide(current = {}, arenaRadius = 1200, now = performance.n
   const elapsed = Math.max(0, now - ride.startedAt);
   const progress = Math.min(1, elapsed / CONTOUR_RIDE_DURATION_MS);
   const angle = ride.baseAngle + progress * Math.PI * 2;
+  const contourRadius = getContourSnapRadius(current, angle);
   fish.x = Math.cos(angle) * contourRadius;
   fish.y = Math.sin(angle) * contourRadius;
   fish.targetX = fish.x;
@@ -115,8 +114,9 @@ function updateContourRide(current = {}, arenaRadius = 1200, now = performance.n
   fish.angle = angle + Math.PI / 2;
 
   if (progress >= 1) {
-    fish.x = Math.cos(ride.baseAngle) * contourRadius;
-    fish.y = Math.sin(ride.baseAngle) * contourRadius;
+    const endRadius = getContourSnapRadius(current, ride.baseAngle);
+    fish.x = Math.cos(ride.baseAngle) * endRadius;
+    fish.y = Math.sin(ride.baseAngle) * endRadius;
     fish.targetX = fish.x;
     fish.targetY = fish.y;
     fish.vx = 0;
