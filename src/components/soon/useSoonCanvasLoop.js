@@ -155,10 +155,17 @@ function pushNearbyEchostoryStars(current, onPrompt) {
     }
 
     if (distance > 0 && isInside) {
-      if (!star.previewPlaying && !star.collectPromptOpen) {
-        star.collectPromptOpen = true;
+      const now = Date.now();
+      const blinking = now <= (star.blinkUntil || 0);
+      if (!star.previewPlaying && (!blinking || now >= (star.previewCooldownUntil || 0))) {
         triggerEchostoryStarPreview(star, fishX);
-        onPrompt?.(star.id);
+        star.previewCooldownUntil = now + 900;
+      }
+      if (blinking) {
+        star.collected = true;
+        onPrompt?.({ type: "star-collect", starId: star.id, star });
+      } else {
+        star.blinkUntil = now + 5000;
       }
       const ux = dx / distance;
       const uy = dy / distance;
@@ -182,6 +189,7 @@ export function useSoonCanvasLoop({
   onSemioseVideoTrigger,
   onCollectEchostoryStar,
   onPromptEchostoryStarCollect,
+  onCollectTrailItem,
 }) {
   useEffect(() => {
     let frame = 0;
@@ -275,6 +283,19 @@ export function useSoonCanvasLoop({
 
       const next = stateRef.current || {};
       pushNearbyEchostoryStars(next, onPromptEchostoryStarCollect);
+      const fishDepth = Math.round(next?.fish?.depth || 1);
+      (next?.bubbles || []).forEach((bubble) => {
+        const d = Math.hypot((bubble.x || 0) - (next?.fish?.x || 0), (bubble.y || 0) - (next?.fish?.y || 0));
+        if (d < 62 && Math.abs(Math.round(bubble.depth || 1) - fishDepth) <= 1) {
+          onCollectTrailItem?.({
+            id: `bubble:${bubble.id}`,
+            kind: "bubble",
+            label: bubble.label || "Bulle sonore",
+            bubbleId: bubble.id,
+            sampleId: bubble.sampleId,
+          });
+        }
+      });
       const nextFish = next.fish || null;
       const arenaCenter = getArenaWorldCenter(next);
       const fishWorld = nextFish

@@ -70,6 +70,9 @@ export default function SoonCanvas({
   contourPlaybackPaused = false,
   onToggleContourPlayback,
   soonTouchMode = "bubble",
+  onReleaseTrailItems,
+  onPlayTrailItems,
+  trailCount = 0,
 }) {
   const canvasRef = useRef(null);
   const [semioseVideo, setSemioseVideo] = useState(null);
@@ -251,9 +254,21 @@ export default function SoonCanvas({
     onTickFish,
     onSemioseVideoTrigger: setSemioseVideo,
     onCollectEchostoryStar,
-    onPromptEchostoryStarCollect: (starId) => {
-      setEchostoryPrompt({ starId, openedAt: Date.now() });
+    onPromptEchostoryStarCollect: (event) => {
+      if (event?.type === "star-collect" && event?.starId) {
+        onCollectEchostoryStar?.(event.starId);
+        onPlayTrailItems?.("collect", {
+          id: `star:${event.starId}`,
+          kind: "star",
+          label: event?.star?.text || "Étoile",
+          starId: event.starId,
+        });
+        return;
+      }
+      const starId = typeof event === "string" ? event : event?.starId;
+      if (starId) setEchostoryPrompt({ starId, openedAt: Date.now() });
     },
+    onCollectTrailItem: (item) => onPlayTrailItems?.("collect", item),
   });
 
   useEffect(() => {
@@ -409,6 +424,8 @@ export default function SoonCanvas({
             { id: "contrast", label: `Relief ${audioTuning.depthSeparation.toFixed(2)}x` },
             { id: "sensitivity", label: `Sensibilité ${Math.round((audioTuning.sensitivity || 0) * 100)}%` },
             { id: "membrane", label: fish?.membraneSide === "outside" ? "Aller intérieur" : "Aller extérieur" },
+            { id: "trail-play", label: `Lire traîne (${trailCount})` },
+            { id: "trail-release", label: "Libérer étoiles" },
             { id: "reset", label: "Reset" },
           ]}
           onSelect={(item) => {
@@ -436,6 +453,8 @@ export default function SoonCanvas({
             }
             if (item.id === "sensitivity") setShowSensitivitySlider((v) => !v);
             if (item.id === "membrane") onToggleMembraneSide?.();
+            if (item.id === "trail-release") onReleaseTrailItems?.();
+            if (item.id === "trail-play") onPlayTrailItems?.("play");
             if (item.id === "reset") onResetFishContext?.();
           }}
         />
