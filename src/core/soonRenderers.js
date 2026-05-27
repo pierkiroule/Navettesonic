@@ -424,7 +424,7 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
   const paused = Boolean(current?.contourPlaybackPaused);
   const angularStep = (Math.PI * 2) / (30000 / 16.67);
   const leader = contourReaders[0];
-  if (leader && !paused) leader.angle -= angularStep;
+  if (leader && !paused) leader.angle += angularStep;
   const leadAngle = leader?.angle ?? 0;
   contourReaders.forEach((reader, index) => {
     const localAngle = leadAngle + (index - (contourReaders.length - 1) * 0.5) * 0.045;
