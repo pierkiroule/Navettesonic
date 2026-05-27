@@ -250,8 +250,8 @@ export default function SoonApp({ onBack }) {
   };
 
   useEffect(() => {
-    plumeTraceActiveRef.current = soonTouchMode === "plume";
-    if (soonTouchMode !== "plume") plumeLastPointRef.current = null;
+    plumeTraceActiveRef.current = soonTouchMode === "collect";
+    if (soonTouchMode !== "collect") plumeLastPointRef.current = null;
   }, [soonTouchMode]);
 
   const boostFishSpeed = () => {
@@ -337,7 +337,7 @@ export default function SoonApp({ onBack }) {
 
 
   useEffect(() => {
-    if (!isOdysseo || soonTouchMode === "plume" || (odysseoPath?.length || 0) < 2 || echostory?.traversalActive) return;
+    if (!isOdysseo || soonTouchMode === "collect" || (odysseoPath?.length || 0) < 2 || echostory?.traversalActive) return;
 
     const previewLines = buildEchostoryText({
       collectedStars: echostory?.collectedStars || [],
@@ -358,7 +358,7 @@ export default function SoonApp({ onBack }) {
 
 
   useEffect(() => {
-    if (!isOdysseo || soonTouchMode !== "plume" || isTravelPlaying) return;
+    if (!isOdysseo || soonTouchMode !== "collect" || isTravelPlaying) return;
     const fishNow = fish || {};
     const fx = Number.isFinite(fishNow.x) ? fishNow.x : null;
     const fy = Number.isFinite(fishNow.y) ? fishNow.y : null;
@@ -544,7 +544,7 @@ export default function SoonApp({ onBack }) {
 
       {isOdysseo && (
         <section className="echostory-hud" aria-live="polite">
-          <span className="echostory-chip">Navigo: tracez un parcours qui rejoue vos étoiles sonores.</span>
+          <span className="echostory-chip">Navigo: récoltez des bulles/étoiles qui s’attachent à la traîne.</span>
           <span className="echostory-chip">Étoiles récoltées: {(echostory?.collectedStars || []).length} / 15</span>
         </section>
       )}
@@ -631,6 +631,15 @@ export default function SoonApp({ onBack }) {
                         aria-label="Ouvrir l’éditeur des bulles sonores"
                       >
                         🫧
+                      </button>
+                      <button
+                        type="button"
+                        className={`bubble-btn mode-toggle ${soonTouchMode === "collect" ? "active" : ""}`}
+                        onClick={() => setSoonTouchMode("collect")}
+                        title="Mode 🪶 récolter : accrocher bulles et étoiles à la traîne"
+                        aria-label="Activer le mode récolter"
+                      >
+                        🪶
                       </button>
                     </div>
                     <span className="slider-label slider-label-top">🔍 Zoom</span>
@@ -738,16 +747,25 @@ export default function SoonApp({ onBack }) {
       </div>
 
       {isOdysseo && (
-        <div className="mode-switch-bottom" role="group" aria-label="Mode tactile Soon">
+        <div className="mode-switch-bottom" role="group" aria-label="Modes tactiles Soon">
           <div className="mode-switch-pill">
             <button
               type="button"
-              className="mode-switch-button active"
+              className={`mode-switch-button ${soonTouchMode === "bubble" ? "active" : ""}`}
               onClick={() => setSoonTouchMode("bubble")}
-              aria-pressed="true"
+              aria-pressed={soonTouchMode === "bubble"}
               title="Mode 🫧 : pousser bulles/étoiles, écouter sans récolter"
             >
               🫧 Mode bulle
+            </button>
+            <button
+              type="button"
+              className={`mode-switch-button ${soonTouchMode === "collect" ? "active" : ""}`}
+              onClick={() => setSoonTouchMode("collect")}
+              aria-pressed={soonTouchMode === "collect"}
+              title="Mode 🪶 récolter : les éléments touchés s’attachent comme des wagons"
+            >
+              🪶 Mode récolter
             </button>
           </div>
         </div>
