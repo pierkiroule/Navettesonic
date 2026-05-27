@@ -31,6 +31,7 @@ const STAR_EDGE_STICK_RELEASE = 86;
 
 const CONTOUR_RIDE_DURATION_MS = 30000;
 const CONTOUR_RIDE_ENTRY_THRESHOLD = 52;
+const ZENITH_STAR_REARM_DELAY_MS = 1800;
 
 function getContourSnapRadius(current = {}, angle = 0) {
   const arenaRadius = Number.isFinite(current?.arenaRadius) ? current.arenaRadius : 1200;
@@ -53,14 +54,39 @@ function updateContourRide(current = {}, arenaRadius = 1200, now = performance.n
   const contourRadius = Math.max(84, getMembraneRadiusForLevel(arenaRadius, level));
   const beacon = { x: 0, y: -contourRadius };
   const ride = current.contourRide || null;
+  const zenithStar = current.zenithStar || null;
 
   if (!ride?.active) {
     const distToBeacon = Math.hypot((fish.x || 0) - beacon.x, (fish.y || 0) - beacon.y);
-    if (distToBeacon <= CONTOUR_RIDE_ENTRY_THRESHOLD) {
+    const canTrigger = zenithStar?.armed !== false;
+    if (canTrigger && distToBeacon <= CONTOUR_RIDE_ENTRY_THRESHOLD) {
+      current.zenithStar = {
+        ...(zenithStar || {}),
+        x: beacon.x,
+        y: beacon.y,
+        radius: CONTOUR_RIDE_ENTRY_THRESHOLD,
+        armed: false,
+        hitAt: now,
+      };
       current.contourRide = {
         active: true,
         startedAt: now,
         baseAngle: -Math.PI / 2,
+      };
+      fish.x = beacon.x;
+      fish.y = beacon.y;
+      fish.targetX = beacon.x;
+      fish.targetY = beacon.y;
+      fish.vx = 0;
+      fish.vy = 0;
+    }
+    if (!canTrigger && Number.isFinite(zenithStar?.hitAt) && now - zenithStar.hitAt >= ZENITH_STAR_REARM_DELAY_MS) {
+      current.zenithStar = {
+        ...(zenithStar || {}),
+        x: beacon.x,
+        y: beacon.y,
+        radius: CONTOUR_RIDE_ENTRY_THRESHOLD,
+        armed: true,
       };
     }
     return;
@@ -83,6 +109,14 @@ function updateContourRide(current = {}, arenaRadius = 1200, now = performance.n
     fish.targetX = fish.x;
     fish.targetY = fish.y;
     current.contourRide = null;
+    current.zenithStar = {
+      ...(current.zenithStar || {}),
+      x: beacon.x,
+      y: beacon.y,
+      radius: CONTOUR_RIDE_ENTRY_THRESHOLD,
+      armed: false,
+      hitAt: now,
+    };
   }
 }
 
