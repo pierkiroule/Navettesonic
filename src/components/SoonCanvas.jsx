@@ -67,6 +67,8 @@ export default function SoonCanvas({
   onSetFishDepth,
   echostory,
   onCollectEchostoryStar,
+  contourPlaybackPaused = false,
+  onToggleContourPlayback,
 }) {
   const canvasRef = useRef(null);
   const [semioseVideo, setSemioseVideo] = useState(null);
@@ -136,6 +138,7 @@ export default function SoonCanvas({
     gamePaused,
     pendingBlobAction,
     echostory,
+    contourPlaybackPaused,
   });
 
   useEffect(() => {
@@ -165,6 +168,7 @@ export default function SoonCanvas({
       gamePaused,
       pendingBlobAction,
       echostory,
+      contourPlaybackPaused,
     };
   }, [
     mode,
@@ -192,6 +196,7 @@ export default function SoonCanvas({
     gamePaused,
     pendingBlobAction,
     echostory,
+    contourPlaybackPaused,
   ]);
 
   useEffect(() => {
@@ -278,6 +283,7 @@ export default function SoonCanvas({
     onOpenBubbleEditor,
     onOpenFishContextMenu: setFishMenu,
     onOpenBeaconEditor,
+    onToggleContourPlayback,
   });
 
   useEffect(() => cleanupPointer, [cleanupPointer]);

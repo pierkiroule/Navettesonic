@@ -20,6 +20,7 @@ const guppyRuntime = {
   pinkSmoke: [],
   cosmicStreaks: [],
   nextCosmicSpawnAt: 0,
+  contourReaders: [],
 };
 const warnedRendererErrors = new Set();
 
@@ -54,6 +55,7 @@ export function drawScene(ctx, rect, time, refs) {
     worldEntered = true;
 
     drawIsolated(ctx, () => drawArenaBoundary(ctx, arenaRef, time, current));
+    drawIsolated(ctx, () => drawContourReader(ctx, current, arenaRef.current?.radius || 1200, time));
     drawIsolated(ctx, () => drawArenaGuppies(ctx, time, current, arenaRef.current?.radius || 1200));
 
     drawIsolated(ctx, () => drawArenaNightSky(ctx, arenaRef, time));
@@ -154,6 +156,29 @@ function getArenaEdgeRadius(current, arenaRadius, angle) {
   return hasBlob ? getBlobRadiusAtAngle(current.arenaBlob, angle) : arenaRadius;
 }
 
+function drawContourReader(ctx, current = {}, arenaRadius = 1200, time = 0) {
+  if (current.mode !== "reso") return;
+  const loopMs = 30000;
+  const phase = ((time % loopMs) + loopMs) % loopMs;
+  const angle = Math.PI / 2 + (phase / loopMs) * Math.PI * 2;
+  const edge = getArenaEdgeRadius(current, arenaRadius, angle);
+  const radius = Math.max(80, edge - 18);
+  const x = Math.cos(angle) * radius;
+  const y = Math.sin(angle) * radius;
+  const glow = ctx.createRadialGradient(x, y, 0, x, y, 36);
+  glow.addColorStop(0, "rgba(255,248,214,0.95)");
+  glow.addColorStop(0.55, "rgba(255,202,118,0.52)");
+  glow.addColorStop(1, "rgba(255,202,118,0)");
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(x, y, 36, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "rgba(255,236,173,0.95)";
+  ctx.beginPath();
+  ctx.arc(x, y, 6, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 function ensureGuppyRuntime(current, arenaRadius) {
   if (guppyRuntime.initialized) return;
   guppyRuntime.initialized = true;
@@ -174,6 +199,16 @@ function ensureGuppyRuntime(current, arenaRadius) {
   }
   // Important narratif: au départ aucune perle/graine sur la membrane.
   // Elles arrivent uniquement via les étoiles filantes cosmiques.
+  if (!guppyRuntime.contourReaders.length) {
+    const count = 7;
+    for (let i = 0; i < count; i += 1) {
+      guppyRuntime.contourReaders.push({
+        id: `contour-reader-${i + 1}`,
+        angle: Math.PI / 2 - (Math.PI * 2 * i) / count,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+  }
 }
 
 function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
@@ -184,6 +219,7 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
   const seeds = guppyRuntime.driftingSeeds;
   const pinkSmoke = guppyRuntime.pinkSmoke;
   const cosmicStreaks = guppyRuntime.cosmicStreaks;
+  const contourReaders = guppyRuntime.contourReaders;
   const dt = 1;
 
   if (now >= guppyRuntime.nextCosmicSpawnAt) {
@@ -481,6 +517,24 @@ function drawArenaGuppies(ctx, time = 0, current = {}, arenaRadius = 1200) {
   fish.forEach((g, i) => {
     drawGuppyTopView(ctx, g.x, g.y, g.angle, 0.72 + (i % 4) * 0.08, time * 0.02 + g.phase);
   });
+
+  const readerZones = [];
+  const paused = Boolean(current?.contourPlaybackPaused);
+  const angularStep = (Math.PI * 2) / (30000 / 16.67);
+  contourReaders.forEach((reader) => {
+    if (!paused) reader.angle -= angularStep;
+    const edge = getArenaEdgeRadius(current, arenaRadius, reader.angle);
+    const rimRadius = Math.max(80, edge + 26);
+    const rx = Math.cos(reader.angle) * rimRadius;
+    const ry = Math.sin(reader.angle) * rimRadius;
+    const sway = paused ? 1 : 0.45;
+    const x = rx + Math.cos(time * 0.002 + reader.phase) * (6 * sway);
+    const y = ry + Math.sin(time * 0.0016 + reader.phase) * (5 * sway);
+    const facing = reader.angle - Math.PI / 2;
+    drawGuppyTopView(ctx, x, y, facing, 0.78, time * 0.016 + reader.phase);
+    readerZones.push({ id: reader.id, x, y, r: 26 });
+  });
+  current.contourReaderHitZones = readerZones;
 
   ctx.restore();
 }

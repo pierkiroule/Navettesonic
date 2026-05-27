@@ -29,6 +29,7 @@ export function useSoonPointer({
   onOpenBubbleEditor,
   onOpenFishContextMenu,
   onDepthToast,
+  onToggleContourPlayback,
 }) {
   const MOVE_CANCEL = 12;
   const DOUBLE_TAP_MS = 420;
@@ -240,6 +241,14 @@ export function useSoonPointer({
 
     const point = getSafeWorldFromEvent(event, { swimEdgeBoost: true });
     const current = stateRef.current;
+    if (current.mode === "reso") {
+      const contourReaders = current.contourReaderHitZones || [];
+      const hitReader = contourReaders.find((reader) => Math.hypot((reader.x || 0) - point.x, (reader.y || 0) - point.y) <= (reader.r || 24));
+      if (hitReader) {
+        onToggleContourPlayback?.();
+        return;
+      }
+    }
 
     if (current.mode === "echostory" || current.mode === "reso") {
       const r = arenaRef.current.radius || 1200;

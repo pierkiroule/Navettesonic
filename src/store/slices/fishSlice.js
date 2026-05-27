@@ -3,20 +3,6 @@ import { tickFishEngine } from "../../core/fishNavigationEngine.js";
 import { clampDepth } from "../../core/fishBubblePhysics.js";
 import { startFishTrailAt, addFishTrailPoint } from "../../core/fishPathTrail.js";
 import { DEFAULT_ARENA_RADIUS } from "../soonInitialState.js";
-import { applyBlobAction } from "../../core/blobArena.js";
-import { getBlobRadiusAtAngle } from "../../core/blobArena.js";
-import { clampToCircle } from "../../core/geometry.js";
-
-function keepBubbleOffMembrane(bubble, blob) {
-  const bx = Number.isFinite(bubble?.x) ? bubble.x : 0;
-  const by = Number.isFinite(bubble?.y) ? bubble.y : 0;
-  const bubbleRadius = Math.max(24, Number.isFinite(bubble?.r) ? bubble.r : 70);
-  const angle = Math.atan2(by, bx);
-  const membraneRadius = getBlobRadiusAtAngle(blob, angle);
-  const safeRadius = Math.max(36, membraneRadius - bubbleRadius - 18);
-  const clamped = clampToCircle({ x: bx, y: by }, safeRadius);
-  return { ...bubble, x: clamped.x, y: clamped.y };
-}
 
 export const createFishSlice=(set,get)=>({
 setFishTarget:(x,y)=>{if(get().circuitAutopilot)return;set((s)=>({gamePaused:false,pendingBlobAction:null,fish:{...s.fish,targetX:x,targetY:y,vx:(s.fish?.vx||0)*0.35,vy:(s.fish?.vy||0)*0.35}}));},
@@ -35,11 +21,30 @@ const staged=loaded.map((b)=>({...b,x:(next?.fish?.x||0)+(b.x||0)*0.12,y:(next?.
 return{...next,bubbles:staged,arenaBubblesById:byArena,bubbleTransitionProgress:0,bubbleTransitionTarget:loaded,selectedBubbleId:null,selectedBeaconId:null};}),
 startFishTrailAt:(x,y)=>set(()=>({fishTrail:startFishTrailAt(x,y)})),
 addFishTrailPoint:(x,y)=>set((s)=>({fishTrail:addFishTrailPoint(s.fishTrail||[],x,y)})),
-applyBlobAction:(type,angle)=>set((s)=>{const nextBlob=applyBlobAction(s.arenaBlob,type,angle);const fishAngle=Number.isFinite(angle)?angle:Math.atan2(s.fish?.y||0,s.fish?.x||0);const basePush=Math.max(18,Math.min(46,(s.fish?.maxSpeed||3.1)*8));let nx=(s.fish?.x||0)-Math.cos(fishAngle)*basePush;let ny=(s.fish?.y||0)-Math.sin(fishAngle)*basePush;const newAngle=Math.atan2(ny,nx);const localRadius=getBlobRadiusAtAngle(nextBlob,newAngle);const fishRadius=46;const maxDistance=Math.max(28,localRadius-fishRadius-4);const distance=Math.hypot(nx,ny);if(distance>maxDistance){const clamped=clampToCircle({x:nx,y:ny},maxDistance);nx=clamped.x;ny=clamped.y;}
-let nextBubbles=s.bubbles||[];
-if(type==="inspi"){const centerRepulse=Math.max(300,basePush*6.2);nx-=Math.cos(fishAngle)*centerRepulse;ny-=Math.sin(fishAngle)*centerRepulse;const fishSafeRadius=Math.max(30,maxDistance-280);const pushed=clampToCircle({x:nx,y:ny},fishSafeRadius);nx=pushed.x;ny=pushed.y;}
-
-nextBubbles=nextBubbles.map((bubble)=>keepBubbleOffMembrane(bubble,nextBlob));
-const velocityDamping=type==="inspi"?0.12:0.35;
-return{arenaBlob:nextBlob,gamePaused:false,pendingBlobAction:null,eyesClosed:false,bubbles:nextBubbles,fish:{...(s.fish||{}),x:nx,y:ny,targetX:nx,targetY:ny,vx:(s.fish?.vx||0)*velocityDamping,vy:(s.fish?.vy||0)*velocityDamping}};}),
+applyBlobAction:(type,angle)=>set((s)=>{
+const arenaRadius=s.arenaRadius||1200;
+const outerTrackRadius=Math.max(120,arenaRadius+26);
+const innerReleaseRadius=Math.max(120,arenaRadius-220);
+const stars=s.echostory?.stars||[];
+let selectedId=null;
+let selectedDistance=Infinity;
+stars.forEach((star)=>{
+  if(!star)return;
+  const isAttached=Boolean(star.attachedToContour);
+  if(type==="expi"&&isAttached)return;
+  if(type==="inspi"&&!isAttached)return;
+  const d=Math.hypot((star.x||0)-(s.fish?.x||0),(star.y||0)-(s.fish?.y||0));
+  if(d<selectedDistance){selectedDistance=d;selectedId=star.id;}
+});
+const nextEchostory=s.echostory?{...s.echostory,stars:stars.map((star)=>{
+  if(!star||star.id!==selectedId)return star;
+  if(type==="expi"){
+    const starAngle=Math.atan2(star.y||0,star.x||0);
+    return {...star,attachedToContour:true,contourAngle:starAngle,x:Math.cos(starAngle)*outerTrackRadius,y:Math.sin(starAngle)*outerTrackRadius};
+  }
+  const starAngle=Number.isFinite(star.contourAngle)?star.contourAngle:Math.atan2(star.y||0,star.x||0);
+  return {...star,attachedToContour:false,x:Math.cos(starAngle)*innerReleaseRadius,y:Math.sin(starAngle)*innerReleaseRadius};
+})}:s.echostory;
+return{gamePaused:false,pendingBlobAction:null,eyesClosed:false,echostory:nextEchostory,fish:{...(s.fish||{}),targetX:s.fish?.x||0,targetY:s.fish?.y||0}};
+}),
 });
