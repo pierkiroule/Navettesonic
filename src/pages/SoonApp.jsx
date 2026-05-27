@@ -699,6 +699,15 @@ export default function SoonApp({ onBack }) {
                     >
                       🫧
                     </button>
+                    <button
+                      type="button"
+                      className={`bubble-btn mode-toggle ${soonTouchMode === "collect" ? "active" : ""}`}
+                      onClick={() => setSoonTouchMode("collect")}
+                      title="Mode 🪶 récolter : accrocher bulles et étoiles à la traîne"
+                      aria-label="Activer le mode récolter"
+                    >
+                      🪶
+                    </button>
                   </div>
                   <span className="slider-label slider-label-top">🔍 Zoom</span>
                   <div className="fish-slider-horizontal-track">
