@@ -22,6 +22,16 @@ return{...next,bubbles:staged,arenaBubblesById:byArena,bubbleTransitionProgress:
 startFishTrailAt:(x,y)=>set(()=>({fishTrail:startFishTrailAt(x,y)})),
 addFishTrailPoint:(x,y)=>set((s)=>({fishTrail:addFishTrailPoint(s.fishTrail||[],x,y)})),
 applyBlobAction:(type,angle)=>set((s)=>{
+if(type==="looping"){
+const loopStartAngle=Number.isFinite(angle)?angle:(-Math.PI/2);
+return{
+  gamePaused:false,
+  pendingBlobAction:null,
+  eyesClosed:false,
+  contourRide:{active:true,startedAt:performance.now(),baseAngle:loopStartAngle},
+  fish:{...(s.fish||{}),targetX:s.fish?.x||0,targetY:s.fish?.y||0},
+};
+}
 const arenaRadius=s.arenaRadius||1200;
 const outerTrackRadius=Math.max(120,arenaRadius+26);
 const innerReleaseRadius=Math.max(120,arenaRadius-220);
@@ -45,8 +55,6 @@ const nextEchostory=s.echostory?{...s.echostory,stars:stars.map((star)=>{
   const starAngle=Number.isFinite(star.contourAngle)?star.contourAngle:Math.atan2(star.y||0,star.x||0);
   return {...star,attachedToContour:false,x:Math.cos(starAngle)*innerReleaseRadius,y:Math.sin(starAngle)*innerReleaseRadius};
 })}:s.echostory;
-const startLooping=type==="looping";
-const loopStartAngle=Number.isFinite(angle)?angle:(-Math.PI/2);
-return{gamePaused:false,pendingBlobAction:null,eyesClosed:false,echostory:nextEchostory,contourRide:startLooping?{active:true,startedAt:performance.now(),baseAngle:loopStartAngle}:s.contourRide,fish:{...(s.fish||{}),targetX:s.fish?.x||0,targetY:s.fish?.y||0}};
+return{gamePaused:false,pendingBlobAction:null,eyesClosed:false,echostory:nextEchostory,fish:{...(s.fish||{}),targetX:s.fish?.x||0,targetY:s.fish?.y||0}};
 }),
 });
