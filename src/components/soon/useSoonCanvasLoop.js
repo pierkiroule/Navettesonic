@@ -7,7 +7,7 @@ import {
   resizeCanvas,
   updateArena,
 } from "../../core/soonCamera.js";
-import { getBucketSampleUrlByIndex, playOneShotFile, updateBubbleSpatialMix } from "../../core/audioEngine.js";
+import { getSooncutSampleUrlByColor, playOneShotFile, updateBubbleSpatialMix } from "../../core/audioEngine.js";
 import { updateEcosystemFx } from "../../core/ecosystemFx.js";
 import { updateBubbleAudioTriggers } from "../../core/soonAudioTriggers.js";
 import { drawScene } from "../../core/soonRenderers.js";
@@ -141,17 +141,22 @@ function updateContourRide(current = {}, arenaRadius = 1200, now = performance.n
 }
 
 
-function getEchostorySampleIndex(star, fallbackIndex = 0) {
-  const explicitIndex = Number.parseInt(String(star?.sampleIndex || ""), 10);
-  if (Number.isFinite(explicitIndex)) return explicitIndex;
-  const starNumber = Number.parseInt(String(star?.id || "").match(/star-(\d{1,3})$/)?.[1] || "", 10);
-  if (Number.isFinite(starNumber)) return starNumber;
-  return fallbackIndex + 1;
+function getEchostoryStarColorIndex(star) {
+  const phaseIndex = Math.floor(Number(star?.phaseIndex));
+  if (Number.isFinite(phaseIndex)) return Math.max(0, Math.min(2, phaseIndex));
+  const color = String(star?.color || "").toLowerCase();
+  if (color === "#ff9f40") return 1;
+  if (color === "#51d37c") return 2;
+  return 0;
 }
 
-function getEchostorySampleUrlCandidates(star, fallbackIndex = 0) {
-  const sampleIndex = getEchostorySampleIndex(star, fallbackIndex);
-  return [getBucketSampleUrlByIndex(sampleIndex)];
+function getEchostoryStarColorKey(star) {
+  return `color-${getEchostoryStarColorIndex(star)}`;
+}
+
+function getEchostorySampleUrlCandidates(star, colorOrdinal = 0) {
+  const colorIndex = getEchostoryStarColorIndex(star);
+  return [getSooncutSampleUrlByColor(colorIndex, colorOrdinal)];
 }
 
 async function playHtmlAudioFallback(url, volume = 0.85) {
@@ -188,10 +193,10 @@ async function playHtmlAudioFallback(url, volume = 0.85) {
 
 let activeEchostoryStarAudioId = null;
 
-async function playEchostoryStarPreview(star, fishX = 0, fallbackIndex = 0) {
+async function playEchostoryStarPreview(star, fishX = 0, colorOrdinal = 0) {
   if (!star) return false;
   const pan = Math.max(-0.85, Math.min(0.85, fishX / 420));
-  const candidates = getEchostorySampleUrlCandidates(star, fallbackIndex);
+  const candidates = getEchostorySampleUrlCandidates(star, colorOrdinal);
   for (const url of candidates) {
     try {
       await playOneShotFile(url, { volume: 0.78, pan });
@@ -213,12 +218,12 @@ async function playEchostoryStarPreview(star, fishX = 0, fallbackIndex = 0) {
   return false;
 }
 
-function triggerEchostoryStarPreview(star, { fishX = 0, fallbackIndex = 0, onComplete } = {}) {
+function triggerEchostoryStarPreview(star, { fishX = 0, colorOrdinal = 0, onComplete } = {}) {
   if (!star || star.previewPlaying || star.audioConsumed || activeEchostoryStarAudioId) return false;
-  activeEchostoryStarAudioId = star.id || `star-${fallbackIndex + 1}`;
+  activeEchostoryStarAudioId = star.id || `${getEchostoryStarColorKey(star)}-${colorOrdinal + 1}`;
   star.previewPlaying = true;
   star.previewStartedAt = Date.now();
-  playEchostoryStarPreview(star, fishX, fallbackIndex).finally(() => {
+  playEchostoryStarPreview(star, fishX, colorOrdinal).finally(() => {
     star.previewPlaying = false;
     star.previewStartedAt = 0;
     star.audioConsumed = true;
@@ -239,8 +244,19 @@ function pushNearbyEchostoryStars(current, { onCollectEchostoryStar } = {}) {
   const contourSnapThreshold = Math.max(24, arenaRadius - STAR_EDGE_STICK_THRESHOLD);
   const contourReleaseThreshold = Math.max(32, arenaRadius - STAR_EDGE_STICK_RELEASE);
 
-  (current?.echostory?.stars || []).forEach((star, index) => {
+  const stars = current?.echostory?.stars || [];
+  const colorCounts = new Map();
+  const colorOrdinalsByStarId = new Map();
+  stars.forEach((star) => {
     if (!star) return;
+    const key = getEchostoryStarColorKey(star);
+    const ordinal = colorCounts.get(key) || 0;
+    colorOrdinalsByStarId.set(star.id || `${key}-${ordinal}`, ordinal);
+    colorCounts.set(key, ordinal + 1);
+  });
+
+  stars.forEach((star) => {
+    if (!star || star.collected) return;
     if (!Number.isFinite(star.vx)) star.vx = 0;
     if (!Number.isFinite(star.vy)) star.vy = 0;
     const dx = (star.x || 0) - fishX;
@@ -261,7 +277,7 @@ function pushNearbyEchostoryStars(current, { onCollectEchostoryStar } = {}) {
       }
       triggerEchostoryStarPreview(star, {
         fishX,
-        fallbackIndex: index,
+        colorOrdinal: colorOrdinalsByStarId.get(star.id || getEchostoryStarColorKey(star)) || 0,
         onComplete: (completedStar) => onCollectEchostoryStar?.(completedStar.id),
       });
     }

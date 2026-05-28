@@ -2,6 +2,14 @@ import { listSoundBubbles } from "../services/supabaseSoundService.js";
 
 export const SUPABASE_BUBBLES_BASE =
   "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles";
+export const SUPABASE_SOONCUT_BASE =
+  "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/sooncut";
+
+const SOONCUT_STAR_RANGES = [
+  { start: 1, end: 15 },
+  { start: 16, end: 35 },
+  { start: 36, end: 56 },
+];
 
 let bucketFileSet = null;
 let bucketFileLookup = null;
@@ -46,6 +54,20 @@ export function getBucketSampleFileByIndex(index = 1) {
 
 export function getBucketSampleUrlByIndex(index = 1) {
   return getBucketSampleUrl(getBucketSampleFileByIndex(index));
+}
+
+export function getSooncutSampleFileByColor(colorIndex = 0, ordinal = 0) {
+  const parsedColorIndex = Math.floor(Number.isFinite(colorIndex) ? colorIndex : 0);
+  const safeColorIndex = Math.max(0, Math.min(SOONCUT_STAR_RANGES.length - 1, parsedColorIndex));
+  const range = SOONCUT_STAR_RANGES[safeColorIndex];
+  const span = range.end - range.start + 1;
+  const safeOrdinal = Math.max(0, Math.floor(Number.isFinite(ordinal) ? ordinal : 0));
+  const sampleIndex = range.start + (safeOrdinal % span);
+  return `extrait_${String(sampleIndex).padStart(3, "0")}.mp3`;
+}
+
+export function getSooncutSampleUrlByColor(colorIndex = 0, ordinal = 0) {
+  return `${SUPABASE_SOONCUT_BASE}/${getSooncutSampleFileByColor(colorIndex, ordinal)}`;
 }
 
 async function resolveSample(bubble) {
