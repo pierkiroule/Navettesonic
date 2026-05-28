@@ -4,6 +4,7 @@ import { useSoonPointer } from "./soon/useSoonPointer.js";
 import RadialMenu from "./RadialMenu.jsx";
 import { getAudioTuning, setAudioTuning } from "../core/audioEngine.js";
 import { ARENA_INNER_BOUNDARY_INSET, MEMBRANE_LEVEL_MULTIPLIERS } from "../core/constants.js";
+import { isOrganicAmbienceActive, toggleOrganicAmbience } from "../core/organicAmbienceEngine.js";
 
 
 export default function SoonCanvas({
@@ -67,6 +68,8 @@ export default function SoonCanvas({
   const [showSensitivitySlider, setShowSensitivitySlider] = useState(false);
   const [contourPlayButton, setContourPlayButton] = useState({ visible: false, x: 0, y: 0 });
   const [contourRideDurationMs, setContourRideDurationMs] = useState(90000);
+  const [organicAmbienceActive, setOrganicAmbienceActive] = useState(() => isOrganicAmbienceActive());
+  const [organicAmbienceButton, setOrganicAmbienceButton] = useState({ x: 0, y: 0, ready: false });
 
   const cameraRef = useRef({
     x: 0,
@@ -241,6 +244,42 @@ export default function SoonCanvas({
 
   useEffect(() => {
     let frame = 0;
+    const updateOrganicAmbienceButton = () => {
+      const canvas = canvasRef.current;
+      const current = stateRef.current || {};
+      if (!canvas) {
+        frame = requestAnimationFrame(updateOrganicAmbienceButton);
+        return;
+      }
+
+      const rect = canvas.getBoundingClientRect();
+      const arenaRadius = Number.isFinite(current.arenaRadius) ? current.arenaRadius : (arenaRef.current.radius || 1200);
+      const zoomOffset = Number.isFinite(current.viewZoom) ? current.viewZoom : 0;
+      const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 2.55);
+      const userZoom = fitZoom * (1 + zoomOffset * 1.55);
+      const world = current.worldGraph;
+      const arenaId = current.currentArenaId || world?.startArenaId;
+      const arenaNode = (world?.nodes || []).find((node) => node.id === arenaId) || null;
+      const center = arenaNode?.absoluteCenter || { x: 0, y: 0 };
+      const centerX = Number.isFinite(center.x) ? center.x : 0;
+      const centerY = Number.isFinite(center.y) ? center.y : 0;
+      const camera = cameraRef.current || { x: 0, y: 0 };
+
+      const screenX = rect.width * 0.5 + (centerX - camera.x) * userZoom;
+      const screenY = rect.height * 0.5 + (centerY - camera.y) * userZoom;
+      setOrganicAmbienceButton((prev) => {
+        if (prev.ready && Math.abs(prev.x - screenX) < 0.2 && Math.abs(prev.y - screenY) < 0.2) return prev;
+        return { x: screenX, y: screenY, ready: true };
+      });
+      frame = requestAnimationFrame(updateOrganicAmbienceButton);
+    };
+
+    frame = requestAnimationFrame(updateOrganicAmbienceButton);
+    return () => cancelAnimationFrame(frame);
+  }, [arenaRef, cameraRef, canvasRef, stateRef]);
+
+  useEffect(() => {
+    let frame = 0;
     const updateContourPlayButton = () => {
       const canvas = canvasRef.current;
       const current = stateRef.current || {};
@@ -314,6 +353,18 @@ export default function SoonCanvas({
     setContourPlayButton((prev) => ({ ...prev, visible: false }));
   };
 
+
+
+  const handleOrganicAmbienceToggle = async () => {
+    try {
+      const next = await toggleOrganicAmbience();
+      setOrganicAmbienceActive(next);
+    } catch (error) {
+      console.warn("Impossible de démarrer l'ambiance organique Tone.js/Omnitone", error);
+      setOrganicAmbienceActive(false);
+    }
+  };
+
   const contourDurationOptions = [
     { value: 30000, label: "30 s" },
     { value: 60000, label: "1 min" },
@@ -326,6 +377,20 @@ export default function SoonCanvas({
 
   return (
     <div className="soon-canvas-shell">
+      <button
+        type="button"
+        className={`organic-ambience-btn ${organicAmbienceActive ? "is-active" : ""}`}
+        style={{
+          left: `${organicAmbienceButton.x}px`,
+          top: `${organicAmbienceButton.y}px`,
+          opacity: organicAmbienceButton.ready ? 1 : 0,
+        }}
+        onClick={handleOrganicAmbienceToggle}
+        aria-label="Activer ou couper l'ambiance musicale organique"
+        title={organicAmbienceActive ? "Couper ambiance organique" : "Activer ambiance organique"}
+      >
+        🎵
+      </button>
       <canvas
         ref={canvasRef}
         className="soon-canvas"

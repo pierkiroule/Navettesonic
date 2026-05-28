@@ -32,6 +32,10 @@ let masterFilter = null;
 const activeSounds = new Map();
 const fileBuffers = new Map();
 const activeOneShots = new Set();
+const DEFAULT_MASTER_GAIN = 0.24;
+const AMBIENT_NEAR_GAIN = 0.3;
+const AMBIENT_FAR_GAIN = 0.2;
+
 const audioTuning = {
   resonance: 0.5,
   detection: 1,
@@ -48,7 +52,7 @@ function getAudioContext() {
   masterFilter.type = "lowpass";
   masterFilter.frequency.value = 5400;
   masterFilter.Q.value = 0.9;
-  masterGain.gain.value = 0.14;
+  masterGain.gain.value = DEFAULT_MASTER_GAIN;
   masterGain.connect(masterFilter);
   masterFilter.connect(audioCtx.destination);
 
@@ -144,7 +148,7 @@ export function updateAmbientMix({ near = false } = {}) {
   if (!audioCtx || !masterGain) return;
 
   masterGain.gain.setTargetAtTime(
-    near ? 0.22 : 0.12,
+    near ? AMBIENT_NEAR_GAIN : AMBIENT_FAR_GAIN,
     audioCtx.currentTime,
     0.2
   );
