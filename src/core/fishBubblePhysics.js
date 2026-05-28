@@ -6,6 +6,7 @@ export function clampDepth(depth) {
 }
 
 export function pushBubblesFromFish(bubbles = [], fish = {}, fishDepth = 1) {
+  if (fish?.isOnContourRide) return bubbles;
   const fishX = fish.x || 0;
   const fishY = fish.y || 0;
   const fishAngle = Number.isFinite(fish.angle) ? fish.angle : -Math.PI / 2;

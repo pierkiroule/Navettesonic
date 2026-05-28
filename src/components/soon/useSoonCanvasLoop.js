@@ -57,6 +57,7 @@ function updateContourRide(current = {}, arenaRadius = 1200, now = performance.n
   const zenithStar = current.zenithStar || null;
 
   if (!ride?.active) {
+    fish.isOnContourRide = false;
     const distToBeacon = Math.hypot((fish.x || 0) - beacon.x, (fish.y || 0) - beacon.y);
     const canTrigger = zenithStar?.armed !== false;
     if (canTrigger && distToBeacon <= CONTOUR_RIDE_ENTRY_THRESHOLD) {
@@ -80,6 +81,7 @@ function updateContourRide(current = {}, arenaRadius = 1200, now = performance.n
       fish.vx = 0;
       fish.vy = 0;
       fish.angle = 0;
+      fish.isOnContourRide = true;
     }
     if (!canTrigger && !Number.isFinite(zenithStar?.hitAt)) {
       current.zenithStar = {
@@ -112,6 +114,7 @@ function updateContourRide(current = {}, arenaRadius = 1200, now = performance.n
   fish.vx = 0;
   fish.vy = 0;
   fish.angle = angle + Math.PI / 2;
+  fish.isOnContourRide = true;
 
   if (progress >= 1) {
     const endRadius = getContourSnapRadius(current, ride.baseAngle);
@@ -122,6 +125,7 @@ function updateContourRide(current = {}, arenaRadius = 1200, now = performance.n
     fish.vx = 0;
     fish.vy = 0;
     fish.angle = 0;
+    fish.isOnContourRide = false;
     current.contourRide = null;
     current.zenithStar = {
       ...(current.zenithStar || {}),
@@ -220,6 +224,7 @@ function triggerEchostoryStarPreview(star, fishX = 0) {
 
 function pushNearbyEchostoryStars(current) {
   if (current?.mode !== "echostory" && current?.mode !== "reso") return;
+  if (current?.contourRide?.active) return;
   if (!current?.fish) return;
   const fishX = Number.isFinite(current.fish.x) ? current.fish.x : 0;
   const fishY = Number.isFinite(current.fish.y) ? current.fish.y : 0;
@@ -393,10 +398,11 @@ export function useSoonCanvasLoop({
       const next = stateRef.current || {};
       updateContourRide(next, arenaRef.current.radius, performance.now());
       pushNearbyEchostoryStars(next);
+      const isContourRideActive = Boolean(next?.contourRide?.active);
       const fishDepth = Math.round(next?.fish?.depth || 1);
       (next?.bubbles || []).forEach((bubble) => {
         const d = Math.hypot((bubble.x || 0) - (next?.fish?.x || 0), (bubble.y || 0) - (next?.fish?.y || 0));
-        if (d < 62 && Math.abs(Math.round(bubble.depth || 1) - fishDepth) <= 1) {
+        if (!isContourRideActive && d < 62 && Math.abs(Math.round(bubble.depth || 1) - fishDepth) <= 1) {
           if (d > 0) {
             const ux = ((bubble.x || 0) - (next?.fish?.x || 0)) / d;
             const uy = ((bubble.y || 0) - (next?.fish?.y || 0)) / d;
