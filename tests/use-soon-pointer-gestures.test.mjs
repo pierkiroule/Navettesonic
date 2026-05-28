@@ -67,3 +67,41 @@ test('long press en nage ne déclenche ni menu ni boost vitesse', async () => {
   assert.equal(calls.openMenu, 0);
   assert.equal(calls.boostSpeed, 0);
 });
+
+
+test('tap sur une étoile snappée sélectionne le tissage sans déclencher la nage', () => {
+  const { calls } = createHarness();
+  let selectedStarId = null;
+  const stateRef = {
+    current: {
+      interactionMode: 'swim',
+      mode: 'echostory',
+      fish: { depth: 1 },
+      viewZoom: 0,
+      circuitAutopilot: false,
+      bubbles: [],
+      echostory: {
+        stars: [{ id: 'star-1', x: 0, y: 0, r: 18, attachedToContour: true }],
+      },
+    },
+  };
+  const canvas = {
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
+    setPointerCapture: () => {},
+    releasePointerCapture: () => {},
+  };
+  const pointerApi = useSoonPointer({
+    canvasRef: { current: canvas },
+    cameraRef: { current: { x: 0, y: 0 } },
+    arenaRef: { current: { radius: 1200 } },
+    pointerRef: { current: { activePointers: new Map() } },
+    stateRef,
+    onFishTarget: () => { calls.fishTarget += 1; },
+    onSelectContourStar: (id) => { selectedStarId = id; },
+  });
+
+  pointerApi.handlePointerDown(event(1, 500, 500));
+
+  assert.equal(selectedStarId, 'star-1');
+  assert.equal(calls.fishTarget, 0);
+});

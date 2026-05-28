@@ -55,6 +55,7 @@ export default function SoonCanvas({
   echostory,
   contourPlaybackPaused = false,
   onToggleContourPlayback,
+  onSelectContourStar,
   soonTouchMode = "bubble",
 }) {
   const canvasRef = useRef(null);
@@ -231,6 +232,7 @@ export default function SoonCanvas({
     onOpenFishContextMenu: setFishMenu,
     onOpenBeaconEditor,
     onToggleContourPlayback,
+    onSelectContourStar,
   });
 
   useEffect(() => cleanupPointer, [cleanupPointer]);

@@ -97,6 +97,7 @@ export default function SoonApp({ onBack }) {
     resetEchostoryTraversal,
     finishEchostoryTraversal,
     setEchostoryActiveLine,
+    selectContourEchostoryStar,
   } = useSoonStore();
 
   const selectedBubble =
@@ -547,6 +548,7 @@ export default function SoonApp({ onBack }) {
         onSetFishDepth={setFishDepth}
         echostory={echostory}
         contourPlaybackPaused={contourPlaybackPaused}
+        onSelectContourStar={selectContourEchostoryStar}
         onToggleContourPlayback={() => {
           setContourPlaybackPaused((paused) => {
             const next = !paused;

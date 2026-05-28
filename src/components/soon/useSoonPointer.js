@@ -30,6 +30,7 @@ export function useSoonPointer({
   onOpenFishContextMenu,
   onDepthToast,
   onToggleContourPlayback,
+  onSelectContourStar,
 }) {
   const MOVE_CANCEL = 12;
   const DOUBLE_TAP_MS = 420;
@@ -106,6 +107,21 @@ export function useSoonPointer({
       x: event.clientX,
       y: event.clientY,
     });
+  }
+
+  function findSelectableContourStarAt(point) {
+    const stars = [...(stateRef.current?.echostory?.stars || [])].reverse();
+
+    return (
+      stars
+        .filter((star) => {
+          if (!star?.attachedToContour || !star?.id) return false;
+          const radius = Number.isFinite(star.r) ? star.r : 18;
+          const hitRadius = Math.max(42, radius * 2.4);
+          return distance(star, point) <= hitRadius;
+        })
+        .sort((a, b) => distance(a, point) - distance(b, point))[0] || null
+    );
   }
 
   function findBubbleAt(point) {
@@ -241,6 +257,14 @@ export function useSoonPointer({
 
     const point = getSafeWorldFromEvent(event, { swimEdgeBoost: true });
     const current = stateRef.current;
+    if (current.mode === "echostory" || current.mode === "reso") {
+      const contourStar = findSelectableContourStarAt(point);
+      if (contourStar) {
+        onSelectContourStar?.(contourStar.id);
+        return;
+      }
+    }
+
     if (current.mode === "reso") {
       const contourReaders = current.contourReaderHitZones || [];
       const hitReader = contourReaders.find((reader) => Math.hypot((reader.x || 0) - point.x, (reader.y || 0) - point.y) <= (reader.r || 24));
