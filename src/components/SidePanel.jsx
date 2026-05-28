@@ -72,8 +72,8 @@ export default function SidePanel({
           {mode === SOON_MODE_COMPO && !selectedBubble && (
             <section className="help-card compact-help">
               <p>
-                L’arène ne garde plus que les étoiles sonores à cueillir.
-                Trace ensuite un parcours pour les relier en chronologie.
+                L’arène ne garde plus que les étoiles sonores à écouter.
+                Touchez une étoile pour diffuser son MP3 pendant son clignotement.
               </p>
               <ul>
                 <li>Le poisson-plume peut pousser légèrement les poissons-roses.</li>
