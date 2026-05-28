@@ -1,7 +1,7 @@
 import { clampToCircle, getBubblePhysicsRadius, normalizeDepth } from "./geometry.js";
 import { DEFAULT_ARENA_RADIUS } from "../store/soonInitialState.js";
 
-const SOON_CONTACT_REBOUND_MULTIPLIER = 4;
+const SOON_CONTACT_REBOUND_MULTIPLIER = 6;
 
 export function clampDepth(depth) {
   return normalizeDepth(depth);
