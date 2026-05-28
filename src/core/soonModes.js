@@ -9,9 +9,9 @@ export const SOON_MODES = [
   },
   {
     id: SOON_MODE_COMPO,
-    icon: "🫧",
+    icon: "⭐",
     label: "Composer•°",
-    text: "Pose tes bulles sonores.",
+    text: "Cueille tes étoiles sonores.",
   },
   {
     id: SOON_MODE_RESO,
