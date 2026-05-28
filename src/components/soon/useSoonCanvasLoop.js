@@ -7,7 +7,7 @@ import {
   resizeCanvas,
   updateArena,
 } from "../../core/soonCamera.js";
-import { playOneShotFile, updateBubbleSpatialMix } from "../../core/audioEngine.js";
+import { getBucketSampleUrlByIndex, playOneShotFile, updateBubbleSpatialMix } from "../../core/audioEngine.js";
 import { updateEcosystemFx } from "../../core/ecosystemFx.js";
 import { updateBubbleAudioTriggers } from "../../core/soonAudioTriggers.js";
 import { drawScene } from "../../core/soonRenderers.js";
@@ -23,7 +23,6 @@ import {
 
 
 
-const ECHOSTORY_VOICE_BASE_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/sooncut";
 const CONTACT_PUSH_DISTANCE = 58;
 const SOON_CONTACT_REBOUND_MULTIPLIER = 6;
 const STAR_PUSH_SMOOTHING = 0.52;
@@ -142,18 +141,17 @@ function updateContourRide(current = {}, arenaRadius = 1200, now = performance.n
 }
 
 
-function getEchostorySampleUrlCandidates(sampleIndex) {
-  const n = String(sampleIndex);
-  const n2 = String(sampleIndex).padStart(2, "0");
-  const n3 = String(sampleIndex).padStart(3, "0");
-  return [
-    `${ECHOSTORY_VOICE_BASE_URL}/extrait_${n3}.mp3`,
-    `${ECHOSTORY_VOICE_BASE_URL}/extrait_${n2}.mp3`,
-    `${ECHOSTORY_VOICE_BASE_URL}/extrait_${n}.mp3`,
-    `${ECHOSTORY_VOICE_BASE_URL}/${n3}.mp3`,
-    `${ECHOSTORY_VOICE_BASE_URL}/${n2}.mp3`,
-    `${ECHOSTORY_VOICE_BASE_URL}/${n}.mp3`,
-  ];
+function getEchostorySampleIndex(star, fallbackIndex = 0) {
+  const explicitIndex = Number.parseInt(String(star?.sampleIndex || ""), 10);
+  if (Number.isFinite(explicitIndex)) return explicitIndex;
+  const starNumber = Number.parseInt(String(star?.id || "").match(/star-(\d{1,3})$/)?.[1] || "", 10);
+  if (Number.isFinite(starNumber)) return starNumber;
+  return fallbackIndex + 1;
+}
+
+function getEchostorySampleUrlCandidates(star, fallbackIndex = 0) {
+  const sampleIndex = getEchostorySampleIndex(star, fallbackIndex);
+  return [getBucketSampleUrlByIndex(sampleIndex)];
 }
 
 async function playHtmlAudioFallback(url, volume = 0.85) {
@@ -188,12 +186,12 @@ async function playHtmlAudioFallback(url, volume = 0.85) {
   });
 }
 
-async function playEchostoryStarPreview(star, fishX = 0) {
-  if (!star) return;
-  const sampleIndex = Number.parseInt(String(star.id || "").match(/(\d{1,3})/)?.[1] || "", 10);
-  if (!Number.isFinite(sampleIndex)) return;
+let activeEchostoryStarAudioId = null;
+
+async function playEchostoryStarPreview(star, fishX = 0, fallbackIndex = 0) {
+  if (!star) return false;
   const pan = Math.max(-0.85, Math.min(0.85, fishX / 420));
-  const candidates = getEchostorySampleUrlCandidates(sampleIndex);
+  const candidates = getEchostorySampleUrlCandidates(star, fallbackIndex);
   for (const url of candidates) {
     try {
       await playOneShotFile(url, { volume: 0.78, pan });
@@ -208,24 +206,29 @@ async function playEchostoryStarPreview(star, fishX = 0) {
     if (played) return true;
   }
 
-  console.warn("[Soon][echostory] preview introuvable ou illisible", {
+  console.warn("[Soon][echostory] mp3 étoile introuvable ou illisible", {
     starId: star.id,
     candidates,
   });
   return false;
 }
 
-function triggerEchostoryStarPreview(star, fishX = 0) {
-  if (!star || star.previewPlaying) return;
+function triggerEchostoryStarPreview(star, { fishX = 0, fallbackIndex = 0, onComplete } = {}) {
+  if (!star || star.previewPlaying || star.audioConsumed || activeEchostoryStarAudioId) return false;
+  activeEchostoryStarAudioId = star.id || `star-${fallbackIndex + 1}`;
   star.previewPlaying = true;
   star.previewStartedAt = Date.now();
-  playEchostoryStarPreview(star, fishX).finally(() => {
+  playEchostoryStarPreview(star, fishX, fallbackIndex).finally(() => {
     star.previewPlaying = false;
     star.previewStartedAt = 0;
+    star.audioConsumed = true;
+    activeEchostoryStarAudioId = null;
+    onComplete?.(star);
   });
+  return true;
 }
 
-function pushNearbyEchostoryStars(current) {
+function pushNearbyEchostoryStars(current, { onCollectEchostoryStar } = {}) {
   if (current?.mode !== "echostory" && current?.mode !== "reso") return;
   if (current?.contourRide?.active) return;
   if (!current?.fish) return;
@@ -236,7 +239,7 @@ function pushNearbyEchostoryStars(current) {
   const contourSnapThreshold = Math.max(24, arenaRadius - STAR_EDGE_STICK_THRESHOLD);
   const contourReleaseThreshold = Math.max(32, arenaRadius - STAR_EDGE_STICK_RELEASE);
 
-  (current?.echostory?.stars || []).forEach((star) => {
+  (current?.echostory?.stars || []).forEach((star, index) => {
     if (!star) return;
     if (!Number.isFinite(star.vx)) star.vx = 0;
     if (!Number.isFinite(star.vy)) star.vy = 0;
@@ -245,15 +248,22 @@ function pushNearbyEchostoryStars(current) {
     const distance = Math.hypot(dx, dy);
     const isInside = distance < TRIGGER_RADIUS;
 
-    if (distance > 0 && isInside) {
-      const ux = dx / distance;
-      const uy = dy / distance;
-      const pushForce = (1 - distance / TRIGGER_RADIUS) * CONTACT_PUSH_DISTANCE * SOON_CONTACT_REBOUND_MULTIPLIER;
-      star.vx += ux * pushForce * STAR_PUSH_SMOOTHING;
-      star.vy += uy * pushForce * STAR_PUSH_SMOOTHING;
+    if (isInside) {
+      if (distance > 0) {
+        const ux = dx / distance;
+        const uy = dy / distance;
+        const pushForce = (1 - distance / TRIGGER_RADIUS) * CONTACT_PUSH_DISTANCE * SOON_CONTACT_REBOUND_MULTIPLIER;
+        star.vx += ux * pushForce * STAR_PUSH_SMOOTHING;
+        star.vy += uy * pushForce * STAR_PUSH_SMOOTHING;
+      }
       if (star.attachedToContour && distance < TRIGGER_RADIUS * 0.6) {
         star.attachedToContour = false;
       }
+      triggerEchostoryStarPreview(star, {
+        fishX,
+        fallbackIndex: index,
+        onComplete: (completedStar) => onCollectEchostoryStar?.(completedStar.id),
+      });
     }
     const step = Math.hypot(star.vx || 0, star.vy || 0);
     if (step > STAR_PUSH_MAX_STEP && step > 0) {
@@ -401,7 +411,7 @@ export function useSoonCanvasLoop({
 
       const next = stateRef.current || {};
       updateContourRide(next, arenaRef.current.radius, performance.now());
-      pushNearbyEchostoryStars(next);
+      pushNearbyEchostoryStars(next, { onCollectEchostoryStar });
       const isContourRideActive = Boolean(next?.contourRide?.active);
       if (isContourRideActive !== wasContourRideActive) {
         wasContourRideActive = isContourRideActive;

@@ -1,27 +1,60 @@
 import { listSoundBubbles } from "../services/supabaseSoundService.js";
 
-const SUPABASE_BUBBLES_BASE =
+export const SUPABASE_BUBBLES_BASE =
   "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/bulles";
 
 let bucketFileSet = null;
+let bucketFileLookup = null;
+
+function normalizeBucketFileKey(value = "") {
+  return String(value)
+    .trim()
+    .replace(/^supabase:/i, "")
+    .replace(/\.mp3$/i, "")
+    .toLowerCase();
+}
 
 async function getBucketFileSet() {
   if (bucketFileSet) return bucketFileSet;
   const items = await listSoundBubbles();
   bucketFileSet = new Set((items || []).map((item) => item.file));
+  bucketFileLookup = new Map();
+  (items || []).forEach((item) => {
+    if (!item?.file) return;
+    const file = item.file;
+    bucketFileLookup.set(normalizeBucketFileKey(file), file);
+    bucketFileLookup.set(normalizeBucketFileKey(item.id), file);
+    bucketFileLookup.set(normalizeBucketFileKey(item.name), file);
+  });
   return bucketFileSet;
 }
 
+export async function resolveBucketSampleFile(sampleId = "") {
+  await getBucketFileSet();
+  const requestedKey = normalizeBucketFileKey(sampleId);
+  return bucketFileLookup?.get(requestedKey) || "Bulle_001.mp3";
+}
+
+export function getBucketSampleUrl(file = "Bulle_001.mp3") {
+  return `${SUPABASE_BUBBLES_BASE}/${encodeURIComponent(file)}`;
+}
+
+export function getBucketSampleFileByIndex(index = 1) {
+  const safeIndex = Math.max(1, Math.floor(Number.isFinite(index) ? index : 1));
+  return `Bulle_${String(safeIndex).padStart(3, "0")}.mp3`;
+}
+
+export function getBucketSampleUrlByIndex(index = 1) {
+  return getBucketSampleUrl(getBucketSampleFileByIndex(index));
+}
+
 async function resolveSample(bubble) {
-  const id = bubble?.sampleId || "";
-  const requestedFile = id.startsWith("supabase:") ? id.slice("supabase:".length) : "";
-  const bucketFiles = await getBucketFileSet();
-  const file = bucketFiles.has(requestedFile) ? requestedFile : "Bulle_001.mp3";
+  const file = await resolveBucketSampleFile(bubble?.sampleId || "");
   return {
     id: `supabase:${file}`,
     name: file.replace(/\.[^/.]+$/, ""),
     kind: "file",
-    url: `${SUPABASE_BUBBLES_BASE}/${encodeURIComponent(file)}`,
+    url: getBucketSampleUrl(file),
   };
 }
 
@@ -46,7 +79,12 @@ const audioTuning = {
 function getAudioContext() {
   if (audioCtx) return audioCtx;
 
-  audioCtx = new AudioContext();
+  const AudioContextCtor = globalThis.AudioContext || globalThis.webkitAudioContext;
+  if (!AudioContextCtor) {
+    throw new Error("AudioContext indisponible dans ce navigateur");
+  }
+
+  audioCtx = new AudioContextCtor();
   masterGain = audioCtx.createGain();
   masterFilter = audioCtx.createBiquadFilter();
   masterFilter.type = "lowpass";
@@ -229,16 +267,12 @@ export async function playOneShotFile(url, { volume = 0.18, pan = 0 } = {}) {
   gain.connect(masterGain);
 
   activeOneShots.add(source);
-  source.onended = () => {
-    activeOneShots.delete(source);
-  };
-
-  source.start();
 
   return new Promise((resolve) => {
     source.onended = () => {
       activeOneShots.delete(source);
       resolve();
     };
+    source.start();
   });
 }

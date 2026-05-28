@@ -357,7 +357,7 @@ export default function SoonCanvas({
 
   const handleOrganicAmbienceToggle = async () => {
     try {
-      const next = await selectContourMusicTrack();
+      const next = await selectContourMusicTrack({ preview: true });
       setOrganicAmbienceActive(next);
     } catch (error) {
       console.warn("Impossible de sélectionner la piste musicale du contour", error);

@@ -5,6 +5,7 @@ let contourMusicState = {
   selected: false,
   playing: false,
   audio: null,
+  loopActive: false,
 };
 
 function ensureContourMusicAudio() {
@@ -20,7 +21,7 @@ function ensureContourMusicAudio() {
   return audio;
 }
 
-export async function selectContourMusicTrack() {
+export async function selectContourMusicTrack({ preview = false } = {}) {
   contourMusicState.selected = true;
   const audio = ensureContourMusicAudio();
   if (!audio) return true;
@@ -30,14 +31,29 @@ export async function selectContourMusicTrack() {
   audio.load();
 
   try {
-    audio.muted = true;
+    audio.muted = false;
+    audio.volume = preview ? 0.48 : 0.72;
     await audio.play();
-    audio.pause();
-    audio.currentTime = 0;
+    contourMusicState.playing = true;
+    if (preview) {
+      globalThis.setTimeout?.(() => {
+        if (!contourMusicState.playing || !contourMusicState.selected || contourMusicState.loopActive) return;
+        audio.pause();
+        try {
+          audio.currentTime = 0;
+        } catch (_error) {
+          // Certains navigateurs peuvent refuser le seek avant chargement complet.
+        }
+        contourMusicState.playing = false;
+      }, 1800);
+    } else {
+      audio.pause();
+      audio.currentTime = 0;
+      contourMusicState.playing = false;
+    }
   } catch (_error) {
     // La lecture réelle sera relancée au départ du tour de contour.
-  } finally {
-    audio.muted = false;
+    contourMusicState.playing = false;
   }
 
   return true;
@@ -46,6 +62,8 @@ export async function selectContourMusicTrack() {
 export async function setContourMusicLoopActive(active) {
   const audio = ensureContourMusicAudio();
   if (!audio || !contourMusicState.selected) return false;
+
+  contourMusicState.loopActive = Boolean(active);
 
   if (!active) {
     if (contourMusicState.playing) {
@@ -77,5 +95,5 @@ export function isOrganicAmbienceActive() {
 }
 
 export async function toggleOrganicAmbience() {
-  return selectContourMusicTrack();
+  return selectContourMusicTrack({ preview: true });
 }
