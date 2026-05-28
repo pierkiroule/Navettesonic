@@ -63,7 +63,7 @@ export default function SoonCanvas({
   const [audioTuning, setAudioTuningState] = useState(() => getAudioTuning());
   const [showSensitivitySlider, setShowSensitivitySlider] = useState(false);
   const [contourPlayButton, setContourPlayButton] = useState({ visible: false, x: 0, y: 0 });
-  const [contourRideDurationMs, setContourRideDurationMs] = useState(90000);
+  const [contourRideDurationMs, setContourRideDurationMs] = useState(120000);
   const [organicAmbienceActive, setOrganicAmbienceActive] = useState(() => isOrganicAmbienceActive());
   const [organicAmbienceButton, setOrganicAmbienceButton] = useState({ x: 0, y: 0, ready: false });
 
@@ -359,13 +359,9 @@ export default function SoonCanvas({
   };
 
   const contourDurationOptions = [
-    { value: 30000, label: "30 s" },
-    { value: 60000, label: "1 min" },
-    { value: 90000, label: "1 min 30" },
-    { value: 120000, label: "2 min" },
-    { value: 180000, label: "3 min" },
-    { value: 240000, label: "4 min" },
-    { value: 300000, label: "5 min" },
+    { value: 60000, label: "Courte" },
+    { value: 120000, label: "Moyenne" },
+    { value: 180000, label: "Longue" },
   ];
 
   return (

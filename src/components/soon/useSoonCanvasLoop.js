@@ -30,9 +30,10 @@ const STAR_PUSH_MAX_STEP = 28;
 const STAR_EDGE_STICK_THRESHOLD = 48;
 const STAR_EDGE_STICK_RELEASE = 86;
 
-const CONTOUR_RIDE_DURATION_MS = 90000;
+const CONTOUR_RIDE_DURATION_MS = 120000;
 const CONTOUR_RIDE_ENTRY_THRESHOLD = 52;
 const ZENITH_STAR_REARM_DELAY_MS = 1800;
+const CONTOUR_RIDE_STAR_TRIGGER_RADIUS = 72;
 
 function getContourSnapRadius(current = {}, angle = 0) {
   const arenaRadius = Number.isFinite(current?.arenaRadius) ? current.arenaRadius : 1200;
@@ -47,7 +48,7 @@ function getContourSnapRadius(current = {}, angle = 0) {
   return Math.max(84, getMembraneRadiusForLevel(arenaRadius, fishLevel));
 }
 
-function updateContourRide(current = {}, arenaRadius = 1200, now = performance.now()) {
+export function updateContourRide(current = {}, arenaRadius = 1200, now = performance.now()) {
   const fish = current?.fish;
   if (!fish) return;
 
@@ -104,7 +105,26 @@ function updateContourRide(current = {}, arenaRadius = 1200, now = performance.n
     return;
   }
 
-  const elapsed = Math.max(0, now - ride.startedAt);
+  const pausedStar = ride.pausedStarId
+    ? (current?.echostory?.stars || []).find((star) => star?.id === ride.pausedStarId)
+    : null;
+  if (ride.pausedAt) {
+    const stillDiffusing = pausedStar?.previewPlaying === true || (!ride.pausedStarId && (current?.echostory?.stars || []).some((star) => star?.previewPlaying));
+    if (stillDiffusing) {
+      fish.targetX = fish.x;
+      fish.targetY = fish.y;
+      fish.vx = 0;
+      fish.vy = 0;
+      fish.isOnContourRide = true;
+      return;
+    }
+    ride.pausedDurationMs = (Number.isFinite(ride.pausedDurationMs) ? ride.pausedDurationMs : 0) + Math.max(0, now - ride.pausedAt);
+    ride.pausedAt = 0;
+    ride.pausedStarId = null;
+  }
+
+  const pausedDurationMs = Number.isFinite(ride.pausedDurationMs) ? ride.pausedDurationMs : 0;
+  const elapsed = Math.max(0, now - ride.startedAt - pausedDurationMs);
   const rideDurationMs = Number.isFinite(ride?.durationMs) ? ride.durationMs : CONTOUR_RIDE_DURATION_MS;
   const progress = Math.min(1, elapsed / Math.max(1000, rideDurationMs));
   const angle = ride.baseAngle + progress * Math.PI * 2;
@@ -117,6 +137,30 @@ function updateContourRide(current = {}, arenaRadius = 1200, now = performance.n
   fish.vy = 0;
   fish.angle = angle + Math.PI / 2;
   fish.isOnContourRide = true;
+
+  const stars = current?.echostory?.stars || [];
+  const hitStar = stars.find((star) => {
+    if (!star || star.previewPlayed || star.previewPlaying) return false;
+    const starRadius = Number.isFinite(star.r) ? star.r : 18;
+    const touchRadius = Math.max(CONTOUR_RIDE_STAR_TRIGGER_RADIUS, starRadius * 3.2);
+    return Math.hypot((star.x || 0) - fish.x, (star.y || 0) - fish.y) <= touchRadius;
+  });
+
+  if (hitStar) {
+    const triggered = triggerEchostoryStarPreview(hitStar, {
+      fishX: fish.x,
+      colorOrdinal: getEchostoryStarOrdinal(stars, hitStar),
+    });
+    if (triggered) {
+      ride.pausedAt = now;
+      ride.pausedStarId = hitStar.id || null;
+      fish.targetX = fish.x;
+      fish.targetY = fish.y;
+      fish.vx = 0;
+      fish.vy = 0;
+      return;
+    }
+  }
 
   if (progress >= 1) {
     const endRadius = getContourSnapRadius(current, ride.baseAngle);
@@ -230,6 +274,21 @@ function triggerEchostoryStarPreview(star, { fishX = 0, colorOrdinal = 0 } = {})
     activeEchostoryStarAudioId = null;
   });
   return true;
+}
+
+
+function getEchostoryStarOrdinal(stars = [], targetStar = null) {
+  const key = getEchostoryStarColorKey(targetStar);
+  let ordinal = 0;
+  for (const star of stars) {
+    if (!star) continue;
+    const currentKey = getEchostoryStarColorKey(star);
+    if (star === targetStar || (targetStar?.id && star.id === targetStar.id)) {
+      return currentKey === key ? ordinal : 0;
+    }
+    if (currentKey === key) ordinal += 1;
+  }
+  return 0;
 }
 
 function pushNearbyEchostoryStars(current) {
