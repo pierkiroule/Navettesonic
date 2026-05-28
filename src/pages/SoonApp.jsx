@@ -160,9 +160,22 @@ export default function SoonApp({ onBack }) {
               `${ECHOSTORY_VOICE_BASE_URL}/extrait_${n2}.mp3`,
               `${ECHOSTORY_VOICE_BASE_URL}/extrait_${n}.mp3`,
             ];
-            playOneShotFile(candidates[0], { volume: 0.8 }).catch(() => {
-              playOneShotFile(candidates[1], { volume: 0.8 }).catch(() => {
-                playOneShotFile(candidates[2], { volume: 0.8 }).catch(() => {});
+            const playHtmlFallback = (url) => {
+              const audio = new Audio(url);
+              audio.preload = "auto";
+              audio.crossOrigin = "anonymous";
+              audio.volume = 1;
+              return audio.play();
+            };
+            playOneShotFile(candidates[0], { volume: 1 }).catch(() => {
+              playOneShotFile(candidates[1], { volume: 1 }).catch(() => {
+                playOneShotFile(candidates[2], { volume: 1 }).catch(() => {
+                  playHtmlFallback(candidates[0]).catch(() => {
+                    playHtmlFallback(candidates[1]).catch(() => {
+                      playHtmlFallback(candidates[2]).catch(() => {});
+                    });
+                  });
+                });
               });
             });
           }
