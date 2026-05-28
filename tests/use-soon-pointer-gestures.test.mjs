@@ -41,11 +41,11 @@ test('double tap active le boost de vitesse', () => {
   assert.equal(calls.boostSpeed, 1);
 });
 
-test('long press ouvre le menu contextuel poisson', async () => {
+test('long press en nage ne doit pas ouvrir le menu contextuel', async () => {
   const { api, calls } = createHarness();
   api.handlePointerDown(event(1, 510, 505));
   await new Promise((r) => setTimeout(r, 520));
-  assert.equal(calls.openMenu, 1);
+  assert.equal(calls.openMenu, 0);
 });
 
 
@@ -59,11 +59,11 @@ test('double tap ne doit pas ouvrir le menu contextuel', async () => {
   assert.equal(calls.openMenu, 0);
 });
 
-test('long press ne doit pas déclencher de boost vitesse', async () => {
+test('long press en nage ne déclenche ni menu ni boost vitesse', async () => {
   const { api, calls } = createHarness();
   api.handlePointerDown(event(1, 510, 505));
   await new Promise((r) => setTimeout(r, 520));
   api.handlePointerUp(event(1, 510, 505));
-  assert.equal(calls.openMenu, 1);
+  assert.equal(calls.openMenu, 0);
   assert.equal(calls.boostSpeed, 0);
 });

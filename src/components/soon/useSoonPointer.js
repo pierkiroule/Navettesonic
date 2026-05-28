@@ -271,7 +271,6 @@ export function useSoonPointer({
     pointerRef.current.panStart = null;
     pointerRef.current.pinchDistance = null;
     pointerRef.current.startPoint = point;
-    armLongPress(event, point, current);
 
     if (isCircuitMode) {
       handleCircuitPointerDown(event, point, current);
@@ -281,6 +280,12 @@ export function useSoonPointer({
     if (isEditMode) {
       handleEditPointerDown(event, point, current);
       return;
+    }
+
+    // En nage, on désactive le long-press contextuel pour ne pas casser
+    // la propulsion continue quand le doigt reste posé.
+    if (current.interactionMode !== "swim") {
+      armLongPress(event, point, current);
     }
 
     handleSwimPointerDown(event, point, current);
@@ -386,7 +391,15 @@ export function useSoonPointer({
     }
 
     if (!isEditMode) {
-      onFishTarget?.(point.x, point.y, arenaRef.current.radius);
+      const startPoint = pointerRef.current.startPoint || point;
+      const pullDx = point.x - startPoint.x;
+      const pullDy = point.y - startPoint.y;
+      const leadPoint = {
+        x: point.x + pullDx * 0.2,
+        y: point.y + pullDy * 0.2,
+      };
+
+      onFishTarget?.(leadPoint.x, leadPoint.y, arenaRef.current.radius);
 
       if (current.mode === "reso" && current.soonTouchMode === "plume") {
         onAddPathPoint?.(point);
