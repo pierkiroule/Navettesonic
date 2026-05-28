@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { toggleContourStarSelection } from '../src/core/echostory/contourStarLinks.js';
+import { drawEchostoryContourLinks } from '../src/core/echostory/echostoryRender.js';
 
 function makeState() {
   return {
@@ -44,4 +45,31 @@ test('toggleContourStarSelection ignore les étoiles non snappées et retire leu
   assert.deepEqual(echostory.contourStarLinks, []);
   assert.equal(echostory.stars[0].selectedOnContour, false);
   assert.equal(echostory.stars[1].selectedOnContour, true);
+});
+
+
+test('drawEchostoryContourLinks trace des cordes qui traversent l’arène', () => {
+  const calls = [];
+  const ctx = {
+    save: () => calls.push(['save']),
+    restore: () => calls.push(['restore']),
+    beginPath: () => calls.push(['beginPath']),
+    moveTo: (x, y) => calls.push(['moveTo', Math.round(x), Math.round(y)]),
+    lineTo: (x, y) => calls.push(['lineTo', Math.round(x), Math.round(y)]),
+    stroke: () => calls.push(['stroke']),
+    arc: (...args) => calls.push(['arc', ...args]),
+    createLinearGradient: () => ({ addColorStop: () => {} }),
+  };
+
+  drawEchostoryContourLinks(ctx, {
+    stars: [
+      { id: 'star-1', attachedToContour: true, x: -100, y: 0, color: '#53b9ff' },
+      { id: 'star-2', attachedToContour: true, x: 100, y: 0, color: '#ff9f40' },
+    ],
+    contourStarLinks: [{ id: 'link-1', from: 'star-1', to: 'star-2' }],
+  }, 1200);
+
+  assert.ok(calls.some((call) => call[0] === 'moveTo' && call[1] === -100 && call[2] === 0));
+  assert.ok(calls.some((call) => call[0] === 'lineTo' && call[1] === 100 && call[2] === 0));
+  assert.equal(calls.some((call) => call[0] === 'arc'), false);
 });
