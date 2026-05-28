@@ -218,22 +218,21 @@ async function playEchostoryStarPreview(star, fishX = 0, colorOrdinal = 0) {
   return false;
 }
 
-function triggerEchostoryStarPreview(star, { fishX = 0, colorOrdinal = 0, onComplete } = {}) {
-  if (!star || star.previewPlaying || star.audioConsumed || activeEchostoryStarAudioId) return false;
+function triggerEchostoryStarPreview(star, { fishX = 0, colorOrdinal = 0 } = {}) {
+  if (!star || star.previewPlaying || star.previewPlayed || activeEchostoryStarAudioId) return false;
   activeEchostoryStarAudioId = star.id || `${getEchostoryStarColorKey(star)}-${colorOrdinal + 1}`;
   star.previewPlaying = true;
   star.previewStartedAt = Date.now();
   playEchostoryStarPreview(star, fishX, colorOrdinal).finally(() => {
     star.previewPlaying = false;
     star.previewStartedAt = 0;
-    star.audioConsumed = true;
+    star.previewPlayed = true;
     activeEchostoryStarAudioId = null;
-    onComplete?.(star);
   });
   return true;
 }
 
-function pushNearbyEchostoryStars(current, { onCollectEchostoryStar } = {}) {
+function pushNearbyEchostoryStars(current) {
   if (current?.mode !== "echostory" && current?.mode !== "reso") return;
   if (current?.contourRide?.active) return;
   if (!current?.fish) return;
@@ -256,7 +255,7 @@ function pushNearbyEchostoryStars(current, { onCollectEchostoryStar } = {}) {
   });
 
   stars.forEach((star) => {
-    if (!star || star.collected) return;
+    if (!star) return;
     if (!Number.isFinite(star.vx)) star.vx = 0;
     if (!Number.isFinite(star.vy)) star.vy = 0;
     const dx = (star.x || 0) - fishX;
@@ -278,7 +277,6 @@ function pushNearbyEchostoryStars(current, { onCollectEchostoryStar } = {}) {
       triggerEchostoryStarPreview(star, {
         fishX,
         colorOrdinal: colorOrdinalsByStarId.get(star.id || getEchostoryStarColorKey(star)) || 0,
-        onComplete: (completedStar) => onCollectEchostoryStar?.(completedStar.id),
       });
     }
     const step = Math.hypot(star.vx || 0, star.vy || 0);
@@ -330,9 +328,6 @@ export function useSoonCanvasLoop({
   activeBubbleAudioRef,
   onTickFish,
   onSemioseVideoTrigger,
-  onCollectEchostoryStar,
-  onPromptEchostoryStarCollect,
-  onCollectTrailItem,
 }) {
   useEffect(() => {
     let frame = 0;
@@ -427,7 +422,7 @@ export function useSoonCanvasLoop({
 
       const next = stateRef.current || {};
       updateContourRide(next, arenaRef.current.radius, performance.now());
-      pushNearbyEchostoryStars(next, { onCollectEchostoryStar });
+      pushNearbyEchostoryStars(next);
       const isContourRideActive = Boolean(next?.contourRide?.active);
       if (isContourRideActive !== wasContourRideActive) {
         wasContourRideActive = isContourRideActive;
@@ -589,7 +584,5 @@ export function useSoonCanvasLoop({
     activeBubbleAudioRef,
     onTickFish,
     onSemioseVideoTrigger,
-    onCollectEchostoryStar,
-    onPromptEchostoryStarCollect,
   ]);
 }

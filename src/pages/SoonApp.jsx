@@ -7,7 +7,6 @@ import { renderImmersiveJourney } from "../core/immersiveExporter.js";
 import { buildEchostoryText, buildStoryTimeline, buildPathStarsFromTimeline } from "../core/echostory/echostoryBuilder.js";
 import { tickEchostoryTraversal } from "../core/echostory/echostoryTraversalEngine.js";
 import { buildStarMp3Trace } from "../core/odysseoStarMp3Trace.js";
-import { playBubbleSound, playOneShotFile } from "../core/audioEngine.js";
 import { ECHOSTORY_SKELETONS } from "../data/echostorySkeletons.js";
 import {
   parseWorkflowFromHash,
@@ -25,7 +24,6 @@ import {
 
 
 const SWIM_SPEED = 1.15;
-const ECHOSTORY_VOICE_BASE_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/sooncut";
 
 export default function SoonApp({ onBack }) {
   const [page, setPage] = useState("arena");
@@ -91,11 +89,7 @@ export default function SoonApp({ onBack }) {
     pendingBlobAction,
     arenaBlob,
     echostory,
-    collectEchostoryStar,
-    addTrailItem,
-    clearTrailItems,
     resetEchostory,
-    advanceEchostoryWave,
     triggerEscapeCinematic,
     setEscapeState,
     startEchostoryTraversal,
@@ -118,80 +112,23 @@ export default function SoonApp({ onBack }) {
   const waveIndex = Math.max(0, Math.min(2, Number.isFinite(echostory?.waveIndex) ? echostory.waveIndex : 0));
   const waveNames = ["Immersion", "Bascule", "Ouverture"];
   const stars = echostory?.stars || [];
-  const collectedInWave = stars.filter((star) => star?.collected).length;
-  const isStoryReady = echostory?.phase === "story";
-  const canGoNextWave = !isStoryReady && collectedInWave >= 5;
-  const linearCompositionItems = (echostory?.trailItems || []).map((item, index) => ({
-    id: item?.id || `trail-${index + 1}`,
-    label: item?.label || `Élément ${index + 1}`,
-    type: item?.kind || "trace",
-  }));
-
-  const handleTrailAction = (action, payload) => {
-    if (action === "collect" && payload?.id) {
-      addTrailItem(payload);
-      return;
-    }
-    if (action === "play") {
-      const items = echostory?.trailItems || [];
-      items.forEach((item, index) => {
-        window.setTimeout(() => {
-          if (item?.kind === "bubble") {
-            const bubble = bubbles.find((b) => b.id === item?.bubbleId);
-            if (bubble) playBubbleSound(bubble);
-            return;
-          }
-          if (item?.kind === "star") {
-            const sampleIndex = Number.parseInt(String(item?.starId || "").match(/(\d{1,3})/)?.[1] || "", 10);
-            if (!Number.isFinite(sampleIndex)) return;
-            const n = String(sampleIndex);
-            const n2 = String(sampleIndex).padStart(2, "0");
-            const n3 = String(sampleIndex).padStart(3, "0");
-            const candidates = [
-              `${ECHOSTORY_VOICE_BASE_URL}/extrait_${n3}.mp3`,
-              `${ECHOSTORY_VOICE_BASE_URL}/extrait_${n2}.mp3`,
-              `${ECHOSTORY_VOICE_BASE_URL}/extrait_${n}.mp3`,
-            ];
-            const playHtmlFallback = (url) => {
-              const audio = new Audio(url);
-              audio.preload = "auto";
-              audio.crossOrigin = "anonymous";
-              audio.volume = 1;
-              return audio.play();
-            };
-            playOneShotFile(candidates[0], { volume: 1 }).catch(() => {
-              playOneShotFile(candidates[1], { volume: 1 }).catch(() => {
-                playOneShotFile(candidates[2], { volume: 1 }).catch(() => {
-                  playHtmlFallback(candidates[0]).catch(() => {
-                    playHtmlFallback(candidates[1]).catch(() => {
-                      playHtmlFallback(candidates[2]).catch(() => {});
-                    });
-                  });
-                });
-              });
-            });
-          }
-        }, index * 900);
-      });
-    }
-  };
+  const activeStarCount = stars.length;
 
   const flowStep = useMemo(() => {
-    const starCount = echostory?.collectedStars?.length || 0;
     const hasPath = Array.isArray(odysseoPath) && odysseoPath.length >= 8;
     const phase = isOdysseo ? "navigo" : "compo";
     if (phase === "compo") {
       return {
         key: "compo",
         title: "1. Composer",
-        tip: "Cueillez les étoiles vocales pour composer.",
+        tip: "Touchez les étoiles vocales pour écouter leurs extraits.",
       };
     }
     if (!hasPath) {
       return {
         key: "trace",
         title: "2. Tracer",
-        tip: `Tracez un parcours (8 points mini). Étoiles prêtes: ${starCount}.`,
+        tip: "Tracez un parcours (8 points mini) après l'écoute des extraits.",
       };
     }
     return {
@@ -199,7 +136,7 @@ export default function SoonApp({ onBack }) {
       title: "3. Lire",
       tip: "Relisez la séance et exportez votre rendu immersif.",
     };
-  }, [echostory?.collectedStars?.length, isOdysseo, odysseoPath]);
+  }, [isOdysseo, odysseoPath]);
 
   const [stepTipVisible, setStepTipVisible] = useState(false);
 
@@ -261,7 +198,7 @@ export default function SoonApp({ onBack }) {
     });
 
     if (!mp3Trace.length) {
-      setExportStatus("Cueillez d’abord des étoiles pour composer un tracé MP3.");
+      setExportStatus("Écoutez d’abord les étoiles pour préparer un tracé MP3.");
       return;
     }
 
@@ -609,7 +546,6 @@ export default function SoonApp({ onBack }) {
         onBlobAction={applyBlobAction}
         onSetFishDepth={setFishDepth}
         echostory={echostory}
-        onCollectEchostoryStar={collectEchostoryStar}
         contourPlaybackPaused={contourPlaybackPaused}
         onToggleContourPlayback={() => {
           setContourPlaybackPaused((paused) => {
@@ -619,9 +555,6 @@ export default function SoonApp({ onBack }) {
           });
         }}
         soonTouchMode={soonTouchMode}
-        onReleaseTrailItems={clearTrailItems}
-        onPlayTrailItems={handleTrailAction}
-        trailCount={(echostory?.trailItems || []).length}
       />
 
 
@@ -631,19 +564,14 @@ export default function SoonApp({ onBack }) {
       {isEchostory && (
         <section className="echostory-hud" aria-live="polite">
           <span className="echostory-chip">Vague {waveIndex + 1} — {waveNames[waveIndex]}</span>
-          <span className="echostory-chip">{collectedInWave} / 5 étoiles cueillies</span>
-          {canGoNextWave && (
-            <button type="button" className="echostory-next" onClick={advanceEchostoryWave}>
-              Vague suivante
-            </button>
-          )}
+          <span className="echostory-chip">{activeStarCount} étoiles sonores à écouter</span>
         </section>
       )}
 
       {isOdysseo && (
         <section className="echostory-hud" aria-live="polite">
-          <span className="echostory-chip">⭐ tisser des liens entre étoiles • 👂 écouter la traîne.</span>
-          <span className="echostory-chip">En mode ⭐, les étoiles construisent une chronologie linéaire.</span>
+          <span className="echostory-chip">⭐ toucher les étoiles • 👂 écouter les extraits.</span>
+          <span className="echostory-chip">Chaque étoile clignote uniquement pendant la diffusion de son MP3.</span>
         </section>
       )}
 
@@ -742,7 +670,7 @@ export default function SoonApp({ onBack }) {
               className={`mode-switch-button ${soonTouchMode === "ear" ? "active" : ""}`}
               onClick={() => setSoonTouchMode("ear")}
               aria-pressed={soonTouchMode === "ear"}
-              title="Mode 👂 écoute de la traîne"
+              title="Mode 👂 écoute des extraits"
             >
               👂 Mode écoute
             </button>

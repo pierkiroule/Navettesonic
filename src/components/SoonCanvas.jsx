@@ -53,13 +53,9 @@ export default function SoonCanvas({
   onBlobAction,
   onSetFishDepth,
   echostory,
-  onCollectEchostoryStar,
   contourPlaybackPaused = false,
   onToggleContourPlayback,
   soonTouchMode = "bubble",
-  onReleaseTrailItems,
-  onPlayTrailItems,
-  trailCount = 0,
 }) {
   const canvasRef = useRef(null);
   const [semioseVideo, setSemioseVideo] = useState(null);
@@ -207,9 +203,6 @@ export default function SoonCanvas({
     activeBubbleAudioRef,
     onTickFish,
     onSemioseVideoTrigger: setSemioseVideo,
-    onCollectEchostoryStar,
-    onPromptEchostoryStarCollect: () => {},
-    onCollectTrailItem: () => {},
   });
 
   const {
