@@ -1820,7 +1820,7 @@ button {
 /* COCKPIT BASE */
 .cockpit {
   position: fixed;
-  bottom: 14px;
+  bottom: 8px;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -1831,7 +1831,7 @@ button {
 /* BOUTONS RONDS */
 .cockpit-buttons {
   display: flex;
-  gap: 14px;
+  gap: 8px;
 }
 
 .bubble-btn {
@@ -2014,7 +2014,7 @@ button {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  bottom: calc(88px + env(safe-area-inset-bottom));
+  bottom: calc(62px + env(safe-area-inset-bottom));
   z-index: 30;
   width: min(92vw, 320px);
   display: flex;
@@ -2025,9 +2025,9 @@ button {
 .mode-switch-pill {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
-  padding: 6px;
+  padding: 4px;
   border-radius: 999px;
   background: rgba(2, 6, 23, 0.78);
   border: 1px solid rgba(148, 163, 184, 0.34);
@@ -2038,10 +2038,10 @@ button {
 .mode-switch-button {
   border: none;
   border-radius: 999px;
-  min-height: 46px;
+  min-height: 34px;
   color: rgba(226, 232, 240, 0.86);
   background: transparent;
-  font-size: 0.95rem;
+  font-size: 0.76rem;
   font-weight: 700;
 }
 
@@ -2254,14 +2254,15 @@ button {
 }
 
 .odysseo-cockpit .bubble-btn {
-  min-width: 46px;
+  min-width: 42px;
+  height: 38px;
 }
 
 .odysseo-cockpit .mode-toggle {
   width: auto;
-  min-width: 92px;
-  padding-inline: 12px;
-  font-size: 0.82rem;
+  min-width: 82px;
+  padding-inline: 10px;
+  font-size: 0.74rem;
   white-space: nowrap;
 }
 
@@ -2299,13 +2300,13 @@ button {
 }
 
 .fish-sliders {
-  width: min(92vw, 520px);
+  width: min(92vw, 500px);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px 14px;
-  border-radius: 22px;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 16px;
   background:
     linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(8, 47, 73, 0.78)),
     radial-gradient(circle at 22% 0%, rgba(125, 211, 252, 0.28), transparent 36%);
@@ -2316,6 +2317,7 @@ button {
 
 .zoom-only-panel {
   position: relative;
+  grid-template-columns: auto minmax(0, 1fr);
   overflow: hidden;
 }
 
@@ -2334,7 +2336,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 8px;
 }
 
 .zoom-panel-body {
@@ -2343,15 +2345,15 @@ button {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .zoom-value {
-  min-width: 52px;
-  padding: 5px 10px;
+  min-width: 46px;
+  padding: 3px 8px;
   border-radius: 999px;
   text-align: center;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   color: rgba(240, 249, 255, 0.98);
   background: rgba(14, 165, 233, 0.22);
   border: 1px solid rgba(125, 211, 252, 0.34);
@@ -2359,18 +2361,18 @@ button {
 }
 
 .zoom-full-arena-btn {
-  min-height: 40px;
+  min-height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-radius: 999px;
   border: 1px solid rgba(251, 191, 36, 0.44);
   color: rgba(255, 251, 235, 0.96);
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.28), rgba(14, 165, 233, 0.18));
   box-shadow: 0 0 18px rgba(245, 158, 11, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 800;
   white-space: nowrap;
   cursor: pointer;
@@ -2418,13 +2420,13 @@ button {
   display: grid;
   grid-template-columns: 1fr;
   align-items: stretch;
-  gap: 10px;
+  gap: 6px;
   color: rgba(226, 232, 240, 0.9);
 }
 
 .slider-label {
   white-space: nowrap;
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   letter-spacing: 0.03em;
 }
 
@@ -2458,12 +2460,12 @@ button {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: 7px;
 }
 
 .zoom-bound {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   display: inline-grid;
   place-items: center;
   border-radius: 999px;
@@ -2481,7 +2483,7 @@ button {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 14px;
+  height: 12px;
   margin: 0;
   background: transparent;
 }
@@ -2529,21 +2531,21 @@ button {
   }
 
   .bubble-btn.mode-toggle {
-    min-height: 46px;
+    min-height: 38px;
   }
 
   .fish-sliders {
     width: min(94vw, 420px);
-    padding: 10px 12px 12px;
+    padding: 7px 9px;
+  }
+
+  .zoom-only-panel {
+    grid-template-columns: 1fr;
   }
 
   .zoom-panel-body {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .zoom-full-arena-btn {
-    width: 100%;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 7px;
   }
 
   .fish-sliders .ear-toggle {
@@ -2557,15 +2559,15 @@ button {
   }
 
   .odysseo-cockpit .mode-toggle {
-    min-width: 84px;
-    padding-inline: 10px;
+    min-width: 74px;
+    padding-inline: 8px;
   }
 }
 
 .export-status {
   position: fixed;
   left: 50%;
-  bottom: 168px;
+  bottom: 124px;
   transform: translateX(-50%);
   z-index: 95;
   display: flex;
@@ -2589,7 +2591,7 @@ button {
 
 .odysseo-tools {
   display: grid;
-  gap: 7px;
+  gap: 4px;
   width: min(94vw, 430px);
   margin: 0 auto;
 }
@@ -2597,16 +2599,16 @@ button {
 .tool-row {
   display: flex;
   justify-content: center;
-  gap: 7px;
+  gap: 5px;
   flex-wrap: wrap;
 }
 
 .primary-tools .bubble-btn {
-  min-width: 88px;
+  min-width: 76px;
 }
 
 .trace-tools {
-  padding: 5px;
+  padding: 3px;
   border-radius: 999px;
   background: rgba(15, 23, 42, 0.42);
   border: 1px solid rgba(125, 211, 252, 0.14);
@@ -2614,9 +2616,9 @@ button {
 
 .tool-chip {
   width: auto;
-  min-width: 74px;
-  padding-inline: 10px;
-  font-size: 0.78rem;
+  min-width: 66px;
+  padding-inline: 8px;
+  font-size: 0.72rem;
 }
 
 .tool-chip.danger {
@@ -2881,13 +2883,13 @@ button {
 .echostory-hud {
   position: fixed;
   left: 50%;
-  bottom: 84px;
+  bottom: 62px;
   transform: translateX(-50%);
   z-index: 16;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 8px;
+  padding: 3px 7px;
   border-radius: 999px;
   background: rgba(2, 6, 23, 0.42);
   border: 1px solid rgba(148, 163, 184, 0.2);
@@ -2895,7 +2897,7 @@ button {
 }
 
 .echostory-chip {
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1;
   color: rgba(226, 232, 240, 0.82);
   letter-spacing: 0.02em;
