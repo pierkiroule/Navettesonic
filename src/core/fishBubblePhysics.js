@@ -1,6 +1,8 @@
 import { clampToCircle, getBubblePhysicsRadius, normalizeDepth } from "./geometry.js";
 import { DEFAULT_ARENA_RADIUS } from "../store/soonInitialState.js";
 
+const SOON_CONTACT_REBOUND_MULTIPLIER = 2;
+
 export function clampDepth(depth) {
   return normalizeDepth(depth);
 }
@@ -42,8 +44,8 @@ export function pushBubblesFromFish(bubbles = [], fish = {}, fishDepth = 1) {
       const overlapPush = overlap * 0.78 * zonePower;
       const straightThrust = fishSpeed * (1.35 + zonePower * 0.25);
 
-      pushX += normalX * overlapPush + fishDirX * straightThrust;
-      pushY += normalY * overlapPush + fishDirY * straightThrust;
+      pushX += (normalX * overlapPush + fishDirX * straightThrust) * SOON_CONTACT_REBOUND_MULTIPLIER;
+      pushY += (normalY * overlapPush + fishDirY * straightThrust) * SOON_CONTACT_REBOUND_MULTIPLIER;
     });
 
     const boundaryRadius = DEFAULT_ARENA_RADIUS * 1.6;

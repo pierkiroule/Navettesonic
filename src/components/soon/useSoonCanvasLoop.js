@@ -24,6 +24,7 @@ import {
 
 const ECHOSTORY_VOICE_BASE_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/sooncut";
 const CONTACT_PUSH_DISTANCE = 58;
+const SOON_CONTACT_REBOUND_MULTIPLIER = 2;
 const STAR_PUSH_SMOOTHING = 0.52;
 const STAR_PUSH_MAX_STEP = 28;
 const STAR_EDGE_STICK_THRESHOLD = 48;
@@ -246,7 +247,7 @@ function pushNearbyEchostoryStars(current) {
     if (distance > 0 && isInside) {
       const ux = dx / distance;
       const uy = dy / distance;
-      const pushForce = (1 - distance / TRIGGER_RADIUS) * CONTACT_PUSH_DISTANCE;
+      const pushForce = (1 - distance / TRIGGER_RADIUS) * CONTACT_PUSH_DISTANCE * SOON_CONTACT_REBOUND_MULTIPLIER;
       star.vx += ux * pushForce * STAR_PUSH_SMOOTHING;
       star.vy += uy * pushForce * STAR_PUSH_SMOOTHING;
       if (star.attachedToContour && distance < TRIGGER_RADIUS * 0.6) {
