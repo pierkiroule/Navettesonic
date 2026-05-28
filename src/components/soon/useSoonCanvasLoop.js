@@ -24,7 +24,7 @@ import {
 
 const ECHOSTORY_VOICE_BASE_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/sooncut";
 const CONTACT_PUSH_DISTANCE = 58;
-const SOON_CONTACT_REBOUND_MULTIPLIER = 2;
+const SOON_CONTACT_REBOUND_MULTIPLIER = 4;
 const STAR_PUSH_SMOOTHING = 0.52;
 const STAR_PUSH_MAX_STEP = 28;
 const STAR_EDGE_STICK_THRESHOLD = 48;
