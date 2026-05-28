@@ -410,30 +410,50 @@ export default function SoonApp({ onBack }) {
 
   
 
+  const handleFullArenaView = () => {
+    setViewZoom(0);
+    recenterFish();
+  };
+
   const renderZoomControl = () => (
     <div className="tool-row fish-tools">
       <div className="fish-sliders fish-sliders-layout zoom-only-panel">
-        <label className="fish-slider-row horizontal zoom-only" htmlFor="zoom-slider-horizontal">
-          <span className="slider-label slider-label-top">
-            <span>🔍 Zoom arène</span>
-            <strong>{viewZoom.toFixed(1)}×</strong>
-          </span>
-          <div className="fish-slider-horizontal-track zoom-track">
-            <span className="zoom-bound" aria-hidden="true">−</span>
-            <input
-              id="zoom-slider-horizontal"
-              className="slim-horizontal-range"
-              type="range"
-              min="0"
-              max="2"
-              step="0.05"
-              value={viewZoom}
-              onChange={(event) => setViewZoom(Number(event.target.value))}
-              aria-label="Zoom arène"
-            />
-            <span className="zoom-bound" aria-hidden="true">+</span>
-          </div>
-        </label>
+        <div className="zoom-panel-header">
+          <span className="slider-label slider-label-top">🔍 Zoom arène</span>
+          <strong className="zoom-value">{viewZoom.toFixed(1)}×</strong>
+        </div>
+
+        <div className="zoom-panel-body">
+          <label className="fish-slider-row horizontal zoom-only" htmlFor="zoom-slider-horizontal">
+            <span className="sr-only">Zoom arène</span>
+            <div className="fish-slider-horizontal-track zoom-track">
+              <span className="zoom-bound" aria-hidden="true">−</span>
+              <input
+                id="zoom-slider-horizontal"
+                className="slim-horizontal-range"
+                type="range"
+                min="0"
+                max="2"
+                step="0.05"
+                value={viewZoom}
+                onChange={(event) => setViewZoom(Number(event.target.value))}
+                aria-label="Zoom arène"
+              />
+              <span className="zoom-bound" aria-hidden="true">+</span>
+            </div>
+          </label>
+
+          <button
+            type="button"
+            className="zoom-full-arena-btn"
+            onClick={handleFullArenaView}
+            title="Recentrer automatiquement en vue totale de l’arène"
+            aria-label="Recentrer automatiquement en vue totale de l’arène"
+          >
+            <span aria-hidden="true">◎</span>
+            Vue totale
+          </button>
+        </div>
       </div>
     </div>
   );
