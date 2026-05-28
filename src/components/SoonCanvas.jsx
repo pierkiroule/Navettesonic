@@ -450,8 +450,6 @@ export default function SoonCanvas({
           onClose={() => setFishMenu(null)}
           items={[
             { id: "depth", label: "Profondeur" },
-            { id: "bubbles", label: `Bulles ${bubblesEnabled ? "ON" : "OFF"}` },
-            { id: "intensity", label: "Intensité bulles" },
             { id: "resonance", label: `Résonance ${Math.round(audioTuning.resonance * 100)}%` },
             { id: "detect", label: `Portée ${audioTuning.detection.toFixed(2)}x` },
             { id: "contrast", label: `Relief ${audioTuning.depthSeparation.toFixed(2)}x` },
@@ -461,8 +459,6 @@ export default function SoonCanvas({
           ]}
           onSelect={(item) => {
             if (item.id === "depth") onSetFishDepth?.(((Math.round(fish?.depth || 1) % 3) + 1));
-            if (item.id === "bubbles") onToggleBubbles?.();
-            if (item.id === "intensity") onSetBubblesIntensity?.(Math.min(2, (bubblesIntensity || 1) + 0.25));
             if (item.id === "resonance") {
               const next = audioTuning.resonance >= 0.95 ? 0 : audioTuning.resonance + 0.1;
               setAudioTuning({ resonance: next });

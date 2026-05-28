@@ -1,6 +1,5 @@
 import { distance, getBubbleVisualRadius } from "./geometry.js";
 import { drawPoissonPlume } from "./poissonPlumeRenderer.js";
-import { drawCharacters } from "./characters/characterEngine.js";
 import { drawOdysseoPath } from "./odysseoPath.js";
 import { ARENA_INNER_BOUNDARY_INSET, MEMBRANE_LEVEL_MULTIPLIERS } from "./constants.js";
 import { getArenaRadiusForNode, getPortalOpeningAngle, getPortalOpeningHalfSpan } from "./labybulleWorld.js";
@@ -71,29 +70,11 @@ export function drawScene(ctx, rect, time, refs) {
         ));
       }
 
-      if (current.bubblesEnabled !== false) {
-        drawIsolated(ctx, () => drawBubbles(
-          ctx,
-          current.bubbles,
-          current.selectedBubbleId,
-          current.mode,
-          time,
-          current.interactionMode,
-          current.bubblesIntensity
-        ));
-      }
-
-
       if (current.mode === "echostory" || current.mode === "reso") {
         drawIsolated(ctx, () => drawEchostoryStars(ctx, current.echostory?.stars || [], time, current.fish));
       }
 
-    if (current.interactionMode !== "edit") {
-      drawIsolated(ctx, () => drawCharacters(ctx, time));
-    }
-
     drawIsolated(ctx, () => drawFish(ctx, current.fish, time, current.worldGraph, current.currentArenaId));
-    drawIsolated(ctx, () => drawQuill(ctx, current.fish, time));
   } finally {
     if (worldEntered) {
       try {

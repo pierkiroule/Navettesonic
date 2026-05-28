@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import SidePanel from "../components/SidePanel.jsx";
 import SoonCanvas from "../components/SoonCanvas.jsx";
 import Profile from "./Profile.jsx";
-import BubbleBucketsMenu from "../components/BubbleBucketsMenu.jsx";
 import { useSoonStore } from "../store/useSoonStore.js";
 import { renderImmersiveJourney } from "../core/immersiveExporter.js";
 import { buildEchostoryText, buildStoryTimeline, buildPathStarsFromTimeline } from "../core/echostory/echostoryBuilder.js";
@@ -45,14 +44,14 @@ export default function SoonApp({ onBack }) {
   const UNIFIED_DEPTH = 1;
   const [exportStatus, setExportStatus] = useState("");
   const [exportUrl, setExportUrl] = useState(null);
-  const [bubblesEnabled, setBubblesEnabled] = useState(true);
+  const [bubblesEnabled, setBubblesEnabled] = useState(false);
   const [bubblesIntensity, setBubblesIntensity] = useState(1);
   const [bubbleBucketsOpen, setBubbleBucketsOpen] = useState(false);
   const [fishCockpitFolded, setFishCockpitFolded] = useState(false);
   const speedBoostUntilRef = useRef(0);
   const plumeTraceActiveRef = useRef(false);
   const plumeLastPointRef = useRef(null);
-  const [soonTouchMode, setSoonTouchMode] = useState("bubble");
+  const [soonTouchMode, setSoonTouchMode] = useState("plume");
 
   const {
     mode,
@@ -202,7 +201,7 @@ export default function SoonApp({ onBack }) {
       return {
         key: "compo",
         title: "1. Composer",
-        tip: "Choisissez vos bulles et cueillez vos étoiles vocales.",
+        tip: "Cueillez les étoiles vocales pour composer.",
       };
     }
     if (!hasPath) {
@@ -480,7 +479,7 @@ export default function SoonApp({ onBack }) {
         mode={mode}
         interactionMode={isOdysseo && odysseoTool === "depth" ? "circuit" : "swim"}
         odysseoMode={odysseoMode}
-        bubbles={bubbles}
+        bubbles={[]}
         fish={fish}
         selectedBubbleId={selectedBubbleId}
         traceCircuit={traceCircuit}
@@ -556,7 +555,7 @@ export default function SoonApp({ onBack }) {
         onSelectBeacon={selectBeacon}
         onMoveBeacon={moveBeacon}
         onMoveBubble={(id, pos) => updateBubble(id, pos)}
-        onAddBubble={addBubble}
+        onAddBubble={() => {}}
         onAddPathPoint={addPathPoint}
         onAddOdysseoPathPoint={addOdysseoPathPoint}
         onAddOdysseoDepthMarker={(x, y) => {
@@ -572,9 +571,9 @@ export default function SoonApp({ onBack }) {
         gamePaused={gamePaused}
         pendingBlobAction={pendingBlobAction}
         arenaBlob={arenaBlob}
-        onToggleBubbles={() => setBubblesEnabled((v) => !v)}
-        onSetBubblesIntensity={setBubblesIntensity}
-        onResetFishContext={() => { setBubblesEnabled(true); setBubblesIntensity(1); recenterFish(); }}
+        onToggleBubbles={() => {}}
+        onSetBubblesIntensity={() => {}}
+        onResetFishContext={() => { recenterFish(); }}
         onToggleMembraneSide={toggleMembraneSide}
         onBlobAction={applyBlobAction}
         onSetFishDepth={setFishDepth}
@@ -612,8 +611,8 @@ export default function SoonApp({ onBack }) {
 
       {isOdysseo && (
         <section className="echostory-hud" aria-live="polite">
-          <span className="echostory-chip">🫧 déplacer/pousser/écouter • 🪶 tisser des liens entre étoiles.</span>
-          <span className="echostory-chip">En mode 🪶, les étoiles ne sont plus récoltées: on tisse une chronologie linéaire.</span>
+          <span className="echostory-chip">⭐ tisser des liens entre étoiles • 👂 écouter la traîne.</span>
+          <span className="echostory-chip">En mode ⭐, les étoiles construisent une chronologie linéaire.</span>
         </section>
       )}
 
@@ -690,17 +689,6 @@ export default function SoonApp({ onBack }) {
               <div className="tool-row fish-tools">
                 <div className={`fish-sliders fish-sliders-layout ${fishCockpitFolded ? "folded" : ""}`}>
                   <label className="fish-slider-row horizontal" htmlFor="zoom-slider-horizontal">
-                    <div className="fish-slider-actions">
-                      <button
-                        type="button"
-                        className="bubble-btn mode-toggle"
-                        onClick={handleOpenBubbleBuckets}
-                        title="🫧 Déclenchement tactile"
-                        aria-label="Ouvrir l’éditeur des bulles sonores"
-                      >
-                        🫧
-                      </button>
-                    </div>
                     <span className="slider-label slider-label-top">🔍 Zoom</span>
                     <div className="fish-slider-horizontal-track">
                       <input
@@ -748,17 +736,6 @@ export default function SoonApp({ onBack }) {
           <div className="tool-row fish-tools">
               <div className={`fish-sliders fish-sliders-layout ${fishCockpitFolded ? "folded" : ""}`}>
                   <label className="fish-slider-row horizontal" htmlFor="zoom-slider-horizontal">
-                  <div className="fish-slider-actions">
-                    <button
-                      type="button"
-                      className={`bubble-btn mode-toggle ${soonTouchMode === "bubble" ? "active" : ""}`}
-                      onClick={() => setSoonTouchMode("bubble")}
-                      title="Mode 🫧 balader, pousser, sans récolter"
-                      aria-label="Ouvrir l’éditeur des bulles sonores"
-                    >
-                      🫧
-                    </button>
-                  </div>
                   <span className="slider-label slider-label-top">🔍 Zoom</span>
                   <div className="fish-slider-horizontal-track">
                     <input
@@ -810,21 +787,12 @@ export default function SoonApp({ onBack }) {
           <div className="mode-switch-pill">
             <button
               type="button"
-              className={`mode-switch-button ${soonTouchMode === "bubble" ? "active" : ""}`}
-              onClick={() => setSoonTouchMode("bubble")}
-              aria-pressed={soonTouchMode === "bubble"}
-              title="Mode 🫧 : pousser bulles/étoiles, écouter sans récolter"
-            >
-              🫧 Mode balade
-            </button>
-            <button
-              type="button"
               className={`mode-switch-button ${soonTouchMode === "plume" ? "active" : ""}`}
               onClick={() => setSoonTouchMode("plume")}
               aria-pressed={soonTouchMode === "plume"}
-              title="Mode 🪶 récolte sur traîne"
+              title="Mode ⭐ tracé entre étoiles"
             >
-              🪶 Mode récolte
+              ⭐ Mode tracé
             </button>
             <button
               type="button"
@@ -851,13 +819,6 @@ export default function SoonApp({ onBack }) {
       )}
 
 
-
-      <BubbleBucketsMenu
-        open={bubbleBucketsOpen}
-        bubbles={bubbles}
-        onClose={() => setBubbleBucketsOpen(false)}
-        onValidate={handleApplyBubbleBuckets}
-      />
 
       <SidePanel
         mode={mode}

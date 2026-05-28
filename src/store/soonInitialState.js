@@ -1,6 +1,4 @@
-import { defaultPack } from "../data/defaultPack.js";
 import { loadState } from "../core/storage.js";
-import { createSlalomCircuitFromBubbles } from "../core/traceCircuit.js";
 import { getFishNavigableRadius } from "../core/constants.js";
 import { SOON_MODE_COMPO, normalizeSoonMode } from "../core/uiState.js";
 import { buildMazeByArena, generateLabybulle, getArenaLevelFromId, validateWorldGraph } from "../core/labybulleWorld.js";
@@ -54,15 +52,11 @@ function normalizeBubbles(list = []) {
 }
 
 const initialArenaId = saved?.currentArenaId || labybulleWorld.startArenaId;
-const sourceBubbles = saved?.arenaBubblesById?.[initialArenaId] || saved?.bubbles || defaultPack.bubbles;
+const sourceBubbles = [];
 const normalizedInitialBubbles = normalizeBubbles(sourceBubbles);
-const normalizedArenaBubblesById = saved?.arenaBubblesById
-  ? Object.fromEntries(
-    Object.entries(saved.arenaBubblesById).map(([arenaId, bubbles]) => [arenaId, normalizeBubbles(bubbles)])
-  )
-  : {
-    [initialArenaId]: normalizedInitialBubbles.map((bubble) => ({ ...bubble })),
-  };
+const normalizedArenaBubblesById = {
+  [initialArenaId]: [],
+};
 
 export const initialEchostory = resetEchostoryState();
 export const initialState = {
@@ -76,7 +70,7 @@ export const initialState = {
   fishTrail: saved?.fishTrail || [],
   selectedBubbleId: null,
   odysseoPath: [], odysseoDepthMarkers: [], odysseoPathIndex: 0, odysseoDirection: 1, odysseoTool: "draw",
-  traceCircuit: saved?.traceCircuit || createSlalomCircuitFromBubbles(saved?.bubbles || defaultPack.bubbles),
+  traceCircuit: [],
   selectedBeaconId: null,
   circuitAutopilot: false, circuitSegmentIndex: 0, circuitSegmentT: 0,
   path: saved?.path || [],

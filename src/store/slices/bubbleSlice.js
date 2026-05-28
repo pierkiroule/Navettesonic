@@ -1,6 +1,36 @@
-import { clampToCircle, makeId } from "../../core/geometry.js";
+import { clampToCircle } from "../../core/geometry.js";
 import { saveState } from "../../core/storage.js";
 import { clampDepth } from "../../core/fishBubblePhysics.js";
 import { DEFAULT_ARENA_RADIUS } from "../soonInitialState.js";
 
-export const createBubbleSlice=(set,get)=>({selectBubble:(id)=>set({selectedBubbleId:id,selectedBeaconId:null}),selectBeacon:(id)=>set({selectedBeaconId:id,selectedBubbleId:null}),addBubble:(x,y)=>{const safe=clampToCircle({x,y},DEFAULT_ARENA_RADIUS*1.6);const bubble={id:makeId("bubble"),label:"Nouvelle bulle",x:safe.x,y:safe.y,r:72,hue:Math.floor(160+Math.random()*160),depth:clampDepth(get().fish?.depth||1),sampleId:"supabase:Bulle_001.mp3"};set((s)=>({bubbles:[...s.bubbles,bubble],selectedBubbleId:bubble.id,selectedBeaconId:null}));saveState(get());},updateBubble:(id,patch)=>{set((s)=>({bubbles:s.bubbles.map((b)=>{if(b.id!==id)return b;const next={...b,...patch};if("depth" in patch)next.depth=clampDepth(patch.depth);if("x" in patch||"y" in patch){const safe=clampToCircle({x:next.x,y:next.y},DEFAULT_ARENA_RADIUS*1.6);next.x=safe.x;next.y=safe.y;}return next;})}));saveState(get());},deleteBubble:(id)=>{set((s)=>({bubbles:s.bubbles.filter((b)=>b.id!==id),selectedBubbleId:s.selectedBubbleId===id?null:s.selectedBubbleId}));saveState(get());}});
+export const createBubbleSlice = (set, get) => ({
+  selectBubble: (id) => set({ selectedBubbleId: id, selectedBeaconId: null }),
+  selectBeacon: (id) => set({ selectedBeaconId: id, selectedBubbleId: null }),
+  addBubble: () => {
+    set({ selectedBubbleId: null });
+    saveState(get());
+  },
+  updateBubble: (id, patch) => {
+    set((state) => ({
+      bubbles: state.bubbles.map((bubble) => {
+        if (bubble.id !== id) return bubble;
+        const next = { ...bubble, ...patch };
+        if ("depth" in patch) next.depth = clampDepth(patch.depth);
+        if ("x" in patch || "y" in patch) {
+          const safe = clampToCircle({ x: next.x, y: next.y }, DEFAULT_ARENA_RADIUS * 1.6);
+          next.x = safe.x;
+          next.y = safe.y;
+        }
+        return next;
+      }),
+    }));
+    saveState(get());
+  },
+  deleteBubble: (id) => {
+    set((state) => ({
+      bubbles: state.bubbles.filter((bubble) => bubble.id !== id),
+      selectedBubbleId: state.selectedBubbleId === id ? null : state.selectedBubbleId,
+    }));
+    saveState(get());
+  },
+});
