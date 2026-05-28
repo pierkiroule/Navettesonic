@@ -37,7 +37,6 @@ export default function SoonCanvas({
   onCycleBubbleDepth,
   onOpenBubbleEditor,
   onOpenBeaconEditor,
-  onRecenterFish,
   bubblesEnabled = true,
   bubblesIntensity = 1,
   onToggleBubbles,
@@ -63,7 +62,6 @@ export default function SoonCanvas({
 }) {
   const canvasRef = useRef(null);
   const [semioseVideo, setSemioseVideo] = useState(null);
-  const [arenaCenterScreen, setArenaCenterScreen] = useState({ x: 0, y: 0 });
   const [fishMenu, setFishMenu] = useState(null);
   const [audioTuning, setAudioTuningState] = useState(() => getAudioTuning());
   const [showSensitivitySlider, setShowSensitivitySlider] = useState(false);
@@ -240,44 +238,6 @@ export default function SoonCanvas({
 
   useEffect(() => cleanupPointer, [cleanupPointer]);
 
-  const handleEarButtonClick = () => {
-    onRecenterFish?.();
-  };
-
-  useEffect(() => {
-    let frame = 0;
-
-    const updateArenaCenterScreen = () => {
-      const canvas = canvasRef.current;
-      const current = stateRef.current || {};
-      const camera = cameraRef.current || { x: 0, y: 0 };
-
-      if (canvas) {
-        const rect = canvas.getBoundingClientRect();
-        const arenaRadius = current.arenaRadius || arenaRef.current.radius || 1200;
-        const viewZoom = Number.isFinite(current.viewZoom) ? current.viewZoom : 0;
-        const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 2.55);
-        const userZoom = fitZoom * (1 + viewZoom * 1.55);
-        const world = current.worldGraph;
-        const arenaId = current.currentArenaId || world?.startArenaId;
-        const arenaNode = (world?.nodes || []).find((node) => node.id === arenaId) || null;
-        const center = arenaNode?.absoluteCenter || { x: 0, y: 0 };
-        const arenaCenterX = Number.isFinite(center.x) ? center.x : 0;
-        const arenaCenterY = Number.isFinite(center.y) ? center.y : 0;
-
-        setArenaCenterScreen({
-          x: rect.width * 0.5 + (arenaCenterX - camera.x) * userZoom,
-          y: rect.height * 0.5 + (arenaCenterY - camera.y) * userZoom,
-        });
-      }
-
-      frame = requestAnimationFrame(updateArenaCenterScreen);
-    };
-
-    frame = requestAnimationFrame(updateArenaCenterScreen);
-    return () => cancelAnimationFrame(frame);
-  }, [arenaRef, cameraRef, canvasRef, stateRef]);
-
   useEffect(() => {
     let frame = 0;
     const updateContourPlayButton = () => {
@@ -358,16 +318,6 @@ export default function SoonCanvas({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       />
-      <button
-        type="button"
-        className="arena-recenter-btn"
-        style={{ left: `${arenaCenterScreen.x}px`, top: `${arenaCenterScreen.y}px` }}
-        aria-label="Ouvrir les actions centrales"
-        title="Ouvrir les actions centrales"
-        onClick={handleEarButtonClick}
-      >
-        👂
-      </button>
       {contourPlayButton.visible ? (
         <button
           type="button"

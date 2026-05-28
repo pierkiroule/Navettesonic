@@ -550,7 +550,6 @@ export default function SoonApp({ onBack }) {
           addOdysseoDepthMarker(x, y, UNIFIED_DEPTH);
         }}
         onOpenBubbleEditor={openBubbleEditor}
-        onRecenterFish={handleOpenBubbleBuckets}
         onCycleBubbleDepth={cycleBubbleDepth}
         bubblesEnabled={bubblesEnabled}
         bubblesIntensity={bubblesIntensity}
