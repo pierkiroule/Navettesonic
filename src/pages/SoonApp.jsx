@@ -24,11 +24,7 @@ import {
 } from "../core/uiState.js";
 
 
-const SPEED_BY_LEVEL = {
-  1: 0.6,
-  2: 1.15,
-  3: 1.7,
-};
+const SWIM_SPEED = 1.15;
 const ECHOSTORY_VOICE_BASE_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/sooncut";
 
 export default function SoonApp({ onBack }) {
@@ -36,8 +32,6 @@ export default function SoonApp({ onBack }) {
   const [interactionMode, setInteractionMode] = useState("swim");
   const [odysseoMode, setOdysseoMode] = useState(ODYSSEO_MODE_TRACE);
   const [viewZoom, setViewZoom] = useState(1);
-  const [swimSpeed, setSwimSpeed] = useState(1.15);
-  const [swimSpeedLevel, setSwimSpeedLevel] = useState(2);
   const [isTravelPlaying, setIsTravelPlaying] = useState(false);
   const [contourPlaybackPaused, setContourPlaybackPaused] = useState(false);
   const [editorOpenKey, setEditorOpenKey] = useState(0);
@@ -47,7 +41,6 @@ export default function SoonApp({ onBack }) {
   const [bubblesEnabled, setBubblesEnabled] = useState(false);
   const [bubblesIntensity, setBubblesIntensity] = useState(1);
   const [bubbleBucketsOpen, setBubbleBucketsOpen] = useState(false);
-  const [fishCockpitFolded, setFishCockpitFolded] = useState(false);
   const speedBoostUntilRef = useRef(0);
   const plumeTraceActiveRef = useRef(false);
   const plumeLastPointRef = useRef(null);
@@ -182,16 +175,6 @@ export default function SoonApp({ onBack }) {
       });
     }
   };
-
-  useEffect(() => {
-    const closestLevel = [1, 2, 3].reduce((best, level) => (
-      Math.abs(SPEED_BY_LEVEL[level] - swimSpeed) < Math.abs(SPEED_BY_LEVEL[best] - swimSpeed)
-        ? level
-        : best
-    ), 2);
-    setSwimSpeedLevel(closestLevel);
-  }, [swimSpeed]);
-
 
   const flowStep = useMemo(() => {
     const starCount = echostory?.collectedStars?.length || 0;
@@ -427,6 +410,34 @@ export default function SoonApp({ onBack }) {
 
   
 
+  const renderZoomControl = () => (
+    <div className="tool-row fish-tools">
+      <div className="fish-sliders fish-sliders-layout zoom-only-panel">
+        <label className="fish-slider-row horizontal zoom-only" htmlFor="zoom-slider-horizontal">
+          <span className="slider-label slider-label-top">
+            <span>🔍 Zoom arène</span>
+            <strong>{viewZoom.toFixed(1)}×</strong>
+          </span>
+          <div className="fish-slider-horizontal-track zoom-track">
+            <span className="zoom-bound" aria-hidden="true">−</span>
+            <input
+              id="zoom-slider-horizontal"
+              className="slim-horizontal-range"
+              type="range"
+              min="0"
+              max="2"
+              step="0.05"
+              value={viewZoom}
+              onChange={(event) => setViewZoom(Number(event.target.value))}
+              aria-label="Zoom arène"
+            />
+            <span className="zoom-bound" aria-hidden="true">+</span>
+          </div>
+        </label>
+      </div>
+    </div>
+  );
+
   const handleComposeAndLaunchTraversal = () => {
     const currentLines = echostory?.storyTimeline?.length
       ? echostory.storyTimeline.map((line) => ({ id: line.id, text: line.text }))
@@ -493,7 +504,7 @@ export default function SoonApp({ onBack }) {
         onFishTarget={(x, y, arenaRadius) => setFishTarget(x, y, arenaRadius)}
         onTickFish={({ arenaRadius } = {}) => {
           const boosted = Date.now() < speedBoostUntilRef.current;
-          const effectiveSwimSpeed = boosted ? swimSpeed * 1.8 : swimSpeed;
+          const effectiveSwimSpeed = boosted ? SWIM_SPEED * 1.8 : SWIM_SPEED;
           if (isOdysseo) {
             if (isTravelPlaying) {
               if (contourPlaybackPaused) return;
@@ -686,98 +697,10 @@ export default function SoonApp({ onBack }) {
                 </button>
               </div>
 
-              <div className="tool-row fish-tools">
-                <div className={`fish-sliders fish-sliders-layout ${fishCockpitFolded ? "folded" : ""}`}>
-                  <label className="fish-slider-row horizontal" htmlFor="zoom-slider-horizontal">
-                    <span className="slider-label slider-label-top">🔍 Zoom</span>
-                    <div className="fish-slider-horizontal-track">
-                      <input
-                        id="zoom-slider-horizontal"
-                        className="slim-horizontal-range"
-                        type="range"
-                        min="0"
-                        max="2"
-                        step="0.05"
-                        value={viewZoom}
-                        onChange={(event) => setViewZoom(Number(event.target.value))}
-                      />
-                      <span className="slider-value">{viewZoom.toFixed(1)}</span>
-                    </div>
-                  </label>
-
-                  <label className="fish-slider-column" htmlFor="speed-slider-vertical">
-                    <span className="slider-label">⚡ Vitesse</span>
-                    <input
-                      id="speed-slider-vertical"
-                      className="slim-vertical-range speed"
-                      type="range"
-                      min="1"
-                      max="3"
-                      step="1"
-                      value={swimSpeedLevel}
-                      onChange={(event) => { const level = Number(event.target.value); setSwimSpeedLevel(level); setSwimSpeed(SPEED_BY_LEVEL[level]); }}
-                    />
-                    <span className="slider-value">{swimSpeedLevel}</span>
-                  </label>
-
-                  <button
-                    type="button"
-                    className="bubble-btn fish-cockpit-fold-toggle"
-                    onClick={() => setFishCockpitFolded((value) => !value)}
-                    aria-label={fishCockpitFolded ? "Déplier le mini cockpit" : "Replier le mini cockpit"}
-                    title={fishCockpitFolded ? "Déplier" : "Replier"}
-                  >
-                    {fishCockpitFolded ? "▾" : "▴"}
-                  </button>
-                </div>
-              </div>
+              {renderZoomControl()}
             </div>
-                    ) : (
-          <div className="tool-row fish-tools">
-              <div className={`fish-sliders fish-sliders-layout ${fishCockpitFolded ? "folded" : ""}`}>
-                  <label className="fish-slider-row horizontal" htmlFor="zoom-slider-horizontal">
-                  <span className="slider-label slider-label-top">🔍 Zoom</span>
-                  <div className="fish-slider-horizontal-track">
-                    <input
-                      id="zoom-slider-horizontal"
-                      className="slim-horizontal-range"
-                      type="range"
-                      min="0"
-                      max="2"
-                      step="0.05"
-                      value={viewZoom}
-                      onChange={(event) => setViewZoom(Number(event.target.value))}
-                    />
-                    <span className="slider-value">{viewZoom.toFixed(1)}</span>
-                  </div>
-                </label>
-
-                <label className="fish-slider-column" htmlFor="speed-slider-vertical">
-                  <span className="slider-label">⚡ Vitesse</span>
-                  <input
-                    id="speed-slider-vertical"
-                    className="slim-vertical-range speed"
-                    type="range"
-                    min="1"
-                    max="3"
-                    step="1"
-                    value={swimSpeedLevel}
-                    onChange={(event) => { const level = Number(event.target.value); setSwimSpeedLevel(level); setSwimSpeed(SPEED_BY_LEVEL[level]); }}
-                  />
-                  <span className="slider-value">{swimSpeedLevel}</span>
-                </label>
-
-                <button
-                  type="button"
-                  className="bubble-btn fish-cockpit-fold-toggle"
-                  onClick={() => setFishCockpitFolded((value) => !value)}
-                  aria-label={fishCockpitFolded ? "Déplier le mini cockpit" : "Replier le mini cockpit"}
-                  title={fishCockpitFolded ? "Déplier" : "Replier"}
-                >
-                  {fishCockpitFolded ? "▾" : "▴"}
-                </button>
-              </div>
-            </div>
+          ) : (
+            renderZoomControl()
           )}
         </div>
       </div>

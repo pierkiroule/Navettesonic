@@ -2290,23 +2290,41 @@ button {
   width: 100%;
 }
 
-.fish-tools {
+ .fish-tools {
   flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: 0;
+  width: 100%;
 }
 
 .fish-sliders {
-  width: min(92vw, 500px);
-  display: flex;
-  gap: 10px;
+  width: min(88vw, 430px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
-  padding: 8px 10px;
-  border-radius: 14px;
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(125, 211, 252, 0.22);
-  backdrop-filter: blur(12px);
+  padding: 12px 14px 14px;
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(8, 47, 73, 0.78)),
+    radial-gradient(circle at 22% 0%, rgba(125, 211, 252, 0.28), transparent 36%);
+  border: 1px solid rgba(125, 211, 252, 0.34);
+  box-shadow: 0 16px 34px rgba(2, 6, 23, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+}
+
+.zoom-only-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.zoom-only-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  opacity: 0.38;
 }
 
 .fish-sliders .ear-toggle {
@@ -2319,27 +2337,40 @@ button {
 }
 
 .fish-slider-row.horizontal {
+  position: relative;
+  z-index: 1;
   flex: 1;
   display: grid;
   grid-template-columns: 1fr;
   align-items: stretch;
-  gap: 5px;
-  color: rgba(226, 232, 240, 0.86);
-}
-
-.fish-slider-column {
-  width: 68px;
-  display: grid;
-  grid-template-rows: auto 72px auto;
-  justify-items: center;
-  gap: 5px;
-  color: rgba(226, 232, 240, 0.86);
+  gap: 10px;
+  color: rgba(226, 232, 240, 0.9);
 }
 
 .slider-label {
   white-space: nowrap;
-  font-size: 0.58rem;
-  letter-spacing: 0.02em;
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+}
+
+.slider-label-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 0;
+  text-transform: uppercase;
+}
+
+.slider-label-top strong {
+  min-width: 44px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 0.7rem;
+  color: rgba(240, 249, 255, 0.96);
+  background: rgba(14, 165, 233, 0.2);
+  border: 1px solid rgba(125, 211, 252, 0.28);
 }
 
 .slider-value {
@@ -2348,42 +2379,24 @@ button {
   text-align: center;
 }
 
-
-.slider-label-top {
-  text-align: center;
-  margin-bottom: 2px;
-}
-
 .fish-slider-horizontal-track {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 40px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
 }
 
-.fish-cockpit-fold-toggle {
-  width: 32px;
-  height: 32px;
-  font-size: 0.95rem;
-  background: rgba(15, 23, 42, 0.58);
-}
-
-.fish-sliders.folded {
-  width: min(72vw, 240px);
-  justify-content: center;
-  gap: 8px;
-}
-
-.fish-sliders.folded .fish-slider-column,
-.fish-sliders.folded .fish-slider-horizontal-track,
-.fish-sliders.folded .slider-label-top {
-  display: none;
-}
-
-.fish-sliders.folded .fish-slider-row.horizontal {
-  flex: 0 1 auto;
-  display: flex;
-  align-items: center;
+.zoom-bound {
+  width: 22px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  color: rgba(224, 242, 254, 0.88);
+  background: rgba(15, 23, 42, 0.52);
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  font-weight: 800;
+  line-height: 1;
 }
 
 .fish-slider-horizontal-track .slider-value {
@@ -2398,15 +2411,14 @@ button {
   background: transparent;
 }
 
-.slim-horizontal-range::-webkit-slider-runnable-track,
-.slim-vertical-range::-webkit-slider-runnable-track {
-  height: 6px;
+.slim-horizontal-range::-webkit-slider-runnable-track {
+  height: 8px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.45);
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.72), rgba(168, 85, 247, 0.56));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
-.slim-horizontal-range::-webkit-slider-thumb,
-.slim-vertical-range::-webkit-slider-thumb {
+.slim-horizontal-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 14px;
@@ -2417,15 +2429,14 @@ button {
   background: rgba(240, 249, 255, 0.92);
 }
 
-.slim-horizontal-range::-moz-range-track,
-.slim-vertical-range::-moz-range-track {
-  height: 6px;
+.slim-horizontal-range::-moz-range-track {
+  height: 8px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.45);
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.72), rgba(168, 85, 247, 0.56));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
-.slim-horizontal-range::-moz-range-thumb,
-.slim-vertical-range::-moz-range-thumb {
+.slim-horizontal-range::-moz-range-thumb {
   width: 14px;
   height: 14px;
   border-radius: 999px;
@@ -2433,20 +2444,6 @@ button {
   background: rgba(240, 249, 255, 0.92);
 }
 
-.slim-vertical-range {
-  -webkit-appearance: slider-vertical;
-  appearance: slider-vertical;
-  writing-mode: bt-lr;
-  width: 14px;
-  height: 72px;
-  margin: 0;
-  background: transparent;
-}
-
-.slim-vertical-range.speed::-webkit-slider-thumb,
-.slim-vertical-range.speed::-moz-range-thumb {
-  border-color: rgba(251, 113, 133, 0.6);
-}
 
 @media (max-width: 768px) {
   .cockpit-buttons {
@@ -2461,14 +2458,8 @@ button {
   }
 
   .fish-sliders {
-    width: min(97vw, 390px);
-    gap: 8px;
-    padding: 7px 8px;
-  }
-
-  .fish-slider-column {
-    width: 60px;
-    grid-template-rows: auto 64px auto;
+    width: min(94vw, 380px);
+    padding: 10px 12px 12px;
   }
 
   .fish-sliders .ear-toggle {
