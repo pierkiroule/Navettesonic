@@ -198,7 +198,7 @@ export function useSoonPointer({
       onFishTarget?.(point.x, point.y, arenaRef.current.radius);
     }
 
-    if (current.mode === "reso" && current.soonTouchMode === "plume") {
+    if (current.mode === "reso" && current.soonTouchMode === "fish") {
       onAddPathPoint?.(point);
     }
   }
@@ -257,12 +257,13 @@ export function useSoonPointer({
 
     const point = getSafeWorldFromEvent(event, { swimEdgeBoost: true });
     const current = stateRef.current;
-    if (current.mode === "echostory" || current.mode === "reso") {
+    const isWeaveTouchMode = current.soonTouchMode === "weave";
+    if (isWeaveTouchMode && (current.mode === "echostory" || current.mode === "reso")) {
       const contourStar = findSelectableContourStarAt(point);
       if (contourStar) {
         onSelectContourStar?.(contourStar.id);
-        return;
       }
+      return;
     }
 
     if (current.mode === "reso") {
@@ -319,6 +320,10 @@ export function useSoonPointer({
     registerPointer(event);
 
     const current = stateRef.current;
+    if (current.soonTouchMode === "weave" && (current.mode === "echostory" || current.mode === "reso")) {
+      return;
+    }
+
     const isEditMode = current.interactionMode === "edit";
     const isCircuitMode = current.interactionMode === "circuit";
     const point = getSafeWorldFromEvent(event, { swimEdgeBoost: false });
@@ -425,7 +430,7 @@ export function useSoonPointer({
 
       onFishTarget?.(leadPoint.x, leadPoint.y, arenaRef.current.radius);
 
-      if (current.mode === "reso" && current.soonTouchMode === "plume") {
+      if (current.mode === "reso" && current.soonTouchMode === "fish") {
         onAddPathPoint?.(point);
       }
     }

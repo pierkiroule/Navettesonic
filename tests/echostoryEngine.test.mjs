@@ -16,12 +16,18 @@ test("echostory wave mapping and star generation", () => {
 
   const stars = createWaveStars(0, 15);
   assert.equal(stars.length, 15);
-  const colors = new Set(stars.map((star) => star.color));
-  assert.deepEqual(colors, new Set(["#53b9ff", "#ff9f40", "#51d37c"]));
+  const colorCounts = stars.reduce((counts, star) => {
+    counts.set(star.color, (counts.get(star.color) || 0) + 1);
+    return counts;
+  }, new Map());
+  assert.deepEqual(colorCounts, new Map([["#53b9ff", 5], ["#ff9f40", 5], ["#51d37c", 5]]));
   stars.forEach((star) => {
     assert.equal(star.collected, false);
     assert.equal(typeof star.x, "number");
     assert.equal(typeof star.y, "number");
+    assert.equal(star.attachedToContour, true);
+    assert.equal(typeof star.contourAngle, "number");
+    assert.ok(Math.hypot(star.x, star.y) > 1100);
   });
 });
 
