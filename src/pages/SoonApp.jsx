@@ -63,7 +63,6 @@ export default function SoonApp({ onBack }) {
     selectedBeaconId,
     circuitAutopilot,
     eyesClosed,
-    toggleEyesClosed,
 
     odysseoPath,
     odysseoPathIndex,
@@ -552,7 +551,6 @@ export default function SoonApp({ onBack }) {
         }}
         onOpenBubbleEditor={openBubbleEditor}
         onRecenterFish={handleOpenBubbleBuckets}
-        onToggleEyesClosed={toggleEyesClosed}
         onCycleBubbleDepth={cycleBubbleDepth}
         bubblesEnabled={bubblesEnabled}
         bubblesIntensity={bubblesIntensity}

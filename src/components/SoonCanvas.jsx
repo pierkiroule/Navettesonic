@@ -38,7 +38,6 @@ export default function SoonCanvas({
   onOpenBubbleEditor,
   onOpenBeaconEditor,
   onRecenterFish,
-  onToggleEyesClosed,
   bubblesEnabled = true,
   bubblesIntensity = 1,
   onToggleBubbles,
@@ -66,7 +65,6 @@ export default function SoonCanvas({
   const [semioseVideo, setSemioseVideo] = useState(null);
   const [arenaCenterScreen, setArenaCenterScreen] = useState({ x: 0, y: 0 });
   const [fishMenu, setFishMenu] = useState(null);
-  const [earActivationText, setEarActivationText] = useState("");
   const [audioTuning, setAudioTuningState] = useState(() => getAudioTuning());
   const [showSensitivitySlider, setShowSensitivitySlider] = useState(false);
   const [contourPlayButton, setContourPlayButton] = useState({ visible: false, x: 0, y: 0 });
@@ -242,20 +240,8 @@ export default function SoonCanvas({
 
   useEffect(() => cleanupPointer, [cleanupPointer]);
 
-  const previousEyesClosedRef = useRef(eyesClosed);
-  useEffect(() => {
-    const wasClosed = previousEyesClosedRef.current;
-    previousEyesClosedRef.current = eyesClosed;
-    if (eyesClosed && !wasClosed) {
-      setEarActivationText("Oser le silence des yeux pour ouvrir les écoutilles 👂");
-      const timeoutId = setTimeout(() => setEarActivationText(""), 2800);
-      return () => clearTimeout(timeoutId);
-    }
-    return undefined;
-  }, [eyesClosed]);
-
   const handleEarButtonClick = () => {
-    onToggleEyesClosed?.();
+    onRecenterFish?.();
   };
 
   useEffect(() => {
@@ -374,19 +360,14 @@ export default function SoonCanvas({
       />
       <button
         type="button"
-        className={`arena-recenter-btn ${eyesClosed ? "is-active" : ""}`}
+        className="arena-recenter-btn"
         style={{ left: `${arenaCenterScreen.x}px`, top: `${arenaCenterScreen.y}px` }}
-        aria-label={eyesClosed ? "Mode aveugle actif" : "Mode aveugle inactif"}
-        title="Activer/désactiver l’écoute"
+        aria-label="Ouvrir les actions centrales"
+        title="Ouvrir les actions centrales"
         onClick={handleEarButtonClick}
       >
         👂
       </button>
-      {earActivationText ? (
-        <div className="ear-activation-text" role="status" aria-live="polite">
-          {earActivationText}
-        </div>
-      ) : null}
       {contourPlayButton.visible ? (
         <button
           type="button"
