@@ -1820,7 +1820,7 @@ button {
 /* COCKPIT BASE */
 .cockpit {
   position: fixed;
-  bottom: 14px;
+  bottom: 8px;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -1831,7 +1831,7 @@ button {
 /* BOUTONS RONDS */
 .cockpit-buttons {
   display: flex;
-  gap: 14px;
+  gap: 8px;
 }
 
 .bubble-btn {
@@ -2014,7 +2014,7 @@ button {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  bottom: calc(88px + env(safe-area-inset-bottom));
+  bottom: calc(62px + env(safe-area-inset-bottom));
   z-index: 30;
   width: min(92vw, 320px);
   display: flex;
@@ -2025,9 +2025,9 @@ button {
 .mode-switch-pill {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
-  padding: 6px;
+  padding: 4px;
   border-radius: 999px;
   background: rgba(2, 6, 23, 0.78);
   border: 1px solid rgba(148, 163, 184, 0.34);
@@ -2038,10 +2038,10 @@ button {
 .mode-switch-button {
   border: none;
   border-radius: 999px;
-  min-height: 46px;
+  min-height: 34px;
   color: rgba(226, 232, 240, 0.86);
   background: transparent;
-  font-size: 0.95rem;
+  font-size: 0.76rem;
   font-weight: 700;
 }
 
@@ -2254,14 +2254,15 @@ button {
 }
 
 .odysseo-cockpit .bubble-btn {
-  min-width: 46px;
+  min-width: 42px;
+  height: 38px;
 }
 
 .odysseo-cockpit .mode-toggle {
   width: auto;
-  min-width: 92px;
-  padding-inline: 12px;
-  font-size: 0.82rem;
+  min-width: 82px;
+  padding-inline: 10px;
+  font-size: 0.74rem;
   white-space: nowrap;
 }
 
@@ -2295,18 +2296,112 @@ button {
   align-items: center;
   justify-content: center;
   gap: 0;
+  width: 100%;
 }
 
 .fish-sliders {
   width: min(92vw, 500px);
-  display: flex;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
-  padding: 8px 10px;
-  border-radius: 14px;
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(125, 211, 252, 0.22);
-  backdrop-filter: blur(12px);
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(8, 47, 73, 0.78)),
+    radial-gradient(circle at 22% 0%, rgba(125, 211, 252, 0.28), transparent 36%);
+  border: 1px solid rgba(125, 211, 252, 0.34);
+  box-shadow: 0 16px 34px rgba(2, 6, 23, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+}
+
+.zoom-only-panel {
+  position: relative;
+  grid-template-columns: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.zoom-only-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  opacity: 0.38;
+}
+
+.zoom-panel-header {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.zoom-panel-body {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.zoom-value {
+  min-width: 46px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 0.68rem;
+  color: rgba(240, 249, 255, 0.98);
+  background: rgba(14, 165, 233, 0.22);
+  border: 1px solid rgba(125, 211, 252, 0.34);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.16);
+}
+
+.zoom-full-arena-btn {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(251, 191, 36, 0.44);
+  color: rgba(255, 251, 235, 0.96);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.28), rgba(14, 165, 233, 0.18));
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  font-size: 0.68rem;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.zoom-full-arena-btn:hover,
+.zoom-full-arena-btn:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(251, 191, 36, 0.72);
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  outline: none;
+}
+
+.zoom-full-arena-btn span {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .fish-sliders .ear-toggle {
@@ -2319,27 +2414,40 @@ button {
 }
 
 .fish-slider-row.horizontal {
+  position: relative;
+  z-index: 1;
   flex: 1;
   display: grid;
   grid-template-columns: 1fr;
   align-items: stretch;
-  gap: 5px;
-  color: rgba(226, 232, 240, 0.86);
-}
-
-.fish-slider-column {
-  width: 68px;
-  display: grid;
-  grid-template-rows: auto 72px auto;
-  justify-items: center;
-  gap: 5px;
-  color: rgba(226, 232, 240, 0.86);
+  gap: 6px;
+  color: rgba(226, 232, 240, 0.9);
 }
 
 .slider-label {
   white-space: nowrap;
-  font-size: 0.58rem;
-  letter-spacing: 0.02em;
+  font-size: 0.62rem;
+  letter-spacing: 0.03em;
+}
+
+.slider-label-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 0;
+  text-transform: uppercase;
+}
+
+.slider-label-top strong {
+  min-width: 44px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 0.7rem;
+  color: rgba(240, 249, 255, 0.96);
+  background: rgba(14, 165, 233, 0.2);
+  border: 1px solid rgba(125, 211, 252, 0.28);
 }
 
 .slider-value {
@@ -2348,42 +2456,24 @@ button {
   text-align: center;
 }
 
-
-.slider-label-top {
-  text-align: center;
-  margin-bottom: 2px;
-}
-
 .fish-slider-horizontal-track {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 40px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
 }
 
-.fish-cockpit-fold-toggle {
-  width: 32px;
-  height: 32px;
-  font-size: 0.95rem;
-  background: rgba(15, 23, 42, 0.58);
-}
-
-.fish-sliders.folded {
-  width: min(72vw, 240px);
-  justify-content: center;
-  gap: 8px;
-}
-
-.fish-sliders.folded .fish-slider-column,
-.fish-sliders.folded .fish-slider-horizontal-track,
-.fish-sliders.folded .slider-label-top {
-  display: none;
-}
-
-.fish-sliders.folded .fish-slider-row.horizontal {
-  flex: 0 1 auto;
-  display: flex;
-  align-items: center;
+.zoom-bound {
+  width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  color: rgba(224, 242, 254, 0.88);
+  background: rgba(15, 23, 42, 0.52);
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  font-weight: 800;
+  line-height: 1;
 }
 
 .fish-slider-horizontal-track .slider-value {
@@ -2393,20 +2483,19 @@ button {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 14px;
+  height: 12px;
   margin: 0;
   background: transparent;
 }
 
-.slim-horizontal-range::-webkit-slider-runnable-track,
-.slim-vertical-range::-webkit-slider-runnable-track {
-  height: 6px;
+.slim-horizontal-range::-webkit-slider-runnable-track {
+  height: 8px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.45);
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.72), rgba(168, 85, 247, 0.56));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
-.slim-horizontal-range::-webkit-slider-thumb,
-.slim-vertical-range::-webkit-slider-thumb {
+.slim-horizontal-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 14px;
@@ -2417,15 +2506,14 @@ button {
   background: rgba(240, 249, 255, 0.92);
 }
 
-.slim-horizontal-range::-moz-range-track,
-.slim-vertical-range::-moz-range-track {
-  height: 6px;
+.slim-horizontal-range::-moz-range-track {
+  height: 8px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.45);
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.72), rgba(168, 85, 247, 0.56));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
-.slim-horizontal-range::-moz-range-thumb,
-.slim-vertical-range::-moz-range-thumb {
+.slim-horizontal-range::-moz-range-thumb {
   width: 14px;
   height: 14px;
   border-radius: 999px;
@@ -2433,20 +2521,6 @@ button {
   background: rgba(240, 249, 255, 0.92);
 }
 
-.slim-vertical-range {
-  -webkit-appearance: slider-vertical;
-  appearance: slider-vertical;
-  writing-mode: bt-lr;
-  width: 14px;
-  height: 72px;
-  margin: 0;
-  background: transparent;
-}
-
-.slim-vertical-range.speed::-webkit-slider-thumb,
-.slim-vertical-range.speed::-moz-range-thumb {
-  border-color: rgba(251, 113, 133, 0.6);
-}
 
 @media (max-width: 768px) {
   .cockpit-buttons {
@@ -2457,18 +2531,21 @@ button {
   }
 
   .bubble-btn.mode-toggle {
-    min-height: 46px;
+    min-height: 38px;
   }
 
   .fish-sliders {
-    width: min(97vw, 390px);
-    gap: 8px;
-    padding: 7px 8px;
+    width: min(94vw, 420px);
+    padding: 7px 9px;
   }
 
-  .fish-slider-column {
-    width: 60px;
-    grid-template-rows: auto 64px auto;
+  .zoom-only-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .zoom-panel-body {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 7px;
   }
 
   .fish-sliders .ear-toggle {
@@ -2482,15 +2559,15 @@ button {
   }
 
   .odysseo-cockpit .mode-toggle {
-    min-width: 84px;
-    padding-inline: 10px;
+    min-width: 74px;
+    padding-inline: 8px;
   }
 }
 
 .export-status {
   position: fixed;
   left: 50%;
-  bottom: 168px;
+  bottom: 124px;
   transform: translateX(-50%);
   z-index: 95;
   display: flex;
@@ -2514,7 +2591,7 @@ button {
 
 .odysseo-tools {
   display: grid;
-  gap: 7px;
+  gap: 4px;
   width: min(94vw, 430px);
   margin: 0 auto;
 }
@@ -2522,16 +2599,16 @@ button {
 .tool-row {
   display: flex;
   justify-content: center;
-  gap: 7px;
+  gap: 5px;
   flex-wrap: wrap;
 }
 
 .primary-tools .bubble-btn {
-  min-width: 88px;
+  min-width: 76px;
 }
 
 .trace-tools {
-  padding: 5px;
+  padding: 3px;
   border-radius: 999px;
   background: rgba(15, 23, 42, 0.42);
   border: 1px solid rgba(125, 211, 252, 0.14);
@@ -2539,9 +2616,9 @@ button {
 
 .tool-chip {
   width: auto;
-  min-width: 74px;
-  padding-inline: 10px;
-  font-size: 0.78rem;
+  min-width: 66px;
+  padding-inline: 8px;
+  font-size: 0.72rem;
 }
 
 .tool-chip.danger {
@@ -2806,13 +2883,13 @@ button {
 .echostory-hud {
   position: fixed;
   left: 50%;
-  bottom: 84px;
+  bottom: 62px;
   transform: translateX(-50%);
   z-index: 16;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 8px;
+  padding: 3px 7px;
   border-radius: 999px;
   background: rgba(2, 6, 23, 0.42);
   border: 1px solid rgba(148, 163, 184, 0.2);
@@ -2820,7 +2897,7 @@ button {
 }
 
 .echostory-chip {
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1;
   color: rgba(226, 232, 240, 0.82);
   letter-spacing: 0.02em;

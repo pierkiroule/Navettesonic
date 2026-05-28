@@ -4,7 +4,7 @@ import { useSoonPointer } from "./soon/useSoonPointer.js";
 import RadialMenu from "./RadialMenu.jsx";
 import { getAudioTuning, setAudioTuning } from "../core/audioEngine.js";
 import { ARENA_INNER_BOUNDARY_INSET, MEMBRANE_LEVEL_MULTIPLIERS } from "../core/constants.js";
-import { isOrganicAmbienceActive, toggleOrganicAmbience } from "../core/organicAmbienceEngine.js";
+import { CONTOUR_MUSIC_URL, isOrganicAmbienceActive, selectContourMusicTrack } from "../core/organicAmbienceEngine.js";
 
 
 export default function SoonCanvas({
@@ -357,10 +357,10 @@ export default function SoonCanvas({
 
   const handleOrganicAmbienceToggle = async () => {
     try {
-      const next = await toggleOrganicAmbience();
+      const next = await selectContourMusicTrack();
       setOrganicAmbienceActive(next);
     } catch (error) {
-      console.warn("Impossible de démarrer l'ambiance organique Tone.js/Omnitone", error);
+      console.warn("Impossible de sélectionner la piste musicale du contour", error);
       setOrganicAmbienceActive(false);
     }
   };
@@ -386,8 +386,8 @@ export default function SoonCanvas({
           opacity: organicAmbienceButton.ready ? 1 : 0,
         }}
         onClick={handleOrganicAmbienceToggle}
-        aria-label="Activer ou couper l'ambiance musicale organique"
-        title={organicAmbienceActive ? "Couper ambiance organique" : "Activer ambiance organique"}
+        aria-label="Sélectionner la piste MP3 musicale du contour"
+        title={organicAmbienceActive ? `Piste sélectionnée : ${CONTOUR_MUSIC_URL}` : "Sélectionner musicsoon.mp3 pour les tours de contour"}
       >
         🎵
       </button>
@@ -450,8 +450,6 @@ export default function SoonCanvas({
           onClose={() => setFishMenu(null)}
           items={[
             { id: "depth", label: "Profondeur" },
-            { id: "bubbles", label: `Bulles ${bubblesEnabled ? "ON" : "OFF"}` },
-            { id: "intensity", label: "Intensité bulles" },
             { id: "resonance", label: `Résonance ${Math.round(audioTuning.resonance * 100)}%` },
             { id: "detect", label: `Portée ${audioTuning.detection.toFixed(2)}x` },
             { id: "contrast", label: `Relief ${audioTuning.depthSeparation.toFixed(2)}x` },
@@ -461,8 +459,6 @@ export default function SoonCanvas({
           ]}
           onSelect={(item) => {
             if (item.id === "depth") onSetFishDepth?.(((Math.round(fish?.depth || 1) % 3) + 1));
-            if (item.id === "bubbles") onToggleBubbles?.();
-            if (item.id === "intensity") onSetBubblesIntensity?.(Math.min(2, (bubblesIntensity || 1) + 0.25));
             if (item.id === "resonance") {
               const next = audioTuning.resonance >= 0.95 ? 0 : audioTuning.resonance + 0.1;
               setAudioTuning({ resonance: next });

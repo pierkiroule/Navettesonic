@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import SidePanel from "../components/SidePanel.jsx";
 import SoonCanvas from "../components/SoonCanvas.jsx";
 import Profile from "./Profile.jsx";
-import BubbleBucketsMenu from "../components/BubbleBucketsMenu.jsx";
 import { useSoonStore } from "../store/useSoonStore.js";
 import { renderImmersiveJourney } from "../core/immersiveExporter.js";
 import { buildEchostoryText, buildStoryTimeline, buildPathStarsFromTimeline } from "../core/echostory/echostoryBuilder.js";
@@ -25,11 +24,7 @@ import {
 } from "../core/uiState.js";
 
 
-const SPEED_BY_LEVEL = {
-  1: 0.6,
-  2: 1.15,
-  3: 1.7,
-};
+const SWIM_SPEED = 1.15;
 const ECHOSTORY_VOICE_BASE_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/sooncut";
 
 export default function SoonApp({ onBack }) {
@@ -37,22 +32,19 @@ export default function SoonApp({ onBack }) {
   const [interactionMode, setInteractionMode] = useState("swim");
   const [odysseoMode, setOdysseoMode] = useState(ODYSSEO_MODE_TRACE);
   const [viewZoom, setViewZoom] = useState(1);
-  const [swimSpeed, setSwimSpeed] = useState(1.15);
-  const [swimSpeedLevel, setSwimSpeedLevel] = useState(2);
   const [isTravelPlaying, setIsTravelPlaying] = useState(false);
   const [contourPlaybackPaused, setContourPlaybackPaused] = useState(false);
   const [editorOpenKey, setEditorOpenKey] = useState(0);
   const UNIFIED_DEPTH = 1;
   const [exportStatus, setExportStatus] = useState("");
   const [exportUrl, setExportUrl] = useState(null);
-  const [bubblesEnabled, setBubblesEnabled] = useState(true);
+  const [bubblesEnabled, setBubblesEnabled] = useState(false);
   const [bubblesIntensity, setBubblesIntensity] = useState(1);
   const [bubbleBucketsOpen, setBubbleBucketsOpen] = useState(false);
-  const [fishCockpitFolded, setFishCockpitFolded] = useState(false);
   const speedBoostUntilRef = useRef(0);
   const plumeTraceActiveRef = useRef(false);
   const plumeLastPointRef = useRef(null);
-  const [soonTouchMode, setSoonTouchMode] = useState("bubble");
+  const [soonTouchMode, setSoonTouchMode] = useState("plume");
 
   const {
     mode,
@@ -184,16 +176,6 @@ export default function SoonApp({ onBack }) {
     }
   };
 
-  useEffect(() => {
-    const closestLevel = [1, 2, 3].reduce((best, level) => (
-      Math.abs(SPEED_BY_LEVEL[level] - swimSpeed) < Math.abs(SPEED_BY_LEVEL[best] - swimSpeed)
-        ? level
-        : best
-    ), 2);
-    setSwimSpeedLevel(closestLevel);
-  }, [swimSpeed]);
-
-
   const flowStep = useMemo(() => {
     const starCount = echostory?.collectedStars?.length || 0;
     const hasPath = Array.isArray(odysseoPath) && odysseoPath.length >= 8;
@@ -202,7 +184,7 @@ export default function SoonApp({ onBack }) {
       return {
         key: "compo",
         title: "1. Composer",
-        tip: "Choisissez vos bulles et cueillez vos étoiles vocales.",
+        tip: "Cueillez les étoiles vocales pour composer.",
       };
     }
     if (!hasPath) {
@@ -428,6 +410,54 @@ export default function SoonApp({ onBack }) {
 
   
 
+  const handleFullArenaView = () => {
+    setViewZoom(0);
+    recenterFish();
+  };
+
+  const renderZoomControl = () => (
+    <div className="tool-row fish-tools">
+      <div className="fish-sliders fish-sliders-layout zoom-only-panel">
+        <div className="zoom-panel-header">
+          <span className="slider-label slider-label-top">🔍 Zoom arène</span>
+          <strong className="zoom-value">{viewZoom.toFixed(1)}×</strong>
+        </div>
+
+        <div className="zoom-panel-body">
+          <label className="fish-slider-row horizontal zoom-only" htmlFor="zoom-slider-horizontal">
+            <span className="sr-only">Zoom arène</span>
+            <div className="fish-slider-horizontal-track zoom-track">
+              <span className="zoom-bound" aria-hidden="true">−</span>
+              <input
+                id="zoom-slider-horizontal"
+                className="slim-horizontal-range"
+                type="range"
+                min="0"
+                max="2"
+                step="0.05"
+                value={viewZoom}
+                onChange={(event) => setViewZoom(Number(event.target.value))}
+                aria-label="Zoom arène"
+              />
+              <span className="zoom-bound" aria-hidden="true">+</span>
+            </div>
+          </label>
+
+          <button
+            type="button"
+            className="zoom-full-arena-btn"
+            onClick={handleFullArenaView}
+            title="Recentrer automatiquement en vue totale de l’arène"
+            aria-label="Recentrer automatiquement en vue totale de l’arène"
+          >
+            <span aria-hidden="true">◎</span>
+            Vue totale
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   const handleComposeAndLaunchTraversal = () => {
     const currentLines = echostory?.storyTimeline?.length
       ? echostory.storyTimeline.map((line) => ({ id: line.id, text: line.text }))
@@ -480,7 +510,7 @@ export default function SoonApp({ onBack }) {
         mode={mode}
         interactionMode={isOdysseo && odysseoTool === "depth" ? "circuit" : "swim"}
         odysseoMode={odysseoMode}
-        bubbles={bubbles}
+        bubbles={[]}
         fish={fish}
         selectedBubbleId={selectedBubbleId}
         traceCircuit={traceCircuit}
@@ -494,7 +524,7 @@ export default function SoonApp({ onBack }) {
         onFishTarget={(x, y, arenaRadius) => setFishTarget(x, y, arenaRadius)}
         onTickFish={({ arenaRadius } = {}) => {
           const boosted = Date.now() < speedBoostUntilRef.current;
-          const effectiveSwimSpeed = boosted ? swimSpeed * 1.8 : swimSpeed;
+          const effectiveSwimSpeed = boosted ? SWIM_SPEED * 1.8 : SWIM_SPEED;
           if (isOdysseo) {
             if (isTravelPlaying) {
               if (contourPlaybackPaused) return;
@@ -556,7 +586,7 @@ export default function SoonApp({ onBack }) {
         onSelectBeacon={selectBeacon}
         onMoveBeacon={moveBeacon}
         onMoveBubble={(id, pos) => updateBubble(id, pos)}
-        onAddBubble={addBubble}
+        onAddBubble={() => {}}
         onAddPathPoint={addPathPoint}
         onAddOdysseoPathPoint={addOdysseoPathPoint}
         onAddOdysseoDepthMarker={(x, y) => {
@@ -572,9 +602,9 @@ export default function SoonApp({ onBack }) {
         gamePaused={gamePaused}
         pendingBlobAction={pendingBlobAction}
         arenaBlob={arenaBlob}
-        onToggleBubbles={() => setBubblesEnabled((v) => !v)}
-        onSetBubblesIntensity={setBubblesIntensity}
-        onResetFishContext={() => { setBubblesEnabled(true); setBubblesIntensity(1); recenterFish(); }}
+        onToggleBubbles={() => {}}
+        onSetBubblesIntensity={() => {}}
+        onResetFishContext={() => { recenterFish(); }}
         onToggleMembraneSide={toggleMembraneSide}
         onBlobAction={applyBlobAction}
         onSetFishDepth={setFishDepth}
@@ -612,8 +642,8 @@ export default function SoonApp({ onBack }) {
 
       {isOdysseo && (
         <section className="echostory-hud" aria-live="polite">
-          <span className="echostory-chip">🫧 déplacer/pousser/écouter • 🪶 tisser des liens entre étoiles.</span>
-          <span className="echostory-chip">En mode 🪶, les étoiles ne sont plus récoltées: on tisse une chronologie linéaire.</span>
+          <span className="echostory-chip">⭐ tisser des liens entre étoiles • 👂 écouter la traîne.</span>
+          <span className="echostory-chip">En mode ⭐, les étoiles construisent une chronologie linéaire.</span>
         </section>
       )}
 
@@ -687,120 +717,10 @@ export default function SoonApp({ onBack }) {
                 </button>
               </div>
 
-              <div className="tool-row fish-tools">
-                <div className={`fish-sliders fish-sliders-layout ${fishCockpitFolded ? "folded" : ""}`}>
-                  <label className="fish-slider-row horizontal" htmlFor="zoom-slider-horizontal">
-                    <div className="fish-slider-actions">
-                      <button
-                        type="button"
-                        className="bubble-btn mode-toggle"
-                        onClick={handleOpenBubbleBuckets}
-                        title="🫧 Déclenchement tactile"
-                        aria-label="Ouvrir l’éditeur des bulles sonores"
-                      >
-                        🫧
-                      </button>
-                    </div>
-                    <span className="slider-label slider-label-top">🔍 Zoom</span>
-                    <div className="fish-slider-horizontal-track">
-                      <input
-                        id="zoom-slider-horizontal"
-                        className="slim-horizontal-range"
-                        type="range"
-                        min="0"
-                        max="2"
-                        step="0.05"
-                        value={viewZoom}
-                        onChange={(event) => setViewZoom(Number(event.target.value))}
-                      />
-                      <span className="slider-value">{viewZoom.toFixed(1)}</span>
-                    </div>
-                  </label>
-
-                  <label className="fish-slider-column" htmlFor="speed-slider-vertical">
-                    <span className="slider-label">⚡ Vitesse</span>
-                    <input
-                      id="speed-slider-vertical"
-                      className="slim-vertical-range speed"
-                      type="range"
-                      min="1"
-                      max="3"
-                      step="1"
-                      value={swimSpeedLevel}
-                      onChange={(event) => { const level = Number(event.target.value); setSwimSpeedLevel(level); setSwimSpeed(SPEED_BY_LEVEL[level]); }}
-                    />
-                    <span className="slider-value">{swimSpeedLevel}</span>
-                  </label>
-
-                  <button
-                    type="button"
-                    className="bubble-btn fish-cockpit-fold-toggle"
-                    onClick={() => setFishCockpitFolded((value) => !value)}
-                    aria-label={fishCockpitFolded ? "Déplier le mini cockpit" : "Replier le mini cockpit"}
-                    title={fishCockpitFolded ? "Déplier" : "Replier"}
-                  >
-                    {fishCockpitFolded ? "▾" : "▴"}
-                  </button>
-                </div>
-              </div>
+              {renderZoomControl()}
             </div>
-                    ) : (
-          <div className="tool-row fish-tools">
-              <div className={`fish-sliders fish-sliders-layout ${fishCockpitFolded ? "folded" : ""}`}>
-                  <label className="fish-slider-row horizontal" htmlFor="zoom-slider-horizontal">
-                  <div className="fish-slider-actions">
-                    <button
-                      type="button"
-                      className={`bubble-btn mode-toggle ${soonTouchMode === "bubble" ? "active" : ""}`}
-                      onClick={() => setSoonTouchMode("bubble")}
-                      title="Mode 🫧 balader, pousser, sans récolter"
-                      aria-label="Ouvrir l’éditeur des bulles sonores"
-                    >
-                      🫧
-                    </button>
-                  </div>
-                  <span className="slider-label slider-label-top">🔍 Zoom</span>
-                  <div className="fish-slider-horizontal-track">
-                    <input
-                      id="zoom-slider-horizontal"
-                      className="slim-horizontal-range"
-                      type="range"
-                      min="0"
-                      max="2"
-                      step="0.05"
-                      value={viewZoom}
-                      onChange={(event) => setViewZoom(Number(event.target.value))}
-                    />
-                    <span className="slider-value">{viewZoom.toFixed(1)}</span>
-                  </div>
-                </label>
-
-                <label className="fish-slider-column" htmlFor="speed-slider-vertical">
-                  <span className="slider-label">⚡ Vitesse</span>
-                  <input
-                    id="speed-slider-vertical"
-                    className="slim-vertical-range speed"
-                    type="range"
-                    min="1"
-                    max="3"
-                    step="1"
-                    value={swimSpeedLevel}
-                    onChange={(event) => { const level = Number(event.target.value); setSwimSpeedLevel(level); setSwimSpeed(SPEED_BY_LEVEL[level]); }}
-                  />
-                  <span className="slider-value">{swimSpeedLevel}</span>
-                </label>
-
-                <button
-                  type="button"
-                  className="bubble-btn fish-cockpit-fold-toggle"
-                  onClick={() => setFishCockpitFolded((value) => !value)}
-                  aria-label={fishCockpitFolded ? "Déplier le mini cockpit" : "Replier le mini cockpit"}
-                  title={fishCockpitFolded ? "Déplier" : "Replier"}
-                >
-                  {fishCockpitFolded ? "▾" : "▴"}
-                </button>
-              </div>
-            </div>
+          ) : (
+            renderZoomControl()
           )}
         </div>
       </div>
@@ -810,21 +730,12 @@ export default function SoonApp({ onBack }) {
           <div className="mode-switch-pill">
             <button
               type="button"
-              className={`mode-switch-button ${soonTouchMode === "bubble" ? "active" : ""}`}
-              onClick={() => setSoonTouchMode("bubble")}
-              aria-pressed={soonTouchMode === "bubble"}
-              title="Mode 🫧 : pousser bulles/étoiles, écouter sans récolter"
-            >
-              🫧 Mode balade
-            </button>
-            <button
-              type="button"
               className={`mode-switch-button ${soonTouchMode === "plume" ? "active" : ""}`}
               onClick={() => setSoonTouchMode("plume")}
               aria-pressed={soonTouchMode === "plume"}
-              title="Mode 🪶 récolte sur traîne"
+              title="Mode ⭐ tracé entre étoiles"
             >
-              🪶 Mode récolte
+              ⭐ Mode tracé
             </button>
             <button
               type="button"
@@ -851,13 +762,6 @@ export default function SoonApp({ onBack }) {
       )}
 
 
-
-      <BubbleBucketsMenu
-        open={bubbleBucketsOpen}
-        bubbles={bubbles}
-        onClose={() => setBubbleBucketsOpen(false)}
-        onValidate={handleApplyBubbleBuckets}
-      />
 
       <SidePanel
         mode={mode}
