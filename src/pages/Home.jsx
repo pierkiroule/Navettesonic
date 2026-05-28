@@ -75,7 +75,7 @@ export default function Home({ onEnter }) {
           )}
         </div>
 
-        <h1>L’odyssée sonore du poisson-plume</h1>
+        <h1>Écho•°Hypnose d'un Poisson-Plume</h1>
 
         <p className="home-lead">
           Compose un paysage d’écoute. Récolte des lucioles de résonance.
