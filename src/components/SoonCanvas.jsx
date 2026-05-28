@@ -66,6 +66,7 @@ export default function SoonCanvas({
   const [audioTuning, setAudioTuningState] = useState(() => getAudioTuning());
   const [showSensitivitySlider, setShowSensitivitySlider] = useState(false);
   const [contourPlayButton, setContourPlayButton] = useState({ visible: false, x: 0, y: 0 });
+  const [contourRideDurationMs, setContourRideDurationMs] = useState(90000);
 
   const cameraRef = useRef({
     x: 0,
@@ -303,10 +304,25 @@ export default function SoonCanvas({
     fishState.vx = 0;
     fishState.vy = 0;
     fishState.angle = 0;
-    current.contourRide = { active: true, startedAt: now, baseAngle: -Math.PI / 2 };
+    current.contourRide = {
+      active: true,
+      startedAt: now,
+      baseAngle: -Math.PI / 2,
+      durationMs: contourRideDurationMs,
+    };
     current.zenithStar = { ...(current.zenithStar || {}), x: zenith.x, y: zenith.y, radius: 52, armed: false, hitAt: now };
     setContourPlayButton((prev) => ({ ...prev, visible: false }));
   };
+
+  const contourDurationOptions = [
+    { value: 30000, label: "30 s" },
+    { value: 60000, label: "1 min" },
+    { value: 90000, label: "1 min 30" },
+    { value: 120000, label: "2 min" },
+    { value: 180000, label: "3 min" },
+    { value: 240000, label: "4 min" },
+    { value: 300000, label: "5 min" },
+  ];
 
   return (
     <div className="soon-canvas-shell">
@@ -319,16 +335,32 @@ export default function SoonCanvas({
         onPointerCancel={handlePointerUp}
       />
       {contourPlayButton.visible ? (
-        <button
-          type="button"
-          className="contour-play-btn"
+        <div
+          className="contour-play-controls"
           style={{ left: `${contourPlayButton.x}px`, top: `${contourPlayButton.y}px` }}
-          onClick={handleContourPlayClick}
-          aria-label="Lancer le tour de contour"
-          title="Play tour de piste"
         >
-          ▶
-        </button>
+          <button
+            type="button"
+            className="contour-play-btn"
+            onClick={handleContourPlayClick}
+            aria-label="Lancer le tour de contour"
+            title="Play tour de piste"
+          >
+            ▶
+          </button>
+          <label className="contour-duration-wrap" aria-label="Durée du tour">
+            <span>Durée</span>
+            <select
+              className="contour-duration-select"
+              value={contourRideDurationMs}
+              onChange={(event) => setContourRideDurationMs(Number(event.target.value))}
+            >
+              {contourDurationOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </label>
+        </div>
       ) : null}
       {semioseVideo?.url ? (
         <div

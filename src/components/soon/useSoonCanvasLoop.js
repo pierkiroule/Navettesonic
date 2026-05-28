@@ -29,7 +29,7 @@ const STAR_PUSH_MAX_STEP = 28;
 const STAR_EDGE_STICK_THRESHOLD = 48;
 const STAR_EDGE_STICK_RELEASE = 86;
 
-const CONTOUR_RIDE_DURATION_MS = 9000;
+const CONTOUR_RIDE_DURATION_MS = 90000;
 const CONTOUR_RIDE_ENTRY_THRESHOLD = 52;
 const ZENITH_STAR_REARM_DELAY_MS = 1800;
 
@@ -104,7 +104,8 @@ function updateContourRide(current = {}, arenaRadius = 1200, now = performance.n
   }
 
   const elapsed = Math.max(0, now - ride.startedAt);
-  const progress = Math.min(1, elapsed / CONTOUR_RIDE_DURATION_MS);
+  const rideDurationMs = Number.isFinite(ride?.durationMs) ? ride.durationMs : CONTOUR_RIDE_DURATION_MS;
+  const progress = Math.min(1, elapsed / Math.max(1000, rideDurationMs));
   const angle = ride.baseAngle + progress * Math.PI * 2;
   const contourRadius = getContourSnapRadius(current, angle);
   fish.x = Math.cos(angle) * contourRadius;
