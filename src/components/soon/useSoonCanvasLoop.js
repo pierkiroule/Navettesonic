@@ -23,9 +23,9 @@ import {
 
 
 const ECHOSTORY_VOICE_BASE_URL = "https://qyffktrggapfzlmmlerq.supabase.co/storage/v1/object/public/Soonbucket/sooncut";
-const CONTACT_PUSH_DISTANCE = 34;
-const STAR_PUSH_SMOOTHING = 0.22;
-const STAR_PUSH_MAX_STEP = 12;
+const CONTACT_PUSH_DISTANCE = 58;
+const STAR_PUSH_SMOOTHING = 0.52;
+const STAR_PUSH_MAX_STEP = 28;
 const STAR_EDGE_STICK_THRESHOLD = 48;
 const STAR_EDGE_STICK_RELEASE = 86;
 
@@ -255,8 +255,8 @@ function pushNearbyEchostoryStars(current) {
     }
     star.x = (star.x || 0) + (star.vx || 0);
     star.y = (star.y || 0) + (star.vy || 0);
-    star.vx *= 0.88;
-    star.vy *= 0.88;
+    star.vx *= 0.97;
+    star.vy *= 0.97;
 
     const distCenter = Math.hypot(star.x || 0, star.y || 0);
     if (distCenter >= contourSnapThreshold) {
@@ -266,24 +266,24 @@ function pushNearbyEchostoryStars(current) {
       star.contourAngle = angle;
       star.x = Math.cos(angle) * contourRadius;
       star.y = Math.sin(angle) * contourRadius;
-      star.vx = 0;
-      star.vy = 0;
+      star.vx *= 0.92;
+      star.vy *= 0.92;
     } else if (star.attachedToContour && distCenter >= contourReleaseThreshold) {
       const angle = Number.isFinite(star.contourAngle) ? star.contourAngle : Math.atan2(star.y || 0, star.x || 0);
       const contourRadius = getContourSnapRadius(current, angle);
       star.contourAngle = angle;
       star.x = Math.cos(angle) * contourRadius;
       star.y = Math.sin(angle) * contourRadius;
-      star.vx = 0;
-      star.vy = 0;
+      star.vx *= 0.92;
+      star.vy *= 0.92;
     } else if (star.attachedToContour) {
       const angle = Number.isFinite(star.contourAngle) ? star.contourAngle : Math.atan2(star.y || 0, star.x || 0);
       const contourRadius = getContourSnapRadius(current, angle);
       star.contourAngle = angle;
       star.x = Math.cos(angle) * contourRadius;
       star.y = Math.sin(angle) * contourRadius;
-      star.vx = 0;
-      star.vy = 0;
+      star.vx *= 0.92;
+      star.vy *= 0.92;
     }
   });
 }
