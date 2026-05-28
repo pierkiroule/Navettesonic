@@ -12,6 +12,7 @@ import { updateEcosystemFx } from "../../core/ecosystemFx.js";
 import { updateBubbleAudioTriggers } from "../../core/soonAudioTriggers.js";
 import { drawScene } from "../../core/soonRenderers.js";
 import { getMembraneRadiusForLevel } from "../../core/fishNavigationEngine.js";
+import { setContourMusicLoopActive } from "../../core/organicAmbienceEngine.js";
 import { resetCanvasPaintState } from "../../core/canvasState.js";
 import { ARENA_INNER_BOUNDARY_INSET, MEMBRANE_LEVEL_MULTIPLIERS } from "../../core/constants.js";
 import { getBlobRadiusAtAngle } from "../../core/blobArena.js";
@@ -310,6 +311,7 @@ export function useSoonCanvasLoop({
   useEffect(() => {
     let frame = 0;
     let wasEditMode = false;
+    let wasContourRideActive = false;
     const postFxCanvas = document.createElement("canvas");
     const postFxCtx = postFxCanvas.getContext("2d");
     const CAMERA_FOLLOW_SMOOTHING = 0.22;
@@ -401,6 +403,12 @@ export function useSoonCanvasLoop({
       updateContourRide(next, arenaRef.current.radius, performance.now());
       pushNearbyEchostoryStars(next);
       const isContourRideActive = Boolean(next?.contourRide?.active);
+      if (isContourRideActive !== wasContourRideActive) {
+        wasContourRideActive = isContourRideActive;
+        setContourMusicLoopActive(isContourRideActive).catch((error) => {
+          console.warn("Impossible de synchroniser la piste musicale du contour", error);
+        });
+      }
       const fishDepth = Math.round(next?.fish?.depth || 1);
       (next?.bubbles || []).forEach((bubble) => {
         const d = Math.hypot((bubble.x || 0) - (next?.fish?.x || 0), (bubble.y || 0) - (next?.fish?.y || 0));

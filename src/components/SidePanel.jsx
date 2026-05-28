@@ -72,9 +72,8 @@ export default function SidePanel({
           {mode === SOON_MODE_COMPO && !selectedBubble && (
             <section className="help-card compact-help">
               <p>
-                Double-tape dans l’arène pour créer une bulle sonore.
-                Sélectionne une bulle pour la régler. Le poisson-plume peut
-                récolter les lucioles avec sa traîne.
+                L’arène ne garde plus que les étoiles sonores à cueillir.
+                Trace ensuite un parcours pour les relier en chronologie.
               </p>
               <ul>
                 <li>Le poisson-plume peut pousser légèrement les poissons-roses.</li>
