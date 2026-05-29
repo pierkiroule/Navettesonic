@@ -9,6 +9,7 @@ import {
   panEditCamera,
   zoomEditCameraAt,
 } from "../../core/soonCamera.js";
+import { ECHOSTORY_MUSIC_CORE_ID, makeLinkId } from "../../core/echostory/echostoryConstellation.js";
 
 export function useSoonPointer({
   canvasRef,
@@ -28,6 +29,8 @@ export function useSoonPointer({
   onDepthToast,
   onToggleContourPlayback,
   onMoveEchostoryStar,
+  onToggleEchostoryLink,
+  activeContactsRef,
 }) {
   const MOVE_CANCEL = 12;
   const DOUBLE_TAP_MS = 420;
@@ -195,6 +198,57 @@ export function useSoonPointer({
     );
   }
 
+
+  function getCoreContactRadius() {
+    return 75;
+  }
+
+  function getPhysicalStarRadius(star) {
+    return Math.max(8, Number.isFinite(star?.r) ? star.r : 34);
+  }
+
+  function isContacting(a, b) {
+    if (!a || !b) return false;
+    const ar = getPhysicalStarRadius(a);
+    const br = b.id === ECHOSTORY_MUSIC_CORE_ID ? getCoreContactRadius() : getPhysicalStarRadius(b);
+    return Math.hypot((a.x || 0) - (b.x || 0), (a.y || 0) - (b.y || 0)) <= ar + br;
+  }
+
+  function updateDragContacts(draggedStar) {
+    if (!draggedStar?.id || draggedStar.expired) return;
+    const contactSet = activeContactsRef?.current || (pointerRef.current.activeContactsRef ||= new Set());
+    const candidates = [
+      { id: ECHOSTORY_MUSIC_CORE_ID, x: 0, y: 0, r: getCoreContactRadius() },
+      ...getEchostoryStars().filter((star) => star?.id && star.id !== draggedStar.id && !star.expired && !star.expiring),
+    ];
+    const currentlyTouching = new Set();
+
+    candidates.forEach((candidate) => {
+      const pairId = makeLinkId(draggedStar.id, candidate.id);
+      if (!isContacting(draggedStar, candidate)) return;
+      currentlyTouching.add(pairId);
+      if (contactSet.has(pairId)) return;
+      contactSet.add(pairId);
+      const measuredLength = Math.hypot((draggedStar.x || 0) - (candidate.x || 0), (draggedStar.y || 0) - (candidate.y || 0));
+      onToggleEchostoryLink?.(draggedStar.id, candidate.id, {
+        restLength: Math.max(42, measuredLength),
+        kind: candidate.id === ECHOSTORY_MUSIC_CORE_ID ? "music-core" : "branch",
+        now: getNow(),
+      });
+    });
+
+    [...contactSet].forEach((pairId) => {
+      const endpoints = pairId.split("__");
+      if (!endpoints.includes(draggedStar.id)) return;
+      if (!currentlyTouching.has(pairId)) contactSet.delete(pairId);
+    });
+  }
+
+  function clearDragContacts() {
+    const contactSet = activeContactsRef?.current || pointerRef.current.activeContactsRef;
+    contactSet?.clear?.();
+  }
+
   function publishEchostoryStar(star, patch) {
     if (!star?.id) return;
     onMoveEchostoryStar?.(star.id, patch);
@@ -240,7 +294,7 @@ export function useSoonPointer({
     rememberTapScreen(event, `star:${star.id}`);
 
     const now = getNow();
-    return updateEchostoryStarForDrag(star, {
+    const started = updateEchostoryStarForDrag(star, {
       attachedToContour: false,
       vx: 0,
       vy: 0,
@@ -251,6 +305,8 @@ export function useSoonPointer({
       lastDraggedByTouchAt: now,
       draggingByTouch: true,
     });
+    updateDragContacts(star);
+    return started;
   }
 
   function moveActiveStar(event) {
@@ -279,7 +335,7 @@ export function useSoonPointer({
 
     logStarPointer("[star move]", activeStarId, next.x, next.y);
 
-    return updateEchostoryStarForDrag(star, {
+    const moved = updateEchostoryStarForDrag(star, {
       x: next.x,
       y: next.y,
       vx: 0,
@@ -289,6 +345,8 @@ export function useSoonPointer({
       selectedOnContour: false,
       draggingByTouch: true,
     });
+    updateDragContacts(star);
+    return moved;
   }
 
   function endStarDrag() {
@@ -303,6 +361,7 @@ export function useSoonPointer({
     pointerRef.current.activeStarId = null;
     pointerRef.current.activeStarPointerId = null;
     pointerRef.current.activeStarOffset = null;
+    clearDragContacts();
   }
 
   function finishActiveStarDrag(event) {

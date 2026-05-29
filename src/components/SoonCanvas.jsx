@@ -56,6 +56,7 @@ export default function SoonCanvas({
   contourPlaybackPaused = false,
   onToggleContourPlayback,
   onMoveEchostoryStar,
+  onToggleEchostoryLink,
 }) {
   const canvasRef = useRef(null);
   const [semioseVideo, setSemioseVideo] = useState(null);
@@ -78,6 +79,8 @@ export default function SoonCanvas({
   const arenaRef = useRef({
     radius: 1200,
   });
+
+  const activeContactsRef = useRef(new Set());
 
   const pointerRef = useRef({
     down: false,
@@ -231,6 +234,8 @@ export default function SoonCanvas({
     onOpenBeaconEditor,
     onToggleContourPlayback,
     onMoveEchostoryStar,
+    onToggleEchostoryLink,
+    activeContactsRef,
   });
 
   const cleanupPointerRef = useRef(cleanupPointer);

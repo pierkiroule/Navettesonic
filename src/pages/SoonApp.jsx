@@ -7,6 +7,7 @@ import { renderImmersiveJourney } from "../core/immersiveExporter.js";
 import { buildEchostoryText, buildStoryTimeline, buildPathStarsFromTimeline } from "../core/echostory/echostoryBuilder.js";
 import { tickEchostoryTraversal } from "../core/echostory/echostoryTraversalEngine.js";
 import { buildStarMp3Trace } from "../core/odysseoStarMp3Trace.js";
+import { toggleEchostoryLink } from "../core/echostory/echostoryConstellation.js";
 import { ECHOSTORY_SKELETONS } from "../data/echostorySkeletons.js";
 import {
   parseWorkflowFromHash,
@@ -550,6 +551,12 @@ export default function SoonApp({ onBack }) {
                 star?.id === id ? { ...star, ...patch } : star
               )),
             },
+          }));
+        }}
+        onToggleEchostoryLink={(fromId, toId, options = {}) => {
+          if (!fromId || !toId) return;
+          useSoonStore.setState((state) => ({
+            echostory: toggleEchostoryLink(state.echostory || {}, fromId, toId, options),
           }));
         }}
         onToggleContourPlayback={() => {
