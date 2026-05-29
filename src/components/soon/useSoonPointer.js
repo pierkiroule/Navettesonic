@@ -42,6 +42,39 @@ export function useSoonPointer({
       : Date.now();
   }
 
+  function shouldUseTouchFallback(event) {
+    return (
+      event?.pointerType === "touch" &&
+      typeof window !== "undefined" &&
+      "ontouchstart" in window
+    );
+  }
+
+  function removeTouchDragListeners() {
+    if (typeof window === "undefined") return;
+    const move = pointerRef.current.windowTouchMoveListener;
+    const end = pointerRef.current.windowTouchEndListener;
+    if (move) window.removeEventListener("touchmove", move);
+    if (end) {
+      window.removeEventListener("touchend", end);
+      window.removeEventListener("touchcancel", end);
+    }
+    pointerRef.current.windowTouchMoveListener = null;
+    pointerRef.current.windowTouchEndListener = null;
+  }
+
+  function bindTouchDragListeners() {
+    if (typeof window === "undefined") return;
+    removeTouchDragListeners();
+    const move = (event) => handleTouchMove(event);
+    const end = (event) => handleTouchEnd(event);
+    pointerRef.current.windowTouchMoveListener = move;
+    pointerRef.current.windowTouchEndListener = end;
+    window.addEventListener("touchmove", move, { passive: false });
+    window.addEventListener("touchend", end, { passive: false });
+    window.addEventListener("touchcancel", end, { passive: false });
+  }
+
   function getWorldFromEvent(event) {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -284,6 +317,7 @@ export function useSoonPointer({
   }
 
   function handlePointerDown(event) {
+    if (shouldUseTouchFallback(event)) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -345,6 +379,7 @@ export function useSoonPointer({
   }
 
   function handlePointerMove(event) {
+    if (shouldUseTouchFallback(event)) return;
     registerPointer(event);
 
     const current = stateRef.current;
@@ -458,6 +493,7 @@ export function useSoonPointer({
   }
 
   function handlePointerUp(event) {
+    if (shouldUseTouchFallback(event)) return;
     clearLongPressTimer();
     pointerRef.current.activePointers?.delete(event.pointerId);
 
@@ -498,6 +534,8 @@ export function useSoonPointer({
     const touch = getPrimaryTouch(event);
     if (!touch) return;
     event.preventDefault?.();
+    pointerRef.current.touchSequenceActive = true;
+    bindTouchDragListeners();
     handlePointerDown(touchToPointerEvent(touch, event));
   }
 
@@ -512,10 +550,14 @@ export function useSoonPointer({
     const touch = getPrimaryTouch(event) || { clientX: 0, clientY: 0 };
     event.preventDefault?.();
     handlePointerUp(touchToPointerEvent(touch, event));
+    pointerRef.current.touchSequenceActive = false;
+    removeTouchDragListeners();
   }
 
   function cleanupPointer() {
     clearLongPressTimer();
+    removeTouchDragListeners();
+    pointerRef.current.touchSequenceActive = false;
     pointerRef.current.activePointers?.clear();
     endStarDrag();
   }
