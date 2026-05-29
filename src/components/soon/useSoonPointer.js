@@ -35,6 +35,13 @@ export function useSoonPointer({
   const DOUBLE_TAP_MS = 420;
   const DOUBLE_TAP_DIST = 72;
   const LONG_PRESS_MS = 480;
+  const STAR_TOUCH_RADIUS = 64;
+
+  function getNow() {
+    return typeof performance !== "undefined" && typeof performance.now === "function"
+      ? performance.now()
+      : Date.now();
+  }
 
   function getWorldFromEvent(event) {
     const canvas = canvasRef.current;
@@ -106,6 +113,49 @@ export function useSoonPointer({
       x: event.clientX,
       y: event.clientY,
     });
+  }
+
+
+  function findEchostoryStarAt(point) {
+    if (stateRef.current?.mode !== "echostory" && stateRef.current?.mode !== "reso") return null;
+    const stars = [...(stateRef.current?.echostory?.stars || [])].reverse();
+
+    return (
+      stars
+        .filter((star) => star && !star.expired)
+        .filter((star) => {
+          const radius = Number.isFinite(star.r) ? star.r : 18;
+          return distance(star, point) <= Math.max(STAR_TOUCH_RADIUS, radius * 2.4);
+        })
+        .sort((a, b) => distance(a, point) - distance(b, point))[0] || null
+    );
+  }
+
+  function moveEchostoryStarWithPointer(star, point, options = {}) {
+    if (!star || star.expired) return false;
+    const now = getNow();
+    const offset = pointerRef.current.dragStarOffset || { x: 0, y: 0 };
+    const next = clampToCircle(
+      { x: point.x + offset.x, y: point.y + offset.y },
+      Math.max(40, (arenaRef.current.radius || 1200) - 42)
+    );
+    const previousX = Number.isFinite(star.x) ? star.x : next.x;
+    const previousY = Number.isFinite(star.y) ? star.y : next.y;
+
+    star.x = next.x;
+    star.y = next.y;
+    star.vx = (next.x - previousX) * 0.38;
+    star.vy = (next.y - previousY) * 0.38;
+    star.attachedToContour = false;
+    star.expiring = false;
+    star.pendingBreathChoice = false;
+    star.breathMenuOpenedAt = 0;
+    star.selectedOnContour = false;
+    star.lastPushedBySoonAt = now;
+    star.lastPushedByTouchAt = now;
+
+    onFishTarget?.(point.x, point.y, arenaRef.current.radius, { followImpact: true, immediate: Boolean(options.immediate) });
+    return true;
   }
 
 
@@ -242,11 +292,40 @@ export function useSoonPointer({
 
     const point = getSafeWorldFromEvent(event, { swimEdgeBoost: true });
     const current = stateRef.current;
+    const isEditMode = current.interactionMode === "edit";
+    const isCircuitMode = current.interactionMode === "circuit";
     if (current.mode === "reso") {
       const contourReaders = current.contourReaderHitZones || [];
       const hitReader = contourReaders.find((reader) => Math.hypot((reader.x || 0) - point.x, (reader.y || 0) - point.y) <= (reader.r || 24));
       if (hitReader) {
         onToggleContourPlayback?.();
+        return;
+      }
+    }
+
+    pointerRef.current.down = true;
+    pointerRef.current.pointerId = event.pointerId;
+    pointerRef.current.dragBubbleId = null;
+    pointerRef.current.pendingBubbleId = null;
+    pointerRef.current.dragBeaconId = null;
+    pointerRef.current.dragStarId = null;
+    pointerRef.current.dragStarOffset = null;
+    pointerRef.current.panEnabled = false;
+    pointerRef.current.panStart = null;
+    pointerRef.current.pinchDistance = null;
+    pointerRef.current.startPoint = point;
+
+    if (!isEditMode && !isCircuitMode && current.interactionMode === "swim") {
+      const hitStar = findEchostoryStarAt(point);
+      if (hitStar) {
+        pointerRef.current.dragStarId = hitStar.id || null;
+        pointerRef.current.dragStarOffset = {
+          x: (Number.isFinite(hitStar.x) ? hitStar.x : point.x) - point.x,
+          y: (Number.isFinite(hitStar.y) ? hitStar.y : point.y) - point.y,
+        };
+        onSelectBubble?.(null);
+        rememberTapScreen(event, `star:${hitStar.id || "anonymous"}`);
+        moveEchostoryStarWithPointer(hitStar, point, { immediate: true });
         return;
       }
     }
@@ -260,18 +339,6 @@ export function useSoonPointer({
         return;
       }
     }
-    const isEditMode = current.interactionMode === "edit";
-    const isCircuitMode = current.interactionMode === "circuit";
-
-    pointerRef.current.down = true;
-    pointerRef.current.pointerId = event.pointerId;
-    pointerRef.current.dragBubbleId = null;
-    pointerRef.current.pendingBubbleId = null;
-    pointerRef.current.dragBeaconId = null;
-    pointerRef.current.panEnabled = false;
-    pointerRef.current.panStart = null;
-    pointerRef.current.pinchDistance = null;
-    pointerRef.current.startPoint = point;
 
     if (isCircuitMode) {
       handleCircuitPointerDown(event, point, current);
@@ -349,6 +416,12 @@ export function useSoonPointer({
       start && Math.hypot(start.x - point.x, start.y - point.y) > MOVE_CANCEL;
     if (moved) clearLongPressTimer();
 
+    if (!isEditMode && !isCircuitMode && pointerRef.current.dragStarId) {
+      const stars = stateRef.current?.echostory?.stars || [];
+      const star = stars.find((item) => item?.id === pointerRef.current.dragStarId);
+      if (moveEchostoryStarWithPointer(star, point)) return;
+    }
+
     if ((isEditMode || isCircuitMode) && pointerRef.current.dragBeaconId) {
       onMoveBeacon?.(pointerRef.current.dragBeaconId, point.x, point.y);
       return;
@@ -420,6 +493,8 @@ export function useSoonPointer({
       pointerRef.current.dragBubbleId = null;
       pointerRef.current.pendingBubbleId = null;
       pointerRef.current.dragBeaconId = null;
+      pointerRef.current.dragStarId = null;
+      pointerRef.current.dragStarOffset = null;
       pointerRef.current.panEnabled = false;
       pointerRef.current.panStart = null;
       pointerRef.current.pinchDistance = null;
@@ -434,6 +509,8 @@ export function useSoonPointer({
   function cleanupPointer() {
     clearLongPressTimer();
     pointerRef.current.activePointers?.clear();
+    pointerRef.current.dragStarId = null;
+    pointerRef.current.dragStarOffset = null;
   }
 
   return {

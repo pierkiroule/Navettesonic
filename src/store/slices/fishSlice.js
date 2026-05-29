@@ -5,7 +5,7 @@ import { startFishTrailAt, addFishTrailPoint } from "../../core/fishPathTrail.js
 import { DEFAULT_ARENA_RADIUS } from "../soonInitialState.js";
 
 export const createFishSlice=(set,get)=>({
-setFishTarget:(x,y)=>{if(get().circuitAutopilot)return;set((s)=>({gamePaused:false,pendingBlobAction:null,fish:{...s.fish,targetX:x,targetY:y,vx:(s.fish?.vx||0)*0.35,vy:(s.fish?.vy||0)*0.35}}));},
+setFishTarget:(x,y,_arenaRadius,options={})=>{if(get().circuitAutopilot)return;const now=typeof performance!=="undefined"&&typeof performance.now==="function"?performance.now():Date.now();const followImpact=Boolean(options?.followImpact);set((s)=>({gamePaused:false,pendingBlobAction:null,fish:{...s.fish,targetX:x,targetY:y,vx:(s.fish?.vx||0)*(followImpact?0.18:0.35),vy:(s.fish?.vy||0)*(followImpact?0.18:0.35),touchFollowBoostUntil:followImpact?now+520:s.fish?.touchFollowBoostUntil}}));},
 recenterFish:()=>set((s)=>{const f=s.fish||{};const dx=-(f.x||0),dy=-(f.y||0),d=Math.hypot(dx,dy)||1,slow=Math.min(1,d/280)*0.85;return{circuitAutopilot:false,fish:{...f,targetX:0,targetY:0,vx:(dx/d)*slow,vy:(dy/d)*slow},circuitSegmentIndex:0,circuitSegmentT:0};}),
 setFishDepth:(depth)=>{set((s)=>s.circuitAutopilot?s:{fish:{...s.fish,depth:clampDepth(depth)}});saveState(get());},
 tickFish:({swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADIUS}={})=>set((s)=>{const next=tickFishEngine(s,{swimSpeed,arenaRadius});const prevArena=s.currentArenaId;const nextArena=next?.currentArenaId||prevArena;const transitionProgress=Number.isFinite(s.bubbleTransitionProgress)?s.bubbleTransitionProgress:1;

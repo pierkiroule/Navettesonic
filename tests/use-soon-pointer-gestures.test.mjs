@@ -69,8 +69,8 @@ test('long press en nage ne déclenche ni menu ni boost vitesse', async () => {
 });
 
 
-test('tap sur une étoile snappée pilote toujours Soon sans tissage manuel', () => {
-  const calls = { fishTarget: 0 };
+test('tap sur une étoile snappée la sélectionne directement et Soon suit le contact', () => {
+  const calls = { fishTarget: 0, options: [] };
   const stateRef = {
     current: {
       interactionMode: 'swim',
@@ -80,7 +80,7 @@ test('tap sur une étoile snappée pilote toujours Soon sans tissage manuel', ()
       circuitAutopilot: false,
       bubbles: [],
       echostory: {
-        stars: [{ id: 'star-1', x: 0, y: 0, r: 18, attachedToContour: true }],
+        stars: [{ id: 'star-1', x: 1160, y: 0, r: 18, attachedToContour: true }],
       },
     },
   };
@@ -95,13 +95,60 @@ test('tap sur une étoile snappée pilote toujours Soon sans tissage manuel', ()
     arenaRef: { current: { radius: 1200 } },
     pointerRef: { current: { activePointers: new Map() } },
     stateRef,
-    onFishTarget: () => { calls.fishTarget += 1; },
+    onFishTarget: (_x, _y, _r, options) => {
+      calls.fishTarget += 1;
+      calls.options.push(options);
+    },
+  });
+
+  pointerApi.handlePointerDown(event(1, 879, 500));
+
+  assert.equal(stateRef.current.echostory.stars[0].pendingBreathChoice, false);
+  assert.equal(stateRef.current.echostory.stars[0].attachedToContour, false);
+  assert.equal(calls.fishTarget, 1);
+  assert.equal(calls.options[0]?.followImpact, true);
+});
+
+
+test('glisser une étoile déplace directement sa position sous le doigt', () => {
+  const calls = { fishTarget: 0, last: null };
+  const stateRef = {
+    current: {
+      interactionMode: 'swim',
+      mode: 'echostory',
+      fish: { depth: 1 },
+      viewZoom: 0,
+      circuitAutopilot: false,
+      bubbles: [],
+      echostory: {
+        stars: [{ id: 'star-drag', x: 0, y: 0, r: 18, attachedToContour: false }],
+      },
+    },
+  };
+  const canvas = {
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
+    setPointerCapture: () => {},
+    releasePointerCapture: () => {},
+  };
+  const pointerApi = useSoonPointer({
+    canvasRef: { current: canvas },
+    cameraRef: { current: { x: 0, y: 0 } },
+    arenaRef: { current: { radius: 1200 } },
+    pointerRef: { current: { activePointers: new Map() } },
+    stateRef,
+    onFishTarget: (x, y, _r, options) => {
+      calls.fishTarget += 1;
+      calls.last = { x, y, options };
+    },
   });
 
   pointerApi.handlePointerDown(event(1, 500, 500));
+  pointerApi.handlePointerMove(event(1, 540, 500));
 
-  assert.equal(stateRef.current.echostory.stars[0].pendingBreathChoice, undefined);
-  assert.equal(calls.fishTarget, 1);
+  assert.ok(stateRef.current.echostory.stars[0].x > 110);
+  assert.equal(stateRef.current.echostory.stars[0].attachedToContour, false);
+  assert.equal(calls.fishTarget, 2);
+  assert.equal(calls.last.options?.followImpact, true);
 });
 
 
