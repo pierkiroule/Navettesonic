@@ -1,14 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { makeEchostoryStarBreathe, pushNearbyEchostoryStars } from '../src/components/soon/useSoonCanvasLoop.js';
-import { ECHOSTORY_MUSIC_CORE_ID } from '../src/core/echostory/echostoryConstellation.js';
+import { ECHOSTORY_MUSIC_CORE_ID, makeLinkId, toggleEchostoryLink } from '../src/core/echostory/echostoryConstellation.js';
 
 function stateWithStars(stars) {
   return {
     mode: 'echostory',
     arenaRadius: 1200,
     fish: { x: 0, y: -1168, vx: 0, vy: 0, depth: 1, arenaLevel: 0 },
-    echostory: { stars, constellationLinks: [] },
+    echostory: { stars, links: [], constellationLinks: [] },
   };
 }
 
@@ -75,53 +75,49 @@ test('Two unlinked interior stars do not create a constellation by themselves', 
   assert.equal(state.echostory.constellationLinks.length, 0);
 });
 
-test('Music core seeds the constellation and propagates links through connected stars', () => {
+test('Le contact toggle avec le core crée un lien non orienté dans echostory.links', () => {
   const state = stateWithStars([
     { id: 'star-1', x: 48, y: 0, r: 18, attachedToContour: false, previewPlayed: true },
-    { id: 'star-2', x: 104, y: 0, r: 18, attachedToContour: false, previewPlayed: true },
-    { id: 'star-3', x: 360, y: 0, r: 18, attachedToContour: false, previewPlayed: true },
   ]);
 
-  pushNearbyEchostoryStars(state, 2400);
+  state.echostory = toggleEchostoryLink(state.echostory, 'star-1', ECHOSTORY_MUSIC_CORE_ID, { restLength: 148, now: 2400 });
 
-  assert.ok(state.echostory.constellationLinks.some((link) => link.from === ECHOSTORY_MUSIC_CORE_ID || link.to === ECHOSTORY_MUSIC_CORE_ID));
-  assert.ok(state.echostory.constellationLinks.some((link) => [link.from, link.to].includes('star-1') && [link.from, link.to].includes('star-2')));
-  assert.ok(!state.echostory.constellationLinks.some((link) => [link.from, link.to].includes('star-3')));
-
-  state.echostory.stars[0].x = 1160;
-  state.echostory.stars[0].y = 0;
-  pushNearbyEchostoryStars(state, 2600);
-
-  assert.equal(state.echostory.constellationLinks.length, 0);
-  assert.equal(state.echostory.stars[0].attachedToContour, true);
-  assert.equal(state.echostory.stars[1].attachedToContour, true);
+  assert.deepEqual(state.echostory.links.map((link) => link.id), [makeLinkId('star-1', ECHOSTORY_MUSIC_CORE_ID)]);
+  assert.equal(state.echostory.links[0].kind, 'music-core');
+  assert.equal(state.echostory.stars[0].connectedToCore, true);
+  assert.deepEqual(state.echostory.coreConnectedStarIds, ['star-1']);
+  assert.equal(state.echostory.constellationLinks, state.echostory.links);
 });
 
-test('Music-connected stars link across a more forgiving touch distance', () => {
+test('Un second contact avec la même paire supprime le lien et déclenche une dissolution', () => {
+  const state = stateWithStars([
+    { id: 'star-1', x: 48, y: 0, r: 18, attachedToContour: false, previewPlayed: true },
+  ]);
+
+  state.echostory = toggleEchostoryLink(state.echostory, ECHOSTORY_MUSIC_CORE_ID, 'star-1', { restLength: 148, now: 2400 });
+  state.echostory = toggleEchostoryLink(state.echostory, 'star-1', ECHOSTORY_MUSIC_CORE_ID, { restLength: 148, now: 2500 });
+
+  assert.equal(state.echostory.links.length, 0);
+  assert.equal(state.echostory.stars[0].connectedToCore, false);
+  assert.equal(state.echostory.linkEffects.at(-1).type, 'remove');
+});
+
+test('Les connexions directes et indirectes au core sont recalculées après toggle', () => {
   const state = stateWithStars([
     { id: 'star-1', x: 80, y: 0, r: 18, attachedToContour: false, previewPlayed: true },
     { id: 'star-2', x: 214, y: 0, r: 18, attachedToContour: false, previewPlayed: true },
+    { id: 'star-3', x: 420, y: 0, r: 18, attachedToContour: false, previewPlayed: true },
   ]);
 
-  pushNearbyEchostoryStars(state, 2400);
+  state.echostory = toggleEchostoryLink(state.echostory, ECHOSTORY_MUSIC_CORE_ID, 'star-1', { restLength: 148, now: 2400 });
+  state.echostory = toggleEchostoryLink(state.echostory, 'star-1', 'star-2', { restLength: 132, now: 2450 });
+  pushNearbyEchostoryStars(state, 2500);
 
-  assert.ok(state.echostory.constellationLinks.some((link) => [link.from, link.to].includes(ECHOSTORY_MUSIC_CORE_ID)));
-  assert.ok(state.echostory.constellationLinks.some((link) => [link.from, link.to].includes('star-1') && [link.from, link.to].includes('star-2')));
-});
-
-test('Music-connected stars are pushed into an airy network layout', () => {
-  const state = stateWithStars([
-    { id: 'star-1', x: 48, y: 0, r: 18, attachedToContour: false, previewPlayed: true },
-    { id: 'star-2', x: 104, y: 0, r: 18, attachedToContour: false, previewPlayed: true },
-  ]);
-
-  pushNearbyEchostoryStars(state, 2400);
-
-  const coreLink = state.echostory.constellationLinks.find((link) => [link.from, link.to].includes(ECHOSTORY_MUSIC_CORE_ID));
-  const branchLink = state.echostory.constellationLinks.find((link) => [link.from, link.to].includes('star-1') && [link.from, link.to].includes('star-2'));
-  assert.ok(coreLink.restLength >= 148);
-  assert.ok(branchLink.restLength >= 132);
-  assert.ok(state.echostory.stars[1].vx > state.echostory.stars[0].vx);
+  assert.deepEqual(new Set(state.echostory.coreConnectedStarIds), new Set(['star-1', 'star-2']));
+  assert.equal(state.echostory.stars.find((star) => star.id === 'star-1').connectedToCore, true);
+  assert.equal(state.echostory.stars.find((star) => star.id === 'star-2').connectedToCore, true);
+  assert.equal(state.echostory.stars.find((star) => star.id === 'star-3').connectedToCore, false);
+  assert.ok(state.echostory.links.every((link) => link.id === makeLinkId(link.from, link.to)));
 });
 
 test('Soon can stretch a connected star link until it ruptures', () => {
@@ -130,13 +126,14 @@ test('Soon can stretch a connected star link until it ruptures', () => {
     { id: 'star-2', x: 20, y: 0, r: 18, attachedToContour: false, previewPlayed: true },
   ]);
   state.fish = { x: 500, y: 0, vx: 0, vy: 0, depth: 1, arenaLevel: 0 };
-  state.echostory.constellationLinks = [
-    { from: ECHOSTORY_MUSIC_CORE_ID, to: 'star-2', restLength: 148, kind: 'music-core' },
-    { from: 'star-1', to: 'star-2', restLength: 132, kind: 'branch' },
+  state.echostory.links = [
+    { id: makeLinkId(ECHOSTORY_MUSIC_CORE_ID, 'star-2'), from: ECHOSTORY_MUSIC_CORE_ID, to: 'star-2', restLength: 148, kind: 'music-core' },
+    { id: makeLinkId('star-1', 'star-2'), from: 'star-1', to: 'star-2', restLength: 132, kind: 'branch' },
   ];
+  state.echostory.constellationLinks = state.echostory.links;
 
   pushNearbyEchostoryStars(state, 3100);
 
-  assert.ok(state.echostory.constellationLinks.some((link) => [link.from, link.to].includes(ECHOSTORY_MUSIC_CORE_ID)));
-  assert.ok(!state.echostory.constellationLinks.some((link) => [link.from, link.to].includes('star-1') && [link.from, link.to].includes('star-2')));
+  assert.ok(state.echostory.links.some((link) => [link.from, link.to].includes(ECHOSTORY_MUSIC_CORE_ID)));
+  assert.ok(!state.echostory.links.some((link) => [link.from, link.to].includes('star-1') && [link.from, link.to].includes('star-2')));
 });

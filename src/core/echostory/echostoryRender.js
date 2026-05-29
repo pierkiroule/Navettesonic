@@ -1,4 +1,4 @@
-import { ECHOSTORY_MUSIC_CORE_ID } from "./echostoryConstellation.js";
+import { ECHOSTORY_MUSIC_CORE_ID, getEchostoryLinks } from "./echostoryConstellation.js";
 
 const ECHOSTORY_STAR_MIN_VISUAL_RADIUS = 34;
 
@@ -105,10 +105,52 @@ function drawContourSnapHalo(ctx, x, y, radius, time = 0, phase = 0) {
   ctx.fill();
 }
 
+function drawLinkEffect(ctx, fromStar, toStar, effect, time = 0) {
+  if (!fromStar || !toStar || !effect) return;
+  const startedAt = Number.isFinite(effect.startedAt) ? effect.startedAt : time;
+  const age = Math.max(0, time - startedAt);
+  const duration = effect.type === "remove" ? 420 : 520;
+  const t = Math.min(1, age / duration);
+  if (t >= 1) return;
+
+  const fromX = Number.isFinite(fromStar.x) ? fromStar.x : 0;
+  const fromY = Number.isFinite(fromStar.y) ? fromStar.y : 0;
+  const toX = Number.isFinite(toStar.x) ? toStar.x : 0;
+  const toY = Number.isFinite(toStar.y) ? toStar.y : 0;
+  const alpha = effect.type === "remove" ? 1 - t : Math.sin(t * Math.PI);
+  const width = effect.type === "remove" ? 8 * (1 - t) + 1 : 2 + t * 10;
+  const color = effect.type === "remove" ? "rgba(150, 220, 255," : "rgba(255, 242, 170,";
+
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.lineCap = "round";
+  ctx.strokeStyle = `${color}${0.82 * alpha})`;
+  ctx.shadowColor = effect.type === "remove" ? "rgba(120, 210, 255, 0.95)" : "rgba(255, 236, 150, 0.98)";
+  ctx.shadowBlur = 26 * alpha;
+  ctx.lineWidth = width;
+  ctx.beginPath();
+  ctx.moveTo(fromX, fromY);
+  ctx.lineTo(toX, toY);
+  ctx.stroke();
+
+  const midX = fromX + (toX - fromX) * 0.5;
+  const midY = fromY + (toY - fromY) * 0.5;
+  const r = 24 + t * 48;
+  const glow = ctx.createRadialGradient(midX, midY, 0, midX, midY, r);
+  glow.addColorStop(0, `${color}${0.64 * alpha})`);
+  glow.addColorStop(1, `${color}0)`);
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(midX, midY, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 export function drawEchostoryConstellationLinks(ctx, echostory = {}, time = 0) {
   const stars = Array.isArray(echostory?.stars) ? echostory.stars : [];
-  const links = Array.isArray(echostory?.constellationLinks) ? echostory.constellationLinks : [];
-  if (!stars.length || !links.length) return;
+  const links = getEchostoryLinks(echostory);
+  const effects = Array.isArray(echostory?.linkEffects) ? echostory.linkEffects : [];
+  if (!stars.length || (!links.length && !effects.length)) return;
 
   const starsById = new Map(stars.map((star) => [star?.id, star]).filter(([id]) => id));
   starsById.set(ECHOSTORY_MUSIC_CORE_ID, {
@@ -123,6 +165,12 @@ export function drawEchostoryConstellationLinks(ctx, echostory = {}, time = 0) {
     const toStar = starsById.get(link?.to);
     if (!fromStar || !toStar || fromStar.expired || toStar.expired) return;
     drawDreamcatcherChord(ctx, fromStar, toStar, time);
+  });
+
+  effects.forEach((effect) => {
+    const fromStar = starsById.get(effect?.from);
+    const toStar = starsById.get(effect?.to);
+    drawLinkEffect(ctx, fromStar, toStar, effect, time);
   });
 }
 

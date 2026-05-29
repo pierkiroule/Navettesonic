@@ -14,7 +14,7 @@ import { drawScene } from "../../core/soonRenderers.js";
 import { getMembraneRadiusForLevel } from "../../core/fishNavigationEngine.js";
 import { setContourMusicLoopActive } from "../../core/organicAmbienceEngine.js";
 import { resetCanvasPaintState } from "../../core/canvasState.js";
-import { ECHOSTORY_MUSIC_CORE_ID } from "../../core/echostory/echostoryConstellation.js";
+import { ECHOSTORY_MUSIC_CORE_ID, getEchostoryLinks, makeLinkId, normalizeEchostoryNetwork } from "../../core/echostory/echostoryConstellation.js";
 import { ARENA_INNER_BOUNDARY_INSET, MEMBRANE_LEVEL_MULTIPLIERS } from "../../core/constants.js";
 import { getBlobRadiusAtAngle } from "../../core/blobArena.js";
 import {
@@ -345,8 +345,11 @@ function getActiveConstellationStars(stars = []) {
 }
 
 function getConstellationLinks(echostory = {}) {
-  if (!Array.isArray(echostory.constellationLinks)) echostory.constellationLinks = [];
-  return echostory.constellationLinks;
+  const normalized = normalizeEchostoryNetwork(echostory);
+  echostory.links = normalized.links;
+  echostory.constellationLinks = normalized.links;
+  echostory.coreConnectedStarIds = normalized.coreConnectedStarIds;
+  return echostory.links;
 }
 
 function getMusicCoreNode() {
@@ -358,7 +361,7 @@ function isMusicCoreLink(link) {
 }
 
 function linkKey(from, to) {
-  return [from, to].sort().join("→");
+  return makeLinkId(from, to);
 }
 
 function addConstellationLink(echostory, fromStar, toStar, options = {}) {
@@ -379,10 +382,12 @@ function addConstellationLink(echostory, fromStar, toStar, options = {}) {
 }
 
 function removeLinksForStars(echostory, starIds = new Set()) {
-  if (!Array.isArray(echostory?.constellationLinks) || !starIds.size) return;
-  echostory.constellationLinks = echostory.constellationLinks.filter(
+  if (!starIds.size) return;
+  const nextLinks = getEchostoryLinks(echostory).filter(
     (link) => !starIds.has(link?.from) && !starIds.has(link?.to)
   );
+  const normalized = normalizeEchostoryNetwork({ ...echostory, links: nextLinks, constellationLinks: nextLinks });
+  Object.assign(echostory, normalized);
 }
 
 function wasRecentlyPushedBySoon(star, now = performance.now()) {
@@ -392,7 +397,7 @@ function wasRecentlyPushedBySoon(star, now = performance.now()) {
 function pruneOverstretchedConstellationLinks(echostory, starById, now = performance.now()) {
   const links = getConstellationLinks(echostory);
   if (!links.length) return;
-  echostory.constellationLinks = links.filter((link) => {
+  echostory.links = links.filter((link) => {
     const from = starById.get(link?.from);
     const to = starById.get(link?.to);
     if (!from || !to) return false;
@@ -482,44 +487,12 @@ function updateEchostoryConstellations(current, now = performance.now()) {
   const stars = echostory?.stars || [];
   if (!echostory || !stars.length) return;
 
-  const activeStars = getActiveConstellationStars(stars);
   const musicCore = getMusicCoreNode();
-  activeStars.forEach((star) => {
-    const starRadius = Number.isFinite(star.r) ? star.r : 18;
-    const d = Math.hypot(star.x || 0, star.y || 0);
-    if (d <= Math.max(MUSIC_CORE_TOUCH_RADIUS, starRadius + MUSIC_CORE_TOUCH_RADIUS * 0.5)) {
-      addConstellationLink(echostory, musicCore, star, {
-        kind: "music-core",
-        restLength: Math.max(MUSIC_CORE_LINK_REST_LENGTH, d),
-      });
-    }
-  });
-
-  let musicConnectedIds = getMusicConnectedStarIds(getConstellationLinks(echostory));
-  for (let i = 0; i < activeStars.length; i += 1) {
-    const a = activeStars[i];
-    const ar = Number.isFinite(a.r) ? a.r : 18;
-    for (let j = i + 1; j < activeStars.length; j += 1) {
-      const b = activeStars[j];
-      const br = Number.isFinite(b.r) ? b.r : 18;
-      const d = Math.hypot((b.x || 0) - (a.x || 0), (b.y || 0) - (a.y || 0));
-      if (d > Math.max(STAR_NETWORK_LINK_DISTANCE, (ar + br) * 1.75)) continue;
-
-      const aConnected = musicConnectedIds.has(a.id);
-      const bConnected = musicConnectedIds.has(b.id);
-      if (!aConnected && !bConnected) continue;
-
-      addConstellationLink(echostory, a, b);
-      if (aConnected || bConnected) {
-        musicConnectedIds = getMusicConnectedStarIds(getConstellationLinks(echostory));
-      }
-    }
-  }
 
   const starById = new Map(stars.map((star) => [star?.id, star]).filter(([id]) => id));
   starById.set(ECHOSTORY_MUSIC_CORE_ID, musicCore);
   const links = getConstellationLinks(echostory);
-  echostory.constellationLinks = links.filter((link) => {
+  echostory.links = links.filter((link) => {
     const from = starById.get(link?.from);
     const to = starById.get(link?.to);
     if (!from || !to) return false;
@@ -529,11 +502,13 @@ function updateEchostoryConstellations(current, now = performance.now()) {
     }
     return !from.expired && !to.expired && !from.expiring && !to.expiring && !from.attachedToContour && !to.attachedToContour;
   });
+  Object.assign(echostory, normalizeEchostoryNetwork(echostory));
 
   pruneOverstretchedConstellationLinks(echostory, starById, now);
-  applyConstellationSpacing(starById, echostory.constellationLinks);
+  Object.assign(echostory, normalizeEchostoryNetwork(echostory));
+  applyConstellationSpacing(starById, echostory.links);
 
-  echostory.constellationLinks.forEach((link) => {
+  echostory.links.forEach((link) => {
     const from = starById.get(link.from);
     const to = starById.get(link.to);
     if (!from || !to) return;
@@ -559,7 +534,7 @@ function updateEchostoryConstellations(current, now = performance.now()) {
   const arenaRadius = Number.isFinite(current?.arenaRadius) ? current.arenaRadius : 1200;
   const contourSnapThreshold = Math.max(24, arenaRadius - STAR_NETWORK_BREAK_THRESHOLD);
   const brokenIds = new Set();
-  echostory.constellationLinks.forEach((link) => {
+  echostory.links.forEach((link) => {
     if (brokenIds.has(link.from) || brokenIds.has(link.to)) return;
     const from = starById.get(link.from);
     const to = starById.get(link.to);
@@ -665,7 +640,7 @@ export function pushNearbyEchostoryStars(current, now = performance.now()) {
       return;
     }
 
-    if (!star.attachedToContour && current?.echostory?.constellationLinks?.some((link) => link?.from === star.id || link?.to === star.id)) {
+    if (!star.attachedToContour && getEchostoryLinks(current?.echostory).some((link) => link?.from === star.id || link?.to === star.id)) {
       return;
     }
 

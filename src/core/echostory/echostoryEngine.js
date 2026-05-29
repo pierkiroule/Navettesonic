@@ -139,6 +139,9 @@ export function resetEchostoryState() {
     activeLine: null,
     escapeState: "idle",
     trailItems: [],
+    links: [],
     constellationLinks: [],
+    linkEffects: [],
+    coreConnectedStarIds: [],
   };
 }

@@ -1,4 +1,4 @@
-import { ECHOSTORY_MUSIC_CORE_ID } from "./echostoryConstellation.js";
+import { ECHOSTORY_MUSIC_CORE_ID, getEchostoryLinks } from "./echostoryConstellation.js";
 
 export const ECHOSTORY_COMPOSITION_STYLES = [
   {
@@ -77,7 +77,7 @@ function collectConstellationComponents(stars = [], links = []) {
 export function buildEchostoryCompositionPlan({ echostory = {}, styleId = "hypnotique" } = {}) {
   const style = getEchostoryCompositionStyle(styleId);
   const stars = Array.isArray(echostory?.stars) ? echostory.stars.filter((star) => star && !star.expired) : [];
-  const links = Array.isArray(echostory?.constellationLinks) ? echostory.constellationLinks : [];
+  const links = getEchostoryLinks(echostory);
   const components = collectConstellationComponents(stars, links);
   const linkedStarIds = new Set(components.flat().map((star) => star.id));
   const soloStars = stars.filter((star) => !linkedStarIds.has(star.id) && !star.attachedToContour && !star.expiring);
