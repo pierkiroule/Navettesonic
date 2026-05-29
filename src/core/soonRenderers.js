@@ -11,6 +11,7 @@ import { drawEchostoryConstellationLinks, drawEchostoryContourLinks, drawEchosto
 import { resetCanvasPaintState } from "./canvasState.js";
 
 const CONTOUR_WIDTH_MULTIPLIER = 3;
+const SHOW_SOON = false;
 const guppyRuntime = {
   initialized: false,
   fish: [],
@@ -76,7 +77,9 @@ export function drawScene(ctx, rect, time, refs) {
         drawIsolated(ctx, () => drawEchostoryStars(ctx, current.echostory?.stars || [], time, current.fish));
       }
 
-    drawIsolated(ctx, () => drawFish(ctx, current.fish, time, current.worldGraph, current.currentArenaId));
+    if (SHOW_SOON) {
+      drawIsolated(ctx, () => drawFish(ctx, current.fish, time, current.worldGraph, current.currentArenaId));
+    }
   } finally {
     if (worldEntered) {
       try {

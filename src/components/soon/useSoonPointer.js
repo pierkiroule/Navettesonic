@@ -150,6 +150,7 @@ export function useSoonPointer({
     star.selectedOnContour = false;
     star.lastPushedBySoonAt = now;
     star.lastPushedByTouchAt = now;
+    star.draggingByTouch = true;
 
     return true;
   }
@@ -283,7 +284,9 @@ export function useSoonPointer({
     pointerRef.current.dragBubbleId = null;
     pointerRef.current.pendingBubbleId = null;
     pointerRef.current.dragBeaconId = null;
+    if (pointerRef.current.dragStarRef) pointerRef.current.dragStarRef.draggingByTouch = false;
     pointerRef.current.dragStarId = null;
+    pointerRef.current.dragStarRef = null;
     pointerRef.current.dragStarOffset = null;
     pointerRef.current.panEnabled = false;
     pointerRef.current.panStart = null;
@@ -294,6 +297,7 @@ export function useSoonPointer({
       const hitStar = findEchostoryStarAt(point);
       if (hitStar) {
         pointerRef.current.dragStarId = hitStar.id || null;
+        pointerRef.current.dragStarRef = hitStar;
         pointerRef.current.dragStarOffset = {
           x: (Number.isFinite(hitStar.x) ? hitStar.x : point.x) - point.x,
           y: (Number.isFinite(hitStar.y) ? hitStar.y : point.y) - point.y,
@@ -381,9 +385,11 @@ export function useSoonPointer({
       start && Math.hypot(start.x - point.x, start.y - point.y) > MOVE_CANCEL;
     if (moved) clearLongPressTimer();
 
-    if (!isEditMode && !isCircuitMode && pointerRef.current.dragStarId) {
+    if (!isEditMode && !isCircuitMode && (pointerRef.current.dragStarId || pointerRef.current.dragStarRef)) {
       const stars = stateRef.current?.echostory?.stars || [];
-      const star = stars.find((item) => item?.id === pointerRef.current.dragStarId);
+      const star = pointerRef.current.dragStarId
+        ? stars.find((item) => item?.id === pointerRef.current.dragStarId)
+        : pointerRef.current.dragStarRef;
       if (moveEchostoryStarWithPointer(star, point)) return;
     }
 
@@ -446,7 +452,9 @@ export function useSoonPointer({
       pointerRef.current.dragBubbleId = null;
       pointerRef.current.pendingBubbleId = null;
       pointerRef.current.dragBeaconId = null;
+      if (pointerRef.current.dragStarRef) pointerRef.current.dragStarRef.draggingByTouch = false;
       pointerRef.current.dragStarId = null;
+      pointerRef.current.dragStarRef = null;
       pointerRef.current.dragStarOffset = null;
       pointerRef.current.panEnabled = false;
       pointerRef.current.panStart = null;
@@ -462,7 +470,9 @@ export function useSoonPointer({
   function cleanupPointer() {
     clearLongPressTimer();
     pointerRef.current.activePointers?.clear();
+    if (pointerRef.current.dragStarRef) pointerRef.current.dragStarRef.draggingByTouch = false;
     pointerRef.current.dragStarId = null;
+    pointerRef.current.dragStarRef = null;
     pointerRef.current.dragStarOffset = null;
   }
 

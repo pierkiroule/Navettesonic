@@ -153,6 +153,45 @@ test('glisser une étoile déplace directement sa position sous le doigt', () =>
 });
 
 
+test('glisser une étoile sans id continue avec la référence tactile', () => {
+  const stateRef = {
+    current: {
+      interactionMode: 'swim',
+      mode: 'echostory',
+      fish: { depth: 1 },
+      viewZoom: 0,
+      circuitAutopilot: false,
+      bubbles: [],
+      echostory: {
+        stars: [{ x: 0, y: 0, r: 18, attachedToContour: false }],
+      },
+    },
+  };
+  const canvas = {
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
+    setPointerCapture: () => {},
+    releasePointerCapture: () => {},
+  };
+  const pointerApi = useSoonPointer({
+    canvasRef: { current: canvas },
+    cameraRef: { current: { x: 0, y: 0 } },
+    arenaRef: { current: { radius: 1200 } },
+    pointerRef: { current: { activePointers: new Map() } },
+    stateRef,
+  });
+
+  pointerApi.handlePointerDown(event(1, 500, 500));
+  pointerApi.handlePointerMove(event(1, 540, 500));
+
+  assert.ok(stateRef.current.echostory.stars[0].x > 110);
+  assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, true);
+
+  pointerApi.handlePointerUp(event(1, 540, 500));
+
+  assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, false);
+});
+
+
 test('glisser dans le vide en echostory ne déplace plus Soon', () => {
   const calls = { fishTarget: 0 };
   const stateRef = {

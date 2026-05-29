@@ -51,6 +51,19 @@ test('Expirer projette une étoile vers extérieur puis la masque', () => {
   assert.equal(state.echostory.stars[0].expired, true);
 });
 
+
+test('Une étoile en drag tactile ne se resnappe pas au contour pendant le déplacement', () => {
+  const state = stateWithStars([
+    { id: 'star-dragging', x: 1160, y: 0, r: 18, attachedToContour: false, previewPlayed: true, draggingByTouch: true },
+  ]);
+
+  pushNearbyEchostoryStars(state, 2400);
+
+  assert.equal(state.echostory.stars[0].attachedToContour, false);
+  assert.equal(state.echostory.stars[0].x, 1160);
+  assert.equal(state.echostory.stars[0].draggingByTouch, true);
+});
+
 test('Two unlinked interior stars do not create a constellation by themselves', () => {
   const state = stateWithStars([
     { id: 'star-1', x: 300, y: 0, r: 18, attachedToContour: false, previewPlayed: true },
