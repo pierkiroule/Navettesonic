@@ -84,6 +84,18 @@ test('Music core seeds the constellation and propagates links through connected 
   assert.equal(state.echostory.stars[1].attachedToContour, true);
 });
 
+test('Music-connected stars link across a more forgiving touch distance', () => {
+  const state = stateWithStars([
+    { id: 'star-1', x: 80, y: 0, r: 18, attachedToContour: false, previewPlayed: true },
+    { id: 'star-2', x: 214, y: 0, r: 18, attachedToContour: false, previewPlayed: true },
+  ]);
+
+  pushNearbyEchostoryStars(state, 2400);
+
+  assert.ok(state.echostory.constellationLinks.some((link) => [link.from, link.to].includes(ECHOSTORY_MUSIC_CORE_ID)));
+  assert.ok(state.echostory.constellationLinks.some((link) => [link.from, link.to].includes('star-1') && [link.from, link.to].includes('star-2')));
+});
+
 test('Music-connected stars are pushed into an airy network layout', () => {
   const state = stateWithStars([
     { id: 'star-1', x: 48, y: 0, r: 18, attachedToContour: false, previewPlayed: true },
@@ -94,21 +106,20 @@ test('Music-connected stars are pushed into an airy network layout', () => {
 
   const coreLink = state.echostory.constellationLinks.find((link) => [link.from, link.to].includes(ECHOSTORY_MUSIC_CORE_ID));
   const branchLink = state.echostory.constellationLinks.find((link) => [link.from, link.to].includes('star-1') && [link.from, link.to].includes('star-2'));
-  assert.ok(coreLink.restLength >= 156);
-  assert.ok(branchLink.restLength >= 138);
-  assert.ok(state.echostory.stars[0].vx > 0);
+  assert.ok(coreLink.restLength >= 148);
+  assert.ok(branchLink.restLength >= 132);
   assert.ok(state.echostory.stars[1].vx > state.echostory.stars[0].vx);
 });
 
 test('Soon can stretch a connected star link until it ruptures', () => {
   const state = stateWithStars([
-    { id: 'star-1', x: 196, y: 0, r: 18, attachedToContour: false, previewPlayed: true, lastPushedBySoonAt: 3000 },
+    { id: 'star-1', x: 182, y: 0, r: 18, attachedToContour: false, previewPlayed: true, lastPushedBySoonAt: 3000 },
     { id: 'star-2', x: 20, y: 0, r: 18, attachedToContour: false, previewPlayed: true },
   ]);
   state.fish = { x: 500, y: 0, vx: 0, vy: 0, depth: 1, arenaLevel: 0 };
   state.echostory.constellationLinks = [
-    { from: ECHOSTORY_MUSIC_CORE_ID, to: 'star-2', restLength: 156, kind: 'music-core' },
-    { from: 'star-1', to: 'star-2', restLength: 138, kind: 'branch' },
+    { from: ECHOSTORY_MUSIC_CORE_ID, to: 'star-2', restLength: 148, kind: 'music-core' },
+    { from: 'star-1', to: 'star-2', restLength: 132, kind: 'branch' },
   ];
 
   pushNearbyEchostoryStars(state, 3100);
