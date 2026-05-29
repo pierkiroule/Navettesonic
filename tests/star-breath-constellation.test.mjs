@@ -84,6 +84,22 @@ test('Music core seeds the constellation and propagates links through connected 
   assert.equal(state.echostory.stars[1].attachedToContour, true);
 });
 
+test('Music-connected stars are pushed into an airy network layout', () => {
+  const state = stateWithStars([
+    { id: 'star-1', x: 48, y: 0, r: 18, attachedToContour: false, previewPlayed: true },
+    { id: 'star-2', x: 104, y: 0, r: 18, attachedToContour: false, previewPlayed: true },
+  ]);
+
+  pushNearbyEchostoryStars(state, 2400);
+
+  const coreLink = state.echostory.constellationLinks.find((link) => [link.from, link.to].includes(ECHOSTORY_MUSIC_CORE_ID));
+  const branchLink = state.echostory.constellationLinks.find((link) => [link.from, link.to].includes('star-1') && [link.from, link.to].includes('star-2'));
+  assert.ok(coreLink.restLength >= 178);
+  assert.ok(branchLink.restLength >= 154);
+  assert.ok(state.echostory.stars[0].vx > 0);
+  assert.ok(state.echostory.stars[1].vx > state.echostory.stars[0].vx);
+});
+
 test('Soon can stretch a connected star link until it ruptures', () => {
   const state = stateWithStars([
     { id: 'star-1', x: 220, y: 0, r: 18, attachedToContour: false, previewPlayed: true, lastPushedBySoonAt: 3000 },

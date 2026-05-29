@@ -38,27 +38,27 @@ function drawDreamcatcherChord(ctx, fromStar, toStar, time = 0) {
   const normalX = -dy / length;
   const normalY = dx / length;
   const pulse = Math.sin(time * 0.008 + length * 0.003) * 0.5 + 0.5;
-  const strandOffset = 3.5 + pulse * 1.5;
+  const strandOffset = 2.2 + pulse * 0.8;
   const gradient = ctx.createLinearGradient(fromX, fromY, toX, toY);
-  gradient.addColorStop(0, `${fromStar.color || "#ffffff"}44`);
-  gradient.addColorStop(0.5, "rgba(255,248,214,0.96)");
-  gradient.addColorStop(1, `${toStar.color || "#ffffff"}44`);
+  gradient.addColorStop(0, `${fromStar.color || "#ffffff"}33`);
+  gradient.addColorStop(0.5, "rgba(255,248,214,0.72)");
+  gradient.addColorStop(1, `${toStar.color || "#ffffff"}33`);
 
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
   ctx.lineCap = "round";
   ctx.shadowColor = "rgba(255, 230, 148, 0.88)";
-  ctx.shadowBlur = 16 + pulse * 10;
+  ctx.shadowBlur = 9 + pulse * 6;
   ctx.strokeStyle = gradient;
-  ctx.lineWidth = 5.5 + pulse * 1.4;
+  ctx.lineWidth = 2.4 + pulse * 0.6;
   ctx.beginPath();
   ctx.moveTo(fromX, fromY);
   ctx.lineTo(toX, toY);
   ctx.stroke();
 
-  ctx.shadowBlur = 9;
-  ctx.strokeStyle = "rgba(255,255,255,0.72)";
-  ctx.lineWidth = 1.25;
+  ctx.shadowBlur = 5;
+  ctx.strokeStyle = "rgba(255,255,255,0.46)";
+  ctx.lineWidth = 0.65;
   [-strandOffset, strandOffset].forEach((offset) => {
     ctx.beginPath();
     ctx.moveTo(fromX + normalX * offset, fromY + normalY * offset);
@@ -66,9 +66,9 @@ function drawDreamcatcherChord(ctx, fromStar, toStar, time = 0) {
     ctx.stroke();
   });
 
-  ctx.shadowBlur = 4;
-  ctx.strokeStyle = "rgba(255,255,255,0.95)";
-  ctx.lineWidth = 0.9;
+  ctx.shadowBlur = 2;
+  ctx.strokeStyle = "rgba(255,255,255,0.72)";
+  ctx.lineWidth = 0.45;
   ctx.beginPath();
   ctx.moveTo(fromX, fromY);
   ctx.lineTo(toX, toY);
