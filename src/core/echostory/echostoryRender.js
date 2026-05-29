@@ -1,5 +1,7 @@
 import { ECHOSTORY_MUSIC_CORE_ID } from "./echostoryConstellation.js";
 
+const ECHOSTORY_STAR_MIN_VISUAL_RADIUS = 34;
+
 function drawStar(ctx, x, y, radius, color, alpha = 1) {
   const halo = ctx.createRadialGradient(x, y, radius * 0.2, x, y, radius * 2.6);
   halo.addColorStop(0, `${color}aa`);
@@ -146,7 +148,8 @@ export function drawEchostoryStars(ctx, stars = [], time = 0, fish = null) {
       if (!star || star.expired) return;
 
       const pulse = Math.sin(time * 0.005 + (star.phase || 0) + index * 0.4) * 0.5 + 0.5;
-      const radius = (Number.isFinite(star.r) ? star.r : 18) * (0.85 + pulse * 0.2);
+      const baseRadius = Math.max(ECHOSTORY_STAR_MIN_VISUAL_RADIUS, Number.isFinite(star.r) ? star.r : ECHOSTORY_STAR_MIN_VISUAL_RADIUS);
+      const radius = baseRadius * (0.85 + pulse * 0.2);
       const x = Number.isFinite(star.x) ? star.x : 0;
       const y = Number.isFinite(star.y) ? star.y : 0;
       const color = star.color || "#ffffff";

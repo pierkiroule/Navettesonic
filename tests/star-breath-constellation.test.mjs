@@ -12,7 +12,7 @@ function stateWithStars(stars) {
   };
 }
 
-test('Soon touching a contour star opens breath choice without detaching it', () => {
+test('Soon masqué ne pousse plus les étoiles du contour', () => {
   const state = stateWithStars([
     { id: 'star-1', x: 0, y: -1168, r: 18, attachedToContour: true, contourAngle: -Math.PI / 2, previewPlayed: true },
   ]);
@@ -20,7 +20,7 @@ test('Soon touching a contour star opens breath choice without detaching it', ()
   pushNearbyEchostoryStars(state, 2000);
 
   assert.equal(state.echostory.stars[0].attachedToContour, true);
-  assert.equal(state.echostory.stars[0].pendingBreathChoice, true);
+  assert.equal(state.echostory.stars[0].pendingBreathChoice, undefined);
 });
 
 test('Inspirer décroche une étoile du contour vers intérieur', () => {
@@ -49,6 +49,19 @@ test('Expirer projette une étoile vers extérieur puis la masque', () => {
   pushNearbyEchostoryStars(state, 2200);
 
   assert.equal(state.echostory.stars[0].expired, true);
+});
+
+
+test('Une étoile en drag tactile ne se resnappe pas au contour pendant le déplacement', () => {
+  const state = stateWithStars([
+    { id: 'star-dragging', x: 1160, y: 0, r: 18, attachedToContour: false, previewPlayed: true, draggingByTouch: true },
+  ]);
+
+  pushNearbyEchostoryStars(state, 2400);
+
+  assert.equal(state.echostory.stars[0].attachedToContour, false);
+  assert.equal(state.echostory.stars[0].x, 1160);
+  assert.equal(state.echostory.stars[0].draggingByTouch, true);
 });
 
 test('Two unlinked interior stars do not create a constellation by themselves', () => {

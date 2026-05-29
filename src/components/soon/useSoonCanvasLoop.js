@@ -47,6 +47,7 @@ const STAR_NETWORK_RUPTURE_STRETCH = 1.18;
 const STAR_NETWORK_RUPTURE_EXTRA_DISTANCE = 28;
 const STAR_NETWORK_PUSH_MEMORY_MS = 1800;
 const STAR_NETWORK_DAMPING = 0.981;
+const SOON_STAR_CONTACT_ENABLED = false;
 
 const CONTOUR_RIDE_DURATION_MS = 120000;
 const CONTOUR_RIDE_ENTRY_THRESHOLD = 52;
@@ -417,7 +418,7 @@ function getMusicConnectedStarIds(links = []) {
 }
 
 function applyVelocity(star, vx, vy) {
-  if (!star || star.id === ECHOSTORY_MUSIC_CORE_ID) return;
+  if (!star || star.id === ECHOSTORY_MUSIC_CORE_ID || star.draggingByTouch) return;
   star.vx = (star.vx || 0) + vx;
   star.vy = (star.vy || 0) + vy;
 }
@@ -545,11 +546,11 @@ function updateEchostoryConstellations(current, now = performance.now()) {
     const pull = (distance - rest) * stiffness;
     const ux = dx / distance;
     const uy = dy / distance;
-    if (from.id !== ECHOSTORY_MUSIC_CORE_ID) {
+    if (from.id !== ECHOSTORY_MUSIC_CORE_ID && !from.draggingByTouch) {
       from.vx = (from.vx || 0) + ux * pull;
       from.vy = (from.vy || 0) + uy * pull;
     }
-    if (to.id !== ECHOSTORY_MUSIC_CORE_ID) {
+    if (to.id !== ECHOSTORY_MUSIC_CORE_ID && !to.draggingByTouch) {
       to.vx = (to.vx || 0) - ux * pull;
       to.vy = (to.vy || 0) - uy * pull;
     }
@@ -564,6 +565,7 @@ function updateEchostoryConstellations(current, now = performance.now()) {
     const to = starById.get(link.to);
     if (!from || !to) return;
     const linkedStars = [from, to].filter((star) => star.id !== ECHOSTORY_MUSIC_CORE_ID);
+    if (linkedStars.some((star) => star.draggingByTouch)) return;
     const touchesContour = linkedStars.some((star) => Math.hypot(star.x || 0, star.y || 0) >= contourSnapThreshold);
     if (!touchesContour) return;
     const componentIds = getLinkedComponent(link.from, echostory.constellationLinks);
@@ -614,12 +616,18 @@ export function pushNearbyEchostoryStars(current, now = performance.now()) {
     if (!star || star.expired) return;
     if (!Number.isFinite(star.vx)) star.vx = 0;
     if (!Number.isFinite(star.vy)) star.vy = 0;
+    if (star.draggingByTouch) {
+      star.vx = 0;
+      star.vy = 0;
+      star.pendingBreathChoice = false;
+      return;
+    }
     const dx = (star.x || 0) - fishX;
     const dy = (star.y || 0) - fishY;
     const distance = Math.hypot(dx, dy);
     const isInside = distance < TRIGGER_RADIUS;
 
-    if (isInside) {
+    if (SOON_STAR_CONTACT_ENABLED && isInside) {
       triggerEchostoryStarPreview(star, {
         fishX,
         colorOrdinal: colorOrdinalsByStarId.get(star.id || getEchostoryStarColorKey(star)) || 0,
