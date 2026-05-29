@@ -29,6 +29,13 @@ const STAR_PUSH_SMOOTHING = 0.52;
 const STAR_PUSH_MAX_STEP = 28;
 const STAR_EDGE_STICK_THRESHOLD = 48;
 const STAR_EDGE_STICK_RELEASE = 86;
+const STAR_BREATH_MENU_COOLDOWN_MS = 900;
+const STAR_INHALE_IMPULSE = 16;
+const STAR_EXHALE_IMPULSE = 34;
+const STAR_NETWORK_LINK_DISTANCE = 76;
+const STAR_NETWORK_LINK_STIFFNESS = 0.032;
+const STAR_NETWORK_BREAK_THRESHOLD = 54;
+const STAR_NETWORK_DAMPING = 0.985;
 
 const CONTOUR_RIDE_DURATION_MS = 120000;
 const CONTOUR_RIDE_ENTRY_THRESHOLD = 52;
@@ -262,7 +269,7 @@ async function playEchostoryStarPreview(star, fishX = 0, colorOrdinal = 0) {
   return false;
 }
 
-function triggerEchostoryStarPreview(star, { fishX = 0, colorOrdinal = 0 } = {}) {
+export function triggerEchostoryStarPreview(star, { fishX = 0, colorOrdinal = 0 } = {}) {
   if (!star || star.previewPlaying || star.previewPlayed || activeEchostoryStarAudioId) return false;
   activeEchostoryStarAudioId = star.id || `${getEchostoryStarColorKey(star)}-${colorOrdinal + 1}`;
   star.previewPlaying = true;
@@ -291,7 +298,161 @@ function getEchostoryStarOrdinal(stars = [], targetStar = null) {
   return 0;
 }
 
-function pushNearbyEchostoryStars(current) {
+export function makeEchostoryStarBreathe(current = {}, starId, direction = "inspire") {
+  const stars = current?.echostory?.stars || [];
+  const star = stars.find((item) => item?.id === starId);
+  if (!star || star.expired) return false;
+  const angle = Number.isFinite(star.contourAngle) ? star.contourAngle : Math.atan2(star.y || 0, star.x || 0);
+  const ux = Math.cos(angle);
+  const uy = Math.sin(angle);
+  star.pendingBreathChoice = false;
+  star.breathMenuOpenedAt = 0;
+  star.selectedOnContour = false;
+
+  if (direction === "expire") {
+    star.attachedToContour = false;
+    star.expiring = true;
+    star.networkId = null;
+    star.vx = ux * STAR_EXHALE_IMPULSE;
+    star.vy = uy * STAR_EXHALE_IMPULSE;
+    return true;
+  }
+
+  const contourRadius = getContourSnapRadius(current, angle);
+  star.attachedToContour = false;
+  star.expiring = false;
+  star.x = ux * Math.max(40, contourRadius - 128);
+  star.y = uy * Math.max(40, contourRadius - 128);
+  star.vx = -ux * STAR_INHALE_IMPULSE;
+  star.vy = -uy * STAR_INHALE_IMPULSE;
+  return true;
+}
+
+function getActiveConstellationStars(stars = []) {
+  return stars.filter((star) => star && !star.expired && !star.expiring && !star.attachedToContour);
+}
+
+function getConstellationLinks(echostory = {}) {
+  if (!Array.isArray(echostory.constellationLinks)) echostory.constellationLinks = [];
+  return echostory.constellationLinks;
+}
+
+function addConstellationLink(echostory, fromStar, toStar) {
+  if (!fromStar?.id || !toStar?.id || fromStar.id === toStar.id) return;
+  const links = getConstellationLinks(echostory);
+  const [from, to] = [fromStar.id, toStar.id].sort();
+  if (links.some((link) => link?.from === from && link?.to === to)) return;
+  links.push({
+    from,
+    to,
+    restLength: Math.max(
+      STAR_NETWORK_LINK_DISTANCE * 0.72,
+      Math.hypot((toStar.x || 0) - (fromStar.x || 0), (toStar.y || 0) - (fromStar.y || 0))
+    ),
+    createdAt: Date.now(),
+  });
+}
+
+function removeLinksForStars(echostory, starIds = new Set()) {
+  if (!Array.isArray(echostory?.constellationLinks) || !starIds.size) return;
+  echostory.constellationLinks = echostory.constellationLinks.filter(
+    (link) => !starIds.has(link?.from) && !starIds.has(link?.to)
+  );
+}
+
+function getLinkedComponent(starId, links = []) {
+  const visited = new Set();
+  const queue = [starId];
+  while (queue.length) {
+    const currentId = queue.shift();
+    if (!currentId || visited.has(currentId)) continue;
+    visited.add(currentId);
+    links.forEach((link) => {
+      if (link?.from === currentId && !visited.has(link?.to)) queue.push(link.to);
+      if (link?.to === currentId && !visited.has(link?.from)) queue.push(link.from);
+    });
+  }
+  return visited;
+}
+
+function updateEchostoryConstellations(current) {
+  const echostory = current?.echostory;
+  const stars = echostory?.stars || [];
+  if (!echostory || !stars.length) return;
+
+  const activeStars = getActiveConstellationStars(stars);
+  for (let i = 0; i < activeStars.length; i += 1) {
+    const a = activeStars[i];
+    const ar = Number.isFinite(a.r) ? a.r : 18;
+    for (let j = i + 1; j < activeStars.length; j += 1) {
+      const b = activeStars[j];
+      const br = Number.isFinite(b.r) ? b.r : 18;
+      const d = Math.hypot((b.x || 0) - (a.x || 0), (b.y || 0) - (a.y || 0));
+      if (d <= Math.max(STAR_NETWORK_LINK_DISTANCE, (ar + br) * 1.75)) {
+        addConstellationLink(echostory, a, b);
+      }
+    }
+  }
+
+  const starById = new Map(stars.map((star) => [star?.id, star]).filter(([id]) => id));
+  const links = getConstellationLinks(echostory);
+  echostory.constellationLinks = links.filter((link) => {
+    const from = starById.get(link?.from);
+    const to = starById.get(link?.to);
+    return from && to && !from.expired && !to.expired && !from.expiring && !to.expiring && !from.attachedToContour && !to.attachedToContour;
+  });
+
+  echostory.constellationLinks.forEach((link) => {
+    const from = starById.get(link.from);
+    const to = starById.get(link.to);
+    if (!from || !to) return;
+    const dx = (to.x || 0) - (from.x || 0);
+    const dy = (to.y || 0) - (from.y || 0);
+    const distance = Math.hypot(dx, dy);
+    if (distance < 0.001) return;
+    const rest = Number.isFinite(link.restLength) ? link.restLength : STAR_NETWORK_LINK_DISTANCE;
+    const pull = (distance - rest) * STAR_NETWORK_LINK_STIFFNESS;
+    const ux = dx / distance;
+    const uy = dy / distance;
+    from.vx = (from.vx || 0) + ux * pull;
+    from.vy = (from.vy || 0) + uy * pull;
+    to.vx = (to.vx || 0) - ux * pull;
+    to.vy = (to.vy || 0) - uy * pull;
+  });
+
+  const arenaRadius = Number.isFinite(current?.arenaRadius) ? current.arenaRadius : 1200;
+  const contourSnapThreshold = Math.max(24, arenaRadius - STAR_NETWORK_BREAK_THRESHOLD);
+  const brokenIds = new Set();
+  echostory.constellationLinks.forEach((link) => {
+    if (brokenIds.has(link.from) || brokenIds.has(link.to)) return;
+    const from = starById.get(link.from);
+    const to = starById.get(link.to);
+    if (!from || !to) return;
+    const touchesContour = [from, to].some((star) => Math.hypot(star.x || 0, star.y || 0) >= contourSnapThreshold);
+    if (!touchesContour) return;
+    const componentIds = getLinkedComponent(link.from, echostory.constellationLinks);
+    componentIds.forEach((id) => brokenIds.add(id));
+  });
+
+  if (brokenIds.size) {
+    brokenIds.forEach((id) => {
+      const star = starById.get(id);
+      if (!star) return;
+      const angle = Math.atan2(star.y || 0, star.x || 0);
+      const contourRadius = getContourSnapRadius(current, angle);
+      star.attachedToContour = true;
+      star.contourAngle = angle;
+      star.x = Math.cos(angle) * contourRadius;
+      star.y = Math.sin(angle) * contourRadius;
+      star.vx = 0;
+      star.vy = 0;
+      star.pendingBreathChoice = false;
+    });
+    removeLinksForStars(echostory, brokenIds);
+  }
+}
+
+export function pushNearbyEchostoryStars(current, now = performance.now()) {
   if (current?.mode !== "echostory" && current?.mode !== "reso") return;
   if (current?.contourRide?.active) return;
   if (!current?.fish) return;
@@ -314,7 +475,7 @@ function pushNearbyEchostoryStars(current) {
   });
 
   stars.forEach((star) => {
-    if (!star) return;
+    if (!star || star.expired) return;
     if (!Number.isFinite(star.vx)) star.vx = 0;
     if (!Number.isFinite(star.vy)) star.vy = 0;
     const dx = (star.x || 0) - fishX;
@@ -323,20 +484,24 @@ function pushNearbyEchostoryStars(current) {
     const isInside = distance < TRIGGER_RADIUS;
 
     if (isInside) {
-      if (distance > 0) {
+      triggerEchostoryStarPreview(star, {
+        fishX,
+        colorOrdinal: colorOrdinalsByStarId.get(star.id || getEchostoryStarColorKey(star)) || 0,
+      });
+
+      if (star.attachedToContour) {
+        const lastOpenedAt = Number.isFinite(star.breathMenuOpenedAt) ? star.breathMenuOpenedAt : 0;
+        if (!star.pendingBreathChoice && now - lastOpenedAt > STAR_BREATH_MENU_COOLDOWN_MS) {
+          star.pendingBreathChoice = true;
+          star.breathMenuOpenedAt = now;
+        }
+      } else if (distance > 0) {
         const ux = dx / distance;
         const uy = dy / distance;
         const pushForce = (1 - distance / TRIGGER_RADIUS) * CONTACT_PUSH_DISTANCE * SOON_CONTACT_REBOUND_MULTIPLIER;
         star.vx += ux * pushForce * STAR_PUSH_SMOOTHING;
         star.vy += uy * pushForce * STAR_PUSH_SMOOTHING;
       }
-      if (star.attachedToContour && distance < TRIGGER_RADIUS * 0.6) {
-        star.attachedToContour = false;
-      }
-      triggerEchostoryStarPreview(star, {
-        fishX,
-        colorOrdinal: colorOrdinalsByStarId.get(star.id || getEchostoryStarColorKey(star)) || 0,
-      });
     }
     const step = Math.hypot(star.vx || 0, star.vy || 0);
     if (step > STAR_PUSH_MAX_STEP && step > 0) {
@@ -346,19 +511,29 @@ function pushNearbyEchostoryStars(current) {
     }
     star.x = (star.x || 0) + (star.vx || 0);
     star.y = (star.y || 0) + (star.vy || 0);
-    star.vx *= 0.97;
-    star.vy *= 0.97;
+    star.vx *= star.expiring ? 0.992 : STAR_NETWORK_DAMPING;
+    star.vy *= star.expiring ? 0.992 : STAR_NETWORK_DAMPING;
 
     const distCenter = Math.hypot(star.x || 0, star.y || 0);
-    if (distCenter >= contourSnapThreshold) {
+    if (star.expiring) {
+      if (distCenter > arenaRadius + 180) star.expired = true;
+      return;
+    }
+
+    if (!star.attachedToContour && current?.echostory?.constellationLinks?.some((link) => link?.from === star.id || link?.to === star.id)) {
+      return;
+    }
+
+    if (!star.attachedToContour && distCenter >= contourSnapThreshold) {
       const angle = Math.atan2(star.y || 0, star.x || 0);
       const contourRadius = getContourSnapRadius(current, angle);
       star.attachedToContour = true;
       star.contourAngle = angle;
       star.x = Math.cos(angle) * contourRadius;
       star.y = Math.sin(angle) * contourRadius;
-      star.vx *= 0.92;
-      star.vy *= 0.92;
+      star.vx *= 0.18;
+      star.vy *= 0.18;
+      star.pendingBreathChoice = false;
     } else if (star.attachedToContour && distCenter >= contourReleaseThreshold) {
       const angle = Number.isFinite(star.contourAngle) ? star.contourAngle : Math.atan2(star.y || 0, star.x || 0);
       const contourRadius = getContourSnapRadius(current, angle);
@@ -377,7 +552,10 @@ function pushNearbyEchostoryStars(current) {
       star.vy *= 0.92;
     }
   });
+
+  updateEchostoryConstellations(current);
 }
+
 
 export function useSoonCanvasLoop({
   canvasRef,

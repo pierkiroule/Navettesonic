@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useSoonCanvasLoop } from "./soon/useSoonCanvasLoop.js";
+import { makeEchostoryStarBreathe, useSoonCanvasLoop } from "./soon/useSoonCanvasLoop.js";
 import { useSoonPointer } from "./soon/useSoonPointer.js";
 import RadialMenu from "./RadialMenu.jsx";
 import { getAudioTuning, setAudioTuning } from "../core/audioEngine.js";
@@ -61,6 +61,7 @@ export default function SoonCanvas({
   const canvasRef = useRef(null);
   const [semioseVideo, setSemioseVideo] = useState(null);
   const [fishMenu, setFishMenu] = useState(null);
+  const [starBreathMenu, setStarBreathMenu] = useState(null);
   const [audioTuning, setAudioTuningState] = useState(() => getAudioTuning());
   const [showSensitivitySlider, setShowSensitivitySlider] = useState(false);
   const [contourPlayButton, setContourPlayButton] = useState({ visible: false, x: 0, y: 0 });
@@ -236,6 +237,60 @@ export default function SoonCanvas({
   });
 
   useEffect(() => cleanupPointer, [cleanupPointer]);
+
+
+  function worldToScreen(point, current = stateRef.current || {}) {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const arenaRadius = Number.isFinite(current.arenaRadius) ? current.arenaRadius : (arenaRef.current.radius || 1200);
+    const viewZoom = Number.isFinite(current.viewZoom) ? current.viewZoom : 0;
+    const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 2.55);
+    const userZoom = fitZoom * (1 + viewZoom * 1.55);
+    const world = current.worldGraph;
+    const arenaId = current.currentArenaId || world?.startArenaId;
+    const arenaNode = (world?.nodes || []).find((node) => node.id === arenaId) || null;
+    const center = arenaNode?.absoluteCenter || { x: 0, y: 0 };
+    const centerX = Number.isFinite(center.x) ? center.x : 0;
+    const centerY = Number.isFinite(center.y) ? center.y : 0;
+    const camera = cameraRef.current || { x: 0, y: 0 };
+    return {
+      x: rect.width * 0.5 + (centerX + (point?.x || 0) - camera.x) * userZoom,
+      y: rect.height * 0.5 + (centerY + (point?.y || 0) - camera.y) * userZoom,
+    };
+  }
+
+  useEffect(() => {
+    let frame = 0;
+    const syncStarBreathMenu = () => {
+      const current = stateRef.current || {};
+      const stars = current?.echostory?.stars || [];
+      const pendingStar = stars.find((star) => star?.pendingBreathChoice && !star.expired && star.attachedToContour);
+      if (!pendingStar) {
+        setStarBreathMenu((prev) => (prev ? null : prev));
+        frame = requestAnimationFrame(syncStarBreathMenu);
+        return;
+      }
+
+      const screen = worldToScreen(pendingStar, current);
+      if (screen) {
+        setStarBreathMenu((prev) => {
+          if (prev?.starId === pendingStar.id && Math.abs(prev.screen.x - screen.x) < 0.5 && Math.abs(prev.screen.y - screen.y) < 0.5) return prev;
+          return { starId: pendingStar.id, screen };
+        });
+      }
+      frame = requestAnimationFrame(syncStarBreathMenu);
+    };
+
+    frame = requestAnimationFrame(syncStarBreathMenu);
+    return () => cancelAnimationFrame(frame);
+  }, [arenaRef, cameraRef, canvasRef, stateRef]);
+
+  const handleStarBreathChoice = (direction) => {
+    if (!starBreathMenu?.starId) return;
+    makeEchostoryStarBreathe(stateRef.current || {}, starBreathMenu.starId, direction);
+    setStarBreathMenu(null);
+  };
 
   useEffect(() => {
     let frame = 0;
@@ -417,6 +472,30 @@ export default function SoonCanvas({
             </select>
           </label>
         </div>
+      ) : null}
+      {starBreathMenu?.screen ? (
+        <RadialMenu
+          aria-label="Menu respiration de l'étoile"
+          anchor={starBreathMenu.screen}
+          onClose={() => {
+            const star = (stateRef.current?.echostory?.stars || []).find((item) => item?.id === starBreathMenu.starId);
+            if (star) star.pendingBreathChoice = false;
+            setStarBreathMenu(null);
+          }}
+          items={[
+            { id: "inspire", label: "Inspirer" },
+            { id: "expire", label: "Expirer" },
+            { id: "wait", label: "Écouter" },
+          ]}
+          onSelect={(item) => {
+            if (item.id === "inspire" || item.id === "expire") {
+              handleStarBreathChoice(item.id);
+              return;
+            }
+            const star = (stateRef.current?.echostory?.stars || []).find((entry) => entry?.id === starBreathMenu.starId);
+            if (star) star.pendingBreathChoice = false;
+          }}
+        />
       ) : null}
       {semioseVideo?.url ? (
         <div

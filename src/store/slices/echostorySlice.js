@@ -55,6 +55,7 @@ export const createEchostorySlice = (set) => ({
         phase: "collect",
         waveIndex: safeIndex,
         stars: createWaveStars(safeIndex, 15),
+        constellationLinks: [],
       },
     };
   }),

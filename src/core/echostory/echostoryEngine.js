@@ -65,6 +65,9 @@ export function createWaveStars(waveIndex, count = TOTAL_STARS) {
     color: PHASE_COLORS[pearls[index]?.phaseIndex ?? Math.min(STAR_PHASE_COUNT - 1, Math.floor(index / STARS_PER_PHASE))],
     attachedToContour: true,
     contourAngle: pearls[index]?.contourAngle ?? Math.atan2(pearls[index]?.y || 0, pearls[index]?.x || 0),
+    pendingBreathChoice: false,
+    expiring: false,
+    expired: false,
   }));
 }
 
@@ -128,5 +131,6 @@ export function resetEchostoryState() {
     activeLine: null,
     escapeState: "idle",
     trailItems: [],
+    constellationLinks: [],
   };
 }
