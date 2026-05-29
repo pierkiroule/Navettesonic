@@ -6,7 +6,8 @@ const STAR_PHASE_COUNT = 3;
 const STARS_PER_PHASE = 5;
 const TOTAL_STARS = STAR_PHASE_COUNT * STARS_PER_PHASE;
 const ARENA_RADIUS = 900;
-const CONTOUR_RAIL_RADIUS = 1168;
+const STAR_INNER_RADIUS = 220;
+const STAR_OUTER_RADIUS = 780;
 const STAR_RADIUS_MIN = 34;
 const STAR_RADIUS_MAX = 48;
 const DEV_AUTO_COLLECT_STARS = Boolean(import.meta?.env?.DEV);
@@ -25,15 +26,20 @@ function pickRandomUnique(items, count) {
   return picks;
 }
 
-function createContourRailLayout(count) {
+function createArenaStarLayout(count) {
   const safeCount = Math.max(1, count);
   return Array.from({ length: safeCount }, (_, index) => {
-    const angle = -Math.PI / 2 + (Math.PI * 2 * index) / safeCount;
+    const phaseIndex = Math.min(STAR_PHASE_COUNT - 1, Math.floor(index / STARS_PER_PHASE));
+    const phaseOffset = phaseIndex * 0.42;
+    const angle = -Math.PI / 2 + phaseOffset + (Math.PI * 2 * index) / safeCount;
+    const bandStep = index % STARS_PER_PHASE;
+    const radiusT = safeCount > 1 ? index / (safeCount - 1) : 0.5;
+    const radius = STAR_INNER_RADIUS + ((bandStep + 0.5) / STARS_PER_PHASE) * (STAR_OUTER_RADIUS - STAR_INNER_RADIUS);
     return {
-      x: Math.cos(angle) * CONTOUR_RAIL_RADIUS,
-      y: Math.sin(angle) * CONTOUR_RAIL_RADIUS,
-      t: safeCount > 1 ? index / (safeCount - 1) : 0.5,
-      phaseIndex: Math.min(STAR_PHASE_COUNT - 1, Math.floor(index / STARS_PER_PHASE)),
+      x: Math.cos(angle) * radius,
+      y: Math.sin(angle) * radius,
+      t: radiusT,
+      phaseIndex,
       contourAngle: angle,
     };
   });
@@ -53,7 +59,7 @@ export function createWaveStars(waveIndex, count = TOTAL_STARS) {
     fragments.push(...pickRandomUnique(bank, STARS_PER_PHASE));
   }
   const limited = fragments.slice(0, Math.max(0, Math.min(count, TOTAL_STARS)));
-  const pearls = createContourRailLayout(limited.length);
+  const pearls = createArenaStarLayout(limited.length);
 
   return limited.map((fragment, index) => ({
     ...fragment,
@@ -65,7 +71,7 @@ export function createWaveStars(waveIndex, count = TOTAL_STARS) {
     phase: (pearls[index]?.t ?? Math.random()) * Math.PI * 2,
     phaseIndex: pearls[index]?.phaseIndex ?? Math.min(STAR_PHASE_COUNT - 1, Math.floor(index / STARS_PER_PHASE)),
     color: PHASE_COLORS[pearls[index]?.phaseIndex ?? Math.min(STAR_PHASE_COUNT - 1, Math.floor(index / STARS_PER_PHASE))],
-    attachedToContour: true,
+    attachedToContour: false,
     contourAngle: pearls[index]?.contourAngle ?? Math.atan2(pearls[index]?.y || 0, pearls[index]?.x || 0),
     pendingBreathChoice: false,
     expiring: false,
