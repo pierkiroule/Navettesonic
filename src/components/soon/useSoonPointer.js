@@ -67,6 +67,58 @@ export function useSoonPointer({
     window.addEventListener("touchcancel", end, { passive: false });
   }
 
+  function removeStarDragListeners() {
+    if (typeof window === "undefined") return;
+    const move = pointerRef.current.windowStarPointerMoveListener;
+    const end = pointerRef.current.windowStarPointerEndListener;
+    const touchMove = pointerRef.current.windowStarTouchMoveListener;
+    const touchEnd = pointerRef.current.windowStarTouchEndListener;
+
+    if (move) window.removeEventListener("pointermove", move);
+    if (end) {
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+    }
+    if (touchMove) window.removeEventListener("touchmove", touchMove);
+    if (touchEnd) {
+      window.removeEventListener("touchend", touchEnd);
+      window.removeEventListener("touchcancel", touchEnd);
+    }
+
+    pointerRef.current.windowStarPointerMoveListener = null;
+    pointerRef.current.windowStarPointerEndListener = null;
+    pointerRef.current.windowStarTouchMoveListener = null;
+    pointerRef.current.windowStarTouchEndListener = null;
+  }
+
+  function bindStarDragListeners() {
+    if (typeof window === "undefined") return;
+    removeStarDragListeners();
+
+    const pointerMove = (event) => moveActiveStarDrag(event);
+    const pointerEnd = (event) => finishActiveStarDrag(event);
+    const touchMove = (event) => {
+      const touch = getPrimaryTouch(event);
+      if (touch) moveActiveStarDrag(touchToPointerEvent(touch, event));
+    };
+    const touchEnd = (event) => {
+      const touch = getPrimaryTouch(event) || { clientX: 0, clientY: 0 };
+      finishActiveStarDrag(touchToPointerEvent(touch, event));
+    };
+
+    pointerRef.current.windowStarPointerMoveListener = pointerMove;
+    pointerRef.current.windowStarPointerEndListener = pointerEnd;
+    pointerRef.current.windowStarTouchMoveListener = touchMove;
+    pointerRef.current.windowStarTouchEndListener = touchEnd;
+
+    window.addEventListener("pointermove", pointerMove, { passive: false });
+    window.addEventListener("pointerup", pointerEnd, { passive: false });
+    window.addEventListener("pointercancel", pointerEnd, { passive: false });
+    window.addEventListener("touchmove", touchMove, { passive: false });
+    window.addEventListener("touchend", touchEnd, { passive: false });
+    window.addEventListener("touchcancel", touchEnd, { passive: false });
+  }
+
   function getWorldFromEvent(event) {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -245,6 +297,110 @@ export function useSoonPointer({
     return true;
   }
 
+  function getActiveDraggedStar() {
+    const stars = stateRef.current?.echostory?.stars || [];
+    return pointerRef.current.dragStarId
+      ? stars.find((item) => item?.id === pointerRef.current.dragStarId)
+      : pointerRef.current.dragStarRef;
+  }
+
+  function startStarPointerDrag(event) {
+    const canvas = canvasRef.current;
+    if (!canvas) return false;
+
+    const point = getSafeWorldFromEvent(event, { swimEdgeBoost: false });
+    const hitStar = findEchostoryStarAt(point);
+    if (!hitStar) return false;
+
+    event.preventDefault?.();
+    event.stopPropagation?.();
+    clearLongPressTimer();
+    removeTouchDragListeners();
+    removeStarDragListeners();
+
+    pointerRef.current.starTouchActive = true;
+    pointerRef.current.starTouchPointerId = event.pointerId ?? TOUCH_POINTER_ID;
+    pointerRef.current.down = true;
+    pointerRef.current.pointerId = pointerRef.current.starTouchPointerId;
+    pointerRef.current.activePointers = pointerRef.current.activePointers || new Map();
+    pointerRef.current.activePointers.clear();
+    registerPointer({
+      pointerId: pointerRef.current.starTouchPointerId,
+      clientX: event.clientX,
+      clientY: event.clientY,
+    });
+    pointerRef.current.dragBubbleId = null;
+    pointerRef.current.pendingBubbleId = null;
+    pointerRef.current.dragBeaconId = null;
+    pointerRef.current.panEnabled = false;
+    pointerRef.current.panStart = null;
+    pointerRef.current.pinchDistance = null;
+    pointerRef.current.startPoint = point;
+
+    beginStarDrag(hitStar, event, point);
+    bindStarDragListeners();
+    return true;
+  }
+
+  function moveActiveStarDrag(event) {
+    if (!pointerRef.current.starTouchActive) return false;
+    const activePointerId = pointerRef.current.starTouchPointerId;
+    if (
+      event.pointerId != null &&
+      activePointerId != null &&
+      event.pointerId !== activePointerId &&
+      event.pointerId !== TOUCH_POINTER_ID
+    ) return false;
+
+    event.preventDefault?.();
+    event.stopPropagation?.();
+    registerPointer({
+      pointerId: activePointerId ?? event.pointerId ?? TOUCH_POINTER_ID,
+      clientX: event.clientX,
+      clientY: event.clientY,
+    });
+
+    const point = getSafeWorldFromEvent(event, { swimEdgeBoost: false });
+    return moveEchostoryStarWithPointer(getActiveDraggedStar(), point);
+  }
+
+  function finishActiveStarDrag(event) {
+    if (!pointerRef.current.starTouchActive) return false;
+    const activePointerId = pointerRef.current.starTouchPointerId;
+    if (
+      event?.pointerId != null &&
+      activePointerId != null &&
+      event.pointerId !== activePointerId &&
+      event.pointerId !== TOUCH_POINTER_ID
+    ) return false;
+
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    clearLongPressTimer();
+    pointerRef.current.activePointers?.delete(activePointerId ?? event?.pointerId ?? TOUCH_POINTER_ID);
+    pointerRef.current.starTouchActive = false;
+    pointerRef.current.starTouchPointerId = null;
+    pointerRef.current.touchSequenceActive = false;
+    pointerRef.current.down = false;
+    pointerRef.current.pointerId = null;
+    pointerRef.current.dragBubbleId = null;
+    pointerRef.current.pendingBubbleId = null;
+    pointerRef.current.dragBeaconId = null;
+    pointerRef.current.panEnabled = false;
+    pointerRef.current.panStart = null;
+    pointerRef.current.pinchDistance = null;
+    pointerRef.current.startPoint = null;
+    endStarDrag();
+    removeStarDragListeners();
+    removeTouchDragListeners();
+
+    try {
+      canvasRef.current?.releasePointerCapture(activePointerId ?? event?.pointerId);
+    } catch {}
+
+    return true;
+  }
+
   function armLongPress(event, point, current) {
     clearLongPressTimer();
     pointerRef.current.longPressStartPoint = point;
@@ -312,6 +468,9 @@ export function useSoonPointer({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    if (pointerRef.current.starTouchActive) return;
+    if (startStarPointerDrag(event)) return;
+
     event.preventDefault?.();
     if (event.pointerType === "touch") {
       pointerRef.current.touchSequenceActive = true;
@@ -346,12 +505,6 @@ export function useSoonPointer({
     pointerRef.current.pinchDistance = null;
     pointerRef.current.startPoint = point;
 
-    const hitStar = findEchostoryStarAt(point);
-    if (hitStar) {
-      beginStarDrag(hitStar, event, point);
-      return;
-    }
-
     if (isCircuitMode) {
       handleCircuitPointerDown(event, point, current);
       return;
@@ -372,6 +525,7 @@ export function useSoonPointer({
   }
 
   function handlePointerMove(event) {
+    if (moveActiveStarDrag(event)) return;
     registerPointer(event);
 
     const current = stateRef.current;
@@ -385,11 +539,7 @@ export function useSoonPointer({
 
     if (pointerRef.current.dragStarId || pointerRef.current.dragStarRef) {
       event.preventDefault?.();
-      const stars = stateRef.current?.echostory?.stars || [];
-      const star = pointerRef.current.dragStarId
-        ? stars.find((item) => item?.id === pointerRef.current.dragStarId)
-        : pointerRef.current.dragStarRef;
-      if (moveEchostoryStarWithPointer(star, point)) return;
+      if (moveEchostoryStarWithPointer(getActiveDraggedStar(), point)) return;
     }
 
     if (isEditMode && pointerRef.current.activePointers.size >= 2) {
@@ -485,6 +635,7 @@ export function useSoonPointer({
   }
 
   function handlePointerUp(event) {
+    if (finishActiveStarDrag(event)) return;
     clearLongPressTimer();
     pointerRef.current.activePointers?.delete(event.pointerId);
 
@@ -523,35 +674,51 @@ export function useSoonPointer({
       clientX: touch.clientX,
       clientY: touch.clientY,
       preventDefault: () => sourceEvent?.preventDefault?.(),
+      stopPropagation: () => sourceEvent?.stopPropagation?.(),
     };
+  }
+
+
+  function handleStarTouchStartCapture(event) {
+    const touch = getPrimaryTouch(event);
+    if (!touch || pointerRef.current.starTouchActive) return false;
+    return startStarPointerDrag(touchToPointerEvent(touch, event));
   }
 
   function handleTouchStart(event) {
     const touch = getPrimaryTouch(event);
     if (!touch) return;
+    const pointerEvent = touchToPointerEvent(touch, event);
+
+    if (pointerRef.current.starTouchActive) return;
+    if (startStarPointerDrag(pointerEvent)) return;
+
     event.preventDefault?.();
     pointerRef.current.touchSequenceActive = true;
     bindTouchDragListeners();
 
     // Some mobile browsers emit Pointer Events before Touch Events. If a
-    // pointerdown already grabbed the star, do not restart the gesture; keep
-    // the window-level touch listeners as a safety net for move/end events.
-    if (pointerRef.current.down || pointerRef.current.dragStarRef) return;
+    // pointerdown already grabbed a non-star gesture, do not restart it.
+    if (pointerRef.current.down) return;
 
-    handlePointerDown(touchToPointerEvent(touch, event));
+    handlePointerDown(pointerEvent);
   }
 
   function handleTouchMove(event) {
     const touch = getPrimaryTouch(event);
     if (!touch) return;
+    const pointerEvent = touchToPointerEvent(touch, event);
+    if (moveActiveStarDrag(pointerEvent)) return;
     event.preventDefault?.();
-    handlePointerMove(touchToPointerEvent(touch, event));
+    handlePointerMove(pointerEvent);
   }
 
   function handleTouchEnd(event) {
     const touch = getPrimaryTouch(event) || { clientX: 0, clientY: 0 };
+    const pointerEvent = touchToPointerEvent(touch, event);
+    if (finishActiveStarDrag(pointerEvent)) return;
     event.preventDefault?.();
-    handlePointerUp(touchToPointerEvent(touch, event));
+    handlePointerUp(pointerEvent);
     pointerRef.current.touchSequenceActive = false;
     removeTouchDragListeners();
   }
@@ -559,7 +726,10 @@ export function useSoonPointer({
   function cleanupPointer() {
     clearLongPressTimer();
     removeTouchDragListeners();
+    removeStarDragListeners();
     pointerRef.current.touchSequenceActive = false;
+    pointerRef.current.starTouchActive = false;
+    pointerRef.current.starTouchPointerId = null;
     pointerRef.current.activePointers?.clear();
     endStarDrag();
   }
@@ -571,6 +741,8 @@ export function useSoonPointer({
     handleTouchStart,
     handleTouchMove,
     handleTouchEnd,
+    handleStarPointerDownCapture: startStarPointerDrag,
+    handleStarTouchStartCapture,
     cleanupPointer,
   };
 }

@@ -210,6 +210,8 @@ export default function SoonCanvas({
     handleTouchStart,
     handleTouchMove,
     handleTouchEnd,
+    handleStarPointerDownCapture,
+    handleStarTouchStartCapture,
     cleanupPointer,
   } = useSoonPointer({
     canvasRef,
@@ -422,7 +424,11 @@ export default function SoonCanvas({
   ];
 
   return (
-    <div className="soon-canvas-shell">
+    <div
+      className="soon-canvas-shell"
+      onPointerDownCapture={handleStarPointerDownCapture}
+      onTouchStartCapture={handleStarTouchStartCapture}
+    >
       <button
         type="button"
         className={`composition-generator-btn ${compositionPlan ? "is-active" : ""}`}

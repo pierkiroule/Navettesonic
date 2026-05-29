@@ -273,6 +273,84 @@ test('fallback touch permet de poser puis déplacer une étoile au doigt', () =>
 });
 
 
+
+test('capture tactile au-dessus du canvas attrape une étoile et bloque l’overlay', () => {
+  const calls = { preventDefault: 0, stopPropagation: 0 };
+  const stateRef = {
+    current: {
+      interactionMode: 'edit',
+      mode: 'echostory',
+      fish: { depth: 1 },
+      viewZoom: 0,
+      circuitAutopilot: false,
+      bubbles: [],
+      echostory: {
+        stars: [{ id: 'overlay-star', x: 0, y: 0, r: 18, attachedToContour: false }],
+      },
+    },
+  };
+  const canvas = {
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
+    setPointerCapture: () => {},
+    releasePointerCapture: () => {},
+  };
+  const pointerApi = useSoonPointer({
+    canvasRef: { current: canvas },
+    cameraRef: { current: { x: 0, y: 0 } },
+    arenaRef: { current: { radius: 1200 } },
+    pointerRef: { current: { activePointers: new Map() } },
+    stateRef,
+  });
+
+  const captured = pointerApi.handleStarPointerDownCapture({
+    pointerId: 12,
+    pointerType: 'touch',
+    clientX: 500,
+    clientY: 500,
+    preventDefault: () => { calls.preventDefault += 1; },
+    stopPropagation: () => { calls.stopPropagation += 1; },
+  });
+
+  assert.equal(captured, true);
+  assert.equal(calls.preventDefault, 1);
+  assert.equal(calls.stopPropagation, 1);
+  assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, true);
+});
+
+
+test('capture tactile hors étoile laisse les overlays recevoir le geste', () => {
+  const calls = { preventDefault: 0, stopPropagation: 0 };
+  const stateRef = {
+    current: {
+      interactionMode: 'edit',
+      mode: 'echostory',
+      fish: { depth: 1 },
+      viewZoom: 0,
+      circuitAutopilot: false,
+      bubbles: [],
+      echostory: { stars: [] },
+    },
+  };
+  const pointerApi = useSoonPointer({
+    canvasRef: { current: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }) } },
+    cameraRef: { current: { x: 0, y: 0 } },
+    arenaRef: { current: { radius: 1200 } },
+    pointerRef: { current: { activePointers: new Map() } },
+    stateRef,
+  });
+
+  const captured = pointerApi.handleStarTouchStartCapture({
+    touches: [{ clientX: 500, clientY: 500 }],
+    changedTouches: [{ clientX: 500, clientY: 500 }],
+    preventDefault: () => { calls.preventDefault += 1; },
+    stopPropagation: () => { calls.stopPropagation += 1; },
+  });
+
+  assert.equal(captured, false);
+  assert.equal(calls.preventDefault, 0);
+  assert.equal(calls.stopPropagation, 0);
+});
+
 test('une étoile reste prioritaire au doigt même en mode édition', () => {
   const stateRef = {
     current: {
