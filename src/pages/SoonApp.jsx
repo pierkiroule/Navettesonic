@@ -42,7 +42,6 @@ export default function SoonApp({ onBack }) {
   const speedBoostUntilRef = useRef(0);
   const plumeTraceActiveRef = useRef(false);
   const plumeLastPointRef = useRef(null);
-  const [soonTouchMode, setSoonTouchMode] = useState("fish");
 
   const {
     mode,
@@ -97,7 +96,6 @@ export default function SoonApp({ onBack }) {
     resetEchostoryTraversal,
     finishEchostoryTraversal,
     setEchostoryActiveLine,
-    selectContourEchostoryStar,
   } = useSoonStore();
 
   const selectedBubble =
@@ -238,11 +236,6 @@ export default function SoonApp({ onBack }) {
     }
   };
 
-  useEffect(() => {
-    plumeTraceActiveRef.current = false;
-    plumeLastPointRef.current = null;
-  }, [soonTouchMode]);
-
   const boostFishSpeed = () => {
     speedBoostUntilRef.current = Date.now() + 1200;
   };
@@ -326,7 +319,7 @@ export default function SoonApp({ onBack }) {
 
 
   useEffect(() => {
-    if (!isOdysseo || soonTouchMode === "weave" || (odysseoPath?.length || 0) < 2 || echostory?.traversalActive) return;
+    if (!isOdysseo || (odysseoPath?.length || 0) < 2 || echostory?.traversalActive) return;
 
     const previewLines = buildEchostoryText({
       collectedStars: echostory?.collectedStars || [],
@@ -343,7 +336,7 @@ export default function SoonApp({ onBack }) {
     useSoonStore.setState((state) => ({
       echostory: { ...state.echostory, stars },
     }));
-  }, [isOdysseo, soonTouchMode, odysseoPath, echostory?.collectedStars, echostory?.traversalActive]);
+  }, [isOdysseo, odysseoPath, echostory?.collectedStars, echostory?.traversalActive]);
 
 
   
@@ -548,7 +541,6 @@ export default function SoonApp({ onBack }) {
         onSetFishDepth={setFishDepth}
         echostory={echostory}
         contourPlaybackPaused={contourPlaybackPaused}
-        onSelectContourStar={selectContourEchostoryStar}
         onToggleContourPlayback={() => {
           setContourPlaybackPaused((paused) => {
             const next = !paused;
@@ -556,7 +548,6 @@ export default function SoonApp({ onBack }) {
             return next;
           });
         }}
-        soonTouchMode={soonTouchMode}
       />
 
 
@@ -654,31 +645,6 @@ export default function SoonApp({ onBack }) {
           )}
         </div>
       </div>
-
-      {(isOdysseo || isEchostory) && (
-        <div className="mode-switch-bottom" role="group" aria-label="Modes tactiles Soon">
-          <div className="mode-switch-pill">
-            <button
-              type="button"
-              className={`mode-switch-button ${soonTouchMode === "fish" ? "active" : ""}`}
-              onClick={() => setSoonTouchMode("fish")}
-              aria-pressed={soonTouchMode === "fish"}
-              title="Piloter Soon avec le doigt"
-            >
-              🐟 Piloter
-            </button>
-            <button
-              type="button"
-              className={`mode-switch-button ${soonTouchMode === "weave" ? "active" : ""}`}
-              onClick={() => setSoonTouchMode("weave")}
-              aria-pressed={soonTouchMode === "weave"}
-              title="Sélectionner les étoiles du contour pour tisser"
-            >
-              🧶 Tisser
-            </button>
-          </div>
-        </div>
-      )}
 
       {isOdysseo && (exportStatus || exportUrl) && (
         <div className="export-status">

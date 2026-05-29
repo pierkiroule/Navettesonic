@@ -101,6 +101,20 @@ function drawContourSnapHalo(ctx, x, y, radius, time = 0, phase = 0) {
   ctx.fill();
 }
 
+export function drawEchostoryConstellationLinks(ctx, echostory = {}, time = 0) {
+  const stars = Array.isArray(echostory?.stars) ? echostory.stars : [];
+  const links = Array.isArray(echostory?.constellationLinks) ? echostory.constellationLinks : [];
+  if (!stars.length || !links.length) return;
+
+  const starsById = new Map(stars.map((star) => [star?.id, star]).filter(([id]) => id));
+  links.forEach((link) => {
+    const fromStar = starsById.get(link?.from);
+    const toStar = starsById.get(link?.to);
+    if (!fromStar || !toStar || fromStar.expired || toStar.expired) return;
+    drawDreamcatcherChord(ctx, fromStar, toStar, time);
+  });
+}
+
 export function drawEchostoryContourLinks(ctx, echostory = {}, time = 0) {
   const stars = Array.isArray(echostory?.stars) ? echostory.stars : [];
   const links = Array.isArray(echostory?.contourStarLinks) ? echostory.contourStarLinks : [];
@@ -120,7 +134,7 @@ export function drawEchostoryStars(ctx, stars = [], time = 0, fish = null) {
   ctx.save();
   try {
     stars.forEach((star, index) => {
-      if (!star) return;
+      if (!star || star.expired) return;
 
       const pulse = Math.sin(time * 0.005 + (star.phase || 0) + index * 0.4) * 0.5 + 0.5;
       const radius = (Number.isFinite(star.r) ? star.r : 18) * (0.85 + pulse * 0.2);

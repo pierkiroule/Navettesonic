@@ -1,5 +1,4 @@
 import { advanceWave, collectStar, createWaveStars, getCurrentWaveKey, resetEchostoryState } from "../../core/echostory/echostoryEngine.js";
-import { toggleContourStarSelection } from "../../core/echostory/contourStarLinks.js";
 
 export const createEchostorySlice = (set) => ({
   triggerEscapeCinematic: () => set((state) => ({
@@ -55,6 +54,7 @@ export const createEchostorySlice = (set) => ({
         phase: "collect",
         waveIndex: safeIndex,
         stars: createWaveStars(safeIndex, 15),
+        constellationLinks: [],
       },
     };
   }),
@@ -68,9 +68,6 @@ export const createEchostorySlice = (set) => ({
   }),
   clearTrailItems: () => set((state) => ({
     echostory: { ...(state.echostory || {}), trailItems: [] },
-  })),
-  selectContourEchostoryStar: (id) => set((state) => ({
-    echostory: toggleContourStarSelection(state.echostory, id),
   })),
   threadEchostoryStar: (id) => set((state) => {
     const echostory = state.echostory || {};
