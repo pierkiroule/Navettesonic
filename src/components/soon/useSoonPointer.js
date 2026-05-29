@@ -216,9 +216,10 @@ export function useSoonPointer({
     pointerRef.current.pendingStarRef = null;
     pointerRef.current.pendingStarOffset = null;
     pointerRef.current.pendingStarPoint = null;
+    pointerRef.current.pendingStarArmedAt = 0;
   }
 
-  function beginPendingStarDrag() {
+  function beginPendingStarDrag(pointOverride = null) {
     const star = pointerRef.current.pendingStarRef;
     if (!star || star.expired || !pointerRef.current.down) return false;
     pointerRef.current.dragStarId = pointerRef.current.pendingStarId;
@@ -227,7 +228,7 @@ export function useSoonPointer({
     pointerRef.current.pendingStarId = null;
     pointerRef.current.pendingStarRef = null;
     pointerRef.current.pendingStarOffset = null;
-    moveEchostoryStarWithPointer(star, pointerRef.current.pendingStarPoint || pointerRef.current.startPoint || star);
+    moveEchostoryStarWithPointer(star, pointOverride || pointerRef.current.pendingStarPoint || pointerRef.current.startPoint || star);
     return true;
   }
 
@@ -240,6 +241,7 @@ export function useSoonPointer({
       y: (Number.isFinite(star.y) ? star.y : point.y) - point.y,
     };
     pointerRef.current.pendingStarPoint = point;
+    pointerRef.current.pendingStarArmedAt = getNow();
     pointerRef.current.starDragTimer = setTimeout(() => {
       pointerRef.current.starDragTimer = null;
       beginPendingStarDrag();
@@ -315,6 +317,7 @@ export function useSoonPointer({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    event.preventDefault?.();
     canvas.setPointerCapture(event.pointerId);
     registerPointer(event);
 
@@ -427,11 +430,17 @@ export function useSoonPointer({
     if (moved) clearLongPressTimer();
 
     if (!isEditMode && !isCircuitMode && pointerRef.current.pendingStarRef) {
+      event.preventDefault?.();
       pointerRef.current.pendingStarPoint = point;
+      const armedAt = Number.isFinite(pointerRef.current.pendingStarArmedAt)
+        ? pointerRef.current.pendingStarArmedAt
+        : 0;
+      if (getNow() - armedAt >= STAR_DRAG_HOLD_MS && beginPendingStarDrag(point)) return;
       return;
     }
 
     if (!isEditMode && !isCircuitMode && (pointerRef.current.dragStarId || pointerRef.current.dragStarRef)) {
+      event.preventDefault?.();
       const stars = stateRef.current?.echostory?.stars || [];
       const star = pointerRef.current.dragStarId
         ? stars.find((item) => item?.id === pointerRef.current.dragStarId)

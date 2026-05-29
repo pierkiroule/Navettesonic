@@ -105,10 +105,11 @@ test('tap court sur une étoile snappée ne lance pas le drag ni Soon', () => {
   });
 
   pointerApi.handlePointerDown(event(1, 879, 500));
+  pointerApi.handlePointerUp(event(1, 879, 500));
 
   assert.equal(stateRef.current.echostory.stars[0].pendingBreathChoice, undefined);
   assert.equal(stateRef.current.echostory.stars[0].attachedToContour, true);
-  assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, undefined);
+  assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, false);
   assert.equal(calls.fishTarget, 0);
   assert.equal(calls.options.length, 0);
 });

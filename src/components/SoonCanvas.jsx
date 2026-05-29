@@ -459,6 +459,7 @@ export default function SoonCanvas({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
+        onContextMenu={(event) => event.preventDefault()}
       />
       {contourPlayButton.visible ? (
         <div
