@@ -207,6 +207,9 @@ export default function SoonCanvas({
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
     cleanupPointer,
   } = useSoonPointer({
     canvasRef,
@@ -459,6 +462,10 @@ export default function SoonCanvas({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
         onContextMenu={(event) => event.preventDefault()}
       />
       {contourPlayButton.visible ? (

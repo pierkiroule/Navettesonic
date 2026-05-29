@@ -34,6 +34,7 @@ export function useSoonPointer({
   const LONG_PRESS_MS = 480;
   const STAR_TOUCH_RADIUS = 112;
   const STAR_TOUCH_RADIUS_MULTIPLIER = 2.6;
+  const TOUCH_POINTER_ID = -1001;
 
   function getNow() {
     return typeof performance !== "undefined" && typeof performance.now === "function"
@@ -287,7 +288,9 @@ export function useSoonPointer({
     if (!canvas) return;
 
     event.preventDefault?.();
-    canvas.setPointerCapture(event.pointerId);
+    try {
+      canvas.setPointerCapture(event.pointerId);
+    } catch {}
     registerPointer(event);
 
     const point = getSafeWorldFromEvent(event, { swimEdgeBoost: true });
@@ -478,6 +481,39 @@ export function useSoonPointer({
     } catch {}
   }
 
+  function getPrimaryTouch(event) {
+    return event?.touches?.[0] || event?.changedTouches?.[0] || null;
+  }
+
+  function touchToPointerEvent(touch, sourceEvent) {
+    return {
+      pointerId: TOUCH_POINTER_ID,
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      preventDefault: () => sourceEvent?.preventDefault?.(),
+    };
+  }
+
+  function handleTouchStart(event) {
+    const touch = getPrimaryTouch(event);
+    if (!touch) return;
+    event.preventDefault?.();
+    handlePointerDown(touchToPointerEvent(touch, event));
+  }
+
+  function handleTouchMove(event) {
+    const touch = getPrimaryTouch(event);
+    if (!touch) return;
+    event.preventDefault?.();
+    handlePointerMove(touchToPointerEvent(touch, event));
+  }
+
+  function handleTouchEnd(event) {
+    const touch = getPrimaryTouch(event) || { clientX: 0, clientY: 0 };
+    event.preventDefault?.();
+    handlePointerUp(touchToPointerEvent(touch, event));
+  }
+
   function cleanupPointer() {
     clearLongPressTimer();
     pointerRef.current.activePointers?.clear();
@@ -488,6 +524,9 @@ export function useSoonPointer({
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
     cleanupPointer,
   };
 }
