@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildEchostoryCompositionPlan, getEchostoryCompositionStyle } from '../src/core/echostory/echostoryCompositionGenerator.js';
+import { ECHOSTORY_MUSIC_CORE_ID } from '../src/core/echostory/echostoryConstellation.js';
 
 test('buildEchostoryCompositionPlan composes sections from constellation links', () => {
   const plan = buildEchostoryCompositionPlan({
@@ -12,7 +13,10 @@ test('buildEchostoryCompositionPlan composes sections from constellation links',
         { id: 'star-3', text: 'solo', attachedToContour: false },
         { id: 'star-4', text: 'ancien', expired: true, attachedToContour: false },
       ],
-      constellationLinks: [{ from: 'star-1', to: 'star-2' }],
+      constellationLinks: [
+        { from: ECHOSTORY_MUSIC_CORE_ID, to: 'star-1' },
+        { from: 'star-1', to: 'star-2' },
+      ],
     },
   });
 

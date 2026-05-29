@@ -14,6 +14,7 @@ import { drawScene } from "../../core/soonRenderers.js";
 import { getMembraneRadiusForLevel } from "../../core/fishNavigationEngine.js";
 import { setContourMusicLoopActive } from "../../core/organicAmbienceEngine.js";
 import { resetCanvasPaintState } from "../../core/canvasState.js";
+import { ECHOSTORY_MUSIC_CORE_ID } from "../../core/echostory/echostoryConstellation.js";
 import { ARENA_INNER_BOUNDARY_INSET, MEMBRANE_LEVEL_MULTIPLIERS } from "../../core/constants.js";
 import { getBlobRadiusAtAngle } from "../../core/blobArena.js";
 import {
@@ -32,10 +33,20 @@ const STAR_EDGE_STICK_RELEASE = 86;
 const STAR_BREATH_MENU_COOLDOWN_MS = 900;
 const STAR_INHALE_IMPULSE = 16;
 const STAR_EXHALE_IMPULSE = 34;
-const STAR_NETWORK_LINK_DISTANCE = 76;
-const STAR_NETWORK_LINK_STIFFNESS = 0.032;
+const STAR_NETWORK_LINK_DISTANCE = 142;
+const STAR_NETWORK_BRANCH_REST_LENGTH = 132;
+const MUSIC_CORE_TOUCH_RADIUS = 150;
+const MUSIC_CORE_LINK_REST_LENGTH = 148;
+const STAR_NETWORK_MIN_SEPARATION = 104;
+const MUSIC_CORE_MIN_SEPARATION = 126;
+const STAR_NETWORK_SPACING_FORCE = 0.008;
+const STAR_NETWORK_LINK_STIFFNESS = 0.014;
+const MUSIC_CORE_LINK_STIFFNESS_MULTIPLIER = 0.32;
 const STAR_NETWORK_BREAK_THRESHOLD = 54;
-const STAR_NETWORK_DAMPING = 0.985;
+const STAR_NETWORK_RUPTURE_STRETCH = 1.18;
+const STAR_NETWORK_RUPTURE_EXTRA_DISTANCE = 28;
+const STAR_NETWORK_PUSH_MEMORY_MS = 1800;
+const STAR_NETWORK_DAMPING = 0.981;
 
 const CONTOUR_RIDE_DURATION_MS = 120000;
 const CONTOUR_RIDE_ENTRY_THRESHOLD = 52;
@@ -337,18 +348,31 @@ function getConstellationLinks(echostory = {}) {
   return echostory.constellationLinks;
 }
 
-function addConstellationLink(echostory, fromStar, toStar) {
+function getMusicCoreNode() {
+  return { id: ECHOSTORY_MUSIC_CORE_ID, x: 0, y: 0, r: MUSIC_CORE_TOUCH_RADIUS * 0.5 };
+}
+
+function isMusicCoreLink(link) {
+  return link?.from === ECHOSTORY_MUSIC_CORE_ID || link?.to === ECHOSTORY_MUSIC_CORE_ID;
+}
+
+function linkKey(from, to) {
+  return [from, to].sort().join("→");
+}
+
+function addConstellationLink(echostory, fromStar, toStar, options = {}) {
   if (!fromStar?.id || !toStar?.id || fromStar.id === toStar.id) return;
   const links = getConstellationLinks(echostory);
   const [from, to] = [fromStar.id, toStar.id].sort();
-  if (links.some((link) => link?.from === from && link?.to === to)) return;
+  if (links.some((link) => linkKey(link?.from, link?.to) === linkKey(from, to))) return;
+  const measuredLength = Math.hypot((toStar.x || 0) - (fromStar.x || 0), (toStar.y || 0) - (fromStar.y || 0));
   links.push({
     from,
     to,
-    restLength: Math.max(
-      STAR_NETWORK_LINK_DISTANCE * 0.72,
-      Math.hypot((toStar.x || 0) - (fromStar.x || 0), (toStar.y || 0) - (fromStar.y || 0))
-    ),
+    restLength: Number.isFinite(options.restLength)
+      ? options.restLength
+      : Math.max(STAR_NETWORK_BRANCH_REST_LENGTH, measuredLength),
+    kind: options.kind || (from === ECHOSTORY_MUSIC_CORE_ID || to === ECHOSTORY_MUSIC_CORE_ID ? "music-core" : "branch"),
     createdAt: Date.now(),
   });
 }
@@ -358,6 +382,83 @@ function removeLinksForStars(echostory, starIds = new Set()) {
   echostory.constellationLinks = echostory.constellationLinks.filter(
     (link) => !starIds.has(link?.from) && !starIds.has(link?.to)
   );
+}
+
+function wasRecentlyPushedBySoon(star, now = performance.now()) {
+  return Number.isFinite(star?.lastPushedBySoonAt) && now - star.lastPushedBySoonAt <= STAR_NETWORK_PUSH_MEMORY_MS;
+}
+
+function pruneOverstretchedConstellationLinks(echostory, starById, now = performance.now()) {
+  const links = getConstellationLinks(echostory);
+  if (!links.length) return;
+  echostory.constellationLinks = links.filter((link) => {
+    const from = starById.get(link?.from);
+    const to = starById.get(link?.to);
+    if (!from || !to) return false;
+    const pushedEndpoint = [from, to].some((star) => star.id !== ECHOSTORY_MUSIC_CORE_ID && wasRecentlyPushedBySoon(star, now));
+    if (!pushedEndpoint) return true;
+
+    const dx = (to.x || 0) - (from.x || 0);
+    const dy = (to.y || 0) - (from.y || 0);
+    const distance = Math.hypot(dx, dy);
+    const rest = Number.isFinite(link.restLength) ? link.restLength : STAR_NETWORK_LINK_DISTANCE;
+    const ruptureDistance = Math.max(
+      rest * STAR_NETWORK_RUPTURE_STRETCH,
+      rest + STAR_NETWORK_RUPTURE_EXTRA_DISTANCE
+    );
+    return distance <= ruptureDistance;
+  });
+}
+
+function getMusicConnectedStarIds(links = []) {
+  const component = getLinkedComponent(ECHOSTORY_MUSIC_CORE_ID, links);
+  component.delete(ECHOSTORY_MUSIC_CORE_ID);
+  return component;
+}
+
+function applyVelocity(star, vx, vy) {
+  if (!star || star.id === ECHOSTORY_MUSIC_CORE_ID) return;
+  star.vx = (star.vx || 0) + vx;
+  star.vy = (star.vy || 0) + vy;
+}
+
+function applyConstellationSpacing(starById, links = []) {
+  const connectedIds = [...getMusicConnectedStarIds(links)];
+  const connectedStars = connectedIds.map((id) => starById.get(id)).filter(Boolean);
+  const musicCore = starById.get(ECHOSTORY_MUSIC_CORE_ID);
+
+  if (musicCore) {
+    connectedStars.forEach((star, index) => {
+      let dx = (star.x || 0) - musicCore.x;
+      let dy = (star.y || 0) - musicCore.y;
+      let distance = Math.hypot(dx, dy);
+      if (distance <= 0.001) {
+        const fallbackAngle = ((index * 137.5) % 360) * (Math.PI / 180);
+        dx = Math.cos(fallbackAngle);
+        dy = Math.sin(fallbackAngle);
+        distance = 1;
+      }
+      if (distance >= MUSIC_CORE_MIN_SEPARATION) return;
+      const push = (MUSIC_CORE_MIN_SEPARATION - distance) * STAR_NETWORK_SPACING_FORCE;
+      applyVelocity(star, (dx / distance) * push, (dy / distance) * push);
+    });
+  }
+
+  for (let i = 0; i < connectedStars.length; i += 1) {
+    const a = connectedStars[i];
+    for (let j = i + 1; j < connectedStars.length; j += 1) {
+      const b = connectedStars[j];
+      const dx = (b.x || 0) - (a.x || 0);
+      const dy = (b.y || 0) - (a.y || 0);
+      const distance = Math.hypot(dx, dy);
+      if (distance <= 0.001 || distance >= STAR_NETWORK_MIN_SEPARATION) continue;
+      const push = (STAR_NETWORK_MIN_SEPARATION - distance) * STAR_NETWORK_SPACING_FORCE * 0.5;
+      const ux = dx / distance;
+      const uy = dy / distance;
+      applyVelocity(a, -ux * push, -uy * push);
+      applyVelocity(b, ux * push, uy * push);
+    }
+  }
 }
 
 function getLinkedComponent(starId, links = []) {
@@ -375,12 +476,25 @@ function getLinkedComponent(starId, links = []) {
   return visited;
 }
 
-function updateEchostoryConstellations(current) {
+function updateEchostoryConstellations(current, now = performance.now()) {
   const echostory = current?.echostory;
   const stars = echostory?.stars || [];
   if (!echostory || !stars.length) return;
 
   const activeStars = getActiveConstellationStars(stars);
+  const musicCore = getMusicCoreNode();
+  activeStars.forEach((star) => {
+    const starRadius = Number.isFinite(star.r) ? star.r : 18;
+    const d = Math.hypot(star.x || 0, star.y || 0);
+    if (d <= Math.max(MUSIC_CORE_TOUCH_RADIUS, starRadius + MUSIC_CORE_TOUCH_RADIUS * 0.5)) {
+      addConstellationLink(echostory, musicCore, star, {
+        kind: "music-core",
+        restLength: Math.max(MUSIC_CORE_LINK_REST_LENGTH, d),
+      });
+    }
+  });
+
+  let musicConnectedIds = getMusicConnectedStarIds(getConstellationLinks(echostory));
   for (let i = 0; i < activeStars.length; i += 1) {
     const a = activeStars[i];
     const ar = Number.isFinite(a.r) ? a.r : 18;
@@ -388,19 +502,35 @@ function updateEchostoryConstellations(current) {
       const b = activeStars[j];
       const br = Number.isFinite(b.r) ? b.r : 18;
       const d = Math.hypot((b.x || 0) - (a.x || 0), (b.y || 0) - (a.y || 0));
-      if (d <= Math.max(STAR_NETWORK_LINK_DISTANCE, (ar + br) * 1.75)) {
-        addConstellationLink(echostory, a, b);
+      if (d > Math.max(STAR_NETWORK_LINK_DISTANCE, (ar + br) * 1.75)) continue;
+
+      const aConnected = musicConnectedIds.has(a.id);
+      const bConnected = musicConnectedIds.has(b.id);
+      if (!aConnected && !bConnected) continue;
+
+      addConstellationLink(echostory, a, b);
+      if (aConnected || bConnected) {
+        musicConnectedIds = getMusicConnectedStarIds(getConstellationLinks(echostory));
       }
     }
   }
 
   const starById = new Map(stars.map((star) => [star?.id, star]).filter(([id]) => id));
+  starById.set(ECHOSTORY_MUSIC_CORE_ID, musicCore);
   const links = getConstellationLinks(echostory);
   echostory.constellationLinks = links.filter((link) => {
     const from = starById.get(link?.from);
     const to = starById.get(link?.to);
-    return from && to && !from.expired && !to.expired && !from.expiring && !to.expiring && !from.attachedToContour && !to.attachedToContour;
+    if (!from || !to) return false;
+    if (isMusicCoreLink(link)) {
+      const star = link.from === ECHOSTORY_MUSIC_CORE_ID ? to : from;
+      return !star.expired && !star.expiring && !star.attachedToContour;
+    }
+    return !from.expired && !to.expired && !from.expiring && !to.expiring && !from.attachedToContour && !to.attachedToContour;
   });
+
+  pruneOverstretchedConstellationLinks(echostory, starById, now);
+  applyConstellationSpacing(starById, echostory.constellationLinks);
 
   echostory.constellationLinks.forEach((link) => {
     const from = starById.get(link.from);
@@ -411,13 +541,18 @@ function updateEchostoryConstellations(current) {
     const distance = Math.hypot(dx, dy);
     if (distance < 0.001) return;
     const rest = Number.isFinite(link.restLength) ? link.restLength : STAR_NETWORK_LINK_DISTANCE;
-    const pull = (distance - rest) * STAR_NETWORK_LINK_STIFFNESS;
+    const stiffness = isMusicCoreLink(link) ? STAR_NETWORK_LINK_STIFFNESS * MUSIC_CORE_LINK_STIFFNESS_MULTIPLIER : STAR_NETWORK_LINK_STIFFNESS;
+    const pull = (distance - rest) * stiffness;
     const ux = dx / distance;
     const uy = dy / distance;
-    from.vx = (from.vx || 0) + ux * pull;
-    from.vy = (from.vy || 0) + uy * pull;
-    to.vx = (to.vx || 0) - ux * pull;
-    to.vy = (to.vy || 0) - uy * pull;
+    if (from.id !== ECHOSTORY_MUSIC_CORE_ID) {
+      from.vx = (from.vx || 0) + ux * pull;
+      from.vy = (from.vy || 0) + uy * pull;
+    }
+    if (to.id !== ECHOSTORY_MUSIC_CORE_ID) {
+      to.vx = (to.vx || 0) - ux * pull;
+      to.vy = (to.vy || 0) - uy * pull;
+    }
   });
 
   const arenaRadius = Number.isFinite(current?.arenaRadius) ? current.arenaRadius : 1200;
@@ -428,7 +563,8 @@ function updateEchostoryConstellations(current) {
     const from = starById.get(link.from);
     const to = starById.get(link.to);
     if (!from || !to) return;
-    const touchesContour = [from, to].some((star) => Math.hypot(star.x || 0, star.y || 0) >= contourSnapThreshold);
+    const linkedStars = [from, to].filter((star) => star.id !== ECHOSTORY_MUSIC_CORE_ID);
+    const touchesContour = linkedStars.some((star) => Math.hypot(star.x || 0, star.y || 0) >= contourSnapThreshold);
     if (!touchesContour) return;
     const componentIds = getLinkedComponent(link.from, echostory.constellationLinks);
     componentIds.forEach((id) => brokenIds.add(id));
@@ -501,6 +637,7 @@ export function pushNearbyEchostoryStars(current, now = performance.now()) {
         const pushForce = (1 - distance / TRIGGER_RADIUS) * CONTACT_PUSH_DISTANCE * SOON_CONTACT_REBOUND_MULTIPLIER;
         star.vx += ux * pushForce * STAR_PUSH_SMOOTHING;
         star.vy += uy * pushForce * STAR_PUSH_SMOOTHING;
+        star.lastPushedBySoonAt = now;
       }
     }
     const step = Math.hypot(star.vx || 0, star.vy || 0);
@@ -553,7 +690,7 @@ export function pushNearbyEchostoryStars(current, now = performance.now()) {
     }
   });
 
-  updateEchostoryConstellations(current);
+  updateEchostoryConstellations(current, now);
 }
 
 

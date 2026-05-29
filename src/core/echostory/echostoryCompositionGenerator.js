@@ -1,3 +1,5 @@
+import { ECHOSTORY_MUSIC_CORE_ID } from "./echostoryConstellation.js";
+
 export const ECHOSTORY_COMPOSITION_STYLES = [
   {
     id: "hypnotique",
@@ -38,8 +40,10 @@ function collectConstellationComponents(stars = [], links = []) {
   const adjacency = new Map();
 
   links.forEach((link) => {
-    const from = starsById.get(link?.from);
-    const to = starsById.get(link?.to);
+    const fromIsCore = link?.from === ECHOSTORY_MUSIC_CORE_ID;
+    const toIsCore = link?.to === ECHOSTORY_MUSIC_CORE_ID;
+    const from = fromIsCore ? { id: ECHOSTORY_MUSIC_CORE_ID } : starsById.get(link?.from);
+    const to = toIsCore ? { id: ECHOSTORY_MUSIC_CORE_ID } : starsById.get(link?.to);
     if (!from || !to || from.expired || to.expired) return;
     if (!adjacency.has(from.id)) adjacency.set(from.id, new Set());
     if (!adjacency.has(to.id)) adjacency.set(to.id, new Set());
@@ -63,7 +67,8 @@ function collectConstellationComponents(stars = [], links = []) {
         queue.push(nextId);
       });
     }
-    components.push(ids.map((id) => starsById.get(id)).filter(Boolean));
+    const componentStars = ids.map((id) => starsById.get(id)).filter(Boolean);
+    if (componentStars.length) components.push(componentStars);
   });
 
   return components.sort((a, b) => b.length - a.length);
