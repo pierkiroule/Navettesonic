@@ -261,6 +261,8 @@ export function useSoonPointer({
     if (isWeaveTouchMode && (current.mode === "echostory" || current.mode === "reso")) {
       const contourStar = findSelectableContourStarAt(point);
       if (contourStar) {
+        contourStar.pendingBreathChoice = true;
+        contourStar.breathMenuOpenedAt = Date.now();
         onSelectContourStar?.(contourStar.id);
       }
       return;

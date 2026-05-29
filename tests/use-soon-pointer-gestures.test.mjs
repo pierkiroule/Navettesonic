@@ -104,6 +104,7 @@ test('tap sur une étoile snappée sélectionne le tissage sans déclencher la n
   pointerApi.handlePointerDown(event(1, 500, 500));
 
   assert.equal(selectedStarId, 'star-1');
+  assert.equal(stateRef.current.echostory.stars[0].pendingBreathChoice, true);
   assert.equal(calls.fishTarget, 0);
 });
 
