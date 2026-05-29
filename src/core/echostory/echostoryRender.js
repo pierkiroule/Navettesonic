@@ -1,3 +1,5 @@
+const ECHOSTORY_MUSIC_CORE_ID = "__echostory_music_core__";
+
 function drawStar(ctx, x, y, radius, color, alpha = 1) {
   const halo = ctx.createRadialGradient(x, y, radius * 0.2, x, y, radius * 2.6);
   halo.addColorStop(0, `${color}aa`);
@@ -107,6 +109,13 @@ export function drawEchostoryConstellationLinks(ctx, echostory = {}, time = 0) {
   if (!stars.length || !links.length) return;
 
   const starsById = new Map(stars.map((star) => [star?.id, star]).filter(([id]) => id));
+  starsById.set(ECHOSTORY_MUSIC_CORE_ID, {
+    id: ECHOSTORY_MUSIC_CORE_ID,
+    x: 0,
+    y: 0,
+    r: 34,
+    color: "#ffe58a",
+  });
   links.forEach((link) => {
     const fromStar = starsById.get(link?.from);
     const toStar = starsById.get(link?.to);

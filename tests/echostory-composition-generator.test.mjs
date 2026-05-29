@@ -12,7 +12,10 @@ test('buildEchostoryCompositionPlan composes sections from constellation links',
         { id: 'star-3', text: 'solo', attachedToContour: false },
         { id: 'star-4', text: 'ancien', expired: true, attachedToContour: false },
       ],
-      constellationLinks: [{ from: 'star-1', to: 'star-2' }],
+      constellationLinks: [
+        { from: '__echostory_music_core__', to: 'star-1' },
+        { from: 'star-1', to: 'star-2' },
+      ],
     },
   });
 
