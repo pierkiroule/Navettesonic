@@ -34,7 +34,6 @@ export function useSoonPointer({
   const LONG_PRESS_MS = 480;
   const STAR_TOUCH_RADIUS = 112;
   const STAR_TOUCH_RADIUS_MULTIPLIER = 2.6;
-  const STAR_DRAG_HOLD_MS = 320;
 
   function getNow() {
     return typeof performance !== "undefined" && typeof performance.now === "function"
@@ -194,16 +193,8 @@ export function useSoonPointer({
     }
   }
 
-  function clearStarDragTimer() {
-    if (pointerRef.current.starDragTimer) {
-      clearTimeout(pointerRef.current.starDragTimer);
-      pointerRef.current.starDragTimer = null;
-    }
-  }
-
   function endStarDrag() {
-    clearStarDragTimer();
-    const activeStar = pointerRef.current.dragStarRef || pointerRef.current.pendingStarRef;
+    const activeStar = pointerRef.current.dragStarRef;
     if (activeStar) {
       activeStar.draggingByTouch = false;
       activeStar.vx = 0;
@@ -212,42 +203,20 @@ export function useSoonPointer({
     pointerRef.current.dragStarId = null;
     pointerRef.current.dragStarRef = null;
     pointerRef.current.dragStarOffset = null;
-    pointerRef.current.pendingStarId = null;
-    pointerRef.current.pendingStarRef = null;
-    pointerRef.current.pendingStarOffset = null;
-    pointerRef.current.pendingStarPoint = null;
-    pointerRef.current.pendingStarArmedAt = 0;
   }
 
-  function beginPendingStarDrag(pointOverride = null) {
-    const star = pointerRef.current.pendingStarRef;
-    if (!star || star.expired || !pointerRef.current.down) return false;
-    pointerRef.current.dragStarId = pointerRef.current.pendingStarId;
+  function beginStarDrag(star, event, point) {
+    if (!star || star.expired) return false;
+    pointerRef.current.dragStarId = star.id || null;
     pointerRef.current.dragStarRef = star;
-    pointerRef.current.dragStarOffset = pointerRef.current.pendingStarOffset || { x: 0, y: 0 };
-    pointerRef.current.pendingStarId = null;
-    pointerRef.current.pendingStarRef = null;
-    pointerRef.current.pendingStarOffset = null;
-    moveEchostoryStarWithPointer(star, pointOverride || pointerRef.current.pendingStarPoint || pointerRef.current.startPoint || star);
-    return true;
-  }
-
-  function armStarDrag(star, event, point) {
-    clearStarDragTimer();
-    pointerRef.current.pendingStarId = star.id || null;
-    pointerRef.current.pendingStarRef = star;
-    pointerRef.current.pendingStarOffset = {
+    pointerRef.current.dragStarOffset = {
       x: (Number.isFinite(star.x) ? star.x : point.x) - point.x,
       y: (Number.isFinite(star.y) ? star.y : point.y) - point.y,
     };
-    pointerRef.current.pendingStarPoint = point;
-    pointerRef.current.pendingStarArmedAt = getNow();
-    pointerRef.current.starDragTimer = setTimeout(() => {
-      pointerRef.current.starDragTimer = null;
-      beginPendingStarDrag();
-    }, STAR_DRAG_HOLD_MS);
     onSelectBubble?.(null);
     rememberTapScreen(event, `star:${star.id || "anonymous"}`);
+    moveEchostoryStarWithPointer(star, point);
+    return true;
   }
 
   function armLongPress(event, point, current) {
@@ -348,7 +317,7 @@ export function useSoonPointer({
     if (!isEditMode && !isCircuitMode && current.interactionMode === "swim") {
       const hitStar = findEchostoryStarAt(point);
       if (hitStar) {
-        armStarDrag(hitStar, event, point);
+        beginStarDrag(hitStar, event, point);
         return;
       }
     }
@@ -428,16 +397,6 @@ export function useSoonPointer({
     const moved =
       start && Math.hypot(start.x - point.x, start.y - point.y) > MOVE_CANCEL;
     if (moved) clearLongPressTimer();
-
-    if (!isEditMode && !isCircuitMode && pointerRef.current.pendingStarRef) {
-      event.preventDefault?.();
-      pointerRef.current.pendingStarPoint = point;
-      const armedAt = Number.isFinite(pointerRef.current.pendingStarArmedAt)
-        ? pointerRef.current.pendingStarArmedAt
-        : 0;
-      if (getNow() - armedAt >= STAR_DRAG_HOLD_MS && beginPendingStarDrag(point)) return;
-      return;
-    }
 
     if (!isEditMode && !isCircuitMode && (pointerRef.current.dragStarId || pointerRef.current.dragStarRef)) {
       event.preventDefault?.();
