@@ -6,6 +6,7 @@ const STAR_PHASE_COUNT = 3;
 const STARS_PER_PHASE = 5;
 const TOTAL_STARS = STAR_PHASE_COUNT * STARS_PER_PHASE;
 const ARENA_RADIUS = 900;
+const CONTOUR_RAIL_RADIUS = 1168;
 const DEV_AUTO_COLLECT_STARS = Boolean(import.meta?.env?.DEV);
 
 function randomInRange(min, max) {
@@ -22,19 +23,16 @@ function pickRandomUnique(items, count) {
   return picks;
 }
 
-function createPearlScatterLayout(count) {
+function createContourRailLayout(count) {
   const safeCount = Math.max(1, count);
-  const radius = ARENA_RADIUS * 0.82;
   return Array.from({ length: safeCount }, (_, index) => {
-    const ring = index % STAR_PHASE_COUNT;
-    const angle = Math.random() * Math.PI * 2;
-    const jitter = 120 + Math.random() * 220;
-    const ringRadius = radius * (0.55 + ring * 0.18);
+    const angle = -Math.PI / 2 + (Math.PI * 2 * index) / safeCount;
     return {
-      x: Math.cos(angle) * Math.max(120, ringRadius - jitter * 0.25),
-      y: Math.sin(angle) * Math.max(120, ringRadius - jitter * 0.25),
+      x: Math.cos(angle) * CONTOUR_RAIL_RADIUS,
+      y: Math.sin(angle) * CONTOUR_RAIL_RADIUS,
       t: safeCount > 1 ? index / (safeCount - 1) : 0.5,
-      phaseIndex: ring,
+      phaseIndex: Math.min(STAR_PHASE_COUNT - 1, Math.floor(index / STARS_PER_PHASE)),
+      contourAngle: angle,
     };
   });
 }
@@ -53,7 +51,7 @@ export function createWaveStars(waveIndex, count = TOTAL_STARS) {
     fragments.push(...pickRandomUnique(bank, STARS_PER_PHASE));
   }
   const limited = fragments.slice(0, Math.max(0, Math.min(count, TOTAL_STARS)));
-  const pearls = createPearlScatterLayout(limited.length);
+  const pearls = createContourRailLayout(limited.length);
 
   return limited.map((fragment, index) => ({
     ...fragment,
@@ -63,8 +61,10 @@ export function createWaveStars(waveIndex, count = TOTAL_STARS) {
     r: randomInRange(14, 24),
     collected: DEV_AUTO_COLLECT_STARS,
     phase: (pearls[index]?.t ?? Math.random()) * Math.PI * 2,
-    phaseIndex: pearls[index]?.phaseIndex ?? (index % STAR_PHASE_COUNT),
-    color: PHASE_COLORS[pearls[index]?.phaseIndex ?? (index % STAR_PHASE_COUNT)],
+    phaseIndex: pearls[index]?.phaseIndex ?? Math.min(STAR_PHASE_COUNT - 1, Math.floor(index / STARS_PER_PHASE)),
+    color: PHASE_COLORS[pearls[index]?.phaseIndex ?? Math.min(STAR_PHASE_COUNT - 1, Math.floor(index / STARS_PER_PHASE))],
+    attachedToContour: true,
+    contourAngle: pearls[index]?.contourAngle ?? Math.atan2(pearls[index]?.y || 0, pearls[index]?.x || 0),
   }));
 }
 

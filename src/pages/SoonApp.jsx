@@ -42,7 +42,7 @@ export default function SoonApp({ onBack }) {
   const speedBoostUntilRef = useRef(0);
   const plumeTraceActiveRef = useRef(false);
   const plumeLastPointRef = useRef(null);
-  const [soonTouchMode, setSoonTouchMode] = useState("plume");
+  const [soonTouchMode, setSoonTouchMode] = useState("fish");
 
   const {
     mode,
@@ -97,6 +97,7 @@ export default function SoonApp({ onBack }) {
     resetEchostoryTraversal,
     finishEchostoryTraversal,
     setEchostoryActiveLine,
+    selectContourEchostoryStar,
   } = useSoonStore();
 
   const selectedBubble =
@@ -325,7 +326,7 @@ export default function SoonApp({ onBack }) {
 
 
   useEffect(() => {
-    if (!isOdysseo || (odysseoPath?.length || 0) < 2 || echostory?.traversalActive) return;
+    if (!isOdysseo || soonTouchMode === "weave" || (odysseoPath?.length || 0) < 2 || echostory?.traversalActive) return;
 
     const previewLines = buildEchostoryText({
       collectedStars: echostory?.collectedStars || [],
@@ -547,6 +548,7 @@ export default function SoonApp({ onBack }) {
         onSetFishDepth={setFishDepth}
         echostory={echostory}
         contourPlaybackPaused={contourPlaybackPaused}
+        onSelectContourStar={selectContourEchostoryStar}
         onToggleContourPlayback={() => {
           setContourPlaybackPaused((paused) => {
             const next = !paused;
@@ -653,26 +655,26 @@ export default function SoonApp({ onBack }) {
         </div>
       </div>
 
-      {isOdysseo && (
+      {(isOdysseo || isEchostory) && (
         <div className="mode-switch-bottom" role="group" aria-label="Modes tactiles Soon">
           <div className="mode-switch-pill">
             <button
               type="button"
-              className={`mode-switch-button ${soonTouchMode === "plume" ? "active" : ""}`}
-              onClick={() => setSoonTouchMode("plume")}
-              aria-pressed={soonTouchMode === "plume"}
-              title="Mode ⭐ tracé entre étoiles"
+              className={`mode-switch-button ${soonTouchMode === "fish" ? "active" : ""}`}
+              onClick={() => setSoonTouchMode("fish")}
+              aria-pressed={soonTouchMode === "fish"}
+              title="Piloter Soon avec le doigt"
             >
-              ⭐ Mode tracé
+              🐟 Piloter
             </button>
             <button
               type="button"
-              className={`mode-switch-button ${soonTouchMode === "ear" ? "active" : ""}`}
-              onClick={() => setSoonTouchMode("ear")}
-              aria-pressed={soonTouchMode === "ear"}
-              title="Mode 👂 écoute des extraits"
+              className={`mode-switch-button ${soonTouchMode === "weave" ? "active" : ""}`}
+              onClick={() => setSoonTouchMode("weave")}
+              aria-pressed={soonTouchMode === "weave"}
+              title="Sélectionner les étoiles du contour pour tisser"
             >
-              👂 Mode écoute
+              🧶 Tisser
             </button>
           </div>
         </div>
