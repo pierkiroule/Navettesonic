@@ -208,11 +208,6 @@ export default function SoonCanvas({
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
-    handleTouchStart,
-    handleTouchMove,
-    handleTouchEnd,
-    handleStarPointerDownCapture,
-    handleStarTouchStartCapture,
     cleanupPointer,
   } = useSoonPointer({
     canvasRef,
@@ -238,7 +233,13 @@ export default function SoonCanvas({
     onMoveEchostoryStar,
   });
 
-  useEffect(() => cleanupPointer, [cleanupPointer]);
+  const cleanupPointerRef = useRef(cleanupPointer);
+
+  useEffect(() => {
+    cleanupPointerRef.current = cleanupPointer;
+  }, [cleanupPointer]);
+
+  useEffect(() => () => cleanupPointerRef.current?.(), []);
 
 
   function worldToScreen(point, current = stateRef.current || {}) {
@@ -426,11 +427,7 @@ export default function SoonCanvas({
   ];
 
   return (
-    <div
-      className="soon-canvas-shell"
-      onPointerDownCapture={handleStarPointerDownCapture}
-      onTouchStartCapture={handleStarTouchStartCapture}
-    >
+    <div className="soon-canvas-shell">
       <button
         type="button"
         className={`composition-generator-btn ${compositionPlan ? "is-active" : ""}`}
@@ -470,10 +467,6 @@ export default function SoonCanvas({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchEnd}
         onContextMenu={(event) => event.preventDefault()}
       />
       {contourPlayButton.visible ? (

@@ -6,8 +6,6 @@ function createHarness() {
   const calls = { fishTarget: 0, boostSpeed: 0, openMenu: 0 };
   const canvas = {
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
-    setPointerCapture: () => {},
-    releasePointerCapture: () => {},
   };
   const stateRef = { current: { interactionMode: 'swim', mode: 'echostory', fish: { depth: 1 }, viewZoom: 0, circuitAutopilot: false, bubbles: [] } };
   const api = useSoonPointer({
@@ -88,8 +86,6 @@ test('poser le doigt sur une étoile snappée la décroche immédiatement sans S
   };
   const canvas = {
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
-    setPointerCapture: () => {},
-    releasePointerCapture: () => {},
   };
   const pointerApi = useSoonPointer({
     canvasRef: { current: canvas },
@@ -130,8 +126,6 @@ test('poser puis glisser déplace une étoile sans inertie tactile', () => {
   };
   const canvas = {
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
-    setPointerCapture: () => {},
-    releasePointerCapture: () => {},
   };
   const pointerApi = useSoonPointer({
     canvasRef: { current: canvas },
@@ -173,8 +167,6 @@ test('tap proche attrape immédiatement une étoile grâce à une zone tactile a
   };
   const canvas = {
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
-    setPointerCapture: () => {},
-    releasePointerCapture: () => {},
   };
   const pointerApi = useSoonPointer({
     canvasRef: { current: canvas },
@@ -188,91 +180,6 @@ test('tap proche attrape immédiatement une étoile grâce à une zone tactile a
 
   assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, true);
 });
-
-
-test('poser puis glisser une étoile sans id continue avec la référence tactile', () => {
-  const stateRef = {
-    current: {
-      interactionMode: 'swim',
-      mode: 'echostory',
-      fish: { depth: 1 },
-      viewZoom: 0,
-      circuitAutopilot: false,
-      bubbles: [],
-      echostory: {
-        stars: [{ x: 0, y: 0, r: 18, attachedToContour: false }],
-      },
-    },
-  };
-  const canvas = {
-    getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
-    setPointerCapture: () => {},
-    releasePointerCapture: () => {},
-  };
-  const pointerApi = useSoonPointer({
-    canvasRef: { current: canvas },
-    cameraRef: { current: { x: 0, y: 0 } },
-    arenaRef: { current: { radius: 1200 } },
-    pointerRef: { current: { activePointers: new Map() } },
-    stateRef,
-  });
-
-  pointerApi.handlePointerDown(event(1, 500, 500));
-  pointerApi.handlePointerMove(event(1, 540, 500));
-
-  assert.ok(stateRef.current.echostory.stars[0].x > 110);
-  assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, true);
-
-  pointerApi.handlePointerUp(event(1, 540, 500));
-
-  assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, false);
-});
-
-
-test('fallback touch permet de poser puis déplacer une étoile au doigt', () => {
-  const stateRef = {
-    current: {
-      interactionMode: 'swim',
-      mode: 'echostory',
-      fish: { depth: 1 },
-      viewZoom: 0,
-      circuitAutopilot: false,
-      bubbles: [],
-      echostory: {
-        stars: [{ id: 'touch-star', x: 0, y: 0, r: 18, attachedToContour: false }],
-      },
-    },
-  };
-  const canvas = {
-    getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
-    setPointerCapture: () => { throw new Error('capture unsupported'); },
-    releasePointerCapture: () => {},
-  };
-  const pointerApi = useSoonPointer({
-    canvasRef: { current: canvas },
-    cameraRef: { current: { x: 0, y: 0 } },
-    arenaRef: { current: { radius: 1200 } },
-    pointerRef: { current: { activePointers: new Map() } },
-    stateRef,
-  });
-  const touchEvent = (x, y) => ({
-    touches: [{ clientX: x, clientY: y }],
-    changedTouches: [{ clientX: x, clientY: y }],
-    preventDefault: () => {},
-  });
-
-  pointerApi.handleTouchStart(touchEvent(500, 500));
-  pointerApi.handleTouchMove(touchEvent(540, 500));
-
-  assert.ok(stateRef.current.echostory.stars[0].x > 110);
-  assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, true);
-
-  pointerApi.handleTouchEnd(touchEvent(540, 500));
-
-  assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, false);
-});
-
-
 
 
 test('zone tactile reste large en pixels sur un écran mobile', () => {
@@ -292,8 +199,6 @@ test('zone tactile reste large en pixels sur un écran mobile', () => {
   };
   const canvas = {
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 390, height: 700 }),
-    setPointerCapture: () => {},
-    releasePointerCapture: () => {},
   };
   const pointerApi = useSoonPointer({
     canvasRef: { current: canvas },
@@ -325,8 +230,6 @@ test('drag tactile publie la position des étoiles dans le state applicatif', ()
   };
   const canvas = {
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
-    setPointerCapture: () => {},
-    releasePointerCapture: () => {},
   };
   const pointerApi = useSoonPointer({
     canvasRef: { current: canvas },
@@ -348,83 +251,6 @@ test('drag tactile publie la position des étoiles dans le state applicatif', ()
   assert.ok(patches.some(({ patch }) => patch.x > 110));
 });
 
-test('capture tactile au-dessus du canvas attrape une étoile et bloque l’overlay', () => {
-  const calls = { preventDefault: 0, stopPropagation: 0 };
-  const stateRef = {
-    current: {
-      interactionMode: 'edit',
-      mode: 'echostory',
-      fish: { depth: 1 },
-      viewZoom: 0,
-      circuitAutopilot: false,
-      bubbles: [],
-      echostory: {
-        stars: [{ id: 'overlay-star', x: 0, y: 0, r: 18, attachedToContour: false }],
-      },
-    },
-  };
-  const canvas = {
-    getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
-    setPointerCapture: () => {},
-    releasePointerCapture: () => {},
-  };
-  const pointerApi = useSoonPointer({
-    canvasRef: { current: canvas },
-    cameraRef: { current: { x: 0, y: 0 } },
-    arenaRef: { current: { radius: 1200 } },
-    pointerRef: { current: { activePointers: new Map() } },
-    stateRef,
-  });
-
-  const captured = pointerApi.handleStarPointerDownCapture({
-    pointerId: 12,
-    pointerType: 'touch',
-    clientX: 500,
-    clientY: 500,
-    preventDefault: () => { calls.preventDefault += 1; },
-    stopPropagation: () => { calls.stopPropagation += 1; },
-  });
-
-  assert.equal(captured, true);
-  assert.equal(calls.preventDefault, 1);
-  assert.equal(calls.stopPropagation, 1);
-  assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, true);
-});
-
-
-test('capture tactile hors étoile laisse les overlays recevoir le geste', () => {
-  const calls = { preventDefault: 0, stopPropagation: 0 };
-  const stateRef = {
-    current: {
-      interactionMode: 'edit',
-      mode: 'echostory',
-      fish: { depth: 1 },
-      viewZoom: 0,
-      circuitAutopilot: false,
-      bubbles: [],
-      echostory: { stars: [] },
-    },
-  };
-  const pointerApi = useSoonPointer({
-    canvasRef: { current: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }) } },
-    cameraRef: { current: { x: 0, y: 0 } },
-    arenaRef: { current: { radius: 1200 } },
-    pointerRef: { current: { activePointers: new Map() } },
-    stateRef,
-  });
-
-  const captured = pointerApi.handleStarTouchStartCapture({
-    touches: [{ clientX: 500, clientY: 500 }],
-    changedTouches: [{ clientX: 500, clientY: 500 }],
-    preventDefault: () => { calls.preventDefault += 1; },
-    stopPropagation: () => { calls.stopPropagation += 1; },
-  });
-
-  assert.equal(captured, false);
-  assert.equal(calls.preventDefault, 0);
-  assert.equal(calls.stopPropagation, 0);
-});
-
 test('une étoile reste prioritaire au doigt même en mode édition', () => {
   const stateRef = {
     current: {
@@ -441,8 +267,6 @@ test('une étoile reste prioritaire au doigt même en mode édition', () => {
   };
   const canvas = {
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
-    setPointerCapture: () => {},
-    releasePointerCapture: () => {},
   };
   const pointerApi = useSoonPointer({
     canvasRef: { current: canvas },
@@ -475,8 +299,6 @@ test('un PointerEvent tactile seul suffit à déplacer une étoile', () => {
   };
   const canvas = {
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
-    setPointerCapture: () => { throw new Error('capture unsupported'); },
-    releasePointerCapture: () => {},
   };
   const pointerApi = useSoonPointer({
     canvasRef: { current: canvas },
@@ -503,50 +325,6 @@ test('un PointerEvent tactile seul suffit à déplacer une étoile', () => {
 });
 
 
-test('un pointerdown tactile suivi du fallback touchmove continue à déplacer l’étoile', () => {
-  const stateRef = {
-    current: {
-      interactionMode: 'edit',
-      mode: 'echostory',
-      fish: { depth: 1 },
-      viewZoom: 0,
-      circuitAutopilot: false,
-      bubbles: [],
-      echostory: {
-        stars: [{ id: 'mixed-touch-star', x: 0, y: 0, r: 18, attachedToContour: false }],
-      },
-    },
-  };
-  const canvas = {
-    getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
-    setPointerCapture: () => { throw new Error('capture unsupported'); },
-    releasePointerCapture: () => {},
-  };
-  const pointerApi = useSoonPointer({
-    canvasRef: { current: canvas },
-    cameraRef: { current: { x: 0, y: 0 } },
-    arenaRef: { current: { radius: 1200 } },
-    pointerRef: { current: { activePointers: new Map() } },
-    stateRef,
-  });
-  const touchPointer = (pointerId, x, y) => ({
-    ...event(pointerId, x, y),
-    pointerType: 'touch',
-    preventDefault: () => {},
-  });
-  const touchEvent = (x, y) => ({
-    touches: [{ clientX: x, clientY: y }],
-    changedTouches: [{ clientX: x, clientY: y }],
-    preventDefault: () => {},
-  });
-
-  pointerApi.handlePointerDown(touchPointer(8, 500, 500));
-  pointerApi.handleTouchMove(touchEvent(540, 500));
-
-  assert.ok(stateRef.current.echostory.stars[0].x > 110);
-  assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, true);
-});
-
 test('glisser dans le vide en echostory ne déplace plus Soon', () => {
   const calls = { fishTarget: 0 };
   const stateRef = {
@@ -562,8 +340,6 @@ test('glisser dans le vide en echostory ne déplace plus Soon', () => {
   };
   const canvas = {
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
-    setPointerCapture: () => {},
-    releasePointerCapture: () => {},
   };
   const pointerApi = useSoonPointer({
     canvasRef: { current: canvas },
@@ -578,4 +354,69 @@ test('glisser dans le vide en echostory ne déplace plus Soon', () => {
   pointerApi.handlePointerMove(event(1, 520, 520));
 
   assert.equal(calls.fishTarget, 0);
+});
+
+test('drag d’étoile fonctionne aussi en mode reso', () => {
+  const stateRef = {
+    current: {
+      interactionMode: 'swim',
+      mode: 'reso',
+      fish: { depth: 1 },
+      viewZoom: 0,
+      circuitAutopilot: false,
+      bubbles: [],
+      contourReaderHitZones: [{ x: 0, y: 0, r: 500 }],
+      echostory: {
+        stars: [{ id: 'reso-star', x: 0, y: 0, r: 34, attachedToContour: false }],
+      },
+    },
+  };
+  const pointerApi = useSoonPointer({
+    canvasRef: { current: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }) } },
+    cameraRef: { current: { x: 0, y: 0 } },
+    arenaRef: { current: { radius: 1200 } },
+    pointerRef: { current: { activePointers: new Map() } },
+    stateRef,
+    onToggleContourPlayback: () => assert.fail('star drag must be prioritized before contour controls'),
+  });
+
+  pointerApi.handlePointerDown(event(1, 500, 500));
+  pointerApi.handlePointerMove(event(1, 540, 500));
+
+  assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, true);
+  assert.ok(stateRef.current.echostory.stars[0].x > 110);
+});
+
+test('tap hors étoile ne stoppe pas la propagation pour l’UI', () => {
+  const calls = { preventDefault: 0, stopPropagation: 0 };
+  const stateRef = {
+    current: {
+      interactionMode: 'swim',
+      mode: 'echostory',
+      fish: { depth: 1 },
+      viewZoom: 0,
+      circuitAutopilot: false,
+      bubbles: [],
+      echostory: { stars: [{ id: 'far-star', x: 400, y: 400, r: 34, attachedToContour: false }] },
+    },
+  };
+  const pointerApi = useSoonPointer({
+    canvasRef: { current: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }) } },
+    cameraRef: { current: { x: 0, y: 0 } },
+    arenaRef: { current: { radius: 1200 } },
+    pointerRef: { current: { activePointers: new Map() } },
+    stateRef,
+  });
+
+  pointerApi.handlePointerDown({
+    pointerId: 1,
+    clientX: 500,
+    clientY: 500,
+    preventDefault: () => { calls.preventDefault += 1; },
+    stopPropagation: () => { calls.stopPropagation += 1; },
+  });
+
+  assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, undefined);
+  assert.equal(calls.preventDefault, 1);
+  assert.equal(calls.stopPropagation, 0);
 });

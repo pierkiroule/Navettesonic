@@ -33,92 +33,12 @@ export function useSoonPointer({
   const DOUBLE_TAP_MS = 420;
   const DOUBLE_TAP_DIST = 72;
   const LONG_PRESS_MS = 480;
-  const STAR_TOUCH_RADIUS = 112;
-  const STAR_TOUCH_RADIUS_MULTIPLIER = 2.6;
-  const STAR_TOUCH_SCREEN_RADIUS = 64;
-  const TOUCH_POINTER_ID = -1001;
+  const STAR_TOUCH_SCREEN_RADIUS = 56;
 
   function getNow() {
     return typeof performance !== "undefined" && typeof performance.now === "function"
       ? performance.now()
       : Date.now();
-  }
-
-  function removeTouchDragListeners() {
-    if (typeof window === "undefined") return;
-    const move = pointerRef.current.windowTouchMoveListener;
-    const end = pointerRef.current.windowTouchEndListener;
-    if (move) window.removeEventListener("touchmove", move);
-    if (end) {
-      window.removeEventListener("touchend", end);
-      window.removeEventListener("touchcancel", end);
-    }
-    pointerRef.current.windowTouchMoveListener = null;
-    pointerRef.current.windowTouchEndListener = null;
-  }
-
-  function bindTouchDragListeners() {
-    if (typeof window === "undefined") return;
-    removeTouchDragListeners();
-    const move = (event) => handleTouchMove(event);
-    const end = (event) => handleTouchEnd(event);
-    pointerRef.current.windowTouchMoveListener = move;
-    pointerRef.current.windowTouchEndListener = end;
-    window.addEventListener("touchmove", move, { passive: false });
-    window.addEventListener("touchend", end, { passive: false });
-    window.addEventListener("touchcancel", end, { passive: false });
-  }
-
-  function removeStarDragListeners() {
-    if (typeof window === "undefined") return;
-    const move = pointerRef.current.windowStarPointerMoveListener;
-    const end = pointerRef.current.windowStarPointerEndListener;
-    const touchMove = pointerRef.current.windowStarTouchMoveListener;
-    const touchEnd = pointerRef.current.windowStarTouchEndListener;
-
-    if (move) window.removeEventListener("pointermove", move);
-    if (end) {
-      window.removeEventListener("pointerup", end);
-      window.removeEventListener("pointercancel", end);
-    }
-    if (touchMove) window.removeEventListener("touchmove", touchMove);
-    if (touchEnd) {
-      window.removeEventListener("touchend", touchEnd);
-      window.removeEventListener("touchcancel", touchEnd);
-    }
-
-    pointerRef.current.windowStarPointerMoveListener = null;
-    pointerRef.current.windowStarPointerEndListener = null;
-    pointerRef.current.windowStarTouchMoveListener = null;
-    pointerRef.current.windowStarTouchEndListener = null;
-  }
-
-  function bindStarDragListeners() {
-    if (typeof window === "undefined") return;
-    removeStarDragListeners();
-
-    const pointerMove = (event) => moveActiveStarDrag(event);
-    const pointerEnd = (event) => finishActiveStarDrag(event);
-    const touchMove = (event) => {
-      const touch = getPrimaryTouch(event);
-      if (touch) moveActiveStarDrag(touchToPointerEvent(touch, event));
-    };
-    const touchEnd = (event) => {
-      const touch = getPrimaryTouch(event) || { clientX: 0, clientY: 0 };
-      finishActiveStarDrag(touchToPointerEvent(touch, event));
-    };
-
-    pointerRef.current.windowStarPointerMoveListener = pointerMove;
-    pointerRef.current.windowStarPointerEndListener = pointerEnd;
-    pointerRef.current.windowStarTouchMoveListener = touchMove;
-    pointerRef.current.windowStarTouchEndListener = touchEnd;
-
-    window.addEventListener("pointermove", pointerMove, { passive: false });
-    window.addEventListener("pointerup", pointerEnd, { passive: false });
-    window.addEventListener("pointercancel", pointerEnd, { passive: false });
-    window.addEventListener("touchmove", touchMove, { passive: false });
-    window.addEventListener("touchend", touchEnd, { passive: false });
-    window.addEventListener("touchcancel", touchEnd, { passive: false });
   }
 
   function getWorldFromEvent(event) {
@@ -158,7 +78,13 @@ export function useSoonPointer({
   function getStarTouchRadius(star) {
     const radius = Number.isFinite(star?.r) ? star.r : 34;
     const screenRadiusInWorld = STAR_TOUCH_SCREEN_RADIUS / getWorldScale();
-    return Math.max(STAR_TOUCH_RADIUS, radius * STAR_TOUCH_RADIUS_MULTIPLIER, screenRadiusInWorld);
+    return Math.max(radius, screenRadiusInWorld);
+  }
+
+  function logStarPointer(message, ...args) {
+    if (typeof import.meta !== "undefined" && import.meta.env?.DEV) {
+      console.log(message, ...args);
+    }
   }
 
   function getSafeWorldFromEvent(event, options = {}) {
@@ -210,70 +136,6 @@ export function useSoonPointer({
   }
 
 
-  function findEchostoryStarAt(point) {
-    if (stateRef.current?.mode !== "echostory" && stateRef.current?.mode !== "reso") return null;
-    const stars = [...(stateRef.current?.echostory?.stars || [])].reverse();
-
-    return (
-      stars
-        .filter((star) => star && !star.expired)
-        .filter((star) => {
-          return distance(star, point) <= getStarTouchRadius(star);
-        })
-        .sort((a, b) => distance(a, point) - distance(b, point))[0] || null
-    );
-  }
-
-  function moveEchostoryStarWithPointer(star, point) {
-    if (!star || star.expired) return false;
-    const now = getNow();
-    const offset = pointerRef.current.dragStarOffset || { x: 0, y: 0 };
-    const next = clampToCircle(
-      { x: point.x + offset.x, y: point.y + offset.y },
-      Math.max(40, (arenaRef.current.radius || 1200) - 42)
-    );
-    star.x = next.x;
-    star.y = next.y;
-    star.vx = 0;
-    star.vy = 0;
-    star.attachedToContour = false;
-    star.expiring = false;
-    star.pendingBreathChoice = false;
-    star.breathMenuOpenedAt = 0;
-    star.selectedOnContour = false;
-    star.lastDraggedByTouchAt = now;
-    star.draggingByTouch = true;
-
-    if (star.id) {
-      onMoveEchostoryStar?.(star.id, {
-        x: star.x,
-        y: star.y,
-        vx: 0,
-        vy: 0,
-        attachedToContour: false,
-        expiring: false,
-        pendingBreathChoice: false,
-        breathMenuOpenedAt: 0,
-        selectedOnContour: false,
-        lastDraggedByTouchAt: now,
-        draggingByTouch: true,
-      });
-    }
-
-    return true;
-  }
-
-
-  function findBubbleAt(point) {
-    const bubbles = [...(stateRef.current?.bubbles || [])].reverse();
-
-    return (
-      bubbles
-        .filter((bubble) => distance(bubble, point) <= getBubbleHitRadius(bubble))
-        .sort((a, b) => distance(a, point) - distance(b, point))[0] || null
-    );
-  }
-
 
   function isDoubleTapScreen(event, key = "global") {
     const now = Date.now();
@@ -304,73 +166,67 @@ export function useSoonPointer({
     }
   }
 
-  function endStarDrag() {
-    const activeStar = pointerRef.current.dragStarRef;
-    if (activeStar) {
-      activeStar.draggingByTouch = false;
-      activeStar.vx = 0;
-      activeStar.vy = 0;
-      if (activeStar.id) {
-        onMoveEchostoryStar?.(activeStar.id, {
-          x: activeStar.x,
-          y: activeStar.y,
-          vx: 0,
-          vy: 0,
-          draggingByTouch: false,
-        });
-      }
-    }
-    pointerRef.current.dragStarId = null;
-    pointerRef.current.dragStarRef = null;
-    pointerRef.current.dragStarOffset = null;
+
+  function findBubbleAt(point) {
+    const bubbles = [...(stateRef.current?.bubbles || [])].reverse();
+
+    return (
+      bubbles
+        .filter((bubble) => distance(bubble, point) <= getBubbleHitRadius(bubble))
+        .sort((a, b) => distance(a, point) - distance(b, point))[0] || null
+    );
   }
 
-  function beginStarDrag(star, event, point) {
+  function getEchostoryStars() {
+    return Array.isArray(stateRef.current?.echostory?.stars)
+      ? stateRef.current.echostory.stars
+      : [];
+  }
+
+  function findEchostoryStarAt(point) {
+    if (stateRef.current?.mode !== "echostory" && stateRef.current?.mode !== "reso") return null;
+    const stars = [...getEchostoryStars()].reverse();
+
+    return (
+      stars
+        .filter((star) => star && !star.expired)
+        .filter((star) => distance(star, point) <= getStarTouchRadius(star))
+        .sort((a, b) => distance(a, point) - distance(b, point))[0] || null
+    );
+  }
+
+  function publishEchostoryStar(star, patch) {
+    if (!star?.id) return;
+    onMoveEchostoryStar?.(star.id, patch);
+  }
+
+  function updateEchostoryStarForDrag(star, patch) {
     if (!star || star.expired) return false;
-    pointerRef.current.dragStarId = star.id || null;
-    pointerRef.current.dragStarRef = star;
-    pointerRef.current.dragStarOffset = {
-      x: (Number.isFinite(star.x) ? star.x : point.x) - point.x,
-      y: (Number.isFinite(star.y) ? star.y : point.y) - point.y,
-    };
-    onSelectBubble?.(null);
-    rememberTapScreen(event, `star:${star.id || "anonymous"}`);
-    moveEchostoryStarWithPointer(star, point);
+    Object.assign(star, patch);
+    publishEchostoryStar(star, patch);
     return true;
   }
 
-  function getActiveDraggedStar() {
-    const stars = stateRef.current?.echostory?.stars || [];
-    return pointerRef.current.dragStarId
-      ? stars.find((item) => item?.id === pointerRef.current.dragStarId)
-      : pointerRef.current.dragStarRef;
+  function getActiveStar() {
+    const activeStarId = pointerRef.current.activeStarId;
+    if (!activeStarId) return null;
+    return getEchostoryStars().find((star) => star?.id === activeStarId) || null;
   }
 
-  function startStarPointerDrag(event) {
-    const canvas = canvasRef.current;
-    if (!canvas) return false;
-
-    const point = getSafeWorldFromEvent(event, { swimEdgeBoost: false });
-    const hitStar = findEchostoryStarAt(point);
-    if (!hitStar) return false;
+  function beginStarDrag(event, star, point) {
+    if (!star?.id || star.expired) return false;
 
     event.preventDefault?.();
     event.stopPropagation?.();
-    clearLongPressTimer();
-    removeTouchDragListeners();
-    removeStarDragListeners();
 
-    pointerRef.current.starTouchActive = true;
-    pointerRef.current.starTouchPointerId = event.pointerId ?? TOUCH_POINTER_ID;
+    pointerRef.current.activeStarId = star.id;
+    pointerRef.current.activeStarPointerId = event.pointerId;
+    pointerRef.current.activeStarOffset = {
+      x: point.x - (Number.isFinite(star.x) ? star.x : point.x),
+      y: point.y - (Number.isFinite(star.y) ? star.y : point.y),
+    };
     pointerRef.current.down = true;
-    pointerRef.current.pointerId = pointerRef.current.starTouchPointerId;
-    pointerRef.current.activePointers = pointerRef.current.activePointers || new Map();
-    pointerRef.current.activePointers.clear();
-    registerPointer({
-      pointerId: pointerRef.current.starTouchPointerId,
-      clientX: event.clientX,
-      clientY: event.clientY,
-    });
+    pointerRef.current.pointerId = event.pointerId;
     pointerRef.current.dragBubbleId = null;
     pointerRef.current.pendingBubbleId = null;
     pointerRef.current.dragBeaconId = null;
@@ -379,50 +235,90 @@ export function useSoonPointer({
     pointerRef.current.pinchDistance = null;
     pointerRef.current.startPoint = point;
 
-    beginStarDrag(hitStar, event, point);
-    bindStarDragListeners();
-    return true;
+    clearLongPressTimer();
+    onSelectBubble?.(null);
+    rememberTapScreen(event, `star:${star.id}`);
+
+    const now = getNow();
+    return updateEchostoryStarForDrag(star, {
+      attachedToContour: false,
+      vx: 0,
+      vy: 0,
+      expiring: false,
+      pendingBreathChoice: false,
+      breathMenuOpenedAt: 0,
+      selectedOnContour: false,
+      lastDraggedByTouchAt: now,
+      draggingByTouch: true,
+    });
   }
 
-  function moveActiveStarDrag(event) {
-    if (!pointerRef.current.starTouchActive) return false;
-    const activePointerId = pointerRef.current.starTouchPointerId;
+  function moveActiveStar(event) {
+    const activeStarId = pointerRef.current.activeStarId;
+    if (!activeStarId) return false;
     if (
       event.pointerId != null &&
-      activePointerId != null &&
-      event.pointerId !== activePointerId &&
-      event.pointerId !== TOUCH_POINTER_ID
-    ) return false;
+      pointerRef.current.activeStarPointerId != null &&
+      event.pointerId !== pointerRef.current.activeStarPointerId
+    ) {
+      return false;
+    }
+
+    const star = getActiveStar();
+    if (!star) return false;
 
     event.preventDefault?.();
     event.stopPropagation?.();
-    registerPointer({
-      pointerId: activePointerId ?? event.pointerId ?? TOUCH_POINTER_ID,
-      clientX: event.clientX,
-      clientY: event.clientY,
-    });
 
     const point = getSafeWorldFromEvent(event, { swimEdgeBoost: false });
-    return moveEchostoryStarWithPointer(getActiveDraggedStar(), point);
+    const offset = pointerRef.current.activeStarOffset || { x: 0, y: 0 };
+    const next = clampToCircle(
+      { x: point.x - offset.x, y: point.y - offset.y },
+      Math.max(40, (arenaRef.current.radius || 1200) - 42)
+    );
+
+    logStarPointer("[star move]", activeStarId, next.x, next.y);
+
+    return updateEchostoryStarForDrag(star, {
+      x: next.x,
+      y: next.y,
+      vx: 0,
+      vy: 0,
+      attachedToContour: false,
+      pendingBreathChoice: false,
+      selectedOnContour: false,
+      draggingByTouch: true,
+    });
+  }
+
+  function endStarDrag() {
+    const star = getActiveStar();
+    if (star) {
+      updateEchostoryStarForDrag(star, {
+        vx: 0,
+        vy: 0,
+        draggingByTouch: false,
+      });
+    }
+    pointerRef.current.activeStarId = null;
+    pointerRef.current.activeStarPointerId = null;
+    pointerRef.current.activeStarOffset = null;
   }
 
   function finishActiveStarDrag(event) {
-    if (!pointerRef.current.starTouchActive) return false;
-    const activePointerId = pointerRef.current.starTouchPointerId;
+    if (!pointerRef.current.activeStarId) return false;
     if (
       event?.pointerId != null &&
-      activePointerId != null &&
-      event.pointerId !== activePointerId &&
-      event.pointerId !== TOUCH_POINTER_ID
-    ) return false;
+      pointerRef.current.activeStarPointerId != null &&
+      event.pointerId !== pointerRef.current.activeStarPointerId
+    ) {
+      return false;
+    }
 
     event?.preventDefault?.();
     event?.stopPropagation?.();
     clearLongPressTimer();
-    pointerRef.current.activePointers?.delete(activePointerId ?? event?.pointerId ?? TOUCH_POINTER_ID);
-    pointerRef.current.starTouchActive = false;
-    pointerRef.current.starTouchPointerId = null;
-    pointerRef.current.touchSequenceActive = false;
+    pointerRef.current.activePointers?.delete(pointerRef.current.activeStarPointerId ?? event?.pointerId);
     pointerRef.current.down = false;
     pointerRef.current.pointerId = null;
     pointerRef.current.dragBubbleId = null;
@@ -433,14 +329,20 @@ export function useSoonPointer({
     pointerRef.current.pinchDistance = null;
     pointerRef.current.startPoint = null;
     endStarDrag();
-    removeStarDragListeners();
-    removeTouchDragListeners();
-
-    try {
-      canvasRef.current?.releasePointerCapture(activePointerId ?? event?.pointerId);
-    } catch {}
-
     return true;
+  }
+
+  function startStarPointerDrag(event) {
+    const canvas = canvasRef.current;
+    if (!canvas) return false;
+
+    const point = getWorldFromEvent(event);
+    logStarPointer("[star pointerdown]", point);
+    const hitStar = findEchostoryStarAt(point);
+    logStarPointer("[star hit]", hitStar?.id || null);
+    if (!hitStar) return false;
+
+    return beginStarDrag(event, hitStar, point);
   }
 
   function armLongPress(event, point, current) {
@@ -510,17 +412,9 @@ export function useSoonPointer({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    if (pointerRef.current.starTouchActive) return;
     if (startStarPointerDrag(event)) return;
 
     event.preventDefault?.();
-    if (event.pointerType === "touch") {
-      pointerRef.current.touchSequenceActive = true;
-      bindTouchDragListeners();
-    }
-    try {
-      canvas.setPointerCapture(event.pointerId);
-    } catch {}
     registerPointer(event);
 
     const point = getSafeWorldFromEvent(event, { swimEdgeBoost: true });
@@ -567,7 +461,7 @@ export function useSoonPointer({
   }
 
   function handlePointerMove(event) {
-    if (moveActiveStarDrag(event)) return;
+    if (moveActiveStar(event)) return;
     registerPointer(event);
 
     const current = stateRef.current;
@@ -577,11 +471,6 @@ export function useSoonPointer({
 
     if (!pointerRef.current.down && !(pointerRef.current.activePointers?.size > 0)) {
       return;
-    }
-
-    if (pointerRef.current.dragStarId || pointerRef.current.dragStarRef) {
-      event.preventDefault?.();
-      if (moveEchostoryStarWithPointer(getActiveDraggedStar(), point)) return;
     }
 
     if (isEditMode && pointerRef.current.activePointers.size >= 2) {
@@ -695,83 +584,10 @@ export function useSoonPointer({
       pointerRef.current.pinchDistance = null;
       pointerRef.current.startPoint = null;
     }
-
-    if (event.pointerType === "touch") {
-      pointerRef.current.touchSequenceActive = false;
-      removeTouchDragListeners();
-    }
-
-    try {
-      canvasRef.current?.releasePointerCapture(event.pointerId);
-    } catch {}
-  }
-
-  function getPrimaryTouch(event) {
-    return event?.touches?.[0] || event?.changedTouches?.[0] || null;
-  }
-
-  function touchToPointerEvent(touch, sourceEvent) {
-    return {
-      pointerId: TOUCH_POINTER_ID,
-      clientX: touch.clientX,
-      clientY: touch.clientY,
-      preventDefault: () => sourceEvent?.preventDefault?.(),
-      stopPropagation: () => sourceEvent?.stopPropagation?.(),
-    };
-  }
-
-
-  function handleStarTouchStartCapture(event) {
-    const touch = getPrimaryTouch(event);
-    if (!touch || pointerRef.current.starTouchActive) return false;
-    return startStarPointerDrag(touchToPointerEvent(touch, event));
-  }
-
-  function handleTouchStart(event) {
-    const touch = getPrimaryTouch(event);
-    if (!touch) return;
-    const pointerEvent = touchToPointerEvent(touch, event);
-
-    if (pointerRef.current.starTouchActive) return;
-    if (startStarPointerDrag(pointerEvent)) return;
-
-    event.preventDefault?.();
-    pointerRef.current.touchSequenceActive = true;
-    bindTouchDragListeners();
-
-    // Some mobile browsers emit Pointer Events before Touch Events. If a
-    // pointerdown already grabbed a non-star gesture, do not restart it.
-    if (pointerRef.current.down) return;
-
-    handlePointerDown(pointerEvent);
-  }
-
-  function handleTouchMove(event) {
-    const touch = getPrimaryTouch(event);
-    if (!touch) return;
-    const pointerEvent = touchToPointerEvent(touch, event);
-    if (moveActiveStarDrag(pointerEvent)) return;
-    event.preventDefault?.();
-    handlePointerMove(pointerEvent);
-  }
-
-  function handleTouchEnd(event) {
-    const touch = getPrimaryTouch(event) || { clientX: 0, clientY: 0 };
-    const pointerEvent = touchToPointerEvent(touch, event);
-    if (finishActiveStarDrag(pointerEvent)) return;
-    event.preventDefault?.();
-    handlePointerUp(pointerEvent);
-    pointerRef.current.touchSequenceActive = false;
-    removeTouchDragListeners();
   }
 
   function cleanupPointer() {
     clearLongPressTimer();
-    removeTouchDragListeners();
-    removeStarDragListeners();
-    pointerRef.current.touchSequenceActive = false;
-    pointerRef.current.starTouchActive = false;
-    pointerRef.current.starTouchPointerId = null;
     pointerRef.current.activePointers?.clear();
     endStarDrag();
   }
@@ -780,11 +596,6 @@ export function useSoonPointer({
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
-    handleTouchStart,
-    handleTouchMove,
-    handleTouchEnd,
-    handleStarPointerDownCapture: startStarPointerDrag,
-    handleStarTouchStartCapture,
     cleanupPointer,
   };
 }
