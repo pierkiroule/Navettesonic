@@ -32,7 +32,8 @@ export function useSoonPointer({
   const DOUBLE_TAP_MS = 420;
   const DOUBLE_TAP_DIST = 72;
   const LONG_PRESS_MS = 480;
-  const STAR_TOUCH_RADIUS = 64;
+  const STAR_TOUCH_RADIUS = 112;
+  const STAR_TOUCH_RADIUS_MULTIPLIER = 2.6;
 
   function getNow() {
     return typeof performance !== "undefined" && typeof performance.now === "function"
@@ -121,8 +122,8 @@ export function useSoonPointer({
       stars
         .filter((star) => star && !star.expired)
         .filter((star) => {
-          const radius = Number.isFinite(star.r) ? star.r : 18;
-          return distance(star, point) <= Math.max(STAR_TOUCH_RADIUS, radius * 2.4);
+          const radius = Number.isFinite(star.r) ? star.r : 34;
+          return distance(star, point) <= Math.max(STAR_TOUCH_RADIUS, radius * STAR_TOUCH_RADIUS_MULTIPLIER);
         })
         .sort((a, b) => distance(a, point) - distance(b, point))[0] || null
     );

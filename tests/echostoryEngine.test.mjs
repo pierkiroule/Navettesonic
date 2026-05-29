@@ -26,6 +26,8 @@ test("echostory wave mapping and star generation", () => {
     assert.equal(typeof star.x, "number");
     assert.equal(typeof star.y, "number");
     assert.equal(star.attachedToContour, true);
+    assert.ok(star.r >= 34);
+    assert.ok(star.r <= 48);
     assert.equal(typeof star.contourAngle, "number");
     assert.ok(Math.hypot(star.x, star.y) > 1100);
   });

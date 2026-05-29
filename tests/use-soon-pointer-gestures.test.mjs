@@ -153,6 +153,39 @@ test('glisser une étoile déplace directement sa position sous le doigt', () =>
 });
 
 
+test('tap proche attrape une étoile grâce à une zone tactile agrandie', () => {
+  const stateRef = {
+    current: {
+      interactionMode: 'swim',
+      mode: 'echostory',
+      fish: { depth: 1 },
+      viewZoom: 0,
+      circuitAutopilot: false,
+      bubbles: [],
+      echostory: {
+        stars: [{ id: 'large-touch-star', x: 0, y: 0, r: 18, attachedToContour: false }],
+      },
+    },
+  };
+  const canvas = {
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
+    setPointerCapture: () => {},
+    releasePointerCapture: () => {},
+  };
+  const pointerApi = useSoonPointer({
+    canvasRef: { current: canvas },
+    cameraRef: { current: { x: 0, y: 0 } },
+    arenaRef: { current: { radius: 1200 } },
+    pointerRef: { current: { activePointers: new Map() } },
+    stateRef,
+  });
+
+  pointerApi.handlePointerDown(event(1, 530, 500));
+
+  assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, true);
+});
+
+
 test('glisser une étoile sans id continue avec la référence tactile', () => {
   const stateRef = {
     current: {

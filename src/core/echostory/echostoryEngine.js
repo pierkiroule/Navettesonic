@@ -7,6 +7,8 @@ const STARS_PER_PHASE = 5;
 const TOTAL_STARS = STAR_PHASE_COUNT * STARS_PER_PHASE;
 const ARENA_RADIUS = 900;
 const CONTOUR_RAIL_RADIUS = 1168;
+const STAR_RADIUS_MIN = 34;
+const STAR_RADIUS_MAX = 48;
 const DEV_AUTO_COLLECT_STARS = Boolean(import.meta?.env?.DEV);
 
 function randomInRange(min, max) {
@@ -58,7 +60,7 @@ export function createWaveStars(waveIndex, count = TOTAL_STARS) {
     id: `${fragment.id}-star-${index + 1}`,
     x: pearls[index]?.x ?? randomInRange(-ARENA_RADIUS, ARENA_RADIUS),
     y: pearls[index]?.y ?? randomInRange(-ARENA_RADIUS, ARENA_RADIUS),
-    r: randomInRange(14, 24),
+    r: randomInRange(STAR_RADIUS_MIN, STAR_RADIUS_MAX),
     collected: DEV_AUTO_COLLECT_STARS,
     phase: (pearls[index]?.t ?? Math.random()) * Math.PI * 2,
     phaseIndex: pearls[index]?.phaseIndex ?? Math.min(STAR_PHASE_COUNT - 1, Math.floor(index / STARS_PER_PHASE)),
