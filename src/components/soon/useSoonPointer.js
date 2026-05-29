@@ -42,14 +42,6 @@ export function useSoonPointer({
       : Date.now();
   }
 
-  function shouldUseTouchFallback(event) {
-    return (
-      event?.pointerType === "touch" &&
-      typeof window !== "undefined" &&
-      "ontouchstart" in window
-    );
-  }
-
   function removeTouchDragListeners() {
     if (typeof window === "undefined") return;
     const move = pointerRef.current.windowTouchMoveListener;
@@ -317,11 +309,14 @@ export function useSoonPointer({
   }
 
   function handlePointerDown(event) {
-    if (shouldUseTouchFallback(event)) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     event.preventDefault?.();
+    if (event.pointerType === "touch") {
+      pointerRef.current.touchSequenceActive = true;
+      bindTouchDragListeners();
+    }
     try {
       canvas.setPointerCapture(event.pointerId);
     } catch {}
@@ -351,12 +346,10 @@ export function useSoonPointer({
     pointerRef.current.pinchDistance = null;
     pointerRef.current.startPoint = point;
 
-    if (!isEditMode && !isCircuitMode && current.interactionMode === "swim") {
-      const hitStar = findEchostoryStarAt(point);
-      if (hitStar) {
-        beginStarDrag(hitStar, event, point);
-        return;
-      }
+    const hitStar = findEchostoryStarAt(point);
+    if (hitStar) {
+      beginStarDrag(hitStar, event, point);
+      return;
     }
 
     if (isCircuitMode) {
@@ -379,7 +372,6 @@ export function useSoonPointer({
   }
 
   function handlePointerMove(event) {
-    if (shouldUseTouchFallback(event)) return;
     registerPointer(event);
 
     const current = stateRef.current;
@@ -389,6 +381,15 @@ export function useSoonPointer({
 
     if (!pointerRef.current.down && !(pointerRef.current.activePointers?.size > 0)) {
       return;
+    }
+
+    if (pointerRef.current.dragStarId || pointerRef.current.dragStarRef) {
+      event.preventDefault?.();
+      const stars = stateRef.current?.echostory?.stars || [];
+      const star = pointerRef.current.dragStarId
+        ? stars.find((item) => item?.id === pointerRef.current.dragStarId)
+        : pointerRef.current.dragStarRef;
+      if (moveEchostoryStarWithPointer(star, point)) return;
     }
 
     if (isEditMode && pointerRef.current.activePointers.size >= 2) {
@@ -435,15 +436,6 @@ export function useSoonPointer({
     const moved =
       start && Math.hypot(start.x - point.x, start.y - point.y) > MOVE_CANCEL;
     if (moved) clearLongPressTimer();
-
-    if (!isEditMode && !isCircuitMode && (pointerRef.current.dragStarId || pointerRef.current.dragStarRef)) {
-      event.preventDefault?.();
-      const stars = stateRef.current?.echostory?.stars || [];
-      const star = pointerRef.current.dragStarId
-        ? stars.find((item) => item?.id === pointerRef.current.dragStarId)
-        : pointerRef.current.dragStarRef;
-      if (moveEchostoryStarWithPointer(star, point)) return;
-    }
 
     if ((isEditMode || isCircuitMode) && pointerRef.current.dragBeaconId) {
       onMoveBeacon?.(pointerRef.current.dragBeaconId, point.x, point.y);
@@ -493,7 +485,6 @@ export function useSoonPointer({
   }
 
   function handlePointerUp(event) {
-    if (shouldUseTouchFallback(event)) return;
     clearLongPressTimer();
     pointerRef.current.activePointers?.delete(event.pointerId);
 
@@ -510,6 +501,11 @@ export function useSoonPointer({
       pointerRef.current.panStart = null;
       pointerRef.current.pinchDistance = null;
       pointerRef.current.startPoint = null;
+    }
+
+    if (event.pointerType === "touch") {
+      pointerRef.current.touchSequenceActive = false;
+      removeTouchDragListeners();
     }
 
     try {
@@ -536,6 +532,12 @@ export function useSoonPointer({
     event.preventDefault?.();
     pointerRef.current.touchSequenceActive = true;
     bindTouchDragListeners();
+
+    // Some mobile browsers emit Pointer Events before Touch Events. If a
+    // pointerdown already grabbed the star, do not restart the gesture; keep
+    // the window-level touch listeners as a safety net for move/end events.
+    if (pointerRef.current.down || pointerRef.current.dragStarRef) return;
+
     handlePointerDown(touchToPointerEvent(touch, event));
   }
 

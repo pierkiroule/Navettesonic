@@ -273,6 +273,128 @@ test('fallback touch permet de poser puis déplacer une étoile au doigt', () =>
 });
 
 
+test('une étoile reste prioritaire au doigt même en mode édition', () => {
+  const stateRef = {
+    current: {
+      interactionMode: 'edit',
+      mode: 'echostory',
+      fish: { depth: 1 },
+      viewZoom: 0,
+      circuitAutopilot: false,
+      bubbles: [],
+      echostory: {
+        stars: [{ id: 'edit-star', x: 0, y: 0, r: 18, attachedToContour: false }],
+      },
+    },
+  };
+  const canvas = {
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
+    setPointerCapture: () => {},
+    releasePointerCapture: () => {},
+  };
+  const pointerApi = useSoonPointer({
+    canvasRef: { current: canvas },
+    cameraRef: { current: { x: 0, y: 0 } },
+    arenaRef: { current: { radius: 1200 } },
+    pointerRef: { current: { activePointers: new Map() } },
+    stateRef,
+  });
+
+  pointerApi.handlePointerDown(event(1, 500, 500));
+  pointerApi.handlePointerMove(event(1, 540, 500));
+
+  assert.ok(stateRef.current.echostory.stars[0].x > 110);
+  assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, true);
+});
+
+test('un PointerEvent tactile seul suffit à déplacer une étoile', () => {
+  const stateRef = {
+    current: {
+      interactionMode: 'swim',
+      mode: 'echostory',
+      fish: { depth: 1 },
+      viewZoom: 0,
+      circuitAutopilot: false,
+      bubbles: [],
+      echostory: {
+        stars: [{ id: 'pointer-touch-star', x: 0, y: 0, r: 18, attachedToContour: false }],
+      },
+    },
+  };
+  const canvas = {
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
+    setPointerCapture: () => { throw new Error('capture unsupported'); },
+    releasePointerCapture: () => {},
+  };
+  const pointerApi = useSoonPointer({
+    canvasRef: { current: canvas },
+    cameraRef: { current: { x: 0, y: 0 } },
+    arenaRef: { current: { radius: 1200 } },
+    pointerRef: { current: { activePointers: new Map() } },
+    stateRef,
+  });
+  const touchPointer = (pointerId, x, y) => ({
+    ...event(pointerId, x, y),
+    pointerType: 'touch',
+    preventDefault: () => {},
+  });
+
+  pointerApi.handlePointerDown(touchPointer(7, 500, 500));
+  pointerApi.handlePointerMove(touchPointer(7, 540, 500));
+
+  assert.ok(stateRef.current.echostory.stars[0].x > 110);
+  assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, true);
+
+  pointerApi.handlePointerUp(touchPointer(7, 540, 500));
+
+  assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, false);
+});
+
+
+test('un pointerdown tactile suivi du fallback touchmove continue à déplacer l’étoile', () => {
+  const stateRef = {
+    current: {
+      interactionMode: 'edit',
+      mode: 'echostory',
+      fish: { depth: 1 },
+      viewZoom: 0,
+      circuitAutopilot: false,
+      bubbles: [],
+      echostory: {
+        stars: [{ id: 'mixed-touch-star', x: 0, y: 0, r: 18, attachedToContour: false }],
+      },
+    },
+  };
+  const canvas = {
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
+    setPointerCapture: () => { throw new Error('capture unsupported'); },
+    releasePointerCapture: () => {},
+  };
+  const pointerApi = useSoonPointer({
+    canvasRef: { current: canvas },
+    cameraRef: { current: { x: 0, y: 0 } },
+    arenaRef: { current: { radius: 1200 } },
+    pointerRef: { current: { activePointers: new Map() } },
+    stateRef,
+  });
+  const touchPointer = (pointerId, x, y) => ({
+    ...event(pointerId, x, y),
+    pointerType: 'touch',
+    preventDefault: () => {},
+  });
+  const touchEvent = (x, y) => ({
+    touches: [{ clientX: x, clientY: y }],
+    changedTouches: [{ clientX: x, clientY: y }],
+    preventDefault: () => {},
+  });
+
+  pointerApi.handlePointerDown(touchPointer(8, 500, 500));
+  pointerApi.handleTouchMove(touchEvent(540, 500));
+
+  assert.ok(stateRef.current.echostory.stars[0].x > 110);
+  assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, true);
+});
+
 test('glisser dans le vide en echostory ne déplace plus Soon', () => {
   const calls = { fishTarget: 0 };
   const stateRef = {
