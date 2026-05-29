@@ -27,18 +27,19 @@ function event(pointerId = 1, x = 500, y = 500) {
   return { pointerId, clientX: x, clientY: y };
 }
 
-test('tap simple déclenche la nage', () => {
+test('tap simple ne pilote plus Soon', () => {
   const { api, calls } = createHarness();
   api.handlePointerDown(event());
-  assert.equal(calls.fishTarget, 1);
+  assert.equal(calls.fishTarget, 0);
 });
 
-test('double tap active le boost de vitesse', () => {
+test('double tap ne pilote plus Soon ni son boost', () => {
   const { api, calls } = createHarness();
   api.handlePointerDown(event(1, 500, 500));
   api.handlePointerUp(event(1, 500, 500));
   api.handlePointerDown(event(2, 502, 501));
-  assert.equal(calls.boostSpeed, 1);
+  assert.equal(calls.fishTarget, 0);
+  assert.equal(calls.boostSpeed, 0);
 });
 
 test('long press en nage ne doit pas ouvrir le menu contextuel', async () => {
@@ -55,7 +56,7 @@ test('double tap ne doit pas ouvrir le menu contextuel', async () => {
   api.handlePointerUp(event(1, 500, 500));
   api.handlePointerDown(event(2, 501, 500));
   await new Promise((r) => setTimeout(r, 520));
-  assert.equal(calls.boostSpeed, 1);
+  assert.equal(calls.boostSpeed, 0);
   assert.equal(calls.openMenu, 0);
 });
 
@@ -69,7 +70,7 @@ test('long press en nage ne déclenche ni menu ni boost vitesse', async () => {
 });
 
 
-test('tap sur une étoile snappée la sélectionne directement et Soon suit le contact', () => {
+test('tap sur une étoile snappée la sélectionne directement sans piloter Soon', () => {
   const calls = { fishTarget: 0, options: [] };
   const stateRef = {
     current: {
@@ -105,8 +106,8 @@ test('tap sur une étoile snappée la sélectionne directement et Soon suit le c
 
   assert.equal(stateRef.current.echostory.stars[0].pendingBreathChoice, false);
   assert.equal(stateRef.current.echostory.stars[0].attachedToContour, false);
-  assert.equal(calls.fishTarget, 1);
-  assert.equal(calls.options[0]?.followImpact, true);
+  assert.equal(calls.fishTarget, 0);
+  assert.equal(calls.options.length, 0);
 });
 
 
@@ -147,12 +148,12 @@ test('glisser une étoile déplace directement sa position sous le doigt', () =>
 
   assert.ok(stateRef.current.echostory.stars[0].x > 110);
   assert.equal(stateRef.current.echostory.stars[0].attachedToContour, false);
-  assert.equal(calls.fishTarget, 2);
-  assert.equal(calls.last.options?.followImpact, true);
+  assert.equal(calls.fishTarget, 0);
+  assert.equal(calls.last, null);
 });
 
 
-test('glisser en echostory continue de déplacer Soon', () => {
+test('glisser dans le vide en echostory ne déplace plus Soon', () => {
   const calls = { fishTarget: 0 };
   const stateRef = {
     current: {
@@ -182,5 +183,5 @@ test('glisser en echostory continue de déplacer Soon', () => {
   pointerApi.handlePointerDown(event(1, 500, 500));
   pointerApi.handlePointerMove(event(1, 520, 520));
 
-  assert.equal(calls.fishTarget, 2);
+  assert.equal(calls.fishTarget, 0);
 });

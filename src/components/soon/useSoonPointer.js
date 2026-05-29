@@ -16,16 +16,13 @@ export function useSoonPointer({
   arenaRef,
   pointerRef,
   stateRef,
-  onFishTarget,
   onSelectBubble,
   onSelectBeacon,
   onMoveBeacon,
   onMoveBubble,
   onAddBubble,
-  onAddPathPoint,
   onAddOdysseoPathPoint,
   onAddOdysseoDepthMarker,
-  onBoostFishSpeed,
   onOpenBubbleEditor,
   onOpenFishContextMenu,
   onDepthToast,
@@ -131,7 +128,7 @@ export function useSoonPointer({
     );
   }
 
-  function moveEchostoryStarWithPointer(star, point, options = {}) {
+  function moveEchostoryStarWithPointer(star, point) {
     if (!star || star.expired) return false;
     const now = getNow();
     const offset = pointerRef.current.dragStarOffset || { x: 0, y: 0 };
@@ -154,7 +151,6 @@ export function useSoonPointer({
     star.lastPushedBySoonAt = now;
     star.lastPushedByTouchAt = now;
 
-    onFishTarget?.(point.x, point.y, arenaRef.current.radius, { followImpact: true, immediate: Boolean(options.immediate) });
     return true;
   }
 
@@ -211,31 +207,10 @@ export function useSoonPointer({
   }
 
   function handleSwimPointerDown(event, point, current) {
-    const doubleTap = isDoubleTapScreen(event, "swim");
-
+    void point;
+    void current;
     onSelectBubble?.(null);
-
-    if (doubleTap) {
-      clearLongPressTimer();
-      onBoostFishSpeed?.();
-
-      // reset pour éviter triple tap parasite
-      pointerRef.current.lastTapAt = 0;
-      pointerRef.current.lastTapScreenPos = null;
-      pointerRef.current.lastTapKey = null;
-
-      return;
-    }
-
     rememberTapScreen(event, "swim");
-
-    if (!current.circuitAutopilot) {
-      onFishTarget?.(point.x, point.y, arenaRef.current.radius);
-    }
-
-    if (current.mode === "reso") {
-      onAddPathPoint?.(point);
-    }
   }
 
   function handleEditPointerDown(event, point, current) {
@@ -325,17 +300,7 @@ export function useSoonPointer({
         };
         onSelectBubble?.(null);
         rememberTapScreen(event, `star:${hitStar.id || "anonymous"}`);
-        moveEchostoryStarWithPointer(hitStar, point, { immediate: true });
-        return;
-      }
-    }
-
-    if (current.mode === "echostory" || current.mode === "reso") {
-      const r = arenaRef.current.radius || 1200;
-      const d = Math.hypot(point.x, point.y);
-
-      if (d >= r - 120) {
-        onFishTarget?.(point.x, point.y, r);
+        moveEchostoryStarWithPointer(hitStar, point);
         return;
       }
     }
@@ -465,19 +430,7 @@ export function useSoonPointer({
     }
 
     if (!isEditMode) {
-      const startPoint = pointerRef.current.startPoint || point;
-      const pullDx = point.x - startPoint.x;
-      const pullDy = point.y - startPoint.y;
-      const leadPoint = {
-        x: point.x + pullDx * 0.2,
-        y: point.y + pullDy * 0.2,
-      };
-
-      onFishTarget?.(leadPoint.x, leadPoint.y, arenaRef.current.radius);
-
-      if (current.mode === "reso") {
-        onAddPathPoint?.(point);
-      }
+      return;
     }
   }
 
