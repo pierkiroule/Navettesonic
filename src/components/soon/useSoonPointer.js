@@ -34,6 +34,7 @@ export function useSoonPointer({
   const LONG_PRESS_MS = 480;
   const STAR_TOUCH_RADIUS = 112;
   const STAR_TOUCH_RADIUS_MULTIPLIER = 2.6;
+  const STAR_DRAG_HOLD_MS = 320;
 
   function getNow() {
     return typeof performance !== "undefined" && typeof performance.now === "function"
@@ -137,20 +138,16 @@ export function useSoonPointer({
       { x: point.x + offset.x, y: point.y + offset.y },
       Math.max(40, (arenaRef.current.radius || 1200) - 42)
     );
-    const previousX = Number.isFinite(star.x) ? star.x : next.x;
-    const previousY = Number.isFinite(star.y) ? star.y : next.y;
-
     star.x = next.x;
     star.y = next.y;
-    star.vx = (next.x - previousX) * 0.38;
-    star.vy = (next.y - previousY) * 0.38;
+    star.vx = 0;
+    star.vy = 0;
     star.attachedToContour = false;
     star.expiring = false;
     star.pendingBreathChoice = false;
     star.breathMenuOpenedAt = 0;
     star.selectedOnContour = false;
-    star.lastPushedBySoonAt = now;
-    star.lastPushedByTouchAt = now;
+    star.lastDraggedByTouchAt = now;
     star.draggingByTouch = true;
 
     return true;
@@ -195,6 +192,60 @@ export function useSoonPointer({
       clearTimeout(pointerRef.current.longPressTimer);
       pointerRef.current.longPressTimer = null;
     }
+  }
+
+  function clearStarDragTimer() {
+    if (pointerRef.current.starDragTimer) {
+      clearTimeout(pointerRef.current.starDragTimer);
+      pointerRef.current.starDragTimer = null;
+    }
+  }
+
+  function endStarDrag() {
+    clearStarDragTimer();
+    const activeStar = pointerRef.current.dragStarRef || pointerRef.current.pendingStarRef;
+    if (activeStar) {
+      activeStar.draggingByTouch = false;
+      activeStar.vx = 0;
+      activeStar.vy = 0;
+    }
+    pointerRef.current.dragStarId = null;
+    pointerRef.current.dragStarRef = null;
+    pointerRef.current.dragStarOffset = null;
+    pointerRef.current.pendingStarId = null;
+    pointerRef.current.pendingStarRef = null;
+    pointerRef.current.pendingStarOffset = null;
+    pointerRef.current.pendingStarPoint = null;
+  }
+
+  function beginPendingStarDrag() {
+    const star = pointerRef.current.pendingStarRef;
+    if (!star || star.expired || !pointerRef.current.down) return false;
+    pointerRef.current.dragStarId = pointerRef.current.pendingStarId;
+    pointerRef.current.dragStarRef = star;
+    pointerRef.current.dragStarOffset = pointerRef.current.pendingStarOffset || { x: 0, y: 0 };
+    pointerRef.current.pendingStarId = null;
+    pointerRef.current.pendingStarRef = null;
+    pointerRef.current.pendingStarOffset = null;
+    moveEchostoryStarWithPointer(star, pointerRef.current.pendingStarPoint || pointerRef.current.startPoint || star);
+    return true;
+  }
+
+  function armStarDrag(star, event, point) {
+    clearStarDragTimer();
+    pointerRef.current.pendingStarId = star.id || null;
+    pointerRef.current.pendingStarRef = star;
+    pointerRef.current.pendingStarOffset = {
+      x: (Number.isFinite(star.x) ? star.x : point.x) - point.x,
+      y: (Number.isFinite(star.y) ? star.y : point.y) - point.y,
+    };
+    pointerRef.current.pendingStarPoint = point;
+    pointerRef.current.starDragTimer = setTimeout(() => {
+      pointerRef.current.starDragTimer = null;
+      beginPendingStarDrag();
+    }, STAR_DRAG_HOLD_MS);
+    onSelectBubble?.(null);
+    rememberTapScreen(event, `star:${star.id || "anonymous"}`);
   }
 
   function armLongPress(event, point, current) {
@@ -285,10 +336,7 @@ export function useSoonPointer({
     pointerRef.current.dragBubbleId = null;
     pointerRef.current.pendingBubbleId = null;
     pointerRef.current.dragBeaconId = null;
-    if (pointerRef.current.dragStarRef) pointerRef.current.dragStarRef.draggingByTouch = false;
-    pointerRef.current.dragStarId = null;
-    pointerRef.current.dragStarRef = null;
-    pointerRef.current.dragStarOffset = null;
+    endStarDrag();
     pointerRef.current.panEnabled = false;
     pointerRef.current.panStart = null;
     pointerRef.current.pinchDistance = null;
@@ -297,15 +345,7 @@ export function useSoonPointer({
     if (!isEditMode && !isCircuitMode && current.interactionMode === "swim") {
       const hitStar = findEchostoryStarAt(point);
       if (hitStar) {
-        pointerRef.current.dragStarId = hitStar.id || null;
-        pointerRef.current.dragStarRef = hitStar;
-        pointerRef.current.dragStarOffset = {
-          x: (Number.isFinite(hitStar.x) ? hitStar.x : point.x) - point.x,
-          y: (Number.isFinite(hitStar.y) ? hitStar.y : point.y) - point.y,
-        };
-        onSelectBubble?.(null);
-        rememberTapScreen(event, `star:${hitStar.id || "anonymous"}`);
-        moveEchostoryStarWithPointer(hitStar, point);
+        armStarDrag(hitStar, event, point);
         return;
       }
     }
@@ -386,6 +426,11 @@ export function useSoonPointer({
       start && Math.hypot(start.x - point.x, start.y - point.y) > MOVE_CANCEL;
     if (moved) clearLongPressTimer();
 
+    if (!isEditMode && !isCircuitMode && pointerRef.current.pendingStarRef) {
+      pointerRef.current.pendingStarPoint = point;
+      return;
+    }
+
     if (!isEditMode && !isCircuitMode && (pointerRef.current.dragStarId || pointerRef.current.dragStarRef)) {
       const stars = stateRef.current?.echostory?.stars || [];
       const star = pointerRef.current.dragStarId
@@ -453,10 +498,7 @@ export function useSoonPointer({
       pointerRef.current.dragBubbleId = null;
       pointerRef.current.pendingBubbleId = null;
       pointerRef.current.dragBeaconId = null;
-      if (pointerRef.current.dragStarRef) pointerRef.current.dragStarRef.draggingByTouch = false;
-      pointerRef.current.dragStarId = null;
-      pointerRef.current.dragStarRef = null;
-      pointerRef.current.dragStarOffset = null;
+      endStarDrag();
       pointerRef.current.panEnabled = false;
       pointerRef.current.panStart = null;
       pointerRef.current.pinchDistance = null;
@@ -471,10 +513,7 @@ export function useSoonPointer({
   function cleanupPointer() {
     clearLongPressTimer();
     pointerRef.current.activePointers?.clear();
-    if (pointerRef.current.dragStarRef) pointerRef.current.dragStarRef.draggingByTouch = false;
-    pointerRef.current.dragStarId = null;
-    pointerRef.current.dragStarRef = null;
-    pointerRef.current.dragStarOffset = null;
+    endStarDrag();
   }
 
   return {

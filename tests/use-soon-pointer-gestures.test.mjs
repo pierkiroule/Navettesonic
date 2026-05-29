@@ -27,6 +27,8 @@ function event(pointerId = 1, x = 500, y = 500) {
   return { pointerId, clientX: x, clientY: y };
 }
 
+const waitForStarDrag = () => new Promise((resolve) => setTimeout(resolve, 360));
+
 test('tap simple ne pilote plus Soon', () => {
   const { api, calls } = createHarness();
   api.handlePointerDown(event());
@@ -70,7 +72,7 @@ test('long press en nage ne déclenche ni menu ni boost vitesse', async () => {
 });
 
 
-test('tap sur une étoile snappée la sélectionne directement sans piloter Soon', () => {
+test('tap court sur une étoile snappée ne lance pas le drag ni Soon', () => {
   const calls = { fishTarget: 0, options: [] };
   const stateRef = {
     current: {
@@ -104,14 +106,15 @@ test('tap sur une étoile snappée la sélectionne directement sans piloter Soon
 
   pointerApi.handlePointerDown(event(1, 879, 500));
 
-  assert.equal(stateRef.current.echostory.stars[0].pendingBreathChoice, false);
-  assert.equal(stateRef.current.echostory.stars[0].attachedToContour, false);
+  assert.equal(stateRef.current.echostory.stars[0].pendingBreathChoice, undefined);
+  assert.equal(stateRef.current.echostory.stars[0].attachedToContour, true);
+  assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, undefined);
   assert.equal(calls.fishTarget, 0);
   assert.equal(calls.options.length, 0);
 });
 
 
-test('glisser une étoile déplace directement sa position sous le doigt', () => {
+test('tap long puis slide déplace une étoile sans inertie tactile', async () => {
   const calls = { fishTarget: 0, last: null };
   const stateRef = {
     current: {
@@ -146,14 +149,22 @@ test('glisser une étoile déplace directement sa position sous le doigt', () =>
   pointerApi.handlePointerDown(event(1, 500, 500));
   pointerApi.handlePointerMove(event(1, 540, 500));
 
+  assert.equal(stateRef.current.echostory.stars[0].x, 0);
+  assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, undefined);
+
+  await waitForStarDrag();
+  pointerApi.handlePointerMove(event(1, 540, 500));
+
   assert.ok(stateRef.current.echostory.stars[0].x > 110);
   assert.equal(stateRef.current.echostory.stars[0].attachedToContour, false);
+  assert.equal(stateRef.current.echostory.stars[0].vx, 0);
+  assert.equal(stateRef.current.echostory.stars[0].vy, 0);
   assert.equal(calls.fishTarget, 0);
   assert.equal(calls.last, null);
 });
 
 
-test('tap proche attrape une étoile grâce à une zone tactile agrandie', () => {
+test('tap long proche attrape une étoile grâce à une zone tactile agrandie', async () => {
   const stateRef = {
     current: {
       interactionMode: 'swim',
@@ -182,11 +193,15 @@ test('tap proche attrape une étoile grâce à une zone tactile agrandie', () =>
 
   pointerApi.handlePointerDown(event(1, 530, 500));
 
+  assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, undefined);
+
+  await waitForStarDrag();
+
   assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, true);
 });
 
 
-test('glisser une étoile sans id continue avec la référence tactile', () => {
+test('tap long puis slide une étoile sans id continue avec la référence tactile', async () => {
   const stateRef = {
     current: {
       interactionMode: 'swim',
@@ -214,6 +229,11 @@ test('glisser une étoile sans id continue avec la référence tactile', () => {
   });
 
   pointerApi.handlePointerDown(event(1, 500, 500));
+  pointerApi.handlePointerMove(event(1, 540, 500));
+
+  assert.equal(stateRef.current.echostory.stars[0].x, 0);
+
+  await waitForStarDrag();
   pointerApi.handlePointerMove(event(1, 540, 500));
 
   assert.ok(stateRef.current.echostory.stars[0].x > 110);

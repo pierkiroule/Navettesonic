@@ -12,7 +12,7 @@ function stateWithStars(stars) {
   };
 }
 
-test('Soon touching a contour star opens breath choice without detaching it', () => {
+test('Soon masqué ne pousse plus les étoiles du contour', () => {
   const state = stateWithStars([
     { id: 'star-1', x: 0, y: -1168, r: 18, attachedToContour: true, contourAngle: -Math.PI / 2, previewPlayed: true },
   ]);
@@ -20,7 +20,7 @@ test('Soon touching a contour star opens breath choice without detaching it', ()
   pushNearbyEchostoryStars(state, 2000);
 
   assert.equal(state.echostory.stars[0].attachedToContour, true);
-  assert.equal(state.echostory.stars[0].pendingBreathChoice, true);
+  assert.equal(state.echostory.stars[0].pendingBreathChoice, undefined);
 });
 
 test('Inspirer décroche une étoile du contour vers intérieur', () => {
