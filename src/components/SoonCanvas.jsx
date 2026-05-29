@@ -4,7 +4,6 @@ import { useSoonPointer } from "./soon/useSoonPointer.js";
 import RadialMenu from "./RadialMenu.jsx";
 import { getAudioTuning, setAudioTuning } from "../core/audioEngine.js";
 import { ARENA_INNER_BOUNDARY_INSET, MEMBRANE_LEVEL_MULTIPLIERS } from "../core/constants.js";
-import { buildEchostoryCompositionPlan, ECHOSTORY_COMPOSITION_STYLES } from "../core/echostory/echostoryCompositionGenerator.js";
 
 
 export default function SoonCanvas({
@@ -66,9 +65,6 @@ export default function SoonCanvas({
   const [showSensitivitySlider, setShowSensitivitySlider] = useState(false);
   const [contourPlayButton, setContourPlayButton] = useState({ visible: false, x: 0, y: 0 });
   const [contourRideDurationMs, setContourRideDurationMs] = useState(120000);
-  const [compositionMenu, setCompositionMenu] = useState(null);
-  const [compositionPlan, setCompositionPlan] = useState(null);
-  const [compositionButton, setCompositionButton] = useState({ x: 0, y: 0, ready: false });
 
   const cameraRef = useRef({
     x: 0,
@@ -302,42 +298,6 @@ export default function SoonCanvas({
 
   useEffect(() => {
     let frame = 0;
-    const updateCompositionButton = () => {
-      const canvas = canvasRef.current;
-      const current = stateRef.current || {};
-      if (!canvas) {
-        frame = requestAnimationFrame(updateCompositionButton);
-        return;
-      }
-
-      const rect = canvas.getBoundingClientRect();
-      const arenaRadius = Number.isFinite(current.arenaRadius) ? current.arenaRadius : (arenaRef.current.radius || 1200);
-      const zoomOffset = Number.isFinite(current.viewZoom) ? current.viewZoom : 0;
-      const fitZoom = Math.min(rect.width, rect.height) / (arenaRadius * 2.55);
-      const userZoom = fitZoom * (1 + zoomOffset * 1.55);
-      const world = current.worldGraph;
-      const arenaId = current.currentArenaId || world?.startArenaId;
-      const arenaNode = (world?.nodes || []).find((node) => node.id === arenaId) || null;
-      const center = arenaNode?.absoluteCenter || { x: 0, y: 0 };
-      const centerX = Number.isFinite(center.x) ? center.x : 0;
-      const centerY = Number.isFinite(center.y) ? center.y : 0;
-      const camera = cameraRef.current || { x: 0, y: 0 };
-
-      const screenX = rect.width * 0.5 + (centerX - camera.x) * userZoom;
-      const screenY = rect.height * 0.5 + (centerY - camera.y) * userZoom;
-      setCompositionButton((prev) => {
-        if (prev.ready && Math.abs(prev.x - screenX) < 0.2 && Math.abs(prev.y - screenY) < 0.2) return prev;
-        return { x: screenX, y: screenY, ready: true };
-      });
-      frame = requestAnimationFrame(updateCompositionButton);
-    };
-
-    frame = requestAnimationFrame(updateCompositionButton);
-    return () => cancelAnimationFrame(frame);
-  }, [arenaRef, cameraRef, canvasRef, stateRef]);
-
-  useEffect(() => {
-    let frame = 0;
     const updateContourPlayButton = () => {
       const canvas = canvasRef.current;
       const current = stateRef.current || {};
@@ -413,18 +373,6 @@ export default function SoonCanvas({
 
 
 
-  const handleCompositionStyleSelect = (styleId) => {
-    const plan = buildEchostoryCompositionPlan({
-      echostory: stateRef.current?.echostory || {},
-      styleId,
-    });
-    setCompositionPlan(plan);
-    stateRef.current = {
-      ...(stateRef.current || {}),
-      echostoryCompositionPlan: plan,
-    };
-  };
-
   const contourDurationOptions = [
     { value: 60000, label: "Courte" },
     { value: 120000, label: "Moyenne" },
@@ -433,38 +381,6 @@ export default function SoonCanvas({
 
   return (
     <div className="soon-canvas-shell">
-      <button
-        type="button"
-        className={`composition-generator-btn ${compositionPlan ? "is-active" : ""}`}
-        style={{
-          left: `${compositionButton.x}px`,
-          top: `${compositionButton.y}px`,
-          opacity: compositionButton.ready ? 1 : 0,
-        }}
-        onClick={() => setCompositionMenu((prev) => (prev ? null : { screen: { x: compositionButton.x, y: compositionButton.y } }))}
-        aria-label="Préparer la composition échohypnotique"
-        title={compositionPlan ? `Style choisi : ${compositionPlan.style.label}` : "Choisir un style de génération échohypnotique"}
-      >
-        🎵
-      </button>
-      {compositionMenu?.screen ? (
-        <RadialMenu
-          aria-label="Styles de composition échohypnotique"
-          anchor={compositionMenu.screen}
-          onClose={() => setCompositionMenu(null)}
-          items={ECHOSTORY_COMPOSITION_STYLES.map((style) => ({
-            id: style.id,
-            label: style.label,
-          }))}
-          onSelect={(item) => handleCompositionStyleSelect(item.id)}
-        />
-      ) : null}
-      {compositionPlan ? (
-        <div className="composition-generator-status" aria-live="polite">
-          <strong>{compositionPlan.style.label}</strong>
-          <span>{compositionPlan.constellationCount} constellation(s) · {compositionPlan.starCount} étoile(s)</span>
-        </div>
-      ) : null}
       <canvas
         ref={canvasRef}
         className="soon-canvas"
