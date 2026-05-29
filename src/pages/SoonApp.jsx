@@ -541,6 +541,17 @@ export default function SoonApp({ onBack }) {
         onSetFishDepth={setFishDepth}
         echostory={echostory}
         contourPlaybackPaused={contourPlaybackPaused}
+        onMoveEchostoryStar={(id, patch = {}) => {
+          if (!id) return;
+          useSoonStore.setState((state) => ({
+            echostory: {
+              ...(state.echostory || {}),
+              stars: (state.echostory?.stars || []).map((star) => (
+                star?.id === id ? { ...star, ...patch } : star
+              )),
+            },
+          }));
+        }}
         onToggleContourPlayback={() => {
           setContourPlaybackPaused((paused) => {
             const next = !paused;

@@ -27,6 +27,7 @@ export function useSoonPointer({
   onOpenFishContextMenu,
   onDepthToast,
   onToggleContourPlayback,
+  onMoveEchostoryStar,
 }) {
   const MOVE_CANCEL = 12;
   const DOUBLE_TAP_MS = 420;
@@ -34,6 +35,7 @@ export function useSoonPointer({
   const LONG_PRESS_MS = 480;
   const STAR_TOUCH_RADIUS = 112;
   const STAR_TOUCH_RADIUS_MULTIPLIER = 2.6;
+  const STAR_TOUCH_SCREEN_RADIUS = 64;
   const TOUCH_POINTER_ID = -1001;
 
   function getNow() {
@@ -143,6 +145,22 @@ export function useSoonPointer({
     return { x, y };
   }
 
+  function getWorldScale() {
+    const canvas = canvasRef.current;
+    if (!canvas) return 1;
+    const rect = canvas.getBoundingClientRect();
+    const current = stateRef.current || {};
+    const viewZoom = Number.isFinite(current.viewZoom) ? current.viewZoom : 0;
+    const arenaRadius = current.arenaRadius || arenaRef.current.radius || 1200;
+    return Math.max(0.0001, Math.min(rect.width, rect.height) / (arenaRadius * 2.55) * (1 + viewZoom * 1.55));
+  }
+
+  function getStarTouchRadius(star) {
+    const radius = Number.isFinite(star?.r) ? star.r : 34;
+    const screenRadiusInWorld = STAR_TOUCH_SCREEN_RADIUS / getWorldScale();
+    return Math.max(STAR_TOUCH_RADIUS, radius * STAR_TOUCH_RADIUS_MULTIPLIER, screenRadiusInWorld);
+  }
+
   function getSafeWorldFromEvent(event, options = {}) {
     const point = getWorldFromEvent(event);
     const navigableRadius = Math.max(0, arenaRef.current.radius - 18);
@@ -200,8 +218,7 @@ export function useSoonPointer({
       stars
         .filter((star) => star && !star.expired)
         .filter((star) => {
-          const radius = Number.isFinite(star.r) ? star.r : 34;
-          return distance(star, point) <= Math.max(STAR_TOUCH_RADIUS, radius * STAR_TOUCH_RADIUS_MULTIPLIER);
+          return distance(star, point) <= getStarTouchRadius(star);
         })
         .sort((a, b) => distance(a, point) - distance(b, point))[0] || null
     );
@@ -226,6 +243,22 @@ export function useSoonPointer({
     star.selectedOnContour = false;
     star.lastDraggedByTouchAt = now;
     star.draggingByTouch = true;
+
+    if (star.id) {
+      onMoveEchostoryStar?.(star.id, {
+        x: star.x,
+        y: star.y,
+        vx: 0,
+        vy: 0,
+        attachedToContour: false,
+        expiring: false,
+        pendingBreathChoice: false,
+        breathMenuOpenedAt: 0,
+        selectedOnContour: false,
+        lastDraggedByTouchAt: now,
+        draggingByTouch: true,
+      });
+    }
 
     return true;
   }
@@ -277,6 +310,15 @@ export function useSoonPointer({
       activeStar.draggingByTouch = false;
       activeStar.vx = 0;
       activeStar.vy = 0;
+      if (activeStar.id) {
+        onMoveEchostoryStar?.(activeStar.id, {
+          x: activeStar.x,
+          y: activeStar.y,
+          vx: 0,
+          vy: 0,
+          draggingByTouch: false,
+        });
+      }
     }
     pointerRef.current.dragStarId = null;
     pointerRef.current.dragStarRef = null;

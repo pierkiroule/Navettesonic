@@ -55,6 +55,7 @@ export default function SoonCanvas({
   echostory,
   contourPlaybackPaused = false,
   onToggleContourPlayback,
+  onMoveEchostoryStar,
 }) {
   const canvasRef = useRef(null);
   const [semioseVideo, setSemioseVideo] = useState(null);
@@ -234,6 +235,7 @@ export default function SoonCanvas({
     onOpenFishContextMenu: setFishMenu,
     onOpenBeaconEditor,
     onToggleContourPlayback,
+    onMoveEchostoryStar,
   });
 
   useEffect(() => cleanupPointer, [cleanupPointer]);

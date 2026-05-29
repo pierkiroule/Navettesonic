@@ -274,6 +274,80 @@ test('fallback touch permet de poser puis déplacer une étoile au doigt', () =>
 
 
 
+
+test('zone tactile reste large en pixels sur un écran mobile', () => {
+  const stateRef = {
+    current: {
+      interactionMode: 'swim',
+      mode: 'echostory',
+      fish: { depth: 1 },
+      viewZoom: 0,
+      arenaRadius: 1200,
+      circuitAutopilot: false,
+      bubbles: [],
+      echostory: {
+        stars: [{ id: 'mobile-star', x: 0, y: 0, r: 34, attachedToContour: false }],
+      },
+    },
+  };
+  const canvas = {
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 390, height: 700 }),
+    setPointerCapture: () => {},
+    releasePointerCapture: () => {},
+  };
+  const pointerApi = useSoonPointer({
+    canvasRef: { current: canvas },
+    cameraRef: { current: { x: 0, y: 0 } },
+    arenaRef: { current: { radius: 1200 } },
+    pointerRef: { current: { activePointers: new Map() } },
+    stateRef,
+  });
+
+  pointerApi.handlePointerDown(event(1, 250, 350));
+
+  assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, true);
+});
+
+test('drag tactile publie la position des étoiles dans le state applicatif', () => {
+  const patches = [];
+  const stateRef = {
+    current: {
+      interactionMode: 'swim',
+      mode: 'echostory',
+      fish: { depth: 1 },
+      viewZoom: 0,
+      circuitAutopilot: false,
+      bubbles: [],
+      echostory: {
+        stars: [{ id: 'synced-star', x: 0, y: 0, r: 34, attachedToContour: true }],
+      },
+    },
+  };
+  const canvas = {
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
+    setPointerCapture: () => {},
+    releasePointerCapture: () => {},
+  };
+  const pointerApi = useSoonPointer({
+    canvasRef: { current: canvas },
+    cameraRef: { current: { x: 0, y: 0 } },
+    arenaRef: { current: { radius: 1200 } },
+    pointerRef: { current: { activePointers: new Map() } },
+    stateRef,
+    onMoveEchostoryStar: (id, patch) => patches.push({ id, patch }),
+  });
+
+  pointerApi.handlePointerDown(event(1, 500, 500));
+  pointerApi.handlePointerMove(event(1, 540, 500));
+  pointerApi.handlePointerUp(event(1, 540, 500));
+
+  assert.equal(patches[0].id, 'synced-star');
+  assert.equal(patches[0].patch.attachedToContour, false);
+  assert.equal(patches[0].patch.draggingByTouch, true);
+  assert.equal(patches.at(-1).patch.draggingByTouch, false);
+  assert.ok(patches.some(({ patch }) => patch.x > 110));
+});
+
 test('capture tactile au-dessus du canvas attrape une étoile et bloque l’overlay', () => {
   const calls = { preventDefault: 0, stopPropagation: 0 };
   const stateRef = {
