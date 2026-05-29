@@ -1,4 +1,4 @@
-const ECHOSTORY_MUSIC_CORE_ID = "__echostory_music_core__";
+import { ECHOSTORY_MUSIC_CORE_ID } from "./echostoryConstellation.js";
 
 export const ECHOSTORY_COMPOSITION_STYLES = [
   {

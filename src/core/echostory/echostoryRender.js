@@ -1,4 +1,4 @@
-const ECHOSTORY_MUSIC_CORE_ID = "__echostory_music_core__";
+import { ECHOSTORY_MUSIC_CORE_ID } from "./echostoryConstellation.js";
 
 function drawStar(ctx, x, y, radius, color, alpha = 1) {
   const halo = ctx.createRadialGradient(x, y, radius * 0.2, x, y, radius * 2.6);

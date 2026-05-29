@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { makeEchostoryStarBreathe, pushNearbyEchostoryStars } from '../src/components/soon/useSoonCanvasLoop.js';
+import { ECHOSTORY_MUSIC_CORE_ID } from '../src/core/echostory/echostoryConstellation.js';
 
 function stateWithStars(stars) {
   return {
@@ -70,7 +71,7 @@ test('Music core seeds the constellation and propagates links through connected 
 
   pushNearbyEchostoryStars(state, 2400);
 
-  assert.ok(state.echostory.constellationLinks.some((link) => link.from === '__echostory_music_core__' || link.to === '__echostory_music_core__'));
+  assert.ok(state.echostory.constellationLinks.some((link) => link.from === ECHOSTORY_MUSIC_CORE_ID || link.to === ECHOSTORY_MUSIC_CORE_ID));
   assert.ok(state.echostory.constellationLinks.some((link) => [link.from, link.to].includes('star-1') && [link.from, link.to].includes('star-2')));
   assert.ok(!state.echostory.constellationLinks.some((link) => [link.from, link.to].includes('star-3')));
 
@@ -81,4 +82,21 @@ test('Music core seeds the constellation and propagates links through connected 
   assert.equal(state.echostory.constellationLinks.length, 0);
   assert.equal(state.echostory.stars[0].attachedToContour, true);
   assert.equal(state.echostory.stars[1].attachedToContour, true);
+});
+
+test('Soon can stretch a connected star link until it ruptures', () => {
+  const state = stateWithStars([
+    { id: 'star-1', x: 220, y: 0, r: 18, attachedToContour: false, previewPlayed: true, lastPushedBySoonAt: 3000 },
+    { id: 'star-2', x: 20, y: 0, r: 18, attachedToContour: false, previewPlayed: true },
+  ]);
+  state.fish = { x: 500, y: 0, vx: 0, vy: 0, depth: 1, arenaLevel: 0 };
+  state.echostory.constellationLinks = [
+    { from: ECHOSTORY_MUSIC_CORE_ID, to: 'star-2', restLength: 82, kind: 'music-core' },
+    { from: 'star-1', to: 'star-2', restLength: 76, kind: 'branch' },
+  ];
+
+  pushNearbyEchostoryStars(state, 3100);
+
+  assert.ok(state.echostory.constellationLinks.some((link) => [link.from, link.to].includes(ECHOSTORY_MUSIC_CORE_ID)));
+  assert.ok(!state.echostory.constellationLinks.some((link) => [link.from, link.to].includes('star-1') && [link.from, link.to].includes('star-2')));
 });
