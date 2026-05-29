@@ -4,7 +4,7 @@ import { useSoonPointer } from "./soon/useSoonPointer.js";
 import RadialMenu from "./RadialMenu.jsx";
 import { getAudioTuning, setAudioTuning } from "../core/audioEngine.js";
 import { ARENA_INNER_BOUNDARY_INSET, MEMBRANE_LEVEL_MULTIPLIERS } from "../core/constants.js";
-import { CONTOUR_MUSIC_URL, isOrganicAmbienceActive, selectContourMusicTrack } from "../core/organicAmbienceEngine.js";
+import { buildEchostoryCompositionPlan, ECHOSTORY_COMPOSITION_STYLES } from "../core/echostory/echostoryCompositionGenerator.js";
 
 
 export default function SoonCanvas({
@@ -55,8 +55,6 @@ export default function SoonCanvas({
   echostory,
   contourPlaybackPaused = false,
   onToggleContourPlayback,
-  onSelectContourStar,
-  soonTouchMode = "bubble",
 }) {
   const canvasRef = useRef(null);
   const [semioseVideo, setSemioseVideo] = useState(null);
@@ -66,8 +64,9 @@ export default function SoonCanvas({
   const [showSensitivitySlider, setShowSensitivitySlider] = useState(false);
   const [contourPlayButton, setContourPlayButton] = useState({ visible: false, x: 0, y: 0 });
   const [contourRideDurationMs, setContourRideDurationMs] = useState(120000);
-  const [organicAmbienceActive, setOrganicAmbienceActive] = useState(() => isOrganicAmbienceActive());
-  const [organicAmbienceButton, setOrganicAmbienceButton] = useState({ x: 0, y: 0, ready: false });
+  const [compositionMenu, setCompositionMenu] = useState(null);
+  const [compositionPlan, setCompositionPlan] = useState(null);
+  const [compositionButton, setCompositionButton] = useState({ x: 0, y: 0, ready: false });
 
   const cameraRef = useRef({
     x: 0,
@@ -129,7 +128,6 @@ export default function SoonCanvas({
     pendingBlobAction,
     echostory,
     contourPlaybackPaused,
-    soonTouchMode,
   });
 
   useEffect(() => {
@@ -162,7 +160,6 @@ export default function SoonCanvas({
       pendingBlobAction,
       echostory,
       contourPlaybackPaused,
-      soonTouchMode,
     };
   }, [
     mode,
@@ -191,7 +188,6 @@ export default function SoonCanvas({
     pendingBlobAction,
     echostory,
     contourPlaybackPaused,
-    soonTouchMode,
   ]);
 
   void pendingBlobAction;
@@ -233,7 +229,6 @@ export default function SoonCanvas({
     onOpenFishContextMenu: setFishMenu,
     onOpenBeaconEditor,
     onToggleContourPlayback,
-    onSelectContourStar,
   });
 
   useEffect(() => cleanupPointer, [cleanupPointer]);
@@ -294,11 +289,11 @@ export default function SoonCanvas({
 
   useEffect(() => {
     let frame = 0;
-    const updateOrganicAmbienceButton = () => {
+    const updateCompositionButton = () => {
       const canvas = canvasRef.current;
       const current = stateRef.current || {};
       if (!canvas) {
-        frame = requestAnimationFrame(updateOrganicAmbienceButton);
+        frame = requestAnimationFrame(updateCompositionButton);
         return;
       }
 
@@ -317,14 +312,14 @@ export default function SoonCanvas({
 
       const screenX = rect.width * 0.5 + (centerX - camera.x) * userZoom;
       const screenY = rect.height * 0.5 + (centerY - camera.y) * userZoom;
-      setOrganicAmbienceButton((prev) => {
+      setCompositionButton((prev) => {
         if (prev.ready && Math.abs(prev.x - screenX) < 0.2 && Math.abs(prev.y - screenY) < 0.2) return prev;
         return { x: screenX, y: screenY, ready: true };
       });
-      frame = requestAnimationFrame(updateOrganicAmbienceButton);
+      frame = requestAnimationFrame(updateCompositionButton);
     };
 
-    frame = requestAnimationFrame(updateOrganicAmbienceButton);
+    frame = requestAnimationFrame(updateCompositionButton);
     return () => cancelAnimationFrame(frame);
   }, [arenaRef, cameraRef, canvasRef, stateRef]);
 
@@ -405,14 +400,16 @@ export default function SoonCanvas({
 
 
 
-  const handleOrganicAmbienceToggle = async () => {
-    try {
-      const next = await selectContourMusicTrack({ preview: true });
-      setOrganicAmbienceActive(next);
-    } catch (error) {
-      console.warn("Impossible de sélectionner la piste musicale du contour", error);
-      setOrganicAmbienceActive(false);
-    }
+  const handleCompositionStyleSelect = (styleId) => {
+    const plan = buildEchostoryCompositionPlan({
+      echostory: stateRef.current?.echostory || {},
+      styleId,
+    });
+    setCompositionPlan(plan);
+    stateRef.current = {
+      ...(stateRef.current || {}),
+      echostoryCompositionPlan: plan,
+    };
   };
 
   const contourDurationOptions = [
@@ -425,18 +422,36 @@ export default function SoonCanvas({
     <div className="soon-canvas-shell">
       <button
         type="button"
-        className={`organic-ambience-btn ${organicAmbienceActive ? "is-active" : ""}`}
+        className={`composition-generator-btn ${compositionPlan ? "is-active" : ""}`}
         style={{
-          left: `${organicAmbienceButton.x}px`,
-          top: `${organicAmbienceButton.y}px`,
-          opacity: organicAmbienceButton.ready ? 1 : 0,
+          left: `${compositionButton.x}px`,
+          top: `${compositionButton.y}px`,
+          opacity: compositionButton.ready ? 1 : 0,
         }}
-        onClick={handleOrganicAmbienceToggle}
-        aria-label="Sélectionner la piste MP3 musicale du contour"
-        title={organicAmbienceActive ? `Piste sélectionnée : ${CONTOUR_MUSIC_URL}` : "Sélectionner musicsoon.mp3 pour les tours de contour"}
+        onClick={() => setCompositionMenu((prev) => (prev ? null : { screen: { x: compositionButton.x, y: compositionButton.y } }))}
+        aria-label="Préparer la composition échohypnotique"
+        title={compositionPlan ? `Style choisi : ${compositionPlan.style.label}` : "Choisir un style de génération échohypnotique"}
       >
         🎵
       </button>
+      {compositionMenu?.screen ? (
+        <RadialMenu
+          aria-label="Styles de composition échohypnotique"
+          anchor={compositionMenu.screen}
+          onClose={() => setCompositionMenu(null)}
+          items={ECHOSTORY_COMPOSITION_STYLES.map((style) => ({
+            id: style.id,
+            label: style.label,
+          }))}
+          onSelect={(item) => handleCompositionStyleSelect(item.id)}
+        />
+      ) : null}
+      {compositionPlan ? (
+        <div className="composition-generator-status" aria-live="polite">
+          <strong>{compositionPlan.style.label}</strong>
+          <span>{compositionPlan.constellationCount} constellation(s) · {compositionPlan.starCount} étoile(s)</span>
+        </div>
+      ) : null}
       <canvas
         ref={canvasRef}
         className="soon-canvas"
