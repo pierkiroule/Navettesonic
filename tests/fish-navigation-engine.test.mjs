@@ -79,6 +79,39 @@ test('nage libre: une ancienne intention au centre est remplacée pour éviter q
   assert.ok(Math.hypot(next.fish.vx, next.fish.vy) > 0.05);
 });
 
+test('nage libre: le flux continu éloigne Soon du centre sans valeurs instables', () => {
+  const world = generateLabybulle(1);
+  let state = {
+    ...baseState(world, {
+      x: 0,
+      y: 0,
+      vx: 0,
+      vy: 0,
+      targetX: 0,
+      targetY: 0,
+      angle: 0,
+      depth: 1,
+      maxSpeed: 3.1,
+      arenaLevel: 0,
+    }),
+    mode: 'echostory',
+    bubbles: [],
+    echostory: { stars: [] },
+  };
+
+  for (let i = 0; i < 90; i += 1) {
+    const patch = tickFishEngine(state, { arenaRadius: 1200 });
+    state = { ...state, ...patch, fish: { ...state.fish, ...patch.fish } };
+    assert.ok(Number.isFinite(state.fish.x));
+    assert.ok(Number.isFinite(state.fish.y));
+    assert.ok(Number.isFinite(state.fish.vx));
+    assert.ok(Number.isFinite(state.fish.vy));
+  }
+
+  assert.equal(state.fish.freeSwimTarget.kind, 'flow');
+  assert.ok(Math.hypot(state.fish.x, state.fish.y) > 80);
+});
+
 test('résonance tactile: une onde conserve son expansion et perturbe légèrement la nage', () => {
   const world = generateLabybulle(1);
   const now = performance.now();

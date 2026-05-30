@@ -25,9 +25,10 @@ export const getMembraneRadiusForLevel=(arenaRadius,arenaLevel=0)=>{const base=g
 const ARENA_TRANSITION_COOLDOWN_MS = 220;
 const ARENA_PASSAGE_OPEN_MS = 1400;
 const RESONANT_RIPPLE_MAX_FORCE = 0.18;
-const FREE_SWIM_TARGET_REACH_RADIUS = 150;
-const FREE_SWIM_TARGET_TTL_MS = 10500;
-const FREE_SWIM_TARGET_MIN_RADIUS_RATIO = 0.32;
+const FREE_SWIM_FLOW_MIN_MS = 9000;
+const FREE_SWIM_FLOW_MAX_MS = 18000;
+const FREE_SWIM_MIN_RADIUS_RATIO = 0.3;
+const FREE_SWIM_EDGE_RADIUS_RATIO = 0.84;
 
 function getNow() {
   return typeof performance !== "undefined" && typeof performance.now === "function"
@@ -35,38 +36,20 @@ function getNow() {
     : Date.now();
 }
 
-function randomPointInArena(radius, minRadius = 0) {
-  const safeRadius = Math.max(80, radius);
-  const safeMin = Math.max(0, Math.min(minRadius, safeRadius * 0.92));
-  const angle = Math.random() * Math.PI * 2;
-  const dist = safeMin + Math.sqrt(Math.random()) * Math.max(0, safeRadius - safeMin);
-  return { x: Math.cos(angle) * dist, y: Math.sin(angle) * dist };
+function clamp01(value) {
+  return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
 }
 
-function pickGlidePoint(fish = {}, navRadius) {
-  const x = Number.isFinite(fish.x) ? fish.x : 0;
-  const y = Number.isFinite(fish.y) ? fish.y : 0;
+function normalizeVector(x, y, fallbackAngle = -Math.PI / 2) {
+  const d = Math.hypot(x, y);
+  if (d > 0.0001) return { x: x / d, y: y / d };
+  return { x: Math.cos(fallbackAngle), y: Math.sin(fallbackAngle) };
+}
+
+function getFishHeading(fish = {}) {
   const speed = Math.hypot(fish.vx || 0, fish.vy || 0);
-  const heading = speed > 0.08 ? Math.atan2(fish.vy || 0, fish.vx || 0) : (Number.isFinite(fish.angle) ? fish.angle : -Math.PI / 2);
-  const centerDistance = Math.hypot(x, y);
-  const minRadius = navRadius * FREE_SWIM_TARGET_MIN_RADIUS_RATIO;
-
-  if (centerDistance < minRadius * 0.72) {
-    const angle = heading + (Math.random() - 0.5) * 0.9;
-    return {
-      x: Math.cos(angle) * navRadius * (0.48 + Math.random() * 0.2),
-      y: Math.sin(angle) * navRadius * (0.48 + Math.random() * 0.2),
-    };
-  }
-
-  const radialAngle = Math.atan2(y, x);
-  const orbitDirection = Math.random() < 0.5 ? -1 : 1;
-  const arcAngle = radialAngle + orbitDirection * (0.75 + Math.random() * 0.7);
-  const radius = Math.max(minRadius, Math.min(navRadius * 0.86, centerDistance * (0.78 + Math.random() * 0.32)));
-  return {
-    x: Math.cos(arcAngle) * radius,
-    y: Math.sin(arcAngle) * radius,
-  };
+  if (speed > 0.08) return Math.atan2(fish.vy || 0, fish.vx || 0);
+  return Number.isFinite(fish.angle) ? fish.angle : -Math.PI / 2;
 }
 
 function getReadableStars(echostory = {}) {
@@ -79,66 +62,106 @@ function getReadableStars(echostory = {}) {
   ));
 }
 
-function getStarNetworkDegree(echostory = {}, starId) {
-  if (!starId) return 0;
-  const links = Array.isArray(echostory.links)
-    ? echostory.links
-    : (Array.isArray(echostory.constellationLinks) ? echostory.constellationLinks : []);
-  return links.reduce((count, link) => (link?.from === starId || link?.to === starId ? count + 1 : count), 0);
-}
-
-function pickFreeSwimTarget(state, arenaRadius, now) {
-  const navRadius = Math.max(160, getFishMovementRadius(arenaRadius) - FISH_MEMBRANE_PADDING);
-  const stars = getReadableStars(state.echostory);
+function pickFreeSwimStar(stars = []) {
+  if (!stars.length) return null;
   const unread = stars.filter((star) => !star.previewPlayed && !star.previewPlaying);
   const source = unread.length ? unread : stars;
-  const preferStar = source.length > 0 && Math.random() < 0.62;
+  return source[Math.floor(Math.random() * source.length)] || null;
+}
 
-  if (preferStar) {
-    const weighted = source.map((star) => {
-      const degree = getStarNetworkDegree(state.echostory, star.id);
-      const coreBonus = star.connectedToCore ? 1.6 : 1;
-      const unreadBonus = !star.previewPlayed ? 1.35 : 1;
-      return { star, weight: Math.max(0.1, (1 + degree * 0.35) * coreBonus * unreadBonus) };
-    });
-    const total = weighted.reduce((sum, item) => sum + item.weight, 0) || 1;
-    let roll = Math.random() * total;
-    const picked = weighted.find((item) => {
-      roll -= item.weight;
-      return roll <= 0;
-    })?.star || weighted[0].star;
-    const starAngle = Math.atan2(picked.y || 0, picked.x || 0);
-    const side = (Math.random() < 0.5 ? -1 : 1) * (Math.PI / 2 + Math.random() * 0.45);
-    const offset = 110 + Math.random() * 130;
-    const target = clampToCircle({
-      x: picked.x + Math.cos(starAngle + side) * offset,
-      y: picked.y + Math.sin(starAngle + side) * offset,
-    }, navRadius);
-    return {
-      x: target.x,
-      y: target.y,
-      bornAt: now,
-      kind: "star",
-      starId: picked.id || null,
-    };
-  }
+function clampFreeSwimTarget(point, navRadius) {
+  const safeRadius = Math.max(120, navRadius);
+  const d = Math.hypot(point.x, point.y);
+  if (d <= safeRadius) return point;
+  const clamped = clampToCircle(point, safeRadius);
+  return { x: clamped.x, y: clamped.y };
+}
 
-  const useGlideArc = Math.random() < 0.68;
-  const point = useGlideArc
-    ? pickGlidePoint(state.fish, navRadius)
-    : randomPointInArena(navRadius, navRadius * FREE_SWIM_TARGET_MIN_RADIUS_RATIO);
-  return { ...point, bornAt: now, kind: useGlideArc ? "glide" : "wander", starId: null };
+function createFreeSwimFlow(state, arenaRadius, now) {
+  const navRadius = Math.max(180, getFishMovementRadius(arenaRadius) - FISH_MEMBRANE_PADDING);
+  const fish = state.fish || {};
+  const stars = getReadableStars(state.echostory);
+  const focus = Math.random() < 0.45 ? pickFreeSwimStar(stars) : null;
+  const centerDistance = Math.hypot(fish.x || 0, fish.y || 0);
+  const isCentered = centerDistance < navRadius * FREE_SWIM_MIN_RADIUS_RATIO * 0.75;
+  const direction = Math.random() < 0.5 ? -1 : 1;
+  const mode = focus ? "star" : (isCentered ? "outward" : (Math.random() < 0.56 ? "orbit" : "drift"));
+
+  return {
+    kind: "flow",
+    mode,
+    bornAt: now,
+    duration: FREE_SWIM_FLOW_MIN_MS + Math.random() * (FREE_SWIM_FLOW_MAX_MS - FREE_SWIM_FLOW_MIN_MS),
+    direction,
+    phase: Math.random() * Math.PI * 2,
+    preferredRadius: navRadius * (0.42 + Math.random() * 0.28),
+    focusId: focus?.id || null,
+    focusX: focus ? focus.x : null,
+    focusY: focus ? focus.y : null,
+    x: Number.isFinite(fish.targetX) ? fish.targetX : 0,
+    y: Number.isFinite(fish.targetY) ? fish.targetY : 0,
+  };
 }
 
 function resolveFreeSwimTarget(state, arenaRadius, now) {
   const fish = state.fish || {};
-  const currentTarget = fish.freeSwimTarget || null;
-  const reached = currentTarget && Math.hypot((fish.x || 0) - currentTarget.x, (fish.y || 0) - currentTarget.y) <= FREE_SWIM_TARGET_REACH_RADIUS;
-  const expired = currentTarget && now - (currentTarget.bornAt || 0) >= FREE_SWIM_TARGET_TTL_MS;
-  const unsupported = currentTarget && currentTarget.kind === "dance";
-  const tooCloseToCenter = currentTarget && Math.hypot(currentTarget.x || 0, currentTarget.y || 0) < getFishMovementRadius(arenaRadius) * FREE_SWIM_TARGET_MIN_RADIUS_RATIO * 0.45;
-  const needsTarget = !currentTarget || reached || expired || unsupported || tooCloseToCenter || !Number.isFinite(currentTarget.x) || !Number.isFinite(currentTarget.y);
-  return needsTarget ? pickFreeSwimTarget(state, arenaRadius, now) : currentTarget;
+  const navRadius = Math.max(180, getFishMovementRadius(arenaRadius) - FISH_MEMBRANE_PADDING);
+  const current = fish.freeSwimTarget || null;
+  const expired = current && now - (current.bornAt || 0) >= (current.duration || FREE_SWIM_FLOW_MIN_MS);
+  const needsFlow = !current || current.kind !== "flow" || expired;
+  const flow = needsFlow ? createFreeSwimFlow(state, arenaRadius, now) : current;
+
+  const x = Number.isFinite(fish.x) ? fish.x : 0;
+  const y = Number.isFinite(fish.y) ? fish.y : 0;
+  const heading = getFishHeading(fish);
+  const centerDistance = Math.hypot(x, y);
+  const minRadius = navRadius * FREE_SWIM_MIN_RADIUS_RATIO;
+  const edgeRadius = navRadius * FREE_SWIM_EDGE_RADIUS_RATIO;
+  const radial = centerDistance > 0.0001
+    ? { x: x / centerDistance, y: y / centerDistance }
+    : { x: Math.cos(heading), y: Math.sin(heading) };
+  const tangent = { x: -radial.y * flow.direction, y: radial.x * flow.direction };
+
+  let desiredX = tangent.x * 0.82;
+  let desiredY = tangent.y * 0.82;
+
+  if (centerDistance < minRadius) {
+    const outward = 1.35 - clamp01(centerDistance / Math.max(1, minRadius));
+    desiredX = radial.x * (1.05 + outward) + tangent.x * 0.34;
+    desiredY = radial.y * (1.05 + outward) + tangent.y * 0.34;
+  } else if (centerDistance > edgeRadius) {
+    const inward = clamp01((centerDistance - edgeRadius) / Math.max(1, navRadius - edgeRadius));
+    desiredX += -radial.x * (0.65 + inward * 1.25);
+    desiredY += -radial.y * (0.65 + inward * 1.25);
+  } else if (flow.mode === "star" && Number.isFinite(flow.focusX) && Number.isFinite(flow.focusY)) {
+    const toStar = normalizeVector(flow.focusX - x, flow.focusY - y, heading);
+    desiredX += toStar.x * 0.46;
+    desiredY += toStar.y * 0.46;
+  } else if (flow.mode === "drift") {
+    desiredX += Math.cos(heading) * 0.5;
+    desiredY += Math.sin(heading) * 0.5;
+  } else {
+    const radiusError = (flow.preferredRadius - centerDistance) / Math.max(1, navRadius);
+    desiredX += radial.x * Math.max(-0.55, Math.min(0.55, radiusError * 1.8));
+    desiredY += radial.y * Math.max(-0.55, Math.min(0.55, radiusError * 1.8));
+  }
+
+  const desired = normalizeVector(desiredX, desiredY, heading);
+  const progress = clamp01((now - flow.bornAt) / Math.max(1, flow.duration || FREE_SWIM_FLOW_MIN_MS));
+  const breath = 0.76 + Math.sin(progress * Math.PI * 2 + (flow.phase || 0)) * 0.14;
+  const speedScale = Math.max(0.56, Math.min(0.98, breath));
+  const lookahead = centerDistance < minRadius
+    ? navRadius * 0.46
+    : navRadius * (0.22 + speedScale * 0.08);
+  const target = clampFreeSwimTarget({ x: x + desired.x * lookahead, y: y + desired.y * lookahead }, navRadius);
+
+  return {
+    ...flow,
+    x: target.x,
+    y: target.y,
+    speedScale,
+    progress,
+  };
 }
 
 export function updateResonantRipples(ripples = [], fish = {}, now = getNow()) {
@@ -313,7 +336,7 @@ export function tickFishEngine(state,{swimSpeed=1,arenaRadius=DEFAULT_ARENA_RADI
   const shouldFreeSwim = !circuitAutopilot && (state.mode === "echostory" || state.mode === "reso") && !state.contourRide?.active;
   if (circuitAutopilot && state.traceCircuit?.length>1){const currentBeacon=state.traceCircuit[circuitSegmentIndex%state.traceCircuit.length]; const speedStep=getCircuitSpeedValue(currentBeacon?.speed||2)*Math.max(0,swimSpeed); circuitSegmentT+=speedStep; while(circuitSegmentT>=1){circuitSegmentT-=1;circuitSegmentIndex=(circuitSegmentIndex+1)%state.traceCircuit.length;} const p=smoothLoopPoint(state.traceCircuit,circuitSegmentIndex,circuitSegmentT); targetX=p.x; targetY=p.y; fishDepth=clampDepth(p.depth||fishDepth);}
   else if (shouldFreeSwim) {freeSwimTarget = resolveFreeSwimTarget(state, arenaRadius, now); targetX = freeSwimTarget.x + resonance.forceX * 240; targetY = freeSwimTarget.y + resonance.forceY * 240;}
-  const currentAngle=Number.isFinite(state.fish.angle)?state.fish.angle:-Math.PI/2; const control=circuitAutopilot?FISH_CONTROL_TUNING.autopilot:(shouldFreeSwim?FISH_CONTROL_TUNING.freeSwim:FISH_CONTROL_TUNING.touch); const mouthX=state.fish.x+Math.cos(currentAngle)*control.mouthOffset, mouthY=state.fish.y+Math.sin(currentAngle)*control.mouthOffset; const pullX=targetX-mouthX,pullY=targetY-mouthY,pullDistance=Math.hypot(pullX,pullY); const pullNorm=Math.min(1,pullDistance/Math.max(1,control.arrivalRadius)); const speedLimit=(state.fish.maxSpeed||3.1)*control.maxSpeedFactor*Math.max(0,swimSpeed); const desiredSpeed=pullDistance<=control.stopRadius?0:Math.min(speedLimit,speedLimit*pullNorm); const dirX=pullDistance>0.0001?pullX/pullDistance:0,dirY=pullDistance>0.0001?pullY/pullDistance:0; const vx=state.fish.vx+((dirX*desiredSpeed)-state.fish.vx)*control.accel+resonance.forceX, vy=state.fish.vy+((dirY*desiredSpeed)-state.fish.vy)*control.accel+resonance.forceY; const speedRaw=Math.hypot(vx,vy); const resonanceSpeedLimit=speedLimit+Math.hypot(resonance.forceX,resonance.forceY); const limitedVx=speedRaw>resonanceSpeedLimit?(vx/speedRaw)*resonanceSpeedLimit:vx,limitedVy=speedRaw>resonanceSpeedLimit?(vy/speedRaw)*resonanceSpeedLimit:vy;
+  const currentAngle=Number.isFinite(state.fish.angle)?state.fish.angle:-Math.PI/2; const control=circuitAutopilot?FISH_CONTROL_TUNING.autopilot:(shouldFreeSwim?FISH_CONTROL_TUNING.freeSwim:FISH_CONTROL_TUNING.touch); const mouthX=state.fish.x+Math.cos(currentAngle)*control.mouthOffset, mouthY=state.fish.y+Math.sin(currentAngle)*control.mouthOffset; const pullX=targetX-mouthX,pullY=targetY-mouthY,pullDistance=Math.hypot(pullX,pullY); const pullNorm=Math.min(1,pullDistance/Math.max(1,control.arrivalRadius)); const freeSwimSpeedScale=shouldFreeSwim&&Number.isFinite(freeSwimTarget?.speedScale)?freeSwimTarget.speedScale:1; const speedLimit=(state.fish.maxSpeed||3.1)*control.maxSpeedFactor*freeSwimSpeedScale*Math.max(0,swimSpeed); const desiredSpeed=pullDistance<=control.stopRadius?0:Math.min(speedLimit,speedLimit*pullNorm); const dirX=pullDistance>0.0001?pullX/pullDistance:0,dirY=pullDistance>0.0001?pullY/pullDistance:0; const vx=state.fish.vx+((dirX*desiredSpeed)-state.fish.vx)*control.accel+resonance.forceX, vy=state.fish.vy+((dirY*desiredSpeed)-state.fish.vy)*control.accel+resonance.forceY; const speedRaw=Math.hypot(vx,vy); const resonanceSpeedLimit=speedLimit+Math.hypot(resonance.forceX,resonance.forceY); const limitedVx=speedRaw>resonanceSpeedLimit?(vx/speedRaw)*resonanceSpeedLimit:vx,limitedVy=speedRaw>resonanceSpeedLimit?(vy/speedRaw)*resonanceSpeedLimit:vy;
   if (arenaBlob) {
     let nextFishX = state.fish.x + limitedVx;
     let nextFishY = state.fish.y + limitedVy;
