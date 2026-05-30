@@ -703,6 +703,17 @@ export function useSoonCanvasLoop({
       };
     }
 
+    function centerCameraOnArena(current = {}) {
+      const center = getArenaWorldCenter(current);
+      cameraRef.current.x = center.x;
+      cameraRef.current.y = center.y;
+    }
+
+    function shouldUseGlobalArenaView(current = {}) {
+      const zoom = Number.isFinite(current.viewZoom) ? current.viewZoom : 0;
+      return zoom <= 0.001;
+    }
+
     function smoothFollowCameraToFish(fishWorld) {
       if (!fishWorld) return;
       const targetX = Number.isFinite(fishWorld.x) ? fishWorld.x : 0;
@@ -829,7 +840,11 @@ export function useSoonCanvasLoop({
           }
         : null;
       if (!isEditMode) {
-        smoothFollowCameraToFish(fishWorld);
+        if (shouldUseGlobalArenaView(next)) {
+          centerCameraOnArena(next);
+        } else {
+          smoothFollowCameraToFish(fishWorld);
+        }
       }
 
       if (!isEditMode) {
