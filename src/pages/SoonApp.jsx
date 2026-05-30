@@ -7,7 +7,7 @@ import { renderImmersiveJourney } from "../core/immersiveExporter.js";
 import { buildEchostoryText, buildStoryTimeline, buildPathStarsFromTimeline } from "../core/echostory/echostoryBuilder.js";
 import { tickEchostoryTraversal } from "../core/echostory/echostoryTraversalEngine.js";
 import { buildStarMp3Trace } from "../core/odysseoStarMp3Trace.js";
-import { toggleEchostoryLink } from "../core/echostory/echostoryConstellation.js";
+import { toggleEchostoryLink, toggleEchostoryWeaveSelection } from "../core/echostory/echostoryConstellation.js";
 import { ECHOSTORY_SKELETONS } from "../data/echostorySkeletons.js";
 import { tickMyceliumPlayback } from "../core/echostory/fishPlaybackRuntime.js";
 import {
@@ -578,6 +578,13 @@ export default function SoonApp({ onBack }) {
           if (!fromId || !toId) return;
           useSoonStore.setState((state) => ({
             echostory: toggleEchostoryLink(state.echostory || {}, fromId, toId, options),
+          }));
+        }}
+        onSelectEchostoryWeaveEndpoint={(endpointId, options = {}) => {
+          if (useSoonStore.getState().echostory?.echostoryPlayback?.active) return;
+          if (!endpointId) return;
+          useSoonStore.setState((state) => ({
+            echostory: toggleEchostoryWeaveSelection(state.echostory || {}, endpointId, options),
           }));
         }}
         onToggleContourPlayback={() => {

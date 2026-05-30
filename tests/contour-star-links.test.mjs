@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { toggleContourStarSelection } from '../src/core/echostory/contourStarLinks.js';
+import { ECHOSTORY_MUSIC_CORE_ID, makeLinkId, toggleEchostoryWeaveSelection } from '../src/core/echostory/echostoryConstellation.js';
 import { drawEchostoryContourLinks } from '../src/core/echostory/echostoryRender.js';
 
 function makeState() {
@@ -72,4 +73,38 @@ test('drawEchostoryContourLinks trace des cordes qui traversent l’arène', () 
   assert.ok(calls.some((call) => call[0] === 'moveTo' && call[1] === -100 && call[2] === 0));
   assert.ok(calls.some((call) => call[0] === 'lineTo' && call[1] === 100 && call[2] === 0));
   assert.equal(calls.some((call) => call[0] === 'arc'), false);
+});
+
+
+test('toggleEchostoryWeaveSelection tisse par sélection sans décrocher les étoiles du contour', () => {
+  let echostory = makeState();
+
+  echostory = toggleEchostoryWeaveSelection(echostory, 'star-1', { restLength: 120, now: 1000 });
+  assert.deepEqual(echostory.selectedWeaveEndpointIds, ['star-1']);
+  assert.equal(echostory.stars[0].attachedToContour, true);
+  assert.equal(echostory.stars[0].selectedForWeaving, true);
+  assert.equal(echostory.links.length, 0);
+
+  echostory = toggleEchostoryWeaveSelection(echostory, 'star-2', { restLength: 160, now: 1100 });
+  assert.deepEqual(echostory.selectedWeaveEndpointIds, ['star-1', 'star-2']);
+  assert.equal(echostory.stars[0].attachedToContour, true);
+  assert.equal(echostory.stars[1].attachedToContour, true);
+  assert.deepEqual(echostory.links.map((link) => link.id), [makeLinkId('star-1', 'star-2')]);
+});
+
+test('toggleEchostoryWeaveSelection relie le point central et délie en retapant une sélection liée', () => {
+  let echostory = makeState();
+
+  echostory = toggleEchostoryWeaveSelection(echostory, ECHOSTORY_MUSIC_CORE_ID, { now: 1000 });
+  echostory = toggleEchostoryWeaveSelection(echostory, 'star-1', { restLength: 1168, now: 1100 });
+
+  assert.deepEqual(echostory.selectedWeaveEndpointIds, [ECHOSTORY_MUSIC_CORE_ID, 'star-1']);
+  assert.equal(echostory.links[0].kind, 'music-core');
+  assert.equal(echostory.links[0].id, makeLinkId(ECHOSTORY_MUSIC_CORE_ID, 'star-1'));
+
+  echostory = toggleEchostoryWeaveSelection(echostory, 'star-1', { now: 1200 });
+
+  assert.deepEqual(echostory.selectedWeaveEndpointIds, [ECHOSTORY_MUSIC_CORE_ID]);
+  assert.equal(echostory.links.length, 0);
+  assert.equal(echostory.stars[0].selectedForWeaving, false);
 });

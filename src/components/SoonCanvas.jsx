@@ -58,6 +58,7 @@ export default function SoonCanvas({
   onToggleContourPlayback,
   onMoveEchostoryStar,
   onToggleEchostoryLink,
+  onSelectEchostoryWeaveEndpoint,
 }) {
   const canvasRef = useRef(null);
   const [semioseVideo, setSemioseVideo] = useState(null);
@@ -237,6 +238,7 @@ export default function SoonCanvas({
     onMoveEchostoryStar,
     onResonantTap,
     onToggleEchostoryLink,
+    onSelectEchostoryWeaveEndpoint,
     activeContactsRef,
   });
 

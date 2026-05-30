@@ -121,7 +121,7 @@ test('Les connexions directes et indirectes au core sont recalculées après tog
   assert.ok(state.echostory.links.every((link) => link.id === makeLinkId(link.from, link.to)));
 });
 
-test('La règle de tissage refuse un lien entre deux étoiles sans chemin vers le noyau', () => {
+test('La sélection de tissage autorise un lien direct entre deux étoiles sans noyau', () => {
   const state = stateWithStars([
     { id: 'star-1', x: 180, y: 0, r: 18, attachedToContour: false },
     { id: 'star-2', x: 300, y: 0, r: 18, attachedToContour: false },
@@ -129,7 +129,8 @@ test('La règle de tissage refuse un lien entre deux étoiles sans chemin vers l
 
   state.echostory = toggleEchostoryLink(state.echostory, 'star-1', 'star-2', { restLength: 132, now: 2400 });
 
-  assert.equal(state.echostory.links.length, 0);
+  assert.equal(state.echostory.links.length, 1);
+  assert.equal(state.echostory.links[0].id, makeLinkId('star-1', 'star-2'));
   assert.deepEqual(state.echostory.coreConnectedStarIds, []);
 });
 
@@ -147,7 +148,7 @@ test('La règle de tissage autorise une nouvelle étoile via une étoile déjà 
   assert.equal(state.echostory.stars.find((star) => star.id === 'star-2').connectedToCore, true);
 });
 
-test('La normalisation purge les branches isolées du noyau central', () => {
+test('La normalisation conserve les branches tissées isolées du noyau central', () => {
   const state = stateWithStars([
     { id: 'star-1', x: 80, y: 0, r: 18, attachedToContour: false },
     { id: 'star-2', x: 214, y: 0, r: 18, attachedToContour: false },
@@ -165,6 +166,7 @@ test('La normalisation purge les branches isolées du noyau central', () => {
   assert.deepEqual(state.echostory.links.map((link) => link.id), [
     makeLinkId(ECHOSTORY_MUSIC_CORE_ID, 'star-1'),
     makeLinkId('star-1', 'star-2'),
+    makeLinkId('star-3', 'star-4'),
   ]);
   assert.deepEqual(new Set(state.echostory.coreConnectedStarIds), new Set(['star-1', 'star-2']));
 });
