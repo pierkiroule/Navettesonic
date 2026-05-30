@@ -31,6 +31,7 @@ export function useSoonPointer({
   onAddOdysseoDepthMarker,
   onOpenBubbleEditor,
   onOpenFishContextMenu,
+  onResonantTap,
   onDepthToast,
   onToggleContourPlayback,
   onMoveEchostoryStar,
@@ -434,9 +435,9 @@ export function useSoonPointer({
   }
 
   function handleSwimPointerDown(event, point, current) {
-    void point;
     void current;
     onSelectBubble?.(null);
+    onResonantTap?.(point.x, point.y);
     rememberTapScreen(event, "swim");
   }
 

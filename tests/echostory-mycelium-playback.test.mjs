@@ -226,3 +226,82 @@ test('on arrival Soon chooses a new target without moving the reached star', () 
     { x: reachedStarBefore.x, y: reachedStarBefore.y, vx: reachedStarBefore.vx, vy: reachedStarBefore.vy }
   );
 });
+
+test('lecture mycélienne: Soon erre librement avant de lire une étoile sans suivre la ligne visible', () => {
+  const stars = [{ id: 'A', x: 420, y: 0, vx: 0, vy: 0, r: 34, text: 'A' }];
+  const links = [link(core, 'A')];
+  useSoonStore.setState({
+    resonantRipples: [],
+    fish: { x: 0, y: 0, vx: 0, vy: 0, angle: 0, visible: true, arenaRadius: 1200 },
+    echostory: {
+      stars,
+      links: links.map((item) => ({ ...item })),
+      constellationLinks: links.map((item) => ({ ...item })),
+      activeLine: null,
+      playbackTargetNodeId: 'A',
+      playbackCurrentLinkId: link(core, 'A').id,
+      echostoryPlayback: {
+        active: true,
+        visible: true,
+        currentNodeId: core,
+        playbackTargetNodeId: 'A',
+        targetNodeId: 'A',
+        segmentStartX: 0,
+        segmentStartY: 0,
+        swimSeed: 1.618,
+        visited: { [core]: 1 },
+        path: [core],
+        waitingUntil: 0,
+        wanderUntil: 5000,
+      },
+    },
+  });
+
+  tickMyceliumPlayback(2000);
+  const state = useSoonStore.getState();
+
+  assert.equal(state.echostory.echostoryPlayback.playbackTargetNodeId, 'A');
+  assert.equal(state.echostory.playbackCurrentLinkId, null);
+  assert.ok(state.echostory.echostoryPlayback.roamWaypoint, 'un waypoint libre est créé');
+  assert.notEqual(state.fish.targetX, stars[0].x, 'la cible visuelle de nage n’est pas directement l’étoile');
+});
+
+test('lecture mycélienne: les taps résonants perturbent Soon et restent visibles', () => {
+  const stars = [{ id: 'A', x: 420, y: 0, vx: 0, vy: 0, r: 34, text: 'A' }];
+  const links = [link(core, 'A')];
+  useSoonStore.setState({
+    resonantRipples: [{ id: 'tap-playback', x: 0, y: 0, bornAt: 1793, life: 1700, speed: 0.58, strength: 1 }],
+    fish: { x: 120, y: 0, vx: 0, vy: 0, angle: 0, visible: true, arenaRadius: 1200 },
+    echostory: {
+      stars,
+      links: links.map((item) => ({ ...item })),
+      constellationLinks: links.map((item) => ({ ...item })),
+      activeLine: null,
+      playbackTargetNodeId: 'A',
+      playbackCurrentLinkId: link(core, 'A').id,
+      echostoryPlayback: {
+        active: true,
+        visible: true,
+        currentNodeId: core,
+        playbackTargetNodeId: 'A',
+        targetNodeId: 'A',
+        segmentStartX: 120,
+        segmentStartY: 0,
+        swimSeed: 1.618,
+        visited: { [core]: 1 },
+        path: [core],
+        waitingUntil: 0,
+        roamWaypoint: { x: 500, y: 0, bornAt: 1800 },
+        wanderUntil: 5000,
+      },
+    },
+  });
+
+  tickMyceliumPlayback(2000);
+  const state = useSoonStore.getState();
+
+  assert.equal(state.resonantRipples.length, 1);
+  assert.ok(state.resonantRipples[0].radius > 100);
+  assert.notEqual(state.fish.targetX, 500, 'la résonance décale la nage prévue');
+  assert.ok(state.fish.vx > 0.01);
+});

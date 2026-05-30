@@ -49,6 +49,7 @@ export default function SoonApp({ onBack }) {
     mode,
     bubbles,
     fish,
+    resonantRipples,
     selectedBubbleId,
     traceCircuit,
     selectedBeaconId,
@@ -71,6 +72,7 @@ export default function SoonApp({ onBack }) {
     tickFish,
     applyBlobAction,
     setFishDepth,
+    addResonantTap,
     selectBubble,
     selectBeacon,
     moveBeacon,
@@ -458,6 +460,7 @@ export default function SoonApp({ onBack }) {
         odysseoMode={odysseoMode}
         bubbles={[]}
         fish={fish}
+        resonantRipples={resonantRipples}
         selectedBubbleId={selectedBubbleId}
         traceCircuit={traceCircuit}
         odysseoPath={odysseoPath}
@@ -471,7 +474,7 @@ export default function SoonApp({ onBack }) {
         onTickFish={({ arenaRadius } = {}) => {
           const boosted = Date.now() < speedBoostUntilRef.current;
           const effectiveSwimSpeed = boosted ? SWIM_SPEED * 1.8 : SWIM_SPEED;
-          if (echostory?.echostoryPlayback?.active && tickMyceliumPlayback(Date.now())) return;
+          if (echostory?.echostoryPlayback?.active && tickMyceliumPlayback(performance.now())) return;
           if (isOdysseo) {
             if (isTravelPlaying) {
               if (contourPlaybackPaused) return;
@@ -555,6 +558,7 @@ export default function SoonApp({ onBack }) {
         onToggleMembraneSide={toggleMembraneSide}
         onBlobAction={applyBlobAction}
         onSetFishDepth={setFishDepth}
+        onResonantTap={addResonantTap}
         echostory={echostory}
         contourPlaybackPaused={contourPlaybackPaused}
         onMoveEchostoryStar={(id, patch = {}) => {

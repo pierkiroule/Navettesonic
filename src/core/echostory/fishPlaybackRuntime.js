@@ -2,12 +2,19 @@ import { useSoonStore } from "../../store/useSoonStore.js";
 import { ECHOSTORY_MUSIC_CORE_ID, makeLinkId } from "./echostoryConstellation.js";
 import { chooseNextMyceliumNode, computeConnectedToCore, makeGraph } from "./echostoryMyceliumPlayback.js";
 import { triggerEchostoryStarPreview } from "../../components/soon/useSoonCanvasLoop.js";
+import { updateResonantRipples } from "../fishNavigationEngine.js";
 
 const MYCELIUM_PLAYBACK_SPEED = 4.8;
 const MYCELIUM_SWIM_CURVE_MAX_AMPLITUDE = 30;
 const MYCELIUM_ARRIVAL_THRESHOLD = 18;
 const MYCELIUM_CORE_PAUSE_MS = 1100;
 const MYCELIUM_STAR_PAUSE_MS = 360;
+const ROSA_WANDER_MIN_MS = 1450;
+const ROSA_WANDER_MAX_MS = 2900;
+const ROSA_WAYPOINT_REACH_RADIUS = 86;
+const ROSA_WAYPOINT_TTL_MS = 1350;
+const ROSA_RESONANCE_TARGET_OFFSET = 520;
+const ROSA_RESONANCE_DRIFT_STEP = 18;
 
 let lastCoreSpeechAt = 0;
 
@@ -81,6 +88,61 @@ export function computeCuriousFishStep({
   };
 }
 
+function getPlaybackArenaRadius(state = {}) {
+  const fishRadius = Number(state?.fish?.arenaRadius);
+  const stateRadius = Number(state?.arenaRadius);
+  return Number.isFinite(fishRadius) && fishRadius > 0
+    ? fishRadius
+    : (Number.isFinite(stateRadius) && stateRadius > 0 ? stateRadius : 1200);
+}
+
+function randomWanderPoint(radius) {
+  const angle = Math.random() * Math.PI * 2;
+  const distance = Math.sqrt(Math.random()) * Math.max(140, radius);
+  return { x: Math.cos(angle) * distance, y: Math.sin(angle) * distance };
+}
+
+function clampWaypointToArena(point, radius) {
+  const x = Number.isFinite(point?.x) ? point.x : 0;
+  const y = Number.isFinite(point?.y) ? point.y : 0;
+  const distance = Math.hypot(x, y);
+  const safeRadius = Math.max(120, radius);
+  if (distance <= safeRadius || distance <= 0.0001) return { x, y };
+  return { x: (x / distance) * safeRadius, y: (y / distance) * safeRadius };
+}
+
+function pickRosaWanderWaypoint({ currentX = 0, currentY = 0, target = { x: 0, y: 0 }, arenaRadius = 1200, now = Date.now() } = {}) {
+  const safeRadius = Math.max(180, arenaRadius - 132);
+  const freePoint = randomWanderPoint(safeRadius);
+  const targetAngle = Math.atan2((target.y || 0) - currentY, (target.x || 0) - currentX);
+  const tangent = targetAngle + (Math.random() < 0.5 ? 1 : -1) * (Math.PI / 2 + Math.random() * 0.75);
+  const tangentDistance = 190 + Math.random() * Math.min(520, safeRadius * 0.5);
+  const nearTarget = {
+    x: (target.x || 0) + Math.cos(tangent) * tangentDistance,
+    y: (target.y || 0) + Math.sin(tangent) * tangentDistance,
+  };
+  const mix = 0.24 + Math.random() * 0.28;
+  const point = Math.random() < 0.64
+    ? freePoint
+    : { x: freePoint.x * (1 - mix) + nearTarget.x * mix, y: freePoint.y * (1 - mix) + nearTarget.y * mix };
+  return {
+    ...clampWaypointToArena(point, safeRadius),
+    bornAt: now,
+  };
+}
+
+function getRosaWanderUntil(playback = {}, now = Date.now()) {
+  if (Number.isFinite(playback.wanderUntil) && playback.wanderUntil > now) return playback.wanderUntil;
+  if (Number.isFinite(playback.wanderUntil) && playback.wanderUntil > 0) return playback.wanderUntil;
+  return now + ROSA_WANDER_MIN_MS + Math.random() * (ROSA_WANDER_MAX_MS - ROSA_WANDER_MIN_MS);
+}
+
+function shouldRefreshWaypoint(waypoint, currentX, currentY, now) {
+  if (!waypoint || !Number.isFinite(waypoint.x) || !Number.isFinite(waypoint.y)) return true;
+  if (Math.hypot(currentX - waypoint.x, currentY - waypoint.y) <= ROSA_WAYPOINT_REACH_RADIUS) return true;
+  return Number.isFinite(waypoint.bornAt) && now - waypoint.bornAt > ROSA_WAYPOINT_TTL_MS;
+}
+
 function speakCoreBubble(now = Date.now()) {
   if (typeof window === "undefined" || !window.speechSynthesis) return;
   if (now - lastCoreSpeechAt < 900) return;
@@ -152,41 +214,55 @@ export function tickMyceliumPlayback(now = Date.now()) {
 
     const currentX = Number.isFinite(fish.x) ? fish.x : 0;
     const currentY = Number.isFinite(fish.y) ? fish.y : 0;
+    const arenaRadius = getPlaybackArenaRadius(fullState);
+    const resonance = updateResonantRipples(fullState.resonantRipples || [], fish, now);
+    const wanderUntil = getRosaWanderUntil(playback, now);
+    const directTargetDistance = Math.hypot((target.x || 0) - currentX, (target.y || 0) - currentY);
+    const shouldWander = directTargetDistance > MYCELIUM_ARRIVAL_THRESHOLD * 2.4 && now < wanderUntil;
+    let roamWaypoint = playback.roamWaypoint || null;
+    if (shouldWander && shouldRefreshWaypoint(roamWaypoint, currentX, currentY, now)) {
+      roamWaypoint = pickRosaWanderWaypoint({ currentX, currentY, target, arenaRadius, now });
+    }
+    const navigationTarget = shouldWander && roamWaypoint ? roamWaypoint : target;
+    const targetX = navigationTarget.x + resonance.forceX * ROSA_RESONANCE_TARGET_OFFSET;
+    const targetY = navigationTarget.y + resonance.forceY * ROSA_RESONANCE_TARGET_OFFSET;
     const step = computeCuriousFishStep({
       currentX,
       currentY,
-      targetX: target.x,
-      targetY: target.y,
+      targetX,
+      targetY,
       segmentStartX: Number.isFinite(playback.segmentStartX) ? playback.segmentStartX : currentX,
       segmentStartY: Number.isFinite(playback.segmentStartY) ? playback.segmentStartY : currentY,
       now,
       seed: Number.isFinite(playback.swimSeed) ? playback.swimSeed : 0,
     });
-    const nextX = step.x;
-    const nextY = step.y;
-    const angle = step.angle;
-    const arrived = step.arrived;
+    const driftX = resonance.forceX * ROSA_RESONANCE_DRIFT_STEP;
+    const driftY = resonance.forceY * ROSA_RESONANCE_DRIFT_STEP;
+    const nextX = step.x + driftX;
+    const nextY = step.y + driftY;
+    const angle = Math.hypot(step.vx + driftX, step.vy + driftY) > 0.001 ? Math.atan2(step.vy + driftY, step.vx + driftX) : step.angle;
+    const arrived = !shouldWander && step.arrived;
     const fromNodeId = playback.currentNodeId || ECHOSTORY_MUSIC_CORE_ID;
-    const linkId = makeLinkId(fromNodeId, targetNodeId);
 
-    logFishPlayback("[fish move]", nextX, nextY, targetNodeId);
+    logFishPlayback("[fish move]", nextX, nextY, targetNodeId, shouldWander ? "wander" : "read");
 
     useSoonStore.setState((state) => ({
+      resonantRipples: resonance.ripples,
       fish: {
         ...(state.fish || {}),
         visible: true,
         x: nextX,
         y: nextY,
-        targetX: target.x,
-        targetY: target.y,
-        vx: step.vx,
-        vy: step.vy,
+        targetX,
+        targetY,
+        vx: step.vx + driftX,
+        vy: step.vy + driftY,
         angle,
       },
       echostory: {
         ...(state.echostory || {}),
         playbackTargetNodeId: arrived ? null : targetNodeId,
-        playbackCurrentLinkId: linkId,
+        playbackCurrentLinkId: null,
         echostoryPlayback: {
           ...(state.echostory?.echostoryPlayback || {}),
           active: true,
@@ -194,10 +270,13 @@ export function tickMyceliumPlayback(now = Date.now()) {
           x: nextX,
           y: nextY,
           targetNodeId: arrived ? null : targetNodeId,
+          semanticTargetNodeId: arrived ? null : targetNodeId,
           segmentStartX: arrived ? null : state.echostory?.echostoryPlayback?.segmentStartX,
           segmentStartY: arrived ? null : state.echostory?.echostoryPlayback?.segmentStartY,
           currentNodeId: arrived ? targetNodeId : fromNodeId,
           playbackTargetNodeId: arrived ? null : targetNodeId,
+          roamWaypoint: arrived ? null : roamWaypoint,
+          wanderUntil: arrived ? 0 : wanderUntil,
           arrivedNodeId: arrived ? null : state.echostory?.echostoryPlayback?.arrivedNodeId,
           waitingUntil: arrived ? 0 : state.echostory?.echostoryPlayback?.waitingUntil,
         },
@@ -288,7 +367,7 @@ export function tickMyceliumPlayback(now = Date.now()) {
     echostory: {
       ...(state.echostory || {}),
       playbackTargetNodeId: nextNodeId,
-      playbackCurrentLinkId: makeLinkId(currentNodeId, nextNodeId),
+      playbackCurrentLinkId: null,
       echostoryPlayback: {
         ...(state.echostory?.echostoryPlayback || {}),
         active: true,
@@ -298,6 +377,14 @@ export function tickMyceliumPlayback(now = Date.now()) {
         segmentStartX: Number.isFinite(state.fish?.x) ? state.fish.x : 0,
         segmentStartY: Number.isFinite(state.fish?.y) ? state.fish.y : 0,
         swimSeed: ((state.echostory?.echostoryPlayback?.path || []).length + 1) * 1.618,
+        roamWaypoint: pickRosaWanderWaypoint({
+          currentX: Number.isFinite(state.fish?.x) ? state.fish.x : 0,
+          currentY: Number.isFinite(state.fish?.y) ? state.fish.y : 0,
+          target: getMyceliumNodePosition(nextNodeId, new Map(((state.echostory?.stars || []).filter((star) => star && !star.expired)).map((star) => [star.id, star]).filter(([id]) => id))) || { x: 0, y: 0 },
+          arenaRadius: getPlaybackArenaRadius(state),
+          now,
+        }),
+        wanderUntil: now + ROSA_WANDER_MIN_MS + Math.random() * (ROSA_WANDER_MAX_MS - ROSA_WANDER_MIN_MS),
         waitingUntil: 0,
       },
     },
