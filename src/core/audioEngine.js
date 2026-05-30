@@ -83,6 +83,21 @@ async function resolveSample(bubble) {
 let audioCtx = null;
 let masterGain = null;
 let masterFilter = null;
+let analyserNode = null;
+let analyserFrequencyData = null;
+let analyserPreviousData = null;
+let audioAnalysisState = {
+  available: false,
+  rms: 0,
+  bass: 0,
+  mid: 0,
+  treble: 0,
+  spectralFlux: 0,
+  beatPulse: 0,
+  silence: 1,
+  smoothedEnergy: 0,
+  lastUpdatedAt: 0,
+};
 
 const activeSounds = new Map();
 const fileBuffers = new Map();
@@ -113,10 +128,87 @@ function getAudioContext() {
   masterFilter.frequency.value = 5400;
   masterFilter.Q.value = 0.9;
   masterGain.gain.value = DEFAULT_MASTER_GAIN;
+  analyserNode = audioCtx.createAnalyser();
+  analyserNode.fftSize = 1024;
+  analyserNode.smoothingTimeConstant = 0.86;
+  analyserFrequencyData = new Uint8Array(analyserNode.frequencyBinCount);
+  analyserPreviousData = new Uint8Array(analyserNode.frequencyBinCount);
+
   masterGain.connect(masterFilter);
-  masterFilter.connect(audioCtx.destination);
+  masterFilter.connect(analyserNode);
+  analyserNode.connect(audioCtx.destination);
 
   return audioCtx;
+}
+
+
+function computeBandEnergy(data, fromRatio, toRatio) {
+  if (!data?.length) return 0;
+  const start = Math.max(0, Math.min(data.length - 1, Math.floor(data.length * fromRatio)));
+  const end = Math.max(start + 1, Math.min(data.length, Math.ceil(data.length * toRatio)));
+  let total = 0;
+  for (let i = start; i < end; i += 1) {
+    const value = data[i] / 255;
+    total += value * value;
+  }
+  return Math.sqrt(total / Math.max(1, end - start));
+}
+
+export function getAudioAnalysisSnapshot() {
+  if (!audioCtx || !analyserNode || !analyserFrequencyData) {
+    audioAnalysisState = {
+      ...audioAnalysisState,
+      available: false,
+      rms: audioAnalysisState.rms * 0.94,
+      bass: audioAnalysisState.bass * 0.94,
+      mid: audioAnalysisState.mid * 0.94,
+      treble: audioAnalysisState.treble * 0.94,
+      spectralFlux: audioAnalysisState.spectralFlux * 0.9,
+      beatPulse: audioAnalysisState.beatPulse * 0.88,
+      silence: 1,
+      smoothedEnergy: audioAnalysisState.smoothedEnergy * 0.94,
+    };
+    return { ...audioAnalysisState };
+  }
+
+  analyserNode.getByteFrequencyData(analyserFrequencyData);
+
+  let total = 0;
+  let fluxTotal = 0;
+  for (let i = 0; i < analyserFrequencyData.length; i += 1) {
+    const value = analyserFrequencyData[i] / 255;
+    total += value * value;
+    if (analyserPreviousData) {
+      const previous = analyserPreviousData[i] / 255;
+      fluxTotal += Math.max(0, value - previous);
+      analyserPreviousData[i] = analyserFrequencyData[i];
+    }
+  }
+
+  const rms = Math.sqrt(total / Math.max(1, analyserFrequencyData.length));
+  const bass = computeBandEnergy(analyserFrequencyData, 0.01, 0.12);
+  const mid = computeBandEnergy(analyserFrequencyData, 0.12, 0.44);
+  const treble = computeBandEnergy(analyserFrequencyData, 0.44, 0.94);
+  const spectralFlux = Math.min(1, fluxTotal / Math.max(1, analyserFrequencyData.length * 0.18));
+  const targetEnergy = Math.min(1, rms * 2.25 + bass * 0.8 + mid * 0.42);
+  const previousEnergy = audioAnalysisState.smoothedEnergy || 0;
+  const smoothedEnergy = previousEnergy + (targetEnergy - previousEnergy) * 0.16;
+  const beatPulse = Math.max(0, Math.min(1, (targetEnergy - previousEnergy) * 4.5 + spectralFlux * 0.55));
+
+  audioAnalysisState = {
+    available: true,
+    rms,
+    bass,
+    mid,
+    treble,
+    spectralFlux,
+    beatPulse,
+    silence: Math.max(0, Math.min(1, 1 - smoothedEnergy * 1.8)),
+    smoothedEnergy,
+    lastUpdatedAt: typeof performance !== "undefined" ? performance.now() : Date.now(),
+  };
+
+  return { ...audioAnalysisState };
 }
 
 async function loadAudioBuffer(url) {
