@@ -41,27 +41,27 @@ function drawDreamcatcherChord(ctx, fromStar, toStar, time = 0, options = {}) {
   const normalY = dx / length;
   const pulse = Math.sin(time * 0.008 + length * 0.003) * 0.5 + 0.5;
   const playbackPulse = options.playbackPulse ? (Math.sin(time * 0.018) * 0.5 + 0.5) : 0;
-  const strandOffset = 2.2 + pulse * 0.8;
+  const strandOffset = 1.45 + pulse * 0.45;
   const gradient = ctx.createLinearGradient(fromX, fromY, toX, toY);
   gradient.addColorStop(0, `${fromStar.color || "#ffffff"}33`);
-  gradient.addColorStop(0.5, "rgba(255,248,214,0.72)");
+  gradient.addColorStop(0.5, "rgba(255,248,214,0.46)");
   gradient.addColorStop(1, `${toStar.color || "#ffffff"}33`);
 
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
   ctx.lineCap = "round";
   ctx.shadowColor = options.playbackPulse ? "rgba(130, 245, 255, 0.98)" : "rgba(255, 230, 148, 0.88)";
-  ctx.shadowBlur = 9 + pulse * 6 + playbackPulse * 18;
+  ctx.shadowBlur = 5 + pulse * 3 + playbackPulse * 10;
   ctx.strokeStyle = gradient;
-  ctx.lineWidth = 2.4 + pulse * 0.6 + playbackPulse * 3.2;
+  ctx.lineWidth = 1.15 + pulse * 0.28 + playbackPulse * 1.15;
   ctx.beginPath();
   ctx.moveTo(fromX, fromY);
   ctx.lineTo(toX, toY);
   ctx.stroke();
 
   ctx.shadowBlur = 5;
-  ctx.strokeStyle = "rgba(255,255,255,0.46)";
-  ctx.lineWidth = 0.65;
+  ctx.strokeStyle = "rgba(255,255,255,0.28)";
+  ctx.lineWidth = 0.38;
   [-strandOffset, strandOffset].forEach((offset) => {
     ctx.beginPath();
     ctx.moveTo(fromX + normalX * offset, fromY + normalY * offset);
@@ -70,8 +70,8 @@ function drawDreamcatcherChord(ctx, fromStar, toStar, time = 0, options = {}) {
   });
 
   ctx.shadowBlur = 2;
-  ctx.strokeStyle = "rgba(255,255,255,0.72)";
-  ctx.lineWidth = 0.45;
+  ctx.strokeStyle = "rgba(255,255,255,0.42)";
+  ctx.lineWidth = 0.28;
   ctx.beginPath();
   ctx.moveTo(fromX, fromY);
   ctx.lineTo(toX, toY);
@@ -148,7 +148,7 @@ function drawLinkEffect(ctx, fromStar, toStar, effect, time = 0) {
   const toX = Number.isFinite(toStar.x) ? toStar.x : 0;
   const toY = Number.isFinite(toStar.y) ? toStar.y : 0;
   const alpha = effect.type === "remove" ? 1 - t : Math.sin(t * Math.PI);
-  const width = effect.type === "remove" ? 8 * (1 - t) + 1 : 2 + t * 10;
+  const width = effect.type === "remove" ? 4 * (1 - t) + 0.8 : 1.2 + t * 4.5;
   const color = effect.type === "remove" ? "rgba(150, 220, 255," : "rgba(255, 242, 170,";
 
   ctx.save();
@@ -156,7 +156,7 @@ function drawLinkEffect(ctx, fromStar, toStar, effect, time = 0) {
   ctx.lineCap = "round";
   ctx.strokeStyle = `${color}${0.82 * alpha})`;
   ctx.shadowColor = effect.type === "remove" ? "rgba(120, 210, 255, 0.95)" : "rgba(255, 236, 150, 0.98)";
-  ctx.shadowBlur = 26 * alpha;
+  ctx.shadowBlur = 14 * alpha;
   ctx.lineWidth = width;
   ctx.beginPath();
   ctx.moveTo(fromX, fromY);

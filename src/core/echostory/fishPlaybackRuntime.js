@@ -4,6 +4,7 @@ import { chooseNextMyceliumNode, computeConnectedToCore, makeGraph } from "./ech
 import { triggerEchostoryStarPreview } from "../../components/soon/useSoonCanvasLoop.js";
 
 const MYCELIUM_PLAYBACK_SPEED = 4.8;
+const MYCELIUM_SWIM_CURVE_MAX_AMPLITUDE = 30;
 const MYCELIUM_ARRIVAL_THRESHOLD = 18;
 const MYCELIUM_CORE_PAUSE_MS = 1100;
 const MYCELIUM_STAR_PAUSE_MS = 360;
@@ -12,6 +13,72 @@ let lastCoreSpeechAt = 0;
 
 function logFishPlayback(message, ...args) {
   if (typeof console !== "undefined") console.log(message, ...args);
+}
+
+export function computeCuriousFishStep({
+  currentX = 0,
+  currentY = 0,
+  targetX = 0,
+  targetY = 0,
+  segmentStartX = currentX,
+  segmentStartY = currentY,
+  now = Date.now(),
+  seed = 0,
+  speed = MYCELIUM_PLAYBACK_SPEED,
+  arrivalThreshold = MYCELIUM_ARRIVAL_THRESHOLD,
+} = {}) {
+  const dx = targetX - currentX;
+  const dy = targetY - currentY;
+  const distance = Math.hypot(dx, dy);
+  if (distance <= arrivalThreshold) {
+    return {
+      x: targetX,
+      y: targetY,
+      vx: targetX - currentX,
+      vy: targetY - currentY,
+      angle: distance > 0.001 ? Math.atan2(dy, dx) : 0,
+      arrived: true,
+    };
+  }
+
+  const ux = distance > 0 ? dx / distance : 1;
+  const uy = distance > 0 ? dy / distance : 0;
+  const normalX = -uy;
+  const normalY = ux;
+  const segmentDx = targetX - segmentStartX;
+  const segmentDy = targetY - segmentStartY;
+  const segmentLength = Math.max(1, Math.hypot(segmentDx, segmentDy));
+  const projected = ((currentX - segmentStartX) * segmentDx + (currentY - segmentStartY) * segmentDy) / (segmentLength * segmentLength);
+  const progress = Math.max(0, Math.min(1, projected));
+  const envelope = Math.sin(progress * Math.PI);
+  const amplitude = Math.min(MYCELIUM_SWIM_CURVE_MAX_AMPLITUDE, Math.max(7, segmentLength * 0.08)) * envelope;
+  const phase = now * 0.006 + seed;
+  const desiredOffset = (
+    Math.sin(progress * Math.PI * 2.35 + phase) * amplitude +
+    Math.sin(progress * Math.PI * 4.1 + phase * 0.73) * amplitude * 0.32
+  );
+  const baseX = segmentStartX + segmentDx * progress;
+  const baseY = segmentStartY + segmentDy * progress;
+  const currentOffset = (currentX - baseX) * normalX + (currentY - baseY) * normalY;
+  const lateralStep = (desiredOffset - currentOffset) * 0.2;
+  const forwardStep = Math.min(speed, distance);
+  const nextX = currentX + ux * forwardStep + normalX * lateralStep;
+  const nextY = currentY + uy * forwardStep + normalY * lateralStep;
+  const nextDistance = Math.hypot(targetX - nextX, targetY - nextY);
+  const arrived = nextDistance <= arrivalThreshold;
+  const finalX = arrived ? targetX : nextX;
+  const finalY = arrived ? targetY : nextY;
+  const vx = finalX - currentX;
+  const vy = finalY - currentY;
+
+  return {
+    x: finalX,
+    y: finalY,
+    vx,
+    vy,
+    angle: Math.hypot(vx, vy) > 0.001 ? Math.atan2(vy, vx) : Math.atan2(dy, dx),
+    arrived,
+  };
 }
 
 function speakCoreBubble(now = Date.now()) {
@@ -75,6 +142,8 @@ export function tickMyceliumPlayback(now = Date.now()) {
             ...(state.echostory?.echostoryPlayback || {}),
             playbackTargetNodeId: null,
             targetNodeId: null,
+            segmentStartX: null,
+            segmentStartY: null,
           },
         },
       }));
@@ -83,14 +152,20 @@ export function tickMyceliumPlayback(now = Date.now()) {
 
     const currentX = Number.isFinite(fish.x) ? fish.x : 0;
     const currentY = Number.isFinite(fish.y) ? fish.y : 0;
-    const dx = target.x - currentX;
-    const dy = target.y - currentY;
-    const distance = Math.hypot(dx, dy);
-    const ratio = distance > 0 ? Math.min(1, MYCELIUM_PLAYBACK_SPEED / distance) : 1;
-    const nextX = distance <= MYCELIUM_ARRIVAL_THRESHOLD ? target.x : currentX + dx * ratio;
-    const nextY = distance <= MYCELIUM_ARRIVAL_THRESHOLD ? target.y : currentY + dy * ratio;
-    const angle = distance > 0.001 ? Math.atan2(dy, dx) : (fish.angle || 0);
-    const arrived = distance <= MYCELIUM_ARRIVAL_THRESHOLD;
+    const step = computeCuriousFishStep({
+      currentX,
+      currentY,
+      targetX: target.x,
+      targetY: target.y,
+      segmentStartX: Number.isFinite(playback.segmentStartX) ? playback.segmentStartX : currentX,
+      segmentStartY: Number.isFinite(playback.segmentStartY) ? playback.segmentStartY : currentY,
+      now,
+      seed: Number.isFinite(playback.swimSeed) ? playback.swimSeed : 0,
+    });
+    const nextX = step.x;
+    const nextY = step.y;
+    const angle = step.angle;
+    const arrived = step.arrived;
     const fromNodeId = playback.currentNodeId || ECHOSTORY_MUSIC_CORE_ID;
     const linkId = makeLinkId(fromNodeId, targetNodeId);
 
@@ -104,8 +179,8 @@ export function tickMyceliumPlayback(now = Date.now()) {
         y: nextY,
         targetX: target.x,
         targetY: target.y,
-        vx: nextX - (Number.isFinite(state.fish?.x) ? state.fish.x : nextX),
-        vy: nextY - (Number.isFinite(state.fish?.y) ? state.fish.y : nextY),
+        vx: step.vx,
+        vy: step.vy,
         angle,
       },
       echostory: {
@@ -119,6 +194,8 @@ export function tickMyceliumPlayback(now = Date.now()) {
           x: nextX,
           y: nextY,
           targetNodeId: arrived ? null : targetNodeId,
+          segmentStartX: arrived ? null : state.echostory?.echostoryPlayback?.segmentStartX,
+          segmentStartY: arrived ? null : state.echostory?.echostoryPlayback?.segmentStartY,
           currentNodeId: arrived ? targetNodeId : fromNodeId,
           playbackTargetNodeId: arrived ? null : targetNodeId,
           arrivedNodeId: arrived ? null : state.echostory?.echostoryPlayback?.arrivedNodeId,
@@ -199,6 +276,8 @@ export function tickMyceliumPlayback(now = Date.now()) {
           visible: false,
           playbackTargetNodeId: null,
           targetNodeId: null,
+          segmentStartX: null,
+          segmentStartY: null,
         },
       },
     }));
@@ -216,6 +295,9 @@ export function tickMyceliumPlayback(now = Date.now()) {
         visible: true,
         targetNodeId: nextNodeId,
         playbackTargetNodeId: nextNodeId,
+        segmentStartX: Number.isFinite(state.fish?.x) ? state.fish.x : 0,
+        segmentStartY: Number.isFinite(state.fish?.y) ? state.fish.y : 0,
+        swimSeed: ((state.echostory?.echostoryPlayback?.path || []).length + 1) * 1.618,
         waitingUntil: 0,
       },
     },

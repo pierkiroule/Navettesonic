@@ -72,7 +72,7 @@ test('cas 5: toutes les étoiles visitées reviennent au core puis stoppent', ()
 });
 
 import { pushNearbyEchostoryStars } from '../src/components/soon/useSoonCanvasLoop.js';
-import { tickMyceliumPlayback } from '../src/core/echostory/fishPlaybackRuntime.js';
+import { computeCuriousFishStep, tickMyceliumPlayback } from '../src/core/echostory/fishPlaybackRuntime.js';
 import { useSoonStore } from '../src/store/useSoonStore.js';
 
 function snapshotStars(stars) {
@@ -125,6 +125,26 @@ test('clicking fish playback action makes Soon visible at the core', () => {
   assert.equal(state.echostory.echostoryPlayback.visible, true);
 });
 
+
+test('curious fish step follows the target with a non-rectilinear swim curve', () => {
+  const step = computeCuriousFishStep({
+    currentX: 48,
+    currentY: 0,
+    targetX: 160,
+    targetY: 0,
+    segmentStartX: 0,
+    segmentStartY: 0,
+    now: 2400,
+    seed: 1.618,
+    speed: 4.8,
+    arrivalThreshold: 18,
+  });
+
+  assert.ok(step.x > 48, 'Soon continues progressing toward the target');
+  assert.notEqual(step.y, 0, 'Soon receives a lateral wave instead of a straight segment');
+  assert.equal(step.arrived, false);
+});
+
 test('during playback Soon moves while stars and links stay fixed', () => {
   const stars = [{ id: 'A', x: 96, y: 0, vx: 13, vy: -9, r: 34, text: 'A' }];
   const links = [link(core, 'A')];
@@ -143,6 +163,9 @@ test('during playback Soon moves while stars and links stay fixed', () => {
         currentNodeId: core,
         playbackTargetNodeId: 'A',
         targetNodeId: 'A',
+        segmentStartX: 0,
+        segmentStartY: 0,
+        swimSeed: 1.618,
         visited: { [core]: 1 },
         path: [core],
         waitingUntil: 0,
@@ -153,10 +176,11 @@ test('during playback Soon moves while stars and links stay fixed', () => {
   const beforeLinks = snapshotLinks(useSoonStore.getState().echostory.links);
 
   tickMyceliumPlayback(2000);
+  tickMyceliumPlayback(2016);
   const state = useSoonStore.getState();
 
   assert.notEqual(state.fish.x, 0);
-  assert.equal(state.fish.y, 0);
+  assert.notEqual(state.fish.y, 0);
   assert.deepEqual(snapshotStars(state.echostory.stars), beforeStars);
   assert.deepEqual(snapshotLinks(state.echostory.links), beforeLinks);
 });

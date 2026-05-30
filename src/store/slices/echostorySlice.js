@@ -19,6 +19,9 @@ export const createEchostorySlice = (set) => ({
         startedAt: Date.now(),
         playbackTargetNodeId: null,
         targetNodeId: null,
+        segmentStartX: null,
+        segmentStartY: null,
+        swimSeed: 0,
         x: 0,
         y: 0,
         waitingUntil: 0,
@@ -50,6 +53,8 @@ export const createEchostorySlice = (set) => ({
         visible: false,
         playbackTargetNodeId: null,
         targetNodeId: null,
+        segmentStartX: null,
+        segmentStartY: null,
       },
     },
     fish: {
