@@ -13,8 +13,6 @@ const SOON_WAYPOINT_REACH_RADIUS = 92;
 const SOON_WAYPOINT_TTL_MS = 4200;
 const SOON_RESONANCE_TARGET_OFFSET = 420;
 const SOON_RESONANCE_DRIFT_STEP = 13;
-const SOON_STAR_BILLIARD_RADIUS = 84;
-const SOON_STAR_BILLIARD_IMPULSE = 4.8;
 
 export function computeCuriousFishStep({
   currentX = 0,
@@ -177,24 +175,6 @@ function findCrossedLink({ links = [], starsById, fromX, fromY, toX, toY, cooldo
   return null;
 }
 
-function applyBilliardImpulseToStars(stars = [], fromX = 0, fromY = 0, toX = 0, toY = 0, now = Date.now()) {
-  const moveX = toX - fromX;
-  const moveY = toY - fromY;
-  const moveLength = Math.max(0.001, Math.hypot(moveX, moveY));
-  stars.forEach((star) => {
-    if (!star || star.expired || star.expiring || star.attachedToContour || star.draggingByTouch) return;
-    const radius = Math.max(SOON_STAR_BILLIARD_RADIUS, (Number.isFinite(star.r) ? star.r : 34) * 2.1);
-    const distance = distancePointToSegment(star.x || 0, star.y || 0, fromX, fromY, toX, toY);
-    if (distance > radius) return;
-    const awayX = ((star.x || 0) - toX) / Math.max(1, Math.hypot((star.x || 0) - toX, (star.y || 0) - toY));
-    const awayY = ((star.y || 0) - toY) / Math.max(1, Math.hypot((star.x || 0) - toX, (star.y || 0) - toY));
-    const force = (1 - distance / radius) * SOON_STAR_BILLIARD_IMPULSE;
-    star.vx = (star.vx || 0) + (moveX / moveLength + awayX * 0.45) * force;
-    star.vy = (star.vy || 0) + (moveY / moveLength + awayY * 0.45) * force;
-    star.lastPushedBySoonAt = now;
-  });
-}
-
 async function playLinkedStarsSequence(link, stars, fishX = 0) {
   const starsById = new Map(stars.map((star) => [star?.id, star]).filter(([id]) => id));
   const endpoints = [link?.from, link?.to]
@@ -316,8 +296,6 @@ export function tickMyceliumPlayback(now = Date.now()) {
     cooldowns: playback.linkCooldowns || {},
     now,
   });
-
-  applyBilliardImpulseToStars(stars, currentX, currentY, nextX, nextY, now);
 
   const angle = Math.hypot(step.vx + driftX, step.vy + driftY) > 0.001
     ? Math.atan2(step.vy + driftY, step.vx + driftX)

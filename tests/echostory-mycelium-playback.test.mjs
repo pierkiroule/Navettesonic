@@ -83,7 +83,7 @@ function snapshotLinks(links) {
   return links.map((link) => ({ id: link.id, from: link.from, to: link.to }));
 }
 
-test('fish playback lets Soon bump stars while keeping links coherent', () => {
+test('fish playback lets Soon pass without moving stars or breaking links', () => {
   const stars = [
     { id: 'A', x: 120, y: 0, vx: 18, vy: -7, r: 34 },
     { id: 'B', x: 260, y: 0, vx: -12, vy: 5, r: 34 },
@@ -103,8 +103,8 @@ test('fish playback lets Soon bump stars while keeping links coherent', () => {
   const beforeStars = snapshotStars(stars);
   for (let i = 0; i < 5; i += 1) pushNearbyEchostoryStars(current, 1000 + i * 16);
 
-  assert.notDeepEqual(snapshotStars(stars), beforeStars);
-  assert.ok(Array.isArray(current.echostory.links));
+  assert.deepEqual(snapshotStars(stars), beforeStars);
+  assert.deepEqual(snapshotLinks(current.echostory.links), snapshotLinks(links));
 });
 
 test('clicking fish playback action makes Soon visible at the core', () => {

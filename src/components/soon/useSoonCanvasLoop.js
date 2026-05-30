@@ -48,7 +48,7 @@ const STAR_NETWORK_RUPTURE_STRETCH = 1.18;
 const STAR_NETWORK_RUPTURE_EXTRA_DISTANCE = 28;
 const STAR_NETWORK_PUSH_MEMORY_MS = 1800;
 const STAR_NETWORK_DAMPING = 0.981;
-const SOON_STAR_CONTACT_ENABLED = true;
+const SOON_STAR_CONTACT_ENABLED = false;
 
 const CONTOUR_RIDE_DURATION_MS = 120000;
 const CONTOUR_RIDE_ENTRY_THRESHOLD = 52;
@@ -568,6 +568,7 @@ function updateEchostoryConstellations(current, now = performance.now()) {
 
 export function pushNearbyEchostoryStars(current, now = performance.now()) {
   if (current?.mode !== "echostory" && current?.mode !== "reso") return;
+  if (current?.echostory?.echostoryPlayback?.active) return;
   if (current?.contourRide?.active) return;
   if (!current?.fish) return;
   const soonCanCollide = current.fish.visible === true;
