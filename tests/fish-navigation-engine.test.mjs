@@ -50,6 +50,35 @@ test('nage libre: Soon choisit une cible organique sans suivre directement les l
   assert.notEqual(Math.hypot(next.fish.vx, next.fish.vy), 0);
 });
 
+test('nage libre: une ancienne intention au centre est remplacée pour éviter que Soon oscille sur lui-même', () => {
+  const world = generateLabybulle(1);
+  const now = performance.now();
+  const state = {
+    ...baseState(world, {
+      x: 0,
+      y: 0,
+      vx: 0,
+      vy: 0,
+      targetX: 0,
+      targetY: 0,
+      angle: 0,
+      depth: 1,
+      maxSpeed: 3.1,
+      arenaLevel: 0,
+      freeSwimTarget: { x: 0, y: 0, bornAt: now, kind: 'dance' },
+    }),
+    mode: 'echostory',
+    bubbles: [],
+    echostory: { stars: [] },
+  };
+
+  const next = tickFishEngine(state, { arenaRadius: 1200 });
+
+  assert.notEqual(next.fish.freeSwimTarget.kind, 'dance');
+  assert.ok(Math.hypot(next.fish.freeSwimTarget.x, next.fish.freeSwimTarget.y) > 250);
+  assert.ok(Math.hypot(next.fish.vx, next.fish.vy) > 0.05);
+});
+
 test('résonance tactile: une onde conserve son expansion et perturbe légèrement la nage', () => {
   const world = generateLabybulle(1);
   const now = performance.now();
