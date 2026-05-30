@@ -9,7 +9,12 @@ import {
   panEditCamera,
   zoomEditCameraAt,
 } from "../../core/soonCamera.js";
-import { ECHOSTORY_MUSIC_CORE_ID, makeLinkId } from "../../core/echostory/echostoryConstellation.js";
+import {
+  ECHOSTORY_MUSIC_CORE_ID,
+  canCreateEchostoryLink,
+  getEchostoryLinks,
+  makeLinkId,
+} from "../../core/echostory/echostoryConstellation.js";
 
 export function useSoonPointer({
   canvasRef,
@@ -228,6 +233,11 @@ export function useSoonPointer({
       if (!isContacting(draggedStar, candidate)) return;
       currentlyTouching.add(pairId);
       if (contactSet.has(pairId)) return;
+      const echostory = stateRef.current?.echostory || {};
+      const linkAlreadyExists = getEchostoryLinks(echostory).some(
+        (link) => makeLinkId(link?.from, link?.to) === pairId
+      );
+      if (!linkAlreadyExists && !canCreateEchostoryLink(echostory, draggedStar.id, candidate.id)) return;
       contactSet.add(pairId);
       const measuredLength = Math.hypot((draggedStar.x || 0) - (candidate.x || 0), (draggedStar.y || 0) - (candidate.y || 0));
       onToggleEchostoryLink?.(draggedStar.id, candidate.id, {

@@ -1,4 +1,4 @@
-import { ECHOSTORY_MUSIC_CORE_ID, getEchostoryLinks } from "./echostoryConstellation.js";
+import { ECHOSTORY_CORE_SYMBOL, ECHOSTORY_MUSIC_CORE_ID, getEchostoryLinks } from "./echostoryConstellation.js";
 
 const ECHOSTORY_STAR_MIN_VISUAL_RADIUS = 34;
 
@@ -105,6 +105,33 @@ function drawContourSnapHalo(ctx, x, y, radius, time = 0, phase = 0) {
   ctx.fill();
 }
 
+function drawCoreAnchor(ctx, time = 0) {
+  const pulse = Math.sin(time * 0.006) * 0.5 + 0.5;
+  const radius = 34 + pulse * 3;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.shadowColor = "rgba(155, 226, 255, 0.95)";
+  ctx.shadowBlur = 18 + pulse * 9;
+  ctx.strokeStyle = `rgba(220, 248, 255, ${0.74 + pulse * 0.18})`;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.fillStyle = `rgba(135, 217, 255, ${0.18 + pulse * 0.08})`;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * 0.86, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.font = "28px system-ui, Apple Color Emoji, Segoe UI Emoji, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(255,255,255,0.96)";
+  ctx.shadowBlur = 8;
+  ctx.fillText(ECHOSTORY_CORE_SYMBOL, 0, 1);
+  ctx.restore();
+}
+
 function drawLinkEffect(ctx, fromStar, toStar, effect, time = 0) {
   if (!fromStar || !toStar || !effect) return;
   const startedAt = Number.isFinite(effect.startedAt) ? effect.startedAt : time;
@@ -147,6 +174,8 @@ function drawLinkEffect(ctx, fromStar, toStar, effect, time = 0) {
 }
 
 export function drawEchostoryConstellationLinks(ctx, echostory = {}, time = 0) {
+  drawCoreAnchor(ctx, time);
+
   const stars = Array.isArray(echostory?.stars) ? echostory.stars : [];
   const links = getEchostoryLinks(echostory);
   const effects = Array.isArray(echostory?.linkEffects) ? echostory.linkEffects : [];

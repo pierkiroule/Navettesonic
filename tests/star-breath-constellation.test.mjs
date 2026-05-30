@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { makeEchostoryStarBreathe, pushNearbyEchostoryStars } from '../src/components/soon/useSoonCanvasLoop.js';
-import { ECHOSTORY_MUSIC_CORE_ID, makeLinkId, toggleEchostoryLink } from '../src/core/echostory/echostoryConstellation.js';
+import { ECHOSTORY_CORE_SYMBOL, ECHOSTORY_MUSIC_CORE_ID, makeLinkId, normalizeEchostoryNetwork, toggleEchostoryLink } from '../src/core/echostory/echostoryConstellation.js';
+import { drawEchostoryConstellationLinks } from '../src/core/echostory/echostoryRender.js';
 
 function stateWithStars(stars) {
   return {
@@ -118,6 +119,72 @@ test('Les connexions directes et indirectes au core sont recalculées après tog
   assert.equal(state.echostory.stars.find((star) => star.id === 'star-2').connectedToCore, true);
   assert.equal(state.echostory.stars.find((star) => star.id === 'star-3').connectedToCore, false);
   assert.ok(state.echostory.links.every((link) => link.id === makeLinkId(link.from, link.to)));
+});
+
+test('La règle de tissage refuse un lien entre deux étoiles sans chemin vers le noyau', () => {
+  const state = stateWithStars([
+    { id: 'star-1', x: 180, y: 0, r: 18, attachedToContour: false },
+    { id: 'star-2', x: 300, y: 0, r: 18, attachedToContour: false },
+  ]);
+
+  state.echostory = toggleEchostoryLink(state.echostory, 'star-1', 'star-2', { restLength: 132, now: 2400 });
+
+  assert.equal(state.echostory.links.length, 0);
+  assert.deepEqual(state.echostory.coreConnectedStarIds, []);
+});
+
+test('La règle de tissage autorise une nouvelle étoile via une étoile déjà reliée au noyau', () => {
+  const state = stateWithStars([
+    { id: 'star-1', x: 80, y: 0, r: 18, attachedToContour: false },
+    { id: 'star-2', x: 214, y: 0, r: 18, attachedToContour: false },
+  ]);
+
+  state.echostory = toggleEchostoryLink(state.echostory, ECHOSTORY_MUSIC_CORE_ID, 'star-1', { restLength: 148, now: 2400 });
+  state.echostory = toggleEchostoryLink(state.echostory, 'star-1', 'star-2', { restLength: 132, now: 2450 });
+
+  assert.equal(state.echostory.links.length, 2);
+  assert.deepEqual(new Set(state.echostory.coreConnectedStarIds), new Set(['star-1', 'star-2']));
+  assert.equal(state.echostory.stars.find((star) => star.id === 'star-2').connectedToCore, true);
+});
+
+test('La normalisation purge les branches isolées du noyau central', () => {
+  const state = stateWithStars([
+    { id: 'star-1', x: 80, y: 0, r: 18, attachedToContour: false },
+    { id: 'star-2', x: 214, y: 0, r: 18, attachedToContour: false },
+    { id: 'star-3', x: 420, y: 0, r: 18, attachedToContour: false },
+    { id: 'star-4', x: 540, y: 0, r: 18, attachedToContour: false },
+  ]);
+  state.echostory.links = [
+    { id: makeLinkId(ECHOSTORY_MUSIC_CORE_ID, 'star-1'), from: ECHOSTORY_MUSIC_CORE_ID, to: 'star-1' },
+    { id: makeLinkId('star-1', 'star-2'), from: 'star-1', to: 'star-2' },
+    { id: makeLinkId('star-3', 'star-4'), from: 'star-3', to: 'star-4' },
+  ];
+
+  state.echostory = normalizeEchostoryNetwork(state.echostory);
+
+  assert.deepEqual(state.echostory.links.map((link) => link.id), [
+    makeLinkId(ECHOSTORY_MUSIC_CORE_ID, 'star-1'),
+    makeLinkId('star-1', 'star-2'),
+  ]);
+  assert.deepEqual(new Set(state.echostory.coreConnectedStarIds), new Set(['star-1', 'star-2']));
+});
+
+test('Le rendu matérialise le noyau central 🫧 entouré d’un cercle', () => {
+  const calls = [];
+  const ctx = {
+    save: () => calls.push(['save']),
+    restore: () => calls.push(['restore']),
+    beginPath: () => calls.push(['beginPath']),
+    arc: (...args) => calls.push(['arc', ...args]),
+    stroke: () => calls.push(['stroke']),
+    fill: () => calls.push(['fill']),
+    fillText: (...args) => calls.push(['fillText', ...args]),
+  };
+
+  drawEchostoryConstellationLinks(ctx, { stars: [], links: [] }, 1200);
+
+  assert.ok(calls.some((call) => call[0] === 'arc' && call[1] === 0 && call[2] === 0));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === ECHOSTORY_CORE_SYMBOL));
 });
 
 test('Soon can stretch a connected star link until it ruptures', () => {
