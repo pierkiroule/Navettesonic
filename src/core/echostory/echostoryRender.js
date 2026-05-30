@@ -42,18 +42,20 @@ function drawDreamcatcherChord(ctx, fromStar, toStar, time = 0, options = {}) {
   const pulse = Math.sin(time * 0.008 + length * 0.003) * 0.5 + 0.5;
   const playbackPulse = options.playbackPulse ? (Math.sin(time * 0.018) * 0.5 + 0.5) : 0;
   const strandOffset = 1.45 + pulse * 0.45;
+  const alphaScale = options.dashed ? 0.42 : 1;
   const gradient = ctx.createLinearGradient(fromX, fromY, toX, toY);
   gradient.addColorStop(0, `${fromStar.color || "#ffffff"}33`);
-  gradient.addColorStop(0.5, "rgba(255,248,214,0.46)");
+  gradient.addColorStop(0.5, `rgba(255,248,214,${0.46 * alphaScale})`);
   gradient.addColorStop(1, `${toStar.color || "#ffffff"}33`);
 
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
   ctx.lineCap = "round";
+  if (options.dashed) ctx.setLineDash([10, 13]);
   ctx.shadowColor = options.playbackPulse ? "rgba(130, 245, 255, 0.98)" : "rgba(255, 230, 148, 0.88)";
   ctx.shadowBlur = 5 + pulse * 3 + playbackPulse * 10;
   ctx.strokeStyle = gradient;
-  ctx.lineWidth = 1.15 + pulse * 0.28 + playbackPulse * 1.15;
+  ctx.lineWidth = (options.dashed ? 0.82 : 1.15) + pulse * 0.28 + playbackPulse * 1.15;
   ctx.beginPath();
   ctx.moveTo(fromX, fromY);
   ctx.lineTo(toX, toY);
@@ -197,8 +199,12 @@ export function drawEchostoryConstellationLinks(ctx, echostory = {}, time = 0) {
     const fromStar = starsById.get(link?.from);
     const toStar = starsById.get(link?.to);
     if (!fromStar || !toStar || fromStar.expired || toStar.expired) return;
+    const linkId = link?.id || makeLinkId(link?.from, link?.to);
+    const activeLinkId = echostory?.playbackCurrentLinkId || playback?.activeLinkId;
+    const isPlayingAnyLink = Boolean(playback?.linkPlaybackActive || activeLinkId);
     drawDreamcatcherChord(ctx, fromStar, toStar, time, {
-      playbackPulse: echostory?.playbackCurrentLinkId === (link?.id || makeLinkId(link?.from, link?.to)),
+      playbackPulse: activeLinkId === linkId,
+      dashed: isPlayingAnyLink && activeLinkId !== linkId,
     });
   });
 
@@ -210,6 +216,7 @@ export function drawEchostoryConstellationLinks(ctx, echostory = {}, time = 0) {
 }
 
 export function drawEchostoryContourLinks(ctx, echostory = {}, time = 0) {
+  const playback = echostory?.echostoryPlayback || {};
   const stars = Array.isArray(echostory?.stars) ? echostory.stars : [];
   const links = Array.isArray(echostory?.contourStarLinks) ? echostory.contourStarLinks : [];
   if (!stars.length || !links.length) return;
@@ -219,8 +226,12 @@ export function drawEchostoryContourLinks(ctx, echostory = {}, time = 0) {
     const fromStar = starsById.get(link?.from);
     const toStar = starsById.get(link?.to);
     if (!fromStar?.attachedToContour || !toStar?.attachedToContour) return;
+    const linkId = link?.id || makeLinkId(link?.from, link?.to);
+    const activeLinkId = echostory?.playbackCurrentLinkId || playback?.activeLinkId;
+    const isPlayingAnyLink = Boolean(playback?.linkPlaybackActive || activeLinkId);
     drawDreamcatcherChord(ctx, fromStar, toStar, time, {
-      playbackPulse: echostory?.playbackCurrentLinkId === (link?.id || makeLinkId(link?.from, link?.to)),
+      playbackPulse: activeLinkId === linkId,
+      dashed: isPlayingAnyLink && activeLinkId !== linkId,
     });
   });
 }

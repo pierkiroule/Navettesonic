@@ -48,7 +48,7 @@ const STAR_NETWORK_RUPTURE_STRETCH = 1.18;
 const STAR_NETWORK_RUPTURE_EXTRA_DISTANCE = 28;
 const STAR_NETWORK_PUSH_MEMORY_MS = 1800;
 const STAR_NETWORK_DAMPING = 0.981;
-const SOON_STAR_CONTACT_ENABLED = false;
+const SOON_STAR_CONTACT_ENABLED = true;
 
 const CONTOUR_RIDE_DURATION_MS = 120000;
 const CONTOUR_RIDE_ENTRY_THRESHOLD = 52;
@@ -257,7 +257,7 @@ async function playHtmlAudioFallback(url, volume = 0.85) {
 
 let activeEchostoryStarAudioId = null;
 
-async function playEchostoryStarPreview(star, fishX = 0, colorOrdinal = 0) {
+export async function playEchostoryStarPreview(star, fishX = 0, colorOrdinal = 0) {
   if (!star) return false;
   const pan = Math.max(-0.85, Math.min(0.85, fishX / 420));
   const candidates = getEchostorySampleUrlCandidates(star, colorOrdinal);
@@ -568,12 +568,9 @@ function updateEchostoryConstellations(current, now = performance.now()) {
 
 export function pushNearbyEchostoryStars(current, now = performance.now()) {
   if (current?.mode !== "echostory" && current?.mode !== "reso") return;
-  if (current?.echostory?.echostoryPlayback?.active) {
-    console.log("[network frozen]", true);
-    return;
-  }
   if (current?.contourRide?.active) return;
   if (!current?.fish) return;
+  const soonCanCollide = current.fish.visible === true;
   const fishX = Number.isFinite(current.fish.x) ? current.fish.x : 0;
   const fishY = Number.isFinite(current.fish.y) ? current.fish.y : 0;
   const TRIGGER_RADIUS = 84;
@@ -607,12 +604,7 @@ export function pushNearbyEchostoryStars(current, now = performance.now()) {
     const distance = Math.hypot(dx, dy);
     const isInside = distance < TRIGGER_RADIUS;
 
-    if (SOON_STAR_CONTACT_ENABLED && isInside) {
-      triggerEchostoryStarPreview(star, {
-        fishX,
-        colorOrdinal: colorOrdinalsByStarId.get(star.id || getEchostoryStarColorKey(star)) || 0,
-      });
-
+    if (soonCanCollide && SOON_STAR_CONTACT_ENABLED && isInside) {
       if (star.attachedToContour) {
         const lastOpenedAt = Number.isFinite(star.breathMenuOpenedAt) ? star.breathMenuOpenedAt : 0;
         if (!star.pendingBreathChoice && now - lastOpenedAt > STAR_BREATH_MENU_COOLDOWN_MS) {

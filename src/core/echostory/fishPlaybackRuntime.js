@@ -1,26 +1,20 @@
 import { useSoonStore } from "../../store/useSoonStore.js";
-import { ECHOSTORY_MUSIC_CORE_ID, makeLinkId } from "./echostoryConstellation.js";
-import { chooseNextMyceliumNode, computeConnectedToCore, makeGraph } from "./echostoryMyceliumPlayback.js";
-import { triggerEchostoryStarPreview } from "../../components/soon/useSoonCanvasLoop.js";
+import { ECHOSTORY_MUSIC_CORE_ID, getEchostoryLinks, makeLinkId } from "./echostoryConstellation.js";
+import { playEchostoryStarPreview } from "../../components/soon/useSoonCanvasLoop.js";
 import { updateResonantRipples } from "../fishNavigationEngine.js";
 
 const MYCELIUM_PLAYBACK_SPEED = 4.8;
 const MYCELIUM_SWIM_CURVE_MAX_AMPLITUDE = 30;
 const MYCELIUM_ARRIVAL_THRESHOLD = 18;
-const MYCELIUM_CORE_PAUSE_MS = 1100;
-const MYCELIUM_STAR_PAUSE_MS = 360;
-const ROSA_WANDER_MIN_MS = 1450;
-const ROSA_WANDER_MAX_MS = 2900;
-const ROSA_WAYPOINT_REACH_RADIUS = 86;
-const ROSA_WAYPOINT_TTL_MS = 1350;
-const ROSA_RESONANCE_TARGET_OFFSET = 520;
-const ROSA_RESONANCE_DRIFT_STEP = 18;
-
-let lastCoreSpeechAt = 0;
-
-function logFishPlayback(message, ...args) {
-  if (typeof console !== "undefined") console.log(message, ...args);
-}
+const SOON_FREE_SWIM_SPEED = 5.2;
+const SOON_FREE_SWIM_RESUME_MS = 1300;
+const SOON_LINK_SILENCE_MS = 3000;
+const SOON_WAYPOINT_REACH_RADIUS = 92;
+const SOON_WAYPOINT_TTL_MS = 4200;
+const SOON_RESONANCE_TARGET_OFFSET = 420;
+const SOON_RESONANCE_DRIFT_STEP = 13;
+const SOON_STAR_BILLIARD_RADIUS = 84;
+const SOON_STAR_BILLIARD_IMPULSE = 4.8;
 
 export function computeCuriousFishStep({
   currentX = 0,
@@ -98,7 +92,7 @@ function getPlaybackArenaRadius(state = {}) {
 
 function randomWanderPoint(radius) {
   const angle = Math.random() * Math.PI * 2;
-  const distance = Math.sqrt(Math.random()) * Math.max(140, radius);
+  const distance = Math.sqrt(Math.random()) * Math.max(180, radius);
   return { x: Math.cos(angle) * distance, y: Math.sin(angle) * distance };
 }
 
@@ -106,67 +100,22 @@ function clampWaypointToArena(point, radius) {
   const x = Number.isFinite(point?.x) ? point.x : 0;
   const y = Number.isFinite(point?.y) ? point.y : 0;
   const distance = Math.hypot(x, y);
-  const safeRadius = Math.max(120, radius);
+  const safeRadius = Math.max(140, radius);
   if (distance <= safeRadius || distance <= 0.0001) return { x, y };
   return { x: (x / distance) * safeRadius, y: (y / distance) * safeRadius };
 }
 
-function pickRosaWanderWaypoint({ currentX = 0, currentY = 0, target = { x: 0, y: 0 }, arenaRadius = 1200, now = Date.now() } = {}) {
-  const safeRadius = Math.max(180, arenaRadius - 132);
-  const freePoint = randomWanderPoint(safeRadius);
-  const targetAngle = Math.atan2((target.y || 0) - currentY, (target.x || 0) - currentX);
-  const tangent = targetAngle + (Math.random() < 0.5 ? 1 : -1) * (Math.PI / 2 + Math.random() * 0.75);
-  const tangentDistance = 190 + Math.random() * Math.min(520, safeRadius * 0.5);
-  const nearTarget = {
-    x: (target.x || 0) + Math.cos(tangent) * tangentDistance,
-    y: (target.y || 0) + Math.sin(tangent) * tangentDistance,
-  };
-  const mix = 0.24 + Math.random() * 0.28;
-  const point = Math.random() < 0.64
-    ? freePoint
-    : { x: freePoint.x * (1 - mix) + nearTarget.x * mix, y: freePoint.y * (1 - mix) + nearTarget.y * mix };
+function pickFreeSwimWaypoint({ arenaRadius = 1200, now = Date.now() } = {}) {
   return {
-    ...clampWaypointToArena(point, safeRadius),
+    ...clampWaypointToArena(randomWanderPoint(Math.max(180, arenaRadius - 126)), Math.max(180, arenaRadius - 126)),
     bornAt: now,
   };
 }
 
-function getRosaWanderUntil(playback = {}, now = Date.now()) {
-  if (Number.isFinite(playback.wanderUntil) && playback.wanderUntil > now) return playback.wanderUntil;
-  if (Number.isFinite(playback.wanderUntil) && playback.wanderUntil > 0) return playback.wanderUntil;
-  return now + ROSA_WANDER_MIN_MS + Math.random() * (ROSA_WANDER_MAX_MS - ROSA_WANDER_MIN_MS);
-}
-
 function shouldRefreshWaypoint(waypoint, currentX, currentY, now) {
   if (!waypoint || !Number.isFinite(waypoint.x) || !Number.isFinite(waypoint.y)) return true;
-  if (Math.hypot(currentX - waypoint.x, currentY - waypoint.y) <= ROSA_WAYPOINT_REACH_RADIUS) return true;
-  return Number.isFinite(waypoint.bornAt) && now - waypoint.bornAt > ROSA_WAYPOINT_TTL_MS;
-}
-
-function speakCoreBubble(now = Date.now()) {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  if (now - lastCoreSpeechAt < 900) return;
-  lastCoreSpeechAt = now;
-  try {
-    const utterance = new SpeechSynthesisUtterance("et bientôt");
-    utterance.lang = "fr-FR";
-    utterance.rate = 0.82;
-    utterance.pitch = 1.12;
-    utterance.volume = 0.42;
-    window.speechSynthesis.speak(utterance);
-  } catch {
-    // La voix du noyau est optionnelle selon le navigateur.
-  }
-}
-
-function getMyceliumNodePosition(nodeId, starsById) {
-  if (nodeId === ECHOSTORY_MUSIC_CORE_ID) return { x: 0, y: 0 };
-  const star = starsById.get(nodeId);
-  if (!star) return null;
-  return {
-    x: Number.isFinite(star.x) ? star.x : 0,
-    y: Number.isFinite(star.y) ? star.y : 0,
-  };
+  if (Math.hypot(currentX - waypoint.x, currentY - waypoint.y) <= SOON_WAYPOINT_REACH_RADIUS) return true;
+  return Number.isFinite(waypoint.bornAt) && now - waypoint.bornAt > SOON_WAYPOINT_TTL_MS;
 }
 
 function getStarOrdinal(stars = [], targetStar = null) {
@@ -179,6 +128,120 @@ function getStarOrdinal(stars = [], targetStar = null) {
   return 0;
 }
 
+function getNodePosition(nodeId, starsById) {
+  if (nodeId === ECHOSTORY_MUSIC_CORE_ID) return { x: 0, y: 0, r: 34, id: ECHOSTORY_MUSIC_CORE_ID };
+  const star = starsById.get(nodeId);
+  if (!star) return null;
+  return {
+    ...star,
+    x: Number.isFinite(star.x) ? star.x : 0,
+    y: Number.isFinite(star.y) ? star.y : 0,
+  };
+}
+
+function distancePointToSegment(px, py, ax, ay, bx, by) {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq <= 0.0001) return Math.hypot(px - ax, py - ay);
+  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq));
+  return Math.hypot(px - (ax + dx * t), py - (ay + dy * t));
+}
+
+function segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
+  const cross = (x1, y1, x2, y2) => x1 * y2 - y1 * x2;
+  const rX = bx - ax;
+  const rY = by - ay;
+  const sX = dx - cx;
+  const sY = dy - cy;
+  const denom = cross(rX, rY, sX, sY);
+  if (Math.abs(denom) < 0.0001) return false;
+  const qpx = cx - ax;
+  const qpy = cy - ay;
+  const t = cross(qpx, qpy, sX, sY) / denom;
+  const u = cross(qpx, qpy, rX, rY) / denom;
+  return t >= 0 && t <= 1 && u >= 0 && u <= 1;
+}
+
+function findCrossedLink({ links = [], starsById, fromX, fromY, toX, toY, cooldowns = {}, now = Date.now() }) {
+  for (const link of links) {
+    if (link?.from === ECHOSTORY_MUSIC_CORE_ID || link?.to === ECHOSTORY_MUSIC_CORE_ID) continue;
+    const linkId = link?.id || makeLinkId(link?.from, link?.to);
+    if (!linkId || (Number.isFinite(cooldowns?.[linkId]) && now - cooldowns[linkId] < 7200)) continue;
+    const a = getNodePosition(link?.from, starsById);
+    const b = getNodePosition(link?.to, starsById);
+    if (!a || !b || a.expired || b.expired) continue;
+    const crossed = segmentsIntersect(fromX, fromY, toX, toY, a.x, a.y, b.x, b.y);
+    if (crossed) return { ...link, id: linkId };
+  }
+  return null;
+}
+
+function applyBilliardImpulseToStars(stars = [], fromX = 0, fromY = 0, toX = 0, toY = 0, now = Date.now()) {
+  const moveX = toX - fromX;
+  const moveY = toY - fromY;
+  const moveLength = Math.max(0.001, Math.hypot(moveX, moveY));
+  stars.forEach((star) => {
+    if (!star || star.expired || star.expiring || star.attachedToContour || star.draggingByTouch) return;
+    const radius = Math.max(SOON_STAR_BILLIARD_RADIUS, (Number.isFinite(star.r) ? star.r : 34) * 2.1);
+    const distance = distancePointToSegment(star.x || 0, star.y || 0, fromX, fromY, toX, toY);
+    if (distance > radius) return;
+    const awayX = ((star.x || 0) - toX) / Math.max(1, Math.hypot((star.x || 0) - toX, (star.y || 0) - toY));
+    const awayY = ((star.y || 0) - toY) / Math.max(1, Math.hypot((star.x || 0) - toX, (star.y || 0) - toY));
+    const force = (1 - distance / radius) * SOON_STAR_BILLIARD_IMPULSE;
+    star.vx = (star.vx || 0) + (moveX / moveLength + awayX * 0.45) * force;
+    star.vy = (star.vy || 0) + (moveY / moveLength + awayY * 0.45) * force;
+    star.lastPushedBySoonAt = now;
+  });
+}
+
+async function playLinkedStarsSequence(link, stars, fishX = 0) {
+  const starsById = new Map(stars.map((star) => [star?.id, star]).filter(([id]) => id));
+  const endpoints = [link?.from, link?.to]
+    .map((id) => starsById.get(id))
+    .filter(Boolean);
+  for (const star of endpoints) {
+    star.previewPlaying = true;
+    star.previewStartedAt = Date.now();
+    try {
+      await playEchostoryStarPreview(star, fishX, getStarOrdinal(stars, star));
+      star.previewPlayed = true;
+    } finally {
+      star.previewPlaying = false;
+      star.previewStartedAt = 0;
+    }
+  }
+}
+
+function startLinkResonance({ link, stars, fishX = 0, now = Date.now() }) {
+  if (!link?.id) return;
+  playLinkedStarsSequence(link, stars, fishX).finally(() => {
+    useSoonStore.setState((state) => {
+      const playback = state.echostory?.echostoryPlayback || {};
+      if (playback.activeLinkId !== link.id) return {};
+      return {
+        fish: {
+          ...(state.fish || {}),
+          vx: 0,
+          vy: 0,
+          resumeStartedAt: Date.now(),
+        },
+        echostory: {
+          ...(state.echostory || {}),
+          playbackCurrentLinkId: null,
+          echostoryPlayback: {
+            ...playback,
+            linkPlaybackActive: false,
+            activeLinkId: null,
+            silenceUntil: Date.now() + SOON_LINK_SILENCE_MS,
+            resumeStartedAt: Date.now(),
+          },
+        },
+      };
+    });
+  });
+}
+
 export function tickMyceliumPlayback(now = Date.now()) {
   const fullState = useSoonStore.getState();
   const echostory = fullState.echostory || {};
@@ -187,207 +250,123 @@ export function tickMyceliumPlayback(now = Date.now()) {
 
   const stars = (echostory.stars || []).filter((star) => star && !star.expired);
   const starsById = new Map(stars.map((star) => [star.id, star]).filter(([id]) => id));
-  const graph = makeGraph([{ id: ECHOSTORY_MUSIC_CORE_ID }, ...stars], echostory.links || []);
-  const connectedToCore = computeConnectedToCore(graph, ECHOSTORY_MUSIC_CORE_ID);
-  const targetNodeId = playback.playbackTargetNodeId || echostory.playbackTargetNodeId || null;
+  const links = getEchostoryLinks(echostory);
   const fish = fullState.fish || {};
+  const currentX = Number.isFinite(fish.x) ? fish.x : 0;
+  const currentY = Number.isFinite(fish.y) ? fish.y : 0;
 
-  if (targetNodeId) {
-    const target = getMyceliumNodePosition(targetNodeId, starsById);
-    if (!target || !connectedToCore.has(targetNodeId)) {
-      useSoonStore.setState((state) => ({
-        echostory: {
-          ...state.echostory,
-          playbackTargetNodeId: null,
-          playbackCurrentLinkId: null,
-          echostoryPlayback: {
-            ...(state.echostory?.echostoryPlayback || {}),
-            playbackTargetNodeId: null,
-            targetNodeId: null,
-            segmentStartX: null,
-            segmentStartY: null,
-          },
-        },
-      }));
-      return true;
-    }
-
-    const currentX = Number.isFinite(fish.x) ? fish.x : 0;
-    const currentY = Number.isFinite(fish.y) ? fish.y : 0;
-    const arenaRadius = getPlaybackArenaRadius(fullState);
-    const resonance = updateResonantRipples(fullState.resonantRipples || [], fish, now);
-    const wanderUntil = getRosaWanderUntil(playback, now);
-    const directTargetDistance = Math.hypot((target.x || 0) - currentX, (target.y || 0) - currentY);
-    const shouldWander = directTargetDistance > MYCELIUM_ARRIVAL_THRESHOLD * 2.4 && now < wanderUntil;
-    let roamWaypoint = playback.roamWaypoint || null;
-    if (shouldWander && shouldRefreshWaypoint(roamWaypoint, currentX, currentY, now)) {
-      roamWaypoint = pickRosaWanderWaypoint({ currentX, currentY, target, arenaRadius, now });
-    }
-    const navigationTarget = shouldWander && roamWaypoint ? roamWaypoint : target;
-    const targetX = navigationTarget.x + resonance.forceX * ROSA_RESONANCE_TARGET_OFFSET;
-    const targetY = navigationTarget.y + resonance.forceY * ROSA_RESONANCE_TARGET_OFFSET;
-    const step = computeCuriousFishStep({
-      currentX,
-      currentY,
-      targetX,
-      targetY,
-      segmentStartX: Number.isFinite(playback.segmentStartX) ? playback.segmentStartX : currentX,
-      segmentStartY: Number.isFinite(playback.segmentStartY) ? playback.segmentStartY : currentY,
-      now,
-      seed: Number.isFinite(playback.swimSeed) ? playback.swimSeed : 0,
-    });
-    const driftX = resonance.forceX * ROSA_RESONANCE_DRIFT_STEP;
-    const driftY = resonance.forceY * ROSA_RESONANCE_DRIFT_STEP;
-    const nextX = step.x + driftX;
-    const nextY = step.y + driftY;
-    const angle = Math.hypot(step.vx + driftX, step.vy + driftY) > 0.001 ? Math.atan2(step.vy + driftY, step.vx + driftX) : step.angle;
-    const arrived = !shouldWander && step.arrived;
-    const fromNodeId = playback.currentNodeId || ECHOSTORY_MUSIC_CORE_ID;
-
-    logFishPlayback("[fish move]", nextX, nextY, targetNodeId, shouldWander ? "wander" : "read");
-
+  if (playback.linkPlaybackActive || (Number.isFinite(playback.silenceUntil) && now < playback.silenceUntil)) {
     useSoonStore.setState((state) => ({
-      resonantRipples: resonance.ripples,
       fish: {
         ...(state.fish || {}),
         visible: true,
-        x: nextX,
-        y: nextY,
-        targetX,
-        targetY,
-        vx: step.vx + driftX,
-        vy: step.vy + driftY,
-        angle,
-      },
-      echostory: {
-        ...(state.echostory || {}),
-        playbackTargetNodeId: arrived ? null : targetNodeId,
-        playbackCurrentLinkId: null,
-        echostoryPlayback: {
-          ...(state.echostory?.echostoryPlayback || {}),
-          active: true,
-          visible: true,
-          x: nextX,
-          y: nextY,
-          targetNodeId: arrived ? null : targetNodeId,
-          semanticTargetNodeId: arrived ? null : targetNodeId,
-          segmentStartX: arrived ? null : state.echostory?.echostoryPlayback?.segmentStartX,
-          segmentStartY: arrived ? null : state.echostory?.echostoryPlayback?.segmentStartY,
-          currentNodeId: arrived ? targetNodeId : fromNodeId,
-          playbackTargetNodeId: arrived ? null : targetNodeId,
-          roamWaypoint: arrived ? null : roamWaypoint,
-          wanderUntil: arrived ? 0 : wanderUntil,
-          arrivedNodeId: arrived ? null : state.echostory?.echostoryPlayback?.arrivedNodeId,
-          waitingUntil: arrived ? 0 : state.echostory?.echostoryPlayback?.waitingUntil,
-        },
-      },
-    }));
-    return true;
-  }
-
-  const currentNodeId = playback.currentNodeId || ECHOSTORY_MUSIC_CORE_ID;
-  const currentStar = starsById.get(currentNodeId);
-  const path = Array.isArray(playback.path) ? playback.path : [];
-
-  if (path[path.length - 1] !== currentNodeId) {
-    const visited = { ...(playback.visited || {}) };
-    visited[currentNodeId] = (visited[currentNodeId] || 0) + 1;
-    const waitingUntil = now + (currentNodeId === ECHOSTORY_MUSIC_CORE_ID ? MYCELIUM_CORE_PAUSE_MS : MYCELIUM_STAR_PAUSE_MS);
-
-    if (currentNodeId === ECHOSTORY_MUSIC_CORE_ID) {
-      speakCoreBubble(now);
-    } else if (currentStar) {
-      triggerEchostoryStarPreview(currentStar, {
-        fishX: Number.isFinite(fish.x) ? fish.x : 0,
-        colorOrdinal: getStarOrdinal(stars, currentStar),
-      });
-    }
-
-    useSoonStore.setState((state) => ({
-      echostory: {
-        ...(state.echostory || {}),
-        activeLine: currentNodeId === ECHOSTORY_MUSIC_CORE_ID ? "...et bientôt..." : (currentStar?.text || currentStar?.label || "Étoile MP3"),
-        playbackTargetNodeId: null,
-        echostoryPlayback: {
-          ...(state.echostory?.echostoryPlayback || {}),
-          active: true,
-          visible: true,
-          x: Number.isFinite(state.fish?.x) ? state.fish.x : 0,
-          y: Number.isFinite(state.fish?.y) ? state.fish.y : 0,
-          currentNodeId,
-          visited,
-          path: [...path, currentNodeId],
-          waitingUntil,
-          arrivedNodeId: currentNodeId,
-        },
-      },
-    }));
-    return true;
-  }
-
-  if (currentStar?.previewPlaying) return true;
-  if (Number.isFinite(playback.waitingUntil) && now < playback.waitingUntil) return true;
-
-  const nextNodeId = chooseNextMyceliumNode({
-    currentNodeId,
-    graph,
-    connectedToCore,
-    visited: playback.visited || {},
-    coreId: ECHOSTORY_MUSIC_CORE_ID,
-  });
-
-  if (!nextNodeId) {
-    useSoonStore.setState((state) => ({
-      fish: {
-        ...(state.fish || {}),
-        visible: false,
+        targetX: currentX,
+        targetY: currentY,
         vx: 0,
         vy: 0,
       },
       echostory: {
         ...(state.echostory || {}),
-        activeLine: null,
-        playbackTargetNodeId: null,
-        playbackCurrentLinkId: null,
+        playbackCurrentLinkId: playback.activeLinkId || state.echostory?.playbackCurrentLinkId || null,
         echostoryPlayback: {
           ...(state.echostory?.echostoryPlayback || {}),
-          active: false,
-          visible: false,
-          playbackTargetNodeId: null,
-          targetNodeId: null,
-          segmentStartX: null,
-          segmentStartY: null,
+          visible: true,
+          x: currentX,
+          y: currentY,
         },
       },
     }));
     return true;
   }
 
+  const arenaRadius = getPlaybackArenaRadius(fullState);
+  const resonance = updateResonantRipples(fullState.resonantRipples || [], fish, now);
+  let roamWaypoint = playback.roamWaypoint || null;
+  if (shouldRefreshWaypoint(roamWaypoint, currentX, currentY, now)) {
+    roamWaypoint = pickFreeSwimWaypoint({ arenaRadius, now });
+  }
+
+  const targetX = roamWaypoint.x + resonance.forceX * SOON_RESONANCE_TARGET_OFFSET;
+  const targetY = roamWaypoint.y + resonance.forceY * SOON_RESONANCE_TARGET_OFFSET;
+  const resumeStartedAt = Number.isFinite(playback.resumeStartedAt) ? playback.resumeStartedAt : (playback.startedAt || now);
+  const resumeRatio = Math.max(0.22, Math.min(1, (now - resumeStartedAt) / SOON_FREE_SWIM_RESUME_MS));
+  const step = computeCuriousFishStep({
+    currentX,
+    currentY,
+    targetX,
+    targetY,
+    segmentStartX: Number.isFinite(playback.segmentStartX) ? playback.segmentStartX : currentX,
+    segmentStartY: Number.isFinite(playback.segmentStartY) ? playback.segmentStartY : currentY,
+    now,
+    seed: Number.isFinite(playback.swimSeed) ? playback.swimSeed : 1.618,
+    speed: SOON_FREE_SWIM_SPEED * resumeRatio,
+    arrivalThreshold: SOON_WAYPOINT_REACH_RADIUS * 0.32,
+  });
+  const driftX = resonance.forceX * SOON_RESONANCE_DRIFT_STEP;
+  const driftY = resonance.forceY * SOON_RESONANCE_DRIFT_STEP;
+  const nextX = step.x + driftX;
+  const nextY = step.y + driftY;
+  const crossedLink = findCrossedLink({
+    links,
+    starsById,
+    fromX: currentX,
+    fromY: currentY,
+    toX: nextX,
+    toY: nextY,
+    cooldowns: playback.linkCooldowns || {},
+    now,
+  });
+
+  applyBilliardImpulseToStars(stars, currentX, currentY, nextX, nextY, now);
+
+  const angle = Math.hypot(step.vx + driftX, step.vy + driftY) > 0.001
+    ? Math.atan2(step.vy + driftY, step.vx + driftX)
+    : step.angle;
+
   useSoonStore.setState((state) => ({
+    resonantRipples: resonance.ripples,
+    fish: {
+      ...(state.fish || {}),
+      visible: true,
+      x: nextX,
+      y: nextY,
+      targetX,
+      targetY,
+      vx: crossedLink ? 0 : step.vx + driftX,
+      vy: crossedLink ? 0 : step.vy + driftY,
+      angle,
+    },
     echostory: {
       ...(state.echostory || {}),
-      playbackTargetNodeId: nextNodeId,
-      playbackCurrentLinkId: null,
+      activeLine: crossedLink ? "Le fil résonne comme une harpe…" : state.echostory?.activeLine,
+      playbackCurrentLinkId: crossedLink?.id || null,
+      playbackTargetNodeId: null,
       echostoryPlayback: {
         ...(state.echostory?.echostoryPlayback || {}),
         active: true,
         visible: true,
-        targetNodeId: nextNodeId,
-        playbackTargetNodeId: nextNodeId,
-        segmentStartX: Number.isFinite(state.fish?.x) ? state.fish.x : 0,
-        segmentStartY: Number.isFinite(state.fish?.y) ? state.fish.y : 0,
-        swimSeed: ((state.echostory?.echostoryPlayback?.path || []).length + 1) * 1.618,
-        roamWaypoint: pickRosaWanderWaypoint({
-          currentX: Number.isFinite(state.fish?.x) ? state.fish.x : 0,
-          currentY: Number.isFinite(state.fish?.y) ? state.fish.y : 0,
-          target: getMyceliumNodePosition(nextNodeId, new Map(((state.echostory?.stars || []).filter((star) => star && !star.expired)).map((star) => [star.id, star]).filter(([id]) => id))) || { x: 0, y: 0 },
-          arenaRadius: getPlaybackArenaRadius(state),
-          now,
-        }),
-        wanderUntil: now + ROSA_WANDER_MIN_MS + Math.random() * (ROSA_WANDER_MAX_MS - ROSA_WANDER_MIN_MS),
-        waitingUntil: 0,
+        x: nextX,
+        y: nextY,
+        currentNodeId: null,
+        playbackTargetNodeId: null,
+        targetNodeId: null,
+        semanticTargetNodeId: null,
+        segmentStartX: step.arrived ? nextX : (Number.isFinite(state.echostory?.echostoryPlayback?.segmentStartX) ? state.echostory.echostoryPlayback.segmentStartX : currentX),
+        segmentStartY: step.arrived ? nextY : (Number.isFinite(state.echostory?.echostoryPlayback?.segmentStartY) ? state.echostory.echostoryPlayback.segmentStartY : currentY),
+        roamWaypoint: step.arrived ? pickFreeSwimWaypoint({ arenaRadius, now }) : roamWaypoint,
+        swimSeed: step.arrived ? Math.random() * Math.PI * 2 : (state.echostory?.echostoryPlayback?.swimSeed || 1.618),
+        linkPlaybackActive: Boolean(crossedLink),
+        activeLinkId: crossedLink?.id || null,
+        linkCooldowns: crossedLink ? {
+          ...(state.echostory?.echostoryPlayback?.linkCooldowns || {}),
+          [crossedLink.id]: now,
+        } : (state.echostory?.echostoryPlayback?.linkCooldowns || {}),
+        resumeStartedAt: crossedLink ? 0 : resumeStartedAt,
+        silenceUntil: 0,
       },
     },
   }));
+
+  if (crossedLink) startLinkResonance({ link: crossedLink, stars, fishX: nextX, now });
   return true;
 }
