@@ -185,6 +185,10 @@ export function useSoonPointer({
     );
   }
 
+  function isFishPlaybackActive() {
+    return Boolean(stateRef.current?.echostory?.echostoryPlayback?.active);
+  }
+
   function getEchostoryStars() {
     return Array.isArray(stateRef.current?.echostory?.stars)
       ? stateRef.current.echostory.stars
@@ -192,6 +196,7 @@ export function useSoonPointer({
   }
 
   function findEchostoryStarAt(point) {
+    if (isFishPlaybackActive()) return null;
     if (stateRef.current?.mode !== "echostory" && stateRef.current?.mode !== "reso") return null;
     const stars = [...getEchostoryStars()].reverse();
 
@@ -220,6 +225,7 @@ export function useSoonPointer({
   }
 
   function updateDragContacts(draggedStar) {
+    if (isFishPlaybackActive()) return;
     if (!draggedStar?.id || draggedStar.expired) return;
     const contactSet = activeContactsRef?.current || (pointerRef.current.activeContactsRef ||= new Set());
     const candidates = [
@@ -278,6 +284,7 @@ export function useSoonPointer({
   }
 
   function beginStarDrag(event, star, point) {
+    if (isFishPlaybackActive()) return false;
     if (!star?.id || star.expired) return false;
 
     event.preventDefault?.();
@@ -320,6 +327,7 @@ export function useSoonPointer({
   }
 
   function moveActiveStar(event) {
+    if (isFishPlaybackActive()) return false;
     const activeStarId = pointerRef.current.activeStarId;
     if (!activeStarId) return false;
     if (

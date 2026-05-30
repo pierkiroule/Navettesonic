@@ -70,3 +70,135 @@ test('cas 5: toutes les étoiles visitées reviennent au core puis stoppent', ()
   assert.equal(next({ currentNodeId: 'A', graph, connectedToCore, visited }), core);
   assert.equal(next({ currentNodeId: core, graph, connectedToCore, visited }), null);
 });
+
+import { pushNearbyEchostoryStars } from '../src/components/soon/useSoonCanvasLoop.js';
+import { tickMyceliumPlayback } from '../src/core/echostory/fishPlaybackRuntime.js';
+import { useSoonStore } from '../src/store/useSoonStore.js';
+
+function snapshotStars(stars) {
+  return stars.map((star) => ({ id: star.id, x: star.x, y: star.y, vx: star.vx, vy: star.vy }));
+}
+
+function snapshotLinks(links) {
+  return links.map((link) => ({ id: link.id, from: link.from, to: link.to }));
+}
+
+test('fish playback freezes star positions and links across contact/physics ticks', () => {
+  const stars = [
+    { id: 'A', x: 120, y: 0, vx: 18, vy: -7, r: 34 },
+    { id: 'B', x: 260, y: 0, vx: -12, vy: 5, r: 34 },
+  ];
+  const links = [link(core, 'A'), link('A', 'B')];
+  const current = {
+    mode: 'echostory',
+    arenaRadius: 1200,
+    fish: { x: 120, y: 0 },
+    echostory: {
+      stars,
+      links: links.map((item) => ({ ...item })),
+      constellationLinks: links.map((item) => ({ ...item })),
+      echostoryPlayback: { active: true },
+    },
+  };
+  const beforeStars = snapshotStars(stars);
+  const beforeLinks = snapshotLinks(current.echostory.links);
+
+  for (let i = 0; i < 5; i += 1) pushNearbyEchostoryStars(current, 1000 + i * 16);
+
+  assert.deepEqual(snapshotStars(stars), beforeStars);
+  assert.deepEqual(snapshotLinks(current.echostory.links), beforeLinks);
+});
+
+test('clicking fish playback action makes Soon visible at the core', () => {
+  useSoonStore.setState({
+    fish: { x: 99, y: -40, vx: 3, vy: 2, visible: false },
+    echostory: { stars: [], links: [], echostoryPlayback: { active: false, visible: false } },
+  });
+
+  useSoonStore.getState().startMyceliumPlayback();
+  const state = useSoonStore.getState();
+
+  assert.equal(state.fish.visible, true);
+  assert.equal(state.fish.x, 0);
+  assert.equal(state.fish.y, 0);
+  assert.equal(state.echostory.echostoryPlayback.active, true);
+  assert.equal(state.echostory.echostoryPlayback.visible, true);
+});
+
+test('during playback Soon moves while stars and links stay fixed', () => {
+  const stars = [{ id: 'A', x: 96, y: 0, vx: 13, vy: -9, r: 34, text: 'A' }];
+  const links = [link(core, 'A')];
+  useSoonStore.setState({
+    fish: { x: 0, y: 0, vx: 0, vy: 0, angle: 0, visible: true },
+    echostory: {
+      stars,
+      links: links.map((item) => ({ ...item })),
+      constellationLinks: links.map((item) => ({ ...item })),
+      activeLine: null,
+      playbackTargetNodeId: 'A',
+      playbackCurrentLinkId: link(core, 'A').id,
+      echostoryPlayback: {
+        active: true,
+        visible: true,
+        currentNodeId: core,
+        playbackTargetNodeId: 'A',
+        targetNodeId: 'A',
+        visited: { [core]: 1 },
+        path: [core],
+        waitingUntil: 0,
+      },
+    },
+  });
+  const beforeStars = snapshotStars(stars);
+  const beforeLinks = snapshotLinks(useSoonStore.getState().echostory.links);
+
+  tickMyceliumPlayback(2000);
+  const state = useSoonStore.getState();
+
+  assert.notEqual(state.fish.x, 0);
+  assert.equal(state.fish.y, 0);
+  assert.deepEqual(snapshotStars(state.echostory.stars), beforeStars);
+  assert.deepEqual(snapshotLinks(state.echostory.links), beforeLinks);
+});
+
+test('on arrival Soon chooses a new target without moving the reached star', () => {
+  const stars = [
+    { id: 'A', x: 10, y: 0, vx: 4, vy: 5, r: 34, text: 'A' },
+    { id: 'B', x: 80, y: 0, vx: -3, vy: 2, r: 34, text: 'B' },
+  ];
+  const links = [link(core, 'A'), link('A', 'B')];
+  useSoonStore.setState({
+    fish: { x: 0, y: 0, vx: 0, vy: 0, angle: 0, visible: true },
+    echostory: {
+      stars,
+      links: links.map((item) => ({ ...item })),
+      constellationLinks: links.map((item) => ({ ...item })),
+      playbackTargetNodeId: 'A',
+      playbackCurrentLinkId: link(core, 'A').id,
+      echostoryPlayback: {
+        active: true,
+        visible: true,
+        currentNodeId: core,
+        playbackTargetNodeId: 'A',
+        targetNodeId: 'A',
+        visited: { [core]: 1 },
+        path: [core],
+        waitingUntil: 0,
+      },
+    },
+  });
+  const reachedStarBefore = { ...stars[0] };
+
+  tickMyceliumPlayback(3000);
+  tickMyceliumPlayback(4000);
+  useSoonStore.getState().echostory.stars[0].previewPlaying = false;
+  tickMyceliumPlayback(5000);
+  const state = useSoonStore.getState();
+
+  assert.equal(state.echostory.echostoryPlayback.currentNodeId, 'A');
+  assert.equal(state.echostory.echostoryPlayback.playbackTargetNodeId, 'B');
+  assert.deepEqual(
+    { x: state.echostory.stars[0].x, y: state.echostory.stars[0].y, vx: state.echostory.stars[0].vx, vy: state.echostory.stars[0].vy },
+    { x: reachedStarBefore.x, y: reachedStarBefore.y, vx: reachedStarBefore.vx, vy: reachedStarBefore.vy }
+  );
+});
