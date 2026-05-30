@@ -13,7 +13,7 @@ export const createEchostorySlice = (set) => ({
       echostoryPlayback: {
         active: true,
         visible: true,
-        currentNodeId: "core-bubble",
+        currentNodeId: null,
         visited: {},
         path: [],
         startedAt: Date.now(),
@@ -26,6 +26,11 @@ export const createEchostorySlice = (set) => ({
         y: 0,
         waitingUntil: 0,
         arrivedNodeId: null,
+        roamWaypoint: null,
+        linkPlaybackActive: false,
+        activeLinkId: null,
+        silenceUntil: 0,
+        linkCooldowns: {},
       },
     },
     fish: {
@@ -55,6 +60,9 @@ export const createEchostorySlice = (set) => ({
         targetNodeId: null,
         segmentStartX: null,
         segmentStartY: null,
+        linkPlaybackActive: false,
+        activeLinkId: null,
+        silenceUntil: 0,
       },
     },
     fish: {

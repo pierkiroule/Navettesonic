@@ -83,7 +83,7 @@ function snapshotLinks(links) {
   return links.map((link) => ({ id: link.id, from: link.from, to: link.to }));
 }
 
-test('fish playback freezes star positions and links across contact/physics ticks', () => {
+test('fish playback lets Soon pass without moving stars or breaking links', () => {
   const stars = [
     { id: 'A', x: 120, y: 0, vx: 18, vy: -7, r: 34 },
     { id: 'B', x: 260, y: 0, vx: -12, vy: 5, r: 34 },
@@ -101,12 +101,10 @@ test('fish playback freezes star positions and links across contact/physics tick
     },
   };
   const beforeStars = snapshotStars(stars);
-  const beforeLinks = snapshotLinks(current.echostory.links);
-
   for (let i = 0; i < 5; i += 1) pushNearbyEchostoryStars(current, 1000 + i * 16);
 
   assert.deepEqual(snapshotStars(stars), beforeStars);
-  assert.deepEqual(snapshotLinks(current.echostory.links), beforeLinks);
+  assert.deepEqual(snapshotLinks(current.echostory.links), snapshotLinks(links));
 });
 
 test('clicking fish playback action makes Soon visible at the core', () => {
@@ -185,46 +183,42 @@ test('during playback Soon moves while stars and links stay fixed', () => {
   assert.deepEqual(snapshotLinks(state.echostory.links), beforeLinks);
 });
 
-test('on arrival Soon chooses a new target without moving the reached star', () => {
+test('traverser un lien met le fil en résonance et pause Soon', () => {
   const stars = [
-    { id: 'A', x: 10, y: 0, vx: 4, vy: 5, r: 34, text: 'A' },
-    { id: 'B', x: 80, y: 0, vx: -3, vy: 2, r: 34, text: 'B' },
+    { id: 'A', x: 0, y: -80, vx: 0, vy: 0, r: 34, text: 'A' },
+    { id: 'B', x: 0, y: 80, vx: 0, vy: 0, r: 34, text: 'B' },
   ];
-  const links = [link(core, 'A'), link('A', 'B')];
+  const links = [link('A', 'B')];
   useSoonStore.setState({
-    fish: { x: 0, y: 0, vx: 0, vy: 0, angle: 0, visible: true },
+    resonantRipples: [],
+    fish: { x: -2, y: 0, vx: 0, vy: 0, angle: 0, visible: true, arenaRadius: 1200 },
     echostory: {
       stars,
       links: links.map((item) => ({ ...item })),
       constellationLinks: links.map((item) => ({ ...item })),
-      playbackTargetNodeId: 'A',
-      playbackCurrentLinkId: link(core, 'A').id,
+      playbackCurrentLinkId: null,
       echostoryPlayback: {
         active: true,
         visible: true,
-        currentNodeId: core,
-        playbackTargetNodeId: 'A',
-        targetNodeId: 'A',
-        visited: { [core]: 1 },
-        path: [core],
+        roamWaypoint: { x: 500, y: 0, bornAt: 0 },
+        segmentStartX: -2,
+        segmentStartY: 0,
+        swimSeed: 0,
+        linkCooldowns: {},
+        resumeStartedAt: 0,
         waitingUntil: 0,
       },
     },
   });
-  const reachedStarBefore = { ...stars[0] };
 
   tickMyceliumPlayback(3000);
-  tickMyceliumPlayback(4000);
-  useSoonStore.getState().echostory.stars[0].previewPlaying = false;
-  tickMyceliumPlayback(5000);
   const state = useSoonStore.getState();
 
-  assert.equal(state.echostory.echostoryPlayback.currentNodeId, 'A');
-  assert.equal(state.echostory.echostoryPlayback.playbackTargetNodeId, 'B');
-  assert.deepEqual(
-    { x: state.echostory.stars[0].x, y: state.echostory.stars[0].y, vx: state.echostory.stars[0].vx, vy: state.echostory.stars[0].vy },
-    { x: reachedStarBefore.x, y: reachedStarBefore.y, vx: reachedStarBefore.vx, vy: reachedStarBefore.vy }
-  );
+  assert.equal(state.echostory.playbackCurrentLinkId, 'A-B');
+  assert.equal(state.echostory.echostoryPlayback.linkPlaybackActive, true);
+  assert.equal(state.echostory.echostoryPlayback.activeLinkId, 'A-B');
+  assert.equal(state.fish.vx, 0);
+  assert.equal(state.fish.vy, 0);
 });
 
 test('lecture mycélienne: Soon erre librement avant de lire une étoile sans suivre la ligne visible', () => {
@@ -260,7 +254,7 @@ test('lecture mycélienne: Soon erre librement avant de lire une étoile sans su
   tickMyceliumPlayback(2000);
   const state = useSoonStore.getState();
 
-  assert.equal(state.echostory.echostoryPlayback.playbackTargetNodeId, 'A');
+  assert.equal(state.echostory.echostoryPlayback.playbackTargetNodeId, null);
   assert.equal(state.echostory.playbackCurrentLinkId, null);
   assert.ok(state.echostory.echostoryPlayback.roamWaypoint, 'un waypoint libre est créé');
   assert.notEqual(state.fish.targetX, stars[0].x, 'la cible visuelle de nage n’est pas directement l’étoile');

@@ -257,7 +257,7 @@ async function playHtmlAudioFallback(url, volume = 0.85) {
 
 let activeEchostoryStarAudioId = null;
 
-async function playEchostoryStarPreview(star, fishX = 0, colorOrdinal = 0) {
+export async function playEchostoryStarPreview(star, fishX = 0, colorOrdinal = 0) {
   if (!star) return false;
   const pan = Math.max(-0.85, Math.min(0.85, fishX / 420));
   const candidates = getEchostorySampleUrlCandidates(star, colorOrdinal);
@@ -568,12 +568,10 @@ function updateEchostoryConstellations(current, now = performance.now()) {
 
 export function pushNearbyEchostoryStars(current, now = performance.now()) {
   if (current?.mode !== "echostory" && current?.mode !== "reso") return;
-  if (current?.echostory?.echostoryPlayback?.active) {
-    console.log("[network frozen]", true);
-    return;
-  }
+  if (current?.echostory?.echostoryPlayback?.active) return;
   if (current?.contourRide?.active) return;
   if (!current?.fish) return;
+  const soonCanCollide = current.fish.visible === true;
   const fishX = Number.isFinite(current.fish.x) ? current.fish.x : 0;
   const fishY = Number.isFinite(current.fish.y) ? current.fish.y : 0;
   const TRIGGER_RADIUS = 84;
@@ -607,12 +605,7 @@ export function pushNearbyEchostoryStars(current, now = performance.now()) {
     const distance = Math.hypot(dx, dy);
     const isInside = distance < TRIGGER_RADIUS;
 
-    if (SOON_STAR_CONTACT_ENABLED && isInside) {
-      triggerEchostoryStarPreview(star, {
-        fishX,
-        colorOrdinal: colorOrdinalsByStarId.get(star.id || getEchostoryStarColorKey(star)) || 0,
-      });
-
+    if (soonCanCollide && SOON_STAR_CONTACT_ENABLED && isInside) {
       if (star.attachedToContour) {
         const lastOpenedAt = Number.isFinite(star.breathMenuOpenedAt) ? star.breathMenuOpenedAt : 0;
         if (!star.pendingBreathChoice && now - lastOpenedAt > STAR_BREATH_MENU_COOLDOWN_MS) {
@@ -708,6 +701,17 @@ export function useSoonCanvasLoop({
         x: Number.isFinite(center.x) ? center.x : 0,
         y: Number.isFinite(center.y) ? center.y : 0,
       };
+    }
+
+    function centerCameraOnArena(current = {}) {
+      const center = getArenaWorldCenter(current);
+      cameraRef.current.x = center.x;
+      cameraRef.current.y = center.y;
+    }
+
+    function shouldUseGlobalArenaView(current = {}) {
+      const zoom = Number.isFinite(current.viewZoom) ? current.viewZoom : 0;
+      return zoom <= 0.001;
     }
 
     function smoothFollowCameraToFish(fishWorld) {
@@ -836,7 +840,11 @@ export function useSoonCanvasLoop({
           }
         : null;
       if (!isEditMode) {
-        smoothFollowCameraToFish(fishWorld);
+        if (shouldUseGlobalArenaView(next)) {
+          centerCameraOnArena(next);
+        } else {
+          smoothFollowCameraToFish(fishWorld);
+        }
       }
 
       if (!isEditMode) {
