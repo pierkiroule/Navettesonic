@@ -141,5 +141,22 @@ export function resetEchostoryState() {
     constellationLinks: [],
     linkEffects: [],
     coreConnectedStarIds: [],
+    echostoryPlayback: {
+      active: false,
+      visible: false,
+      currentNodeId: "core-bubble",
+      visited: {},
+      path: [],
+      startedAt: null,
+      playbackTargetNodeId: null,
+      targetNodeId: null,
+      segmentStartX: null,
+      segmentStartY: null,
+      swimSeed: 0,
+      x: 0,
+      y: 0,
+    },
+    playbackTargetNodeId: null,
+    playbackCurrentLinkId: null,
   };
 }

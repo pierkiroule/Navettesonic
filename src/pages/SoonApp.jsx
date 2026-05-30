@@ -9,6 +9,7 @@ import { tickEchostoryTraversal } from "../core/echostory/echostoryTraversalEngi
 import { buildStarMp3Trace } from "../core/odysseoStarMp3Trace.js";
 import { toggleEchostoryLink } from "../core/echostory/echostoryConstellation.js";
 import { ECHOSTORY_SKELETONS } from "../data/echostorySkeletons.js";
+import { tickMyceliumPlayback } from "../core/echostory/fishPlaybackRuntime.js";
 import {
   parseWorkflowFromHash,
   persistWorkflowRoot,
@@ -97,6 +98,8 @@ export default function SoonApp({ onBack }) {
     resetEchostoryTraversal,
     finishEchostoryTraversal,
     setEchostoryActiveLine,
+    startMyceliumPlayback,
+    stopMyceliumPlayback,
   } = useSoonStore();
 
   const selectedBubble =
@@ -347,6 +350,17 @@ export default function SoonApp({ onBack }) {
     recenterFish();
   };
 
+  const handleToggleMyceliumPlayback = () => {
+    if (echostory?.echostoryPlayback?.active) {
+      stopMyceliumPlayback();
+      return;
+    }
+    setMode(SOON_MODE_ECHOSTORY);
+    setIsTravelPlaying(false);
+    setContourPlaybackPaused(false);
+    startMyceliumPlayback();
+  };
+
   const renderZoomControl = () => (
     <div className="tool-row fish-tools">
       <div className="fish-sliders fish-sliders-layout zoom-only-panel">
@@ -457,6 +471,7 @@ export default function SoonApp({ onBack }) {
         onTickFish={({ arenaRadius } = {}) => {
           const boosted = Date.now() < speedBoostUntilRef.current;
           const effectiveSwimSpeed = boosted ? SWIM_SPEED * 1.8 : SWIM_SPEED;
+          if (echostory?.echostoryPlayback?.active && tickMyceliumPlayback(Date.now())) return;
           if (isOdysseo) {
             if (isTravelPlaying) {
               if (contourPlaybackPaused) return;
@@ -543,6 +558,7 @@ export default function SoonApp({ onBack }) {
         echostory={echostory}
         contourPlaybackPaused={contourPlaybackPaused}
         onMoveEchostoryStar={(id, patch = {}) => {
+          if (useSoonStore.getState().echostory?.echostoryPlayback?.active) return;
           if (!id) return;
           useSoonStore.setState((state) => ({
             echostory: {
@@ -554,6 +570,7 @@ export default function SoonApp({ onBack }) {
           }));
         }}
         onToggleEchostoryLink={(fromId, toId, options = {}) => {
+          if (useSoonStore.getState().echostory?.echostoryPlayback?.active) return;
           if (!fromId || !toId) return;
           useSoonStore.setState((state) => ({
             echostory: toggleEchostoryLink(state.echostory || {}, fromId, toId, options),
@@ -588,6 +605,17 @@ export default function SoonApp({ onBack }) {
 
       <div className={`cockpit ${isOdysseo ? "odysseo-cockpit" : ""}`}>
         <div className="cockpit-buttons">
+          <div className="tool-row mycelium-tools">
+            <button
+              type="button"
+              className={`bubble-btn mode-toggle ${echostory?.echostoryPlayback?.active ? "active" : ""}`}
+              onClick={handleToggleMyceliumPlayback}
+              title="Lancer la lecture mycélienne de Soon"
+              aria-label="Lancer la lecture mycélienne de Soon"
+            >
+              🐟 {echostory?.echostoryPlayback?.active ? "Lecture mycélienne" : "Lire le mycélium"}
+            </button>
+          </div>
           {isOdysseo ? (
             <div className="odysseo-tools">
               <div className="tool-row primary-tools">

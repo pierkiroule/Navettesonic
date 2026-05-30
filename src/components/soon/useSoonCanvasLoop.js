@@ -567,6 +567,10 @@ function updateEchostoryConstellations(current, now = performance.now()) {
 
 export function pushNearbyEchostoryStars(current, now = performance.now()) {
   if (current?.mode !== "echostory" && current?.mode !== "reso") return;
+  if (current?.echostory?.echostoryPlayback?.active) {
+    console.log("[network frozen]", true);
+    return;
+  }
   if (current?.contourRide?.active) return;
   if (!current?.fish) return;
   const fishX = Number.isFinite(current.fish.x) ? current.fish.x : 0;

@@ -1,6 +1,69 @@
 import { advanceWave, collectStar, createWaveStars, getCurrentWaveKey, resetEchostoryState } from "../../core/echostory/echostoryEngine.js";
 
 export const createEchostorySlice = (set) => ({
+
+  startMyceliumPlayback: () => set((state) => {
+    console.log("[fish playback start]");
+    return {
+    echostory: {
+      ...(state.echostory || {}),
+      activeLine: "...et bientôt...",
+      playbackTargetNodeId: null,
+      playbackCurrentLinkId: null,
+      echostoryPlayback: {
+        active: true,
+        visible: true,
+        currentNodeId: "core-bubble",
+        visited: {},
+        path: [],
+        startedAt: Date.now(),
+        playbackTargetNodeId: null,
+        targetNodeId: null,
+        segmentStartX: null,
+        segmentStartY: null,
+        swimSeed: 0,
+        x: 0,
+        y: 0,
+        waitingUntil: 0,
+        arrivedNodeId: null,
+      },
+    },
+    fish: {
+      ...(state.fish || {}),
+      visible: true,
+      x: 0,
+      y: 0,
+      targetX: 0,
+      targetY: 0,
+      vx: 0,
+      vy: 0,
+      angle: 0,
+    },
+  };
+  }),
+  stopMyceliumPlayback: () => set((state) => ({
+    echostory: {
+      ...(state.echostory || {}),
+      activeLine: null,
+      playbackTargetNodeId: null,
+      playbackCurrentLinkId: null,
+      echostoryPlayback: {
+        ...((state.echostory || {}).echostoryPlayback || {}),
+        active: false,
+        visible: false,
+        playbackTargetNodeId: null,
+        targetNodeId: null,
+        segmentStartX: null,
+        segmentStartY: null,
+      },
+    },
+    fish: {
+      ...(state.fish || {}),
+      visible: false,
+      vx: 0,
+      vy: 0,
+    },
+  })),
   triggerEscapeCinematic: () => set((state) => ({
     echostory: state.echostory?.escapeState === "idle"
       ? { ...state.echostory, escapeState: "approach" }
