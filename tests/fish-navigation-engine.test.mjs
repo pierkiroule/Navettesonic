@@ -50,7 +50,7 @@ test('nage libre: Soon choisit une cible organique sans suivre directement les l
   assert.notEqual(Math.hypot(next.fish.vx, next.fish.vy), 0);
 });
 
-test('nage libre: une ancienne intention au centre est remplacée pour éviter que Soon oscille sur lui-même', () => {
+test('nage libre: une ancienne cible complexe est remplacée par un waypoint simple', () => {
   const world = generateLabybulle(1);
   const now = performance.now();
   const state = {
@@ -74,12 +74,12 @@ test('nage libre: une ancienne intention au centre est remplacée pour éviter q
 
   const next = tickFishEngine(state, { arenaRadius: 1200 });
 
-  assert.notEqual(next.fish.freeSwimTarget.kind, 'dance');
-  assert.ok(Math.hypot(next.fish.freeSwimTarget.x, next.fish.freeSwimTarget.y) > 250);
+  assert.equal(next.fish.freeSwimTarget.kind, 'waypoint');
+  assert.ok(Math.hypot(next.fish.freeSwimTarget.x, next.fish.freeSwimTarget.y) > 80);
   assert.ok(Math.hypot(next.fish.vx, next.fish.vy) > 0.05);
 });
 
-test('nage libre: le flux continu éloigne Soon du centre sans valeurs instables', () => {
+test('nage libre: les waypoints simples éloignent Soon du centre sans valeurs instables', () => {
   const world = generateLabybulle(1);
   let state = {
     ...baseState(world, {
@@ -108,7 +108,7 @@ test('nage libre: le flux continu éloigne Soon du centre sans valeurs instables
     assert.ok(Number.isFinite(state.fish.vy));
   }
 
-  assert.equal(state.fish.freeSwimTarget.kind, 'flow');
+  assert.equal(state.fish.freeSwimTarget.kind, 'waypoint');
   assert.ok(Math.hypot(state.fish.x, state.fish.y) > 80);
 });
 
