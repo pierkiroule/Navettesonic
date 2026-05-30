@@ -109,7 +109,7 @@ function getSafeSelectedWeaveEndpointIds(echostory = {}) {
   return rawIds
     .map(normalizeCoreId)
     .filter((id, index, ids) => id && ids.indexOf(id) === index && selectable.has(id))
-    .slice(0, 2);
+    .slice(0, 1);
 }
 
 function markSelectedWeaveEndpoints(echostory = {}, selectedIds = []) {
@@ -132,30 +132,18 @@ export function toggleEchostoryWeaveSelection(echostory = {}, endpointId, option
     return normalizeEchostoryNetwork(markSelectedWeaveEndpoints(echostory, getSafeSelectedWeaveEndpointIds(echostory)));
   }
 
-  const selectedIds = getSafeSelectedWeaveEndpointIds(echostory);
-  const selectedSet = new Set(selectedIds);
-  const alreadySelected = selectedSet.has(normalizedId);
-  const otherSelectedId = selectedIds.find((id) => id !== normalizedId) || null;
-  let next = echostory;
-  let nextSelectedIds;
+  const [selectedId = null] = getSafeSelectedWeaveEndpointIds(echostory);
 
-  if (alreadySelected) {
-    if (otherSelectedId && getEchostoryLinks(next).some((link) => (link?.id || makeLinkId(link?.from, link?.to)) === makeLinkId(normalizedId, otherSelectedId))) {
-      next = toggleEchostoryLink(next, normalizedId, otherSelectedId, options);
-    }
-    nextSelectedIds = selectedIds.filter((id) => id !== normalizedId);
-  } else {
-    nextSelectedIds = selectedIds.length >= 2 ? [normalizedId] : [...selectedIds, normalizedId];
-    if (nextSelectedIds.length === 2) {
-      const [from, to] = nextSelectedIds;
-      const linkExists = getEchostoryLinks(next).some((link) => (link?.id || makeLinkId(link?.from, link?.to)) === makeLinkId(from, to));
-      if (!linkExists) {
-        next = toggleEchostoryLink(next, from, to, options);
-      }
-    }
+  if (!selectedId) {
+    return normalizeEchostoryNetwork(markSelectedWeaveEndpoints(echostory, [normalizedId]));
   }
 
-  return normalizeEchostoryNetwork(markSelectedWeaveEndpoints(next, nextSelectedIds));
+  if (selectedId === normalizedId) {
+    return normalizeEchostoryNetwork(markSelectedWeaveEndpoints(echostory, [selectedId]));
+  }
+
+  const next = toggleEchostoryLink(echostory, selectedId, normalizedId, options);
+  return normalizeEchostoryNetwork(markSelectedWeaveEndpoints(next, []));
 }
 
 export function toggleEchostoryLink(echostory = {}, a, b, options = {}) {

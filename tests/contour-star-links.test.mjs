@@ -86,25 +86,34 @@ test('toggleEchostoryWeaveSelection tisse par sélection sans décrocher les ét
   assert.equal(echostory.links.length, 0);
 
   echostory = toggleEchostoryWeaveSelection(echostory, 'star-2', { restLength: 160, now: 1100 });
-  assert.deepEqual(echostory.selectedWeaveEndpointIds, ['star-1', 'star-2']);
+  assert.deepEqual(echostory.selectedWeaveEndpointIds, []);
   assert.equal(echostory.stars[0].attachedToContour, true);
   assert.equal(echostory.stars[1].attachedToContour, true);
+  assert.equal(echostory.stars[0].selectedForWeaving, false);
+  assert.equal(echostory.stars[1].selectedForWeaving, false);
   assert.deepEqual(echostory.links.map((link) => link.id), [makeLinkId('star-1', 'star-2')]);
 });
 
-test('toggleEchostoryWeaveSelection relie le point central et délie en retapant une sélection liée', () => {
+test('toggleEchostoryWeaveSelection relie puis délie seulement avec deux endpoints', () => {
   let echostory = makeState();
 
   echostory = toggleEchostoryWeaveSelection(echostory, ECHOSTORY_MUSIC_CORE_ID, { now: 1000 });
   echostory = toggleEchostoryWeaveSelection(echostory, 'star-1', { restLength: 1168, now: 1100 });
 
-  assert.deepEqual(echostory.selectedWeaveEndpointIds, [ECHOSTORY_MUSIC_CORE_ID, 'star-1']);
+  assert.deepEqual(echostory.selectedWeaveEndpointIds, []);
   assert.equal(echostory.links[0].kind, 'music-core');
   assert.equal(echostory.links[0].id, makeLinkId(ECHOSTORY_MUSIC_CORE_ID, 'star-1'));
 
   echostory = toggleEchostoryWeaveSelection(echostory, 'star-1', { now: 1200 });
+  echostory = toggleEchostoryWeaveSelection(echostory, 'star-1', { now: 1300 });
 
-  assert.deepEqual(echostory.selectedWeaveEndpointIds, [ECHOSTORY_MUSIC_CORE_ID]);
+  assert.deepEqual(echostory.selectedWeaveEndpointIds, ['star-1']);
+  assert.equal(echostory.links.length, 1);
+  assert.equal(echostory.stars[0].selectedForWeaving, true);
+
+  echostory = toggleEchostoryWeaveSelection(echostory, ECHOSTORY_MUSIC_CORE_ID, { now: 1400 });
+
+  assert.deepEqual(echostory.selectedWeaveEndpointIds, []);
   assert.equal(echostory.links.length, 0);
   assert.equal(echostory.stars[0].selectedForWeaving, false);
 });
