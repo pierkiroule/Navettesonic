@@ -1,13 +1,13 @@
 import { ECHOSTORY_WAVES } from "../../data/echostoryFragments.js";
+import { ARENA_INNER_BOUNDARY_INSET } from "../constants.js";
 
 const WAVE_KEYS = ["immersion", "bascule", "ouverture"];
 const MAX_COLLECTED_STARS = 15;
 const STAR_PHASE_COUNT = 3;
 const STARS_PER_PHASE = 5;
 const TOTAL_STARS = STAR_PHASE_COUNT * STARS_PER_PHASE;
-const ARENA_RADIUS = 900;
-const STAR_INNER_RADIUS = 220;
-const STAR_OUTER_RADIUS = 780;
+const ARENA_RADIUS = 1200;
+const STAR_CONTOUR_RADIUS = ARENA_RADIUS - ARENA_INNER_BOUNDARY_INSET;
 const STAR_RADIUS_MIN = 34;
 const STAR_RADIUS_MAX = 48;
 const DEV_AUTO_COLLECT_STARS = Boolean(import.meta?.env?.DEV);
@@ -30,14 +30,12 @@ function createArenaStarLayout(count) {
   const safeCount = Math.max(1, count);
   return Array.from({ length: safeCount }, (_, index) => {
     const phaseIndex = Math.min(STAR_PHASE_COUNT - 1, Math.floor(index / STARS_PER_PHASE));
-    const phaseOffset = phaseIndex * 0.42;
-    const angle = -Math.PI / 2 + phaseOffset + (Math.PI * 2 * index) / safeCount;
-    const bandStep = index % STARS_PER_PHASE;
+    const angle = -Math.PI / 2 + (Math.PI * 2 * index) / safeCount;
     const radiusT = safeCount > 1 ? index / (safeCount - 1) : 0.5;
-    const radius = STAR_INNER_RADIUS + ((bandStep + 0.5) / STARS_PER_PHASE) * (STAR_OUTER_RADIUS - STAR_INNER_RADIUS);
+
     return {
-      x: Math.cos(angle) * radius,
-      y: Math.sin(angle) * radius,
+      x: Math.cos(angle) * STAR_CONTOUR_RADIUS,
+      y: Math.sin(angle) * STAR_CONTOUR_RADIUS,
       t: radiusT,
       phaseIndex,
       contourAngle: angle,
@@ -71,7 +69,7 @@ export function createWaveStars(waveIndex, count = TOTAL_STARS) {
     phase: (pearls[index]?.t ?? Math.random()) * Math.PI * 2,
     phaseIndex: pearls[index]?.phaseIndex ?? Math.min(STAR_PHASE_COUNT - 1, Math.floor(index / STARS_PER_PHASE)),
     color: PHASE_COLORS[pearls[index]?.phaseIndex ?? Math.min(STAR_PHASE_COUNT - 1, Math.floor(index / STARS_PER_PHASE))],
-    attachedToContour: false,
+    attachedToContour: true,
     contourAngle: pearls[index]?.contourAngle ?? Math.atan2(pearls[index]?.y || 0, pearls[index]?.x || 0),
     pendingBreathChoice: false,
     expiring: false,

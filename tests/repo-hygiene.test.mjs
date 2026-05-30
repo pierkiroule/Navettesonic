@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
 const INVALID_FILENAME_PATTERNS = [
   /[\u0000-\u001f]/u,
@@ -19,4 +19,13 @@ test('repository root has no invalid scratch-like filenames', () => {
     [],
     `Unexpected invalid filenames in repository root: ${invalid.join(', ')}`,
   );
+});
+
+test('SoonCanvas has no centered music composition button', () => {
+  const soonCanvas = readFileSync(new URL('../src/components/SoonCanvas.jsx', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('../src/style.css', import.meta.url), 'utf8');
+
+  assert.equal(soonCanvas.includes('🎵'), false);
+  assert.equal(soonCanvas.includes('composition-generator-btn'), false);
+  assert.equal(styles.includes('.composition-generator-btn'), false);
 });
