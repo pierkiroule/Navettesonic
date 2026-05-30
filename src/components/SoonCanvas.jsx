@@ -51,6 +51,7 @@ export default function SoonCanvas({
   pendingBlobAction = null,
   onBlobAction,
   onSetFishDepth,
+  onResonantTap,
   echostory,
   contourPlaybackPaused = false,
   onToggleContourPlayback,
@@ -230,6 +231,7 @@ export default function SoonCanvas({
     onOpenBeaconEditor,
     onToggleContourPlayback,
     onMoveEchostoryStar,
+    onResonantTap,
     onToggleEchostoryLink,
     activeContactsRef,
   });

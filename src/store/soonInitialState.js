@@ -68,6 +68,7 @@ export const initialState = {
     arenaLevel: getArenaLevelFromId(initialArenaId),
   },
   fishTrail: saved?.fishTrail || [],
+  resonantRipples: [],
   selectedBubbleId: null,
   odysseoPath: [], odysseoDepthMarkers: [], odysseoPathIndex: 0, odysseoDirection: 1, odysseoTool: "draw",
   traceCircuit: [],

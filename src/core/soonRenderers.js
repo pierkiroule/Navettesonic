@@ -41,6 +41,37 @@ function drawIsolated(ctx, drawFn) {
   }
 }
 
+function drawResonantRipples(ctx, ripples = [], time = performance.now()) {
+  ripples.forEach((ripple) => {
+    if (!ripple || !Number.isFinite(ripple.x) || !Number.isFinite(ripple.y)) return;
+    const bornAt = Number.isFinite(ripple.bornAt) ? ripple.bornAt : time;
+    const life = Number.isFinite(ripple.life) ? ripple.life : 1700;
+    const age = Number.isFinite(ripple.age) ? ripple.age : Math.max(0, time - bornAt);
+    if (age < 0 || age > life) return;
+    const progress = Math.max(0, Math.min(1, age / Math.max(1, life)));
+    const radius = Number.isFinite(ripple.radius) ? ripple.radius : age * (Number.isFinite(ripple.speed) ? ripple.speed : 0.58);
+    const alpha = (1 - progress) * 0.34;
+    if (alpha <= 0.01 || radius <= 0) return;
+
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.lineWidth = 1.2 + progress * 2.4;
+    ctx.strokeStyle = `rgba(144, 224, 239, ${alpha})`;
+    ctx.shadowColor = `rgba(125, 211, 252, ${alpha * 0.8})`;
+    ctx.shadowBlur = 12 + progress * 18;
+    ctx.beginPath();
+    ctx.arc(ripple.x, ripple.y, radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.lineWidth = 0.8;
+    ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.45})`;
+    ctx.beginPath();
+    ctx.arc(ripple.x, ripple.y, radius * 0.72, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  });
+}
+
 export function drawScene(ctx, rect, time, refs) {
   const { stateRef, arenaRef, cameraRef, enterWorld, exitWorld } = refs;
   const current = stateRef.current;
@@ -60,6 +91,7 @@ export function drawScene(ctx, rect, time, refs) {
     drawIsolated(ctx, () => drawArenaNightSky(ctx, arenaRef, time));
     drawIsolated(ctx, () => drawEcosystemWorld(ctx, current, time));
     drawIsolated(ctx, () => drawWorldParticles(ctx, arenaRef, time));
+    drawIsolated(ctx, () => drawResonantRipples(ctx, current.resonantRipples || [], time));
 
       if (current.mode === "reso") {
         drawIsolated(ctx, () => drawOdysseoPath(

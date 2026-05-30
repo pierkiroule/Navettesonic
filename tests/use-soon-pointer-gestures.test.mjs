@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { useSoonPointer } from '../src/components/soon/useSoonPointer.js';
 
 function createHarness() {
-  const calls = { fishTarget: 0, boostSpeed: 0, openMenu: 0 };
+  const calls = { fishTarget: 0, boostSpeed: 0, openMenu: 0, resonantTap: 0, lastResonance: null };
   const canvas = {
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
   };
@@ -17,6 +17,7 @@ function createHarness() {
     onFishTarget: () => { calls.fishTarget += 1; },
     onBoostFishSpeed: () => { calls.boostSpeed += 1; },
     onOpenFishContextMenu: () => { calls.openMenu += 1; },
+    onResonantTap: (x, y) => { calls.resonantTap += 1; calls.lastResonance = { x, y }; },
   });
   return { api, calls };
 }
@@ -26,10 +27,13 @@ function event(pointerId = 1, x = 500, y = 500) {
 }
 
 
-test('tap simple ne pilote plus Soon', () => {
+test('tap simple ne pilote plus Soon et crée une résonance', () => {
   const { api, calls } = createHarness();
   api.handlePointerDown(event());
   assert.equal(calls.fishTarget, 0);
+  assert.equal(calls.resonantTap, 1);
+  assert.ok(Math.abs(calls.lastResonance.x) < 0.0001);
+  assert.ok(Math.abs(calls.lastResonance.y) < 0.0001);
 });
 
 test('double tap ne pilote plus Soon ni son boost', () => {

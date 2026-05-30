@@ -21,5 +21,6 @@ const staged=loaded.map((b)=>({...b,x:(next?.fish?.x||0)+(b.x||0)*0.12,y:(next?.
 return{...next,bubbles:staged,arenaBubblesById:byArena,bubbleTransitionProgress:0,bubbleTransitionTarget:loaded,selectedBubbleId:null,selectedBeaconId:null};}),
 startFishTrailAt:(x,y)=>set(()=>({fishTrail:startFishTrailAt(x,y)})),
 addFishTrailPoint:(x,y)=>set((s)=>({fishTrail:addFishTrailPoint(s.fishTrail||[],x,y)})),
+addResonantTap:(x,y)=>set((s)=>{const now=typeof performance!=="undefined"&&typeof performance.now==="function"?performance.now():Date.now();const ripples=[...(s.resonantRipples||[]),{id:`tap-${Math.round(now)}-${Math.random().toString(36).slice(2,7)}`,x,y,bornAt:now,life:1700,speed:0.58,strength:1}].slice(-6);return{gamePaused:false,resonantRipples:ripples};}),
 applyBlobAction:()=>set((s)=>({ ...s, pendingBlobAction: null })),
 });

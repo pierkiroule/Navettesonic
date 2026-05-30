@@ -71,6 +71,7 @@ export default function SoonApp({ onBack }) {
     tickFish,
     applyBlobAction,
     setFishDepth,
+    addResonantTap,
     selectBubble,
     selectBeacon,
     moveBeacon,
@@ -555,6 +556,7 @@ export default function SoonApp({ onBack }) {
         onToggleMembraneSide={toggleMembraneSide}
         onBlobAction={applyBlobAction}
         onSetFishDepth={setFishDepth}
+        onResonantTap={addResonantTap}
         echostory={echostory}
         contourPlaybackPaused={contourPlaybackPaused}
         onMoveEchostoryStar={(id, patch = {}) => {
