@@ -98,7 +98,7 @@ function resolveFreeSwimTarget(state, arenaRadius, now) {
   return needsTarget ? pickFreeSwimTarget(state, arenaRadius, now) : currentTarget;
 }
 
-function updateResonantRipples(ripples = [], fish = {}, now = getNow()) {
+export function updateResonantRipples(ripples = [], fish = {}, now = getNow()) {
   const nextRipples = [];
   let forceX = 0;
   let forceY = 0;
