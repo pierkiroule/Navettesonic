@@ -1,4 +1,4 @@
-import { ECHOSTORY_CORE_SYMBOL, ECHOSTORY_MUSIC_CORE_ID, getEchostoryLinks } from "./echostoryConstellation.js";
+import { ECHOSTORY_CORE_SYMBOL, ECHOSTORY_MUSIC_CORE_ID, getEchostoryLinks, makeLinkId } from "./echostoryConstellation.js";
 
 const ECHOSTORY_STAR_MIN_VISUAL_RADIUS = 34;
 
@@ -26,7 +26,7 @@ function drawStar(ctx, x, y, radius, color, alpha = 1) {
   ctx.fill();
 }
 
-function drawDreamcatcherChord(ctx, fromStar, toStar, time = 0) {
+function drawDreamcatcherChord(ctx, fromStar, toStar, time = 0, options = {}) {
   if (!fromStar || !toStar) return;
   const fromX = Number.isFinite(fromStar.x) ? fromStar.x : 0;
   const fromY = Number.isFinite(fromStar.y) ? fromStar.y : 0;
@@ -40,6 +40,7 @@ function drawDreamcatcherChord(ctx, fromStar, toStar, time = 0) {
   const normalX = -dy / length;
   const normalY = dx / length;
   const pulse = Math.sin(time * 0.008 + length * 0.003) * 0.5 + 0.5;
+  const playbackPulse = options.playbackPulse ? (Math.sin(time * 0.018) * 0.5 + 0.5) : 0;
   const strandOffset = 2.2 + pulse * 0.8;
   const gradient = ctx.createLinearGradient(fromX, fromY, toX, toY);
   gradient.addColorStop(0, `${fromStar.color || "#ffffff"}33`);
@@ -49,10 +50,10 @@ function drawDreamcatcherChord(ctx, fromStar, toStar, time = 0) {
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
   ctx.lineCap = "round";
-  ctx.shadowColor = "rgba(255, 230, 148, 0.88)";
-  ctx.shadowBlur = 9 + pulse * 6;
+  ctx.shadowColor = options.playbackPulse ? "rgba(130, 245, 255, 0.98)" : "rgba(255, 230, 148, 0.88)";
+  ctx.shadowBlur = 9 + pulse * 6 + playbackPulse * 18;
   ctx.strokeStyle = gradient;
-  ctx.lineWidth = 2.4 + pulse * 0.6;
+  ctx.lineWidth = 2.4 + pulse * 0.6 + playbackPulse * 3.2;
   ctx.beginPath();
   ctx.moveTo(fromX, fromY);
   ctx.lineTo(toX, toY);
@@ -105,15 +106,17 @@ function drawContourSnapHalo(ctx, x, y, radius, time = 0, phase = 0) {
   ctx.fill();
 }
 
-function drawCoreAnchor(ctx, time = 0) {
+function drawCoreAnchor(ctx, time = 0, playback = {}) {
   const pulse = Math.sin(time * 0.006) * 0.5 + 0.5;
-  const radius = 34 + pulse * 3;
+  const isCurrent = playback.currentNodeId === ECHOSTORY_MUSIC_CORE_ID;
+  const isTarget = playback.playbackTargetNodeId === ECHOSTORY_MUSIC_CORE_ID;
+  const radius = 34 + pulse * 3 + (isCurrent ? 7 : 0);
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
   ctx.shadowColor = "rgba(155, 226, 255, 0.95)";
-  ctx.shadowBlur = 18 + pulse * 9;
+  ctx.shadowBlur = 18 + pulse * 9 + (isCurrent || isTarget ? 18 : 0);
   ctx.strokeStyle = `rgba(220, 248, 255, ${0.74 + pulse * 0.18})`;
-  ctx.lineWidth = 3;
+  ctx.lineWidth = isCurrent ? 5 : 3;
   ctx.beginPath();
   ctx.arc(0, 0, radius, 0, Math.PI * 2);
   ctx.stroke();
@@ -174,7 +177,8 @@ function drawLinkEffect(ctx, fromStar, toStar, effect, time = 0) {
 }
 
 export function drawEchostoryConstellationLinks(ctx, echostory = {}, time = 0) {
-  drawCoreAnchor(ctx, time);
+  const playback = echostory?.echostoryPlayback || {};
+  drawCoreAnchor(ctx, time, playback);
 
   const stars = Array.isArray(echostory?.stars) ? echostory.stars : [];
   const links = getEchostoryLinks(echostory);
@@ -193,7 +197,9 @@ export function drawEchostoryConstellationLinks(ctx, echostory = {}, time = 0) {
     const fromStar = starsById.get(link?.from);
     const toStar = starsById.get(link?.to);
     if (!fromStar || !toStar || fromStar.expired || toStar.expired) return;
-    drawDreamcatcherChord(ctx, fromStar, toStar, time);
+    drawDreamcatcherChord(ctx, fromStar, toStar, time, {
+      playbackPulse: echostory?.playbackCurrentLinkId === (link?.id || makeLinkId(link?.from, link?.to)),
+    });
   });
 
   effects.forEach((effect) => {
@@ -213,12 +219,16 @@ export function drawEchostoryContourLinks(ctx, echostory = {}, time = 0) {
     const fromStar = starsById.get(link?.from);
     const toStar = starsById.get(link?.to);
     if (!fromStar?.attachedToContour || !toStar?.attachedToContour) return;
-    drawDreamcatcherChord(ctx, fromStar, toStar, time);
+    drawDreamcatcherChord(ctx, fromStar, toStar, time, {
+      playbackPulse: echostory?.playbackCurrentLinkId === (link?.id || makeLinkId(link?.from, link?.to)),
+    });
   });
 }
 
-export function drawEchostoryStars(ctx, stars = [], time = 0, fish = null) {
+export function drawEchostoryStars(ctx, stars = [], time = 0, fish = null, echostory = {}) {
   if (!Array.isArray(stars) || stars.length === 0) return;
+  const playback = echostory?.echostoryPlayback || {};
+  const visited = playback.visited || {};
   ctx.save();
   try {
     stars.forEach((star, index) => {
@@ -232,14 +242,21 @@ export function drawEchostoryStars(ctx, stars = [], time = 0, fish = null) {
       const color = star.color || "#ffffff";
 
       const blinking = star.previewPlaying === true;
+      const isCurrent = playback.currentNodeId === star.id && !playback.playbackTargetNodeId;
+      const isTarget = playback.playbackTargetNodeId === star.id;
+      const wasVisited = Boolean(visited?.[star.id]);
+      const stateAlpha = wasVisited ? 0.62 : 1;
       const blinkPulse = blinking ? (Math.sin(time * 0.028 + (star.phase || 0) + index) > 0 ? 1 : 0.18) : 1;
       if (star.attachedToContour) {
         drawContourSnapHalo(ctx, x, y, radius, time, (star.phase || 0) + index * 0.21);
       }
-      if (star.selectedOnContour) {
-        drawSelectedContourHalo(ctx, x, y, radius, time, (star.phase || 0) + index * 0.31);
+      if (star.selectedOnContour || isCurrent) {
+        drawSelectedContourHalo(ctx, x, y, radius * (isCurrent ? 1.18 : 1), time, (star.phase || 0) + index * 0.31);
       }
-      drawStar(ctx, x, y, radius, color, blinkPulse);
+      if (isTarget) {
+        drawContourSnapHalo(ctx, x, y, radius * 0.82, time, (star.phase || 0) + index * 0.17);
+      }
+      drawStar(ctx, x, y, radius, color, blinkPulse * stateAlpha);
     });
   } finally {
     ctx.restore();

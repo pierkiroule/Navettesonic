@@ -1,6 +1,48 @@
 import { advanceWave, collectStar, createWaveStars, getCurrentWaveKey, resetEchostoryState } from "../../core/echostory/echostoryEngine.js";
 
 export const createEchostorySlice = (set) => ({
+
+  startMyceliumPlayback: () => set((state) => ({
+    echostory: {
+      ...(state.echostory || {}),
+      activeLine: "...et bientôt...",
+      playbackTargetNodeId: null,
+      playbackCurrentLinkId: null,
+      echostoryPlayback: {
+        active: true,
+        currentNodeId: "core-bubble",
+        visited: {},
+        path: [],
+        startedAt: Date.now(),
+        playbackTargetNodeId: null,
+        waitingUntil: 0,
+        arrivedNodeId: null,
+      },
+    },
+    fish: {
+      ...(state.fish || {}),
+      x: 0,
+      y: 0,
+      targetX: 0,
+      targetY: 0,
+      vx: 0,
+      vy: 0,
+      angle: 0,
+    },
+  })),
+  stopMyceliumPlayback: () => set((state) => ({
+    echostory: {
+      ...(state.echostory || {}),
+      activeLine: null,
+      playbackTargetNodeId: null,
+      playbackCurrentLinkId: null,
+      echostoryPlayback: {
+        ...((state.echostory || {}).echostoryPlayback || {}),
+        active: false,
+        playbackTargetNodeId: null,
+      },
+    },
+  })),
   triggerEscapeCinematic: () => set((state) => ({
     echostory: state.echostory?.escapeState === "idle"
       ? { ...state.echostory, escapeState: "approach" }

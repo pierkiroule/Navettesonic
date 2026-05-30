@@ -1,8 +1,12 @@
-export const ECHOSTORY_MUSIC_CORE_ID = "core";
+export const ECHOSTORY_MUSIC_CORE_ID = "core-bubble";
 export const ECHOSTORY_CORE_SYMBOL = "🫧";
 
+function normalizeCoreId(id) {
+  return id === "core" ? ECHOSTORY_MUSIC_CORE_ID : id;
+}
+
 export function makeLinkId(a, b) {
-  return [a, b].sort().join("__");
+  return [normalizeCoreId(a), normalizeCoreId(b)].sort().join("__");
 }
 
 export function getEchostoryLinks(echostory = {}) {
@@ -19,11 +23,13 @@ export function getEchostoryLinks(echostory = {}) {
 export function getCoreConnectedStarIds(links = []) {
   const adjacency = new Map();
   links.forEach((link) => {
-    if (!link?.from || !link?.to) return;
-    if (!adjacency.has(link.from)) adjacency.set(link.from, new Set());
-    if (!adjacency.has(link.to)) adjacency.set(link.to, new Set());
-    adjacency.get(link.from).add(link.to);
-    adjacency.get(link.to).add(link.from);
+    const from = normalizeCoreId(link?.from);
+    const to = normalizeCoreId(link?.to);
+    if (!from || !to) return;
+    if (!adjacency.has(from)) adjacency.set(from, new Set());
+    if (!adjacency.has(to)) adjacency.set(to, new Set());
+    adjacency.get(from).add(to);
+    adjacency.get(to).add(from);
   });
 
   const connected = new Set();
@@ -45,7 +51,7 @@ function normalizeRawLinks(echostory = {}) {
   return getEchostoryLinks(echostory)
     .filter((link) => link?.from && link?.to && link.from !== link.to)
     .map((link) => {
-      const [from, to] = [link.from, link.to].sort();
+      const [from, to] = [normalizeCoreId(link.from), normalizeCoreId(link.to)].sort();
       return {
         ...link,
         id: makeLinkId(from, to),
@@ -70,11 +76,13 @@ function keepOnlyCoreReachableLinks(links = []) {
 }
 
 export function canCreateEchostoryLink(echostory = {}, a, b) {
-  if (!a || !b || a === b) return false;
-  if (a === ECHOSTORY_MUSIC_CORE_ID || b === ECHOSTORY_MUSIC_CORE_ID) return true;
+  const normalizedA = normalizeCoreId(a);
+  const normalizedB = normalizeCoreId(b);
+  if (!normalizedA || !normalizedB || normalizedA === normalizedB) return false;
+  if (normalizedA === ECHOSTORY_MUSIC_CORE_ID || normalizedB === ECHOSTORY_MUSIC_CORE_ID) return true;
   const links = keepOnlyCoreReachableLinks(normalizeRawLinks(echostory));
   const coreConnectedIds = getCoreConnectedStarIds(links);
-  return coreConnectedIds.has(a) || coreConnectedIds.has(b);
+  return coreConnectedIds.has(normalizedA) || coreConnectedIds.has(normalizedB);
 }
 
 export function normalizeEchostoryNetwork(echostory = {}) {
@@ -94,8 +102,10 @@ export function normalizeEchostoryNetwork(echostory = {}) {
 }
 
 export function toggleEchostoryLink(echostory = {}, a, b, options = {}) {
-  if (!a || !b || a === b) return normalizeEchostoryNetwork(echostory);
-  const [from, to] = [a, b].sort();
+  const normalizedA = normalizeCoreId(a);
+  const normalizedB = normalizeCoreId(b);
+  if (!normalizedA || !normalizedB || normalizedA === normalizedB) return normalizeEchostoryNetwork(echostory);
+  const [from, to] = [normalizedA, normalizedB].sort();
   const id = makeLinkId(from, to);
   const links = keepOnlyCoreReachableLinks(normalizeRawLinks(echostory));
   const exists = links.some((link) => link.id === id);

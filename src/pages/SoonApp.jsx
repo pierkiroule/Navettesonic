@@ -7,8 +7,10 @@ import { renderImmersiveJourney } from "../core/immersiveExporter.js";
 import { buildEchostoryText, buildStoryTimeline, buildPathStarsFromTimeline } from "../core/echostory/echostoryBuilder.js";
 import { tickEchostoryTraversal } from "../core/echostory/echostoryTraversalEngine.js";
 import { buildStarMp3Trace } from "../core/odysseoStarMp3Trace.js";
-import { toggleEchostoryLink } from "../core/echostory/echostoryConstellation.js";
+import { ECHOSTORY_MUSIC_CORE_ID, makeLinkId, toggleEchostoryLink } from "../core/echostory/echostoryConstellation.js";
 import { ECHOSTORY_SKELETONS } from "../data/echostorySkeletons.js";
+import { chooseNextMyceliumNode, computeConnectedToCore, makeGraph } from "../core/echostory/echostoryMyceliumPlayback.js";
+import { triggerEchostoryStarPreview } from "../components/soon/useSoonCanvasLoop.js";
 import {
   parseWorkflowFromHash,
   persistWorkflowRoot,
@@ -25,6 +27,195 @@ import {
 
 
 const SWIM_SPEED = 1.15;
+const MYCELIUM_PLAYBACK_SPEED = 4.8;
+const MYCELIUM_ARRIVAL_THRESHOLD = 18;
+const MYCELIUM_CORE_PAUSE_MS = 1100;
+const MYCELIUM_STAR_PAUSE_MS = 360;
+
+let lastCoreSpeechAt = 0;
+
+function speakCoreBubble(now = Date.now()) {
+  if (typeof window === "undefined" || !window.speechSynthesis) return;
+  if (now - lastCoreSpeechAt < 900) return;
+  lastCoreSpeechAt = now;
+  try {
+    const utterance = new SpeechSynthesisUtterance("et bientôt");
+    utterance.lang = "fr-FR";
+    utterance.rate = 0.82;
+    utterance.pitch = 1.12;
+    utterance.volume = 0.42;
+    window.speechSynthesis.speak(utterance);
+  } catch {
+    // La voix du noyau est optionnelle selon le navigateur.
+  }
+}
+
+function getMyceliumNodePosition(nodeId, starsById) {
+  if (nodeId === ECHOSTORY_MUSIC_CORE_ID) return { x: 0, y: 0 };
+  const star = starsById.get(nodeId);
+  if (!star) return null;
+  return {
+    x: Number.isFinite(star.x) ? star.x : 0,
+    y: Number.isFinite(star.y) ? star.y : 0,
+  };
+}
+
+function getStarOrdinal(stars = [], targetStar = null) {
+  let ordinal = 0;
+  for (const star of stars) {
+    if (!star) continue;
+    if (star === targetStar || (targetStar?.id && star.id === targetStar.id)) return ordinal;
+    ordinal += 1;
+  }
+  return 0;
+}
+
+function tickMyceliumPlayback(now = Date.now()) {
+  const fullState = useSoonStore.getState();
+  const echostory = fullState.echostory || {};
+  const playback = echostory.echostoryPlayback || {};
+  if (!playback.active) return false;
+
+  const stars = (echostory.stars || []).filter((star) => star && !star.expired);
+  const starsById = new Map(stars.map((star) => [star.id, star]).filter(([id]) => id));
+  const graph = makeGraph([{ id: ECHOSTORY_MUSIC_CORE_ID }, ...stars], echostory.links || []);
+  const connectedToCore = computeConnectedToCore(graph, ECHOSTORY_MUSIC_CORE_ID);
+  const targetNodeId = playback.playbackTargetNodeId || echostory.playbackTargetNodeId || null;
+  const fish = fullState.fish || {};
+
+  if (targetNodeId) {
+    const target = getMyceliumNodePosition(targetNodeId, starsById);
+    if (!target || !connectedToCore.has(targetNodeId)) {
+      useSoonStore.setState((state) => ({
+        echostory: {
+          ...state.echostory,
+          playbackTargetNodeId: null,
+          playbackCurrentLinkId: null,
+          echostoryPlayback: {
+            ...(state.echostory?.echostoryPlayback || {}),
+            playbackTargetNodeId: null,
+          },
+        },
+      }));
+      return true;
+    }
+
+    const dx = target.x - (Number.isFinite(fish.x) ? fish.x : 0);
+    const dy = target.y - (Number.isFinite(fish.y) ? fish.y : 0);
+    const distance = Math.hypot(dx, dy);
+    const ratio = distance > 0 ? Math.min(1, MYCELIUM_PLAYBACK_SPEED / distance) : 1;
+    const nextX = distance <= MYCELIUM_ARRIVAL_THRESHOLD ? target.x : (fish.x || 0) + dx * ratio;
+    const nextY = distance <= MYCELIUM_ARRIVAL_THRESHOLD ? target.y : (fish.y || 0) + dy * ratio;
+    const angle = distance > 0.001 ? Math.atan2(dy, dx) : (fish.angle || 0);
+    const arrived = distance <= MYCELIUM_ARRIVAL_THRESHOLD;
+    const fromNodeId = playback.currentNodeId || ECHOSTORY_MUSIC_CORE_ID;
+    const linkId = makeLinkId(fromNodeId, targetNodeId);
+
+    useSoonStore.setState((state) => ({
+      fish: {
+        ...(state.fish || {}),
+        x: nextX,
+        y: nextY,
+        targetX: target.x,
+        targetY: target.y,
+        vx: nextX - (Number.isFinite(state.fish?.x) ? state.fish.x : nextX),
+        vy: nextY - (Number.isFinite(state.fish?.y) ? state.fish.y : nextY),
+        angle,
+      },
+      echostory: {
+        ...(state.echostory || {}),
+        playbackTargetNodeId: arrived ? null : targetNodeId,
+        playbackCurrentLinkId: linkId,
+        echostoryPlayback: {
+          ...(state.echostory?.echostoryPlayback || {}),
+          currentNodeId: arrived ? targetNodeId : fromNodeId,
+          playbackTargetNodeId: arrived ? null : targetNodeId,
+          arrivedNodeId: arrived ? null : state.echostory?.echostoryPlayback?.arrivedNodeId,
+          waitingUntil: arrived ? 0 : state.echostory?.echostoryPlayback?.waitingUntil,
+        },
+      },
+    }));
+    return true;
+  }
+
+  const currentNodeId = playback.currentNodeId || ECHOSTORY_MUSIC_CORE_ID;
+  const currentStar = starsById.get(currentNodeId);
+  const path = Array.isArray(playback.path) ? playback.path : [];
+
+  if (path[path.length - 1] !== currentNodeId) {
+    const visited = { ...(playback.visited || {}) };
+    visited[currentNodeId] = (visited[currentNodeId] || 0) + 1;
+    const waitingUntil = now + (currentNodeId === ECHOSTORY_MUSIC_CORE_ID ? MYCELIUM_CORE_PAUSE_MS : MYCELIUM_STAR_PAUSE_MS);
+
+    if (currentNodeId === ECHOSTORY_MUSIC_CORE_ID) {
+      speakCoreBubble(now);
+    } else if (currentStar) {
+      triggerEchostoryStarPreview(currentStar, {
+        fishX: Number.isFinite(fish.x) ? fish.x : 0,
+        colorOrdinal: getStarOrdinal(stars, currentStar),
+      });
+    }
+
+    useSoonStore.setState((state) => ({
+      echostory: {
+        ...(state.echostory || {}),
+        activeLine: currentNodeId === ECHOSTORY_MUSIC_CORE_ID ? "...et bientôt..." : (currentStar?.text || currentStar?.label || "Étoile MP3"),
+        playbackTargetNodeId: null,
+        echostoryPlayback: {
+          ...(state.echostory?.echostoryPlayback || {}),
+          currentNodeId,
+          visited,
+          path: [...path, currentNodeId],
+          waitingUntil,
+          arrivedNodeId: currentNodeId,
+        },
+      },
+    }));
+    return true;
+  }
+
+  if (currentStar?.previewPlaying) return true;
+  if (Number.isFinite(playback.waitingUntil) && now < playback.waitingUntil) return true;
+
+  const nextNodeId = chooseNextMyceliumNode({
+    currentNodeId,
+    graph,
+    connectedToCore,
+    visited: playback.visited || {},
+    coreId: ECHOSTORY_MUSIC_CORE_ID,
+  });
+
+  if (!nextNodeId) {
+    useSoonStore.setState((state) => ({
+      echostory: {
+        ...(state.echostory || {}),
+        activeLine: null,
+        playbackTargetNodeId: null,
+        playbackCurrentLinkId: null,
+        echostoryPlayback: {
+          ...(state.echostory?.echostoryPlayback || {}),
+          active: false,
+          playbackTargetNodeId: null,
+        },
+      },
+    }));
+    return true;
+  }
+
+  useSoonStore.setState((state) => ({
+    echostory: {
+      ...(state.echostory || {}),
+      playbackTargetNodeId: nextNodeId,
+      playbackCurrentLinkId: makeLinkId(currentNodeId, nextNodeId),
+      echostoryPlayback: {
+        ...(state.echostory?.echostoryPlayback || {}),
+        playbackTargetNodeId: nextNodeId,
+        waitingUntil: 0,
+      },
+    },
+  }));
+  return true;
+}
 
 export default function SoonApp({ onBack }) {
   const [page, setPage] = useState("arena");
@@ -97,6 +288,8 @@ export default function SoonApp({ onBack }) {
     resetEchostoryTraversal,
     finishEchostoryTraversal,
     setEchostoryActiveLine,
+    startMyceliumPlayback,
+    stopMyceliumPlayback,
   } = useSoonStore();
 
   const selectedBubble =
@@ -347,6 +540,17 @@ export default function SoonApp({ onBack }) {
     recenterFish();
   };
 
+  const handleToggleMyceliumPlayback = () => {
+    if (echostory?.echostoryPlayback?.active) {
+      stopMyceliumPlayback();
+      return;
+    }
+    setMode(SOON_MODE_ECHOSTORY);
+    setIsTravelPlaying(false);
+    setContourPlaybackPaused(false);
+    startMyceliumPlayback();
+  };
+
   const renderZoomControl = () => (
     <div className="tool-row fish-tools">
       <div className="fish-sliders fish-sliders-layout zoom-only-panel">
@@ -457,6 +661,7 @@ export default function SoonApp({ onBack }) {
         onTickFish={({ arenaRadius } = {}) => {
           const boosted = Date.now() < speedBoostUntilRef.current;
           const effectiveSwimSpeed = boosted ? SWIM_SPEED * 1.8 : SWIM_SPEED;
+          if (echostory?.echostoryPlayback?.active && tickMyceliumPlayback(Date.now())) return;
           if (isOdysseo) {
             if (isTravelPlaying) {
               if (contourPlaybackPaused) return;
@@ -588,6 +793,17 @@ export default function SoonApp({ onBack }) {
 
       <div className={`cockpit ${isOdysseo ? "odysseo-cockpit" : ""}`}>
         <div className="cockpit-buttons">
+          <div className="tool-row mycelium-tools">
+            <button
+              type="button"
+              className={`bubble-btn mode-toggle ${echostory?.echostoryPlayback?.active ? "active" : ""}`}
+              onClick={handleToggleMyceliumPlayback}
+              title="Lancer la lecture mycélienne de Soon"
+              aria-label="Lancer la lecture mycélienne de Soon"
+            >
+              🐟 {echostory?.echostoryPlayback?.active ? "Lecture mycélienne" : "Lire le mycélium"}
+            </button>
+          </div>
           {isOdysseo ? (
             <div className="odysseo-tools">
               <div className="tool-row primary-tools">
