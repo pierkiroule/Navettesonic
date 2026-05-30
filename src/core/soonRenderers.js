@@ -9,6 +9,12 @@ import {
 import { getBlobRadiusAtAngle } from "./blobArena.js";
 import { drawEchostoryConstellationLinks, drawEchostoryContourLinks, drawEchostoryStars } from "./echostory/echostoryRender.js";
 import { resetCanvasPaintState } from "./canvasState.js";
+import {
+  drawAudioreactiveAuroras,
+  drawAudioreactiveContour,
+  drawAudioreactiveParticles,
+  drawAudioreactiveSoonAura,
+} from "./audioreactiveVisualEngine.js";
 
 const CONTOUR_WIDTH_MULTIPLIER = 3;
 const guppyRuntime = {
@@ -85,11 +91,14 @@ export function drawScene(ctx, rect, time, refs) {
     worldEntered = true;
 
     drawIsolated(ctx, () => drawArenaBoundary(ctx, arenaRef, time, current));
+    drawIsolated(ctx, () => drawAudioreactiveContour(ctx, current, arenaRef, time));
     drawIsolated(ctx, () => drawContourReader(ctx, current, arenaRef.current?.radius || 1200, time));
     drawIsolated(ctx, () => drawArenaGuppies(ctx, time, current, arenaRef.current?.radius || 1200));
 
     drawIsolated(ctx, () => drawArenaNightSky(ctx, arenaRef, time));
+    drawIsolated(ctx, () => drawAudioreactiveAuroras(ctx, current, arenaRef, time));
     drawIsolated(ctx, () => drawEcosystemWorld(ctx, current, time));
+    drawIsolated(ctx, () => drawAudioreactiveParticles(ctx, current, time));
     drawIsolated(ctx, () => drawWorldParticles(ctx, arenaRef, time));
     drawIsolated(ctx, () => drawResonantRipples(ctx, current.resonantRipples || [], time));
 
@@ -110,6 +119,7 @@ export function drawScene(ctx, rect, time, refs) {
 
     const shouldShowSoon = Boolean(current?.fish?.visible || current?.echostory?.echostoryPlayback?.active || current?.echostory?.echostoryPlayback?.visible);
     if (shouldShowSoon) {
+      drawIsolated(ctx, () => drawAudioreactiveSoonAura(ctx, current, time));
       drawIsolated(ctx, () => drawFish(ctx, current.fish, time, current.worldGraph, current.currentArenaId));
     }
   } finally {

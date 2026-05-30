@@ -7,10 +7,11 @@ import {
   resizeCanvas,
   updateArena,
 } from "../../core/soonCamera.js";
-import { getSooncutSampleUrlByColor, playOneShotFile, updateBubbleSpatialMix } from "../../core/audioEngine.js";
+import { getAudioAnalysisSnapshot, getSooncutSampleUrlByColor, playOneShotFile, updateBubbleSpatialMix } from "../../core/audioEngine.js";
 import { updateEcosystemFx } from "../../core/ecosystemFx.js";
 import { updateBubbleAudioTriggers } from "../../core/soonAudioTriggers.js";
 import { drawScene } from "../../core/soonRenderers.js";
+import { updateAudioreactiveVisualState } from "../../core/audioreactiveVisualEngine.js";
 import { getMembraneRadiusForLevel } from "../../core/fishNavigationEngine.js";
 import { setContourMusicLoopActive } from "../../core/organicAmbienceEngine.js";
 import { resetCanvasPaintState } from "../../core/canvasState.js";
@@ -847,6 +848,17 @@ export function useSoonCanvasLoop({
         fish: isEditMode ? null : next.fish,
         bubbles: next.bubbles || [],
         mode: next.mode,
+      });
+
+      const audioSnapshot = getAudioAnalysisSnapshot();
+      next.audioReactive = updateAudioreactiveVisualState({
+        previous: next.audioReactive,
+        audio: audioSnapshot,
+        current: next,
+        arenaRadius: arenaRef.current.radius,
+        rect,
+        dpr: window.devicePixelRatio || 1,
+        now: performance.now(),
       });
 
       const dpr = window.devicePixelRatio || 1;
