@@ -36,6 +36,7 @@ export function useSoonPointer({
   onToggleContourPlayback,
   onMoveEchostoryStar,
   onToggleEchostoryLink,
+  onSelectEchostoryWeaveEndpoint,
   activeContactsRef,
 }) {
   const MOVE_CANCEL = 12;
@@ -212,6 +213,14 @@ export function useSoonPointer({
 
   function getCoreContactRadius() {
     return 75;
+  }
+
+  function findEchostoryCoreAt(point) {
+    if (isFishPlaybackActive()) return null;
+    if (stateRef.current?.mode !== "echostory" && stateRef.current?.mode !== "reso") return null;
+    return Math.hypot(point.x || 0, point.y || 0) <= getCoreContactRadius()
+      ? { id: ECHOSTORY_MUSIC_CORE_ID, x: 0, y: 0 }
+      : null;
   }
 
   function getPhysicalStarRadius(star) {
@@ -415,12 +424,37 @@ export function useSoonPointer({
     if (!canvas) return false;
 
     const point = getWorldFromEvent(event);
-    logStarPointer("[star pointerdown]", point);
+    logStarPointer("[weave pointerdown]", point);
     const hitStar = findEchostoryStarAt(point);
-    logStarPointer("[star hit]", hitStar?.id || null);
-    if (!hitStar) return false;
+    const hitCore = hitStar ? null : findEchostoryCoreAt(point);
+    const endpoint = hitStar || hitCore;
+    logStarPointer("[weave endpoint hit]", endpoint?.id || null);
+    if (!endpoint?.id) return false;
+    if (typeof onSelectEchostoryWeaveEndpoint !== "function") {
+      return hitStar ? beginStarDrag(event, hitStar, point) : false;
+    }
 
-    return beginStarDrag(event, hitStar, point);
+    event.preventDefault?.();
+    event.stopPropagation?.();
+    clearLongPressTimer();
+    onSelectBubble?.(null);
+    const echostory = stateRef.current?.echostory || {};
+    const otherSelectedId = (echostory.selectedWeaveEndpointIds || echostory.selectedContourStarIds || [])
+      .map((id) => (id === "core" ? ECHOSTORY_MUSIC_CORE_ID : id))
+      .find((id) => id && id !== endpoint.id);
+    const measuredLength = otherSelectedId
+      ? Math.hypot(
+          (endpoint.x || 0) - ((getEchostoryStars().find((star) => star?.id === otherSelectedId) || { x: 0 }).x || 0),
+          (endpoint.y || 0) - ((getEchostoryStars().find((star) => star?.id === otherSelectedId) || { y: 0 }).y || 0)
+        )
+      : undefined;
+    onSelectEchostoryWeaveEndpoint?.(endpoint.id, {
+      restLength: Number.isFinite(measuredLength) ? Math.max(42, measuredLength) : undefined,
+      kind: endpoint.id === ECHOSTORY_MUSIC_CORE_ID || otherSelectedId === ECHOSTORY_MUSIC_CORE_ID ? "music-core" : "branch",
+      now: getNow(),
+    });
+    rememberTapScreen(event, `weave:${endpoint.id}`);
+    return true;
   }
 
   function armLongPress(event, point, current) {

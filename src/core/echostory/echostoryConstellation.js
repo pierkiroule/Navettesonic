@@ -1,7 +1,7 @@
 export const ECHOSTORY_MUSIC_CORE_ID = "core-bubble";
 export const ECHOSTORY_CORE_SYMBOL = "🫧";
 
-function normalizeCoreId(id) {
+export function normalizeCoreId(id) {
   return id === "core" ? ECHOSTORY_MUSIC_CORE_ID : id;
 }
 
@@ -68,21 +68,14 @@ function normalizeRawLinks(echostory = {}) {
 }
 
 function keepOnlyCoreReachableLinks(links = []) {
-  const coreConnectedIds = getCoreConnectedStarIds(links);
-  return links.filter((link) => {
-    if (link?.from === ECHOSTORY_MUSIC_CORE_ID || link?.to === ECHOSTORY_MUSIC_CORE_ID) return true;
-    return coreConnectedIds.has(link.from) && coreConnectedIds.has(link.to);
-  });
+  return links;
 }
 
 export function canCreateEchostoryLink(echostory = {}, a, b) {
+  void echostory;
   const normalizedA = normalizeCoreId(a);
   const normalizedB = normalizeCoreId(b);
-  if (!normalizedA || !normalizedB || normalizedA === normalizedB) return false;
-  if (normalizedA === ECHOSTORY_MUSIC_CORE_ID || normalizedB === ECHOSTORY_MUSIC_CORE_ID) return true;
-  const links = keepOnlyCoreReachableLinks(normalizeRawLinks(echostory));
-  const coreConnectedIds = getCoreConnectedStarIds(links);
-  return coreConnectedIds.has(normalizedA) || coreConnectedIds.has(normalizedB);
+  return Boolean(normalizedA && normalizedB && normalizedA !== normalizedB);
 }
 
 export function normalizeEchostoryNetwork(echostory = {}) {
@@ -99,6 +92,58 @@ export function normalizeEchostoryNetwork(echostory = {}) {
     constellationLinks: links,
     coreConnectedStarIds: [...coreConnectedIds],
   };
+}
+
+function getSelectableWeaveEndpointIds(echostory = {}) {
+  const starIds = new Set((echostory.stars || []).map((star) => star?.id).filter(Boolean));
+  return new Set([ECHOSTORY_MUSIC_CORE_ID, ...starIds]);
+}
+
+function getSafeSelectedWeaveEndpointIds(echostory = {}) {
+  const selectable = getSelectableWeaveEndpointIds(echostory);
+  const rawIds = Array.isArray(echostory.selectedWeaveEndpointIds)
+    ? echostory.selectedWeaveEndpointIds
+    : Array.isArray(echostory.selectedContourStarIds)
+      ? echostory.selectedContourStarIds
+      : [];
+  return rawIds
+    .map(normalizeCoreId)
+    .filter((id, index, ids) => id && ids.indexOf(id) === index && selectable.has(id))
+    .slice(0, 1);
+}
+
+function markSelectedWeaveEndpoints(echostory = {}, selectedIds = []) {
+  const selectedSet = new Set(selectedIds);
+  return {
+    ...echostory,
+    selectedWeaveEndpointIds: selectedIds,
+    selectedContourStarIds: selectedIds.filter((id) => id !== ECHOSTORY_MUSIC_CORE_ID),
+    stars: (echostory.stars || []).map((star) => (
+      star?.id
+        ? { ...star, selectedOnContour: selectedSet.has(star.id), selectedForWeaving: selectedSet.has(star.id) }
+        : star
+    )),
+  };
+}
+
+export function toggleEchostoryWeaveSelection(echostory = {}, endpointId, options = {}) {
+  const normalizedId = normalizeCoreId(endpointId);
+  if (!normalizedId || !getSelectableWeaveEndpointIds(echostory).has(normalizedId)) {
+    return normalizeEchostoryNetwork(markSelectedWeaveEndpoints(echostory, getSafeSelectedWeaveEndpointIds(echostory)));
+  }
+
+  const [selectedId = null] = getSafeSelectedWeaveEndpointIds(echostory);
+
+  if (!selectedId) {
+    return normalizeEchostoryNetwork(markSelectedWeaveEndpoints(echostory, [normalizedId]));
+  }
+
+  if (selectedId === normalizedId) {
+    return normalizeEchostoryNetwork(markSelectedWeaveEndpoints(echostory, [selectedId]));
+  }
+
+  const next = toggleEchostoryLink(echostory, selectedId, normalizedId, options);
+  return normalizeEchostoryNetwork(markSelectedWeaveEndpoints(next, []));
 }
 
 export function toggleEchostoryLink(echostory = {}, a, b, options = {}) {

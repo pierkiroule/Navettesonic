@@ -108,17 +108,22 @@ function drawContourSnapHalo(ctx, x, y, radius, time = 0, phase = 0) {
   ctx.fill();
 }
 
-function drawCoreAnchor(ctx, time = 0, playback = {}) {
+function drawCoreAnchor(ctx, time = 0, playback = {}, echostory = {}) {
   const pulse = Math.sin(time * 0.006) * 0.5 + 0.5;
+  const selectedIds = Array.isArray(echostory?.selectedWeaveEndpointIds) ? echostory.selectedWeaveEndpointIds : [];
+  const isSelected = selectedIds.includes(ECHOSTORY_MUSIC_CORE_ID);
+  const selectedBlink = isSelected ? (Math.sin(time * 0.018) * 0.5 + 0.5) : 0;
   const isCurrent = playback.currentNodeId === ECHOSTORY_MUSIC_CORE_ID;
   const isTarget = playback.playbackTargetNodeId === ECHOSTORY_MUSIC_CORE_ID;
-  const radius = 34 + pulse * 3 + (isCurrent ? 7 : 0);
+  const radius = 34 + pulse * 3 + (isCurrent ? 7 : 0) + selectedBlink * 5;
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
   ctx.shadowColor = "rgba(155, 226, 255, 0.95)";
-  ctx.shadowBlur = 18 + pulse * 9 + (isCurrent || isTarget ? 18 : 0);
-  ctx.strokeStyle = `rgba(220, 248, 255, ${0.74 + pulse * 0.18})`;
-  ctx.lineWidth = isCurrent ? 5 : 3;
+  ctx.shadowBlur = 18 + pulse * 9 + (isCurrent || isTarget ? 18 : 0) + selectedBlink * 18;
+  ctx.strokeStyle = isSelected
+    ? `rgba(255, 242, 170, ${0.45 + selectedBlink * 0.5})`
+    : `rgba(220, 248, 255, ${0.74 + pulse * 0.18})`;
+  ctx.lineWidth = isCurrent || isSelected ? 5 : 3;
   ctx.beginPath();
   ctx.arc(0, 0, radius, 0, Math.PI * 2);
   ctx.stroke();
@@ -180,7 +185,7 @@ function drawLinkEffect(ctx, fromStar, toStar, effect, time = 0) {
 
 export function drawEchostoryConstellationLinks(ctx, echostory = {}, time = 0) {
   const playback = echostory?.echostoryPlayback || {};
-  drawCoreAnchor(ctx, time, playback);
+  drawCoreAnchor(ctx, time, playback, echostory);
 
   const stars = Array.isArray(echostory?.stars) ? echostory.stars : [];
   const links = getEchostoryLinks(echostory);
@@ -252,7 +257,8 @@ export function drawEchostoryStars(ctx, stars = [], time = 0, fish = null, echos
       const y = Number.isFinite(star.y) ? star.y : 0;
       const color = star.color || "#ffffff";
 
-      const blinking = star.previewPlaying === true;
+      const selectedForWeaving = star.selectedForWeaving === true || star.selectedOnContour === true;
+      const blinking = star.previewPlaying === true || selectedForWeaving;
       const isCurrent = playback.currentNodeId === star.id && !playback.playbackTargetNodeId;
       const isTarget = playback.playbackTargetNodeId === star.id;
       const wasVisited = Boolean(visited?.[star.id]);
@@ -261,7 +267,7 @@ export function drawEchostoryStars(ctx, stars = [], time = 0, fish = null, echos
       if (star.attachedToContour) {
         drawContourSnapHalo(ctx, x, y, radius, time, (star.phase || 0) + index * 0.21);
       }
-      if (star.selectedOnContour || isCurrent) {
+      if (selectedForWeaving || isCurrent) {
         drawSelectedContourHalo(ctx, x, y, radius * (isCurrent ? 1.18 : 1), time, (star.phase || 0) + index * 0.31);
       }
       if (isTarget) {

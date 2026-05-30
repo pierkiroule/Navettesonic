@@ -424,7 +424,7 @@ function getMusicConnectedStarIds(links = []) {
 }
 
 function applyVelocity(star, vx, vy) {
-  if (!star || star.id === ECHOSTORY_MUSIC_CORE_ID || star.draggingByTouch) return;
+  if (!star || star.id === ECHOSTORY_MUSIC_CORE_ID || star.draggingByTouch || star.attachedToContour) return;
   star.vx = (star.vx || 0) + vx;
   star.vy = (star.vy || 0) + vy;
 }
@@ -499,9 +499,9 @@ function updateEchostoryConstellations(current, now = performance.now()) {
     if (!from || !to) return false;
     if (isMusicCoreLink(link)) {
       const star = link.from === ECHOSTORY_MUSIC_CORE_ID ? to : from;
-      return !star.expired && !star.expiring && !star.attachedToContour;
+      return !star.expired && !star.expiring;
     }
-    return !from.expired && !to.expired && !from.expiring && !to.expiring && !from.attachedToContour && !to.attachedToContour;
+    return !from.expired && !to.expired && !from.expiring && !to.expiring;
   });
   Object.assign(echostory, normalizeEchostoryNetwork(echostory));
 
@@ -522,11 +522,11 @@ function updateEchostoryConstellations(current, now = performance.now()) {
     const pull = (distance - rest) * stiffness;
     const ux = dx / distance;
     const uy = dy / distance;
-    if (from.id !== ECHOSTORY_MUSIC_CORE_ID && !from.draggingByTouch) {
+    if (from.id !== ECHOSTORY_MUSIC_CORE_ID && !from.draggingByTouch && !from.attachedToContour) {
       from.vx = (from.vx || 0) + ux * pull;
       from.vy = (from.vy || 0) + uy * pull;
     }
-    if (to.id !== ECHOSTORY_MUSIC_CORE_ID && !to.draggingByTouch) {
+    if (to.id !== ECHOSTORY_MUSIC_CORE_ID && !to.draggingByTouch && !to.attachedToContour) {
       to.vx = (to.vx || 0) - ux * pull;
       to.vy = (to.vy || 0) - uy * pull;
     }
@@ -542,7 +542,7 @@ function updateEchostoryConstellations(current, now = performance.now()) {
     if (!from || !to) return;
     const linkedStars = [from, to].filter((star) => star.id !== ECHOSTORY_MUSIC_CORE_ID);
     if (linkedStars.some((star) => star.draggingByTouch)) return;
-    const touchesContour = linkedStars.some((star) => Math.hypot(star.x || 0, star.y || 0) >= contourSnapThreshold);
+    const touchesContour = linkedStars.some((star) => !star.attachedToContour && Math.hypot(star.x || 0, star.y || 0) >= contourSnapThreshold);
     if (!touchesContour) return;
     const componentIds = getLinkedComponent(link.from, echostory.constellationLinks);
     componentIds.forEach((id) => brokenIds.add(id));

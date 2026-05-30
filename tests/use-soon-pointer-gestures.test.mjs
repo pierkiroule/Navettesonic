@@ -424,3 +424,36 @@ test('tap hors étoile ne stoppe pas la propagation pour l’UI', () => {
   assert.equal(calls.preventDefault, 1);
   assert.equal(calls.stopPropagation, 0);
 });
+
+test('tap étoile en tissage sélectionne sans décrocher ni déplacer quand le callback de sélection est branché', () => {
+  const selected = [];
+  const stateRef = {
+    current: {
+      interactionMode: 'swim',
+      mode: 'echostory',
+      fish: { depth: 1 },
+      viewZoom: 0,
+      circuitAutopilot: false,
+      bubbles: [],
+      echostory: {
+        stars: [{ id: 'woven-star', x: 0, y: 0, r: 34, attachedToContour: true }],
+      },
+    },
+  };
+  const pointerApi = useSoonPointer({
+    canvasRef: { current: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }) } },
+    cameraRef: { current: { x: 0, y: 0 } },
+    arenaRef: { current: { radius: 1200 } },
+    pointerRef: { current: { activePointers: new Map() } },
+    stateRef,
+    onSelectEchostoryWeaveEndpoint: (id, options) => selected.push({ id, options }),
+  });
+
+  pointerApi.handlePointerDown(event(1, 500, 500));
+  pointerApi.handlePointerMove(event(1, 540, 500));
+
+  assert.equal(selected[0].id, 'woven-star');
+  assert.equal(stateRef.current.echostory.stars[0].attachedToContour, true);
+  assert.equal(stateRef.current.echostory.stars[0].draggingByTouch, undefined);
+  assert.equal(stateRef.current.echostory.stars[0].x, 0);
+});
